@@ -1,12 +1,11 @@
 from setuptools import setup, find_packages
 
 setup(
-        name = 'grgrlib',
-        # version = '0.0.0alpha',
+        name = 'neatipy',
         version = 'alpha',
         author='Gregor Boehl',
         author_email='admin@gregorboehl.com',
-        description='Various functions & libraries for economic analysis',
+        description='Solve, filter and estimate DSGE models with occasionaly binding constraints',
         packages = find_packages(),
         install_requires=[
             'sympy',
