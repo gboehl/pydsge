@@ -6,7 +6,7 @@ The code is in alpha state and provided for reasons of replicability and code sh
 
 The beta stage will involve considerable restructuring of packages, code, and the API.
 
-The dependencies are listed in the setup.py file. Note that this package depends on the `pydsge` and `filterpy-dsge` packages that can both be found on my github page (they will thus not be installed automatically via `pip`).
+The dependencies are listed in the setup.py file. Note that this package depends on the `pydsge`, `econsieve` and `grgrlib` packages which all can be found on my github page (they will thus not be installed automatically via `pip`, at least for now).
 
 ## Installation with `pip`
 
