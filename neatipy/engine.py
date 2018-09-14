@@ -51,7 +51,7 @@ def preprocess_jit(vals, ll_max, kk_max):
     return SS_mat, SS_term, LL_mat, LL_term
 
 
-def preprocess(self, ll_max = 5, kk_max = 20, info = False):
+def preprocess(self, ll_max = 5, kk_max = 25, info = False):
     st  = time.time()
     self.precalc_mat    = preprocess_jit(self.sys, ll_max, kk_max)
     if info == 1: 
@@ -170,21 +170,22 @@ def boehlgorithm_pp(N, A, J, H, cx, b, x_bar , v, SS_mat, SS_term, LL_mat, LL_te
     flag    = False
     while (l, k) != (l1, k1):
         if cnt  > max_cnt:
-            flag    = True
+            flag    = 1
             break
         l1, k1 		= l, k
-        if l: l 		-= 1
+        if l: l -= 1
         while b @ LL_pp(l, k, l, v, SS_mat, SS_term, LL_mat, LL_term) - x_bar > 0:
             if l >= l_max:
                 l = 0
                 break
             l 	+= 1
         if (l) == (l1):
-            if k: k 		-= 1
+            if k: k -= 1
             while b @ LL_pp(l, k, l+k, v, SS_mat, SS_term, LL_mat, LL_term) - x_bar < 0: 
                 k +=1
                 if k >= k_max:
                     # print('k_max reached, exiting')
+                    flag    = 2
                     break
         cnt += 1
 
@@ -208,7 +209,7 @@ def boehlgorithm_jit(vals, v, max_cnt, k_max = 20, l_max = 20):
     while (l, k) != (l1, k1):
         cnt += 1
         if cnt  > max_cnt:
-            flag    = True
+            flag    = 1
             break
         l1, k1 		= l, k
         if l: l -= 1
@@ -222,7 +223,7 @@ def boehlgorithm_jit(vals, v, max_cnt, k_max = 20, l_max = 20):
             while b @ LL_jit(l, k, l+k, v, vals[:5]) - x_bar < 0: 
                 k +=1
                 if k > k_max:
-                    # print('k_max reached, exiting')
+                    flag    = 2
                     break
         cnt += 1
 

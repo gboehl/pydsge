@@ -8,8 +8,8 @@ import warnings
 import pydsge
 from numba import njit
 import time
-from .pyzlb import boehlgorithm
 from grgrlib import *
+from .engine import boehlgorithm
 
 
 def get_sys(self, par=None, care_for = None, info = False):
@@ -117,6 +117,8 @@ def get_sys(self, par=None, care_for = None, info = False):
     out_msk     = fast0(N, 0) & fast0(A, 0) & fast0(b2) & fast0(cx)
     out_msk[-len(vv_v):]    = out_msk[-len(vv_v):] & fast0(self.ZZ(par), 0)
 
+    # out_msk     = np.zeros_like(out_msk, dtype=bool)
+
     ## add everything to the DSGE object
     self.vv     = vv_v[~out_msk[-len(vv_v):]]
 
@@ -172,7 +174,7 @@ def irfs(self, shocklist, wannasee = None):
                 for shk in shk_process:
                     args_see += list(shk)
                 
-        st_vec, (l,k), flag     = self.t_func(st_vec, shk_vec, True)
+        st_vec, (l,k), flag     = self.t_func(st_vec, shk_vec, return_k=True)
 
         if flag: 
             superflag   = True
@@ -196,24 +198,25 @@ def irfs(self, shocklist, wannasee = None):
 
 
 def simulate(self, EPS=None, initial_state=None):
-
-    ## EPS: shock innovations of shape (T, n_eps)
+    """
+        EPS: shock innovations of shape (T, n_eps)
+    """
 
     if EPS is None:
         EPS     = self.residuals
 
-    # st_vec          = np.zeros_like(self.filtered_X[0])
     if initial_state is None:
-        st_vec          = np.zeros(len(self.vv))
-        X   = []
+        if hasattr(self, 'filtered_X'):
+            st_vec          = self.filtered_X[0]
+        else:
+            st_vec          = np.zeros(len(self.vv))
     else:
         st_vec          = initial_state
-        X   = [st_vec]
 
+    X   = [st_vec]
     K   = []
     L   = []
     superflag   = False
-
 
     for eps in EPS:
 
@@ -236,17 +239,33 @@ def simulate(self, EPS=None, initial_state=None):
     if superflag:
         warnings.warn('Numerical errors in boehlgorithm, did not converge')
 
-    return X, self.simulated_Z
+    return self.simulated_Z, X
 
+def t_func(self, state, noise = None, return_flag = True, return_k = False):
 
-from .plots import pplot 
+    if noise is not None:
+        state   += self.SIG @ noise
+    newstate, (l,k), flag   = boehlgorithm(self, state)
+
+    if return_k: 	    return newstate, (l,k), flag
+    elif return_flag:   return newstate, flag
+    else: 			    return newstate
+
+def o_func(self, state):
+    """
+    observation function
+    """
+    return self.hx[0] @ state + self.hx[1]
+
 from .estimation import bayesian_estimation
-from .filtering import create_filter
-from .filtering import run_filter
+from .filtering import *
 
+pydsge.DSGE.DSGE.t_func             = t_func
+pydsge.DSGE.DSGE.o_func             = o_func
 pydsge.DSGE.DSGE.get_sys            = get_sys
 pydsge.DSGE.DSGE.irfs               = irfs
 pydsge.DSGE.DSGE.simulate           = simulate
 pydsge.DSGE.DSGE.create_filter      = create_filter
 pydsge.DSGE.DSGE.run_filter         = run_filter
+pydsge.DSGE.DSGE.get_ll             = get_ll
 pydsge.DSGE.DSGE.bayesian_estimation    = bayesian_estimation

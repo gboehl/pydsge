@@ -75,7 +75,7 @@ def bayesian_estimation(self, alpha = 0.2, scale_obs = 0.15, ndraws = 500, tune 
     ## dry run before the fun beginns
     self.create_filter(scale_obs = scale_obs)
     self.ukf.R[-1,-1]  /= 100
-    self.run_filter()
+    self.get_ll()
     print("Model operational. Ready for estimation.")
 
     par_fix     = np.array(self.par).copy()
@@ -127,12 +127,12 @@ def bayesian_estimation(self, alpha = 0.2, scale_obs = 0.15, ndraws = 500, tune 
 
                 self.create_filter(scale_obs = scale_obs)
                 self.ukf.R[-1,-1]  /= 100
-                self.run_filter(info=info)
+                ll  = self.get_ll()
 
                 if info == 2:
                     print('Sample took '+str(np.round(time.time() - st))+'s.')
 
-                return self.ll
+                return ll
 
             except:
 
@@ -227,8 +227,8 @@ def bayesian_estimation(self, alpha = 0.2, scale_obs = 0.15, ndraws = 500, tune 
     sampler         = wrap_sampler(pos, nwalkers, ndim, ndraws, ncores, info)
 
     sampler.summary     = lambda: summary(sampler.chain[tune:], priors)
-    sampler.traceplot   = lambda **args: traceplot(sampler.chain[tune:], varnames=priors, priors=priors_lst, **args)
-    sampler.posteriorplot   = lambda **args: posteriorplot(sampler.chain[tune:], varnames=priors, **args)
+    sampler.traceplot   = lambda **args: traceplot(sampler.chain, varnames=priors, tune=tune, priors=priors_lst, **args)
+    sampler.posteriorplot   = lambda **args: posteriorplot(sampler.chain, varnames=priors, tune=tune, **args)
     sampler.prior_dist  = priors_lst
     sampler.prior_names = [ pp for pp in priors.keys() ]
     sampler.tune        = tune
