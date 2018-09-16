@@ -59,17 +59,14 @@ def kdeplot_op(ax, data, bw, prior=None, prior_alpha=1, prior_style='--'):
     ls = []
     pls = []
     errored = []
-    try:
-        density, l, u = fast_kde(data, bw)
-        x = np.linspace(l, u, len(density))
-        if prior is not None:
-            p = prior.logpdf(x)
-            pls.append(ax.plot(x, np.exp(p),
-                               alpha=prior_alpha, ls=prior_style))
+    density, l, u = fast_kde(data, bw)
+    x = np.linspace(l, u, len(density))
+    if prior is not None:
+        p = prior.logpdf(x)
+        pls.append(ax.plot(x, np.exp(p),
+                           alpha=prior_alpha, ls=prior_style))
 
-        ls.append(ax.plot(x, density))
-    except ValueError:
-        errored.append(str(i))
+    ls.append(ax.plot(x, density))
 
     if errored:
         ax.text(.27, .47, 'WARNING: KDE plot failed for: ' + ','.join(errored),
@@ -131,7 +128,7 @@ def traceplot(trace, varnames, tune, figsize=None,
 
         ax[i, 0].set_ylabel("Frequency")
         ax[i, 1].set_ylabel("Sample value")
-        ax[i, 0].set_ylim(ymin=0)
+        ax[i, 0].set_ylim(bottom=0)
     plt.tight_layout()
     return ax
 
@@ -152,7 +149,7 @@ def plot_posterior_op(trace_values, ax, bw, kde_plot, point_estimate, round_to,
             format_as_percent(less_than_ref_probability, 1),
             ref_val,
             format_as_percent(greater_than_ref_probability, 1))
-        ax.axvline(ref_val, ymin=0.02, ymax=.75, color='g',
+        ax.axvline(ref_val, bottom=0.02, ymax=.75, color='g',
                    linewidth=4, alpha=0.65)
         ax.text(trace_values.mean(), plot_height * 0.6, ref_in_posterior,
                 size=text_size, horizontalalignment='center')
@@ -283,8 +280,9 @@ def posteriorplot(trace, varnames=None, tune=0, figsize=None, text_size=None,
     elif np.ndim(rope) == 1:
         rope = [rope] * var_num
 
-    # for idx, (a, v) in enumerate(zip(np.atleast_1d(ax), varnames)):
-    for idx, (a, v) in enumerate(zip(ax.flatten(), varnames)):
+    if len(np.atleast_1d(ax).flatten()) != len(varnames):
+        print('Given axis does not match number of plots')
+    for idx, (a, v) in enumerate(zip(np.atleast_1d(ax), varnames)):
         tr_values = trace[:,tune:,idx].flatten()
         plot_posterior_op(tr_values, ax=a, bw=bw, kde_plot=kde_plot,
                           point_estimate=point_estimate, round_to=round_to,

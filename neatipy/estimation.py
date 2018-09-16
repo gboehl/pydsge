@@ -3,6 +3,7 @@
 import numpy as np
 import warnings
 import time
+import emcee
 
 class InvGamma(object):
     
@@ -29,12 +30,21 @@ class InvGamma(object):
 
         return lpdf
 
+def save_res(self, filename):
+    np.savez(filename,
+             chain=self.chain, 
+             prior_dist=self.prior_dist, 
+             prior_names=self.prior_names, 
+             tune=self.tune, 
+             means=self.par_means)
+
+emcee.EnsembleSampler.save  = save_res
+
 def wrap_sampler(p0, nwalkers, ndim, ndraws, ncores, info):
     ## very very dirty hack 
 
     import tqdm
     import pathos
-    import emcee
 
     ## globals are *evil*
     global lprob_global
@@ -56,6 +66,7 @@ def wrap_sampler(p0, nwalkers, ndim, ndraws, ncores, info):
     pbar.close()
 
     return sampler
+
 
 def bayesian_estimation(self, alpha = 0.2, scale_obs = 0.15, ndraws = 500, tune = 50, ncores = None, nwalkers = 100, find_x0 = True, maxfev = 2500, info = False):
 
@@ -226,9 +237,11 @@ def bayesian_estimation(self, alpha = 0.2, scale_obs = 0.15, ndraws = 500, tune 
     pos             = [init_par*(1+1e-2*np.random.randn(ndim)) for i in range(nwalkers)]
     sampler         = wrap_sampler(pos, nwalkers, ndim, ndraws, ncores, info)
 
+
     sampler.summary     = lambda: summary(sampler.chain[tune:], priors)
     sampler.traceplot   = lambda **args: traceplot(sampler.chain, varnames=priors, tune=tune, priors=priors_lst, **args)
     sampler.posteriorplot   = lambda **args: posteriorplot(sampler.chain, varnames=priors, tune=tune, **args)
+
     sampler.prior_dist  = priors_lst
     sampler.prior_names = [ pp for pp in priors.keys() ]
     sampler.tune        = tune
@@ -238,3 +251,43 @@ def bayesian_estimation(self, alpha = 0.2, scale_obs = 0.15, ndraws = 500, tune 
 
     self.sampler        = sampler
 
+class modloader(object):
+
+    
+    name = 'modloader'
+
+    def __init__(self, filename):
+
+
+        self.filename   = filename
+        self.files      = np.load(filename)
+        self.prior_names    = self.files['prior_names']
+        self.chain      = self.files['chain']
+        self.prior_dist = self.files['prior_dist']
+        self.prior = self.files['prior_names']
+        self.tune       = self.files['tune']
+        self.means      = self.files['means']
+    
+    def masker(self):
+        iss     = np.zeros(len(self.prior_names), dtype=bool)
+        for v in self.prior:
+            iss = iss | (self.prior_names == v)
+        return iss
+
+    def summary(self):
+
+        from neatipy.stats import summary
+
+        return summary(self.chain[self.tune:], self.prior_names)
+
+    def traceplot(self, **args):
+
+        from neatipy.plots import traceplot
+
+        return traceplot(self.chain[:,:,self.masker()], varnames=self.prior, tune=self.tune, priors=self.prior_dist, **args)
+
+    def posteriorplot(self, **args):
+
+        from neatipy.plots import posteriorplot
+
+        return posteriorplot(self.chain[:,:,self.masker()], varnames=self.prior, tune=self.tune, **args)

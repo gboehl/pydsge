@@ -269,4 +269,5 @@ pydsge.DSGE.DSGE.create_filter      = create_filter
 pydsge.DSGE.DSGE.run_filter         = run_filter
 pydsge.DSGE.DSGE.get_ll             = get_ll
 pydsge.DSGE.DSGE.bayesian_estimation    = bayesian_estimation
+
 dsge    = pydsge.DSGE.DSGE
