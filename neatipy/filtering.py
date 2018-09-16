@@ -5,22 +5,20 @@ import numpy as np
 from .base import *
 import pydsge
 from econsieve import UnscentedKalmanFilter as UKF
-from econsieve import MerweScaledSigmaPoints
+from econsieve import GreedyMerweScaledSigmaPoints
 
-def create_filter(self, alpha = .25, scale_obs = .2):
+def create_filter(self, alpha = .25, scale_obs = 0.):
 
     dim_v       = len(self.vv)
     beta_ukf 	= 2.
-    kappa_ukf 	= 3 - dim_v
 
     if not hasattr(self, 'Z'):
         warnings.warn('No time series of observables provided')
     else:
         sig_obs 	= np.std(self.Z, 0)*scale_obs
 
-    spoints     = MerweScaledSigmaPoints(dim_v, alpha, beta_ukf, kappa_ukf)
+    spoints     = GreedyMerweScaledSigmaPoints(n=dim_v, alpha=alpha, beta=beta_ukf)
     ukf 		= UKF(dim_x=dim_v, dim_z=self.ny, hx=self.o_func, fx=self.t_func, points=spoints)
-    # ukf.x 		= np.zeros(dim_v)
     ukf.R 		= np.diag(sig_obs)**2
 
     CO          = self.SIG @ self.QQ(self.par)

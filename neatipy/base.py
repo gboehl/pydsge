@@ -56,7 +56,7 @@ def get_sys(self, par=None, care_for = None, info = False):
     P       = np.block([[A1, -BB],
                         [np.zeros((dim_x,dim_x)), np.eye(dim_v)[in_x]]])
     
-    c_arg       = list(vv_x2).index(self.const_var)
+    c_arg           = list(vv_x2).index(self.const_var)
 
     ## c contains information on how the constraint var affects the system
     c_M     = M[:,c_arg]
@@ -121,6 +121,7 @@ def get_sys(self, par=None, care_for = None, info = False):
 
     ## add everything to the DSGE object
     self.vv     = vv_v[~out_msk[-len(vv_v):]]
+    self.const_arg  = list(self.vv).index(self.const_var)
 
     self.observables    = self['observables']
     self.par    = par
