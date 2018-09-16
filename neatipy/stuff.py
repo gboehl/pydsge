@@ -121,7 +121,6 @@ def get_sys(self, par=None, care_for = None, info = False):
 
     ## add everything to the DSGE object
     self.vv     = vv_v[~out_msk[-len(vv_v):]]
-    self.const_arg  = list(self.vv).index(self.const_var)
 
     self.observables    = self['observables']
     self.par    = par
@@ -270,3 +269,4 @@ pydsge.DSGE.DSGE.create_filter      = create_filter
 pydsge.DSGE.DSGE.run_filter         = run_filter
 pydsge.DSGE.DSGE.get_ll             = get_ll
 pydsge.DSGE.DSGE.bayesian_estimation    = bayesian_estimation
+dsge    = pydsge.DSGE.DSGE

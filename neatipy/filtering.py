@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
-from .base import *
+from .stuff import *
 import pydsge
 from econsieve import UnscentedKalmanFilter as UKF
 from econsieve import GreedyMerweScaledSigmaPoints

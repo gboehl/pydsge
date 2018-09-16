@@ -1,5 +1,5 @@
 #!/bin/python2
 # -*- coding: utf-8 -*-
 
-from .base import *
+from .stuff import *
 from .plots import *
