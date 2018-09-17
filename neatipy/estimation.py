@@ -30,16 +30,6 @@ class InvGamma(object):
 
         return lpdf
 
-def save_res(self, filename):
-    np.savez(filename,
-             chain=self.chain, 
-             prior_dist=self.prior_dist, 
-             prior_names=self.prior_names, 
-             tune=self.tune, 
-             means=self.par_means)
-
-emcee.EnsembleSampler.save  = save_res
-
 def wrap_sampler(p0, nwalkers, ndim, ndraws, ncores, info):
     ## very very dirty hack 
 
@@ -68,7 +58,7 @@ def wrap_sampler(p0, nwalkers, ndim, ndraws, ncores, info):
     return sampler
 
 
-def bayesian_estimation(self, alpha = 0.2, scale_obs = 0., ndraws = 500, tune = 50, ncores = None, nwalkers = 100, find_x0 = True, maxfev = 2500, info = False):
+def bayesian_estimation(self, alpha = 0.2, scale_obs = 0., ndraws = 500, tune = 0, ncores = None, nwalkers = 100, find_x0 = True, maxfev = 2500, info = False):
 
     import pathos
     import scipy.stats as ss
@@ -264,13 +254,13 @@ class modloader(object):
 
     def __init__(self, filename):
 
-
         self.filename   = filename
         self.files      = np.load(filename)
+        self.Z          = Z
         self.prior_names    = self.files['prior_names']
         self.chain      = self.files['chain']
         self.prior_dist = self.files['prior_dist']
-        self.prior = self.files['prior_names']
+        self.prior      = self.files['prior_names']
         self.tune       = self.files['tune']
         self.means      = self.files['means']
     
@@ -286,14 +276,43 @@ class modloader(object):
 
         return summary(self.chain[self.tune:], self.prior_names)
 
-    def traceplot(self, **args):
+    def traceplot(self, chain=None, varnames=None, tune=None, priors_dist=None, **args):
 
         from neatipy.plots import traceplot
 
-        return traceplot(self.chain[:,:,self.masker()], varnames=self.prior, tune=self.tune, priors=self.prior_dist, **args)
+        if chain is None:
+            trace_value     = self.chain[:,:,self.masker()]
+        else:
+            trace_value    = chain
+        if varnames is None:
+            varnames        = self.prior
+        if tune is None:
+            tune            = self.tune
+        if priors_dist is None:
+             priors_dist         = self.prior_dist
 
-    def posteriorplot(self, **args):
+        return traceplot(trace_value, varnames=varnames, tune=tune, priors=priors_dist, **args)
+
+    def posteriorplot(self, chain=None, varnames=None, tune=None, **args):
 
         from neatipy.plots import posteriorplot
 
-        return posteriorplot(self.chain[:,:,self.masker()], varnames=self.prior, tune=self.tune, **args)
+        if chain is None:
+            trace_value     = self.chain[:,:,self.masker()]
+        else:
+            trace_value     = chain
+        if varnames is None:
+            varnames        = self.prior
+        if tune is None:
+            tune            = self.tune
+
+        return posteriorplot(trace_value, varnames=self.prior, tune=self.tune, **args)
+
+def save_res(self, filename):
+    np.savez(filename,
+             Z      = self.Z,
+             chain  = self.sampler.chain, 
+             prior_dist     = self.sampler.prior_dist, 
+             prior_names    = self.sampler.prior_names, 
+             tune           = self.sampler.tune, 
+             means          = self.sampler.par_means)
