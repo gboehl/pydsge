@@ -85,6 +85,10 @@ def bayesian_estimation(self, alpha = 0.2, scale_obs = 0., ndraws = 500, tune = 
     priors      = self['__data__']['estimation']['prior']
     prior_arg   = [ p_names.index(pp) for pp in priors.keys() ]
 
+    ## add to class so that it can be stored later
+    self.par_fix    = par_fix
+    self.prior_arg  = prior_arg
+
     init_par    = par_fix[prior_arg]
 
     ndim        = len(priors.keys())
@@ -256,19 +260,31 @@ class modloader(object):
 
         self.filename   = filename
         self.files      = np.load(filename)
-        self.Z          = Z
+        self.Z          = self.files['Z']
         self.prior_names    = self.files['prior_names']
         self.chain      = self.files['chain']
         self.prior_dist = self.files['prior_dist']
         self.prior      = self.files['prior_names']
         self.tune       = self.files['tune']
-        self.means      = self.files['means']
+        # self.means      = self.files['means']
+        self.par_fix    = self.files['par_fix']
+        self.prior_arg  = self.files['prior_arg']
     
     def masker(self):
         iss     = np.zeros(len(self.prior_names), dtype=bool)
         for v in self.prior:
             iss = iss | (self.prior_names == v)
         return iss
+
+    def means(self):
+        x                   = self.par_fix
+        x[self.prior_arg]   = self.chain[self.tune:].mean(axis=(0,1))
+        return x
+
+    def medians(self):
+        x                   = self.par_fix
+        x[self.prior_arg]   = np.median(self.chain[self.tune:], axis=(0,1))
+        return x
 
     def summary(self):
 
@@ -310,9 +326,13 @@ class modloader(object):
 
 def save_res(self, filename):
     np.savez(filename,
-             Z      = self.Z,
-             chain  = self.sampler.chain, 
+             Z              = self.Z,
+             par_fix        = self.par_fix,
+             prior_arg      = self.prior_arg,
+             chain          = self.sampler.chain, 
              prior_dist     = self.sampler.prior_dist, 
              prior_names    = self.sampler.prior_names, 
              tune           = self.sampler.tune, 
              means          = self.sampler.par_means)
+
+
