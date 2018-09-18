@@ -189,8 +189,8 @@ def bayesian_estimation(self, alpha = 0.2, scale_obs = 0., ndraws = 500, tune = 
                 self.pbar.close()
                 print('')
                 print(res['message'])
-                if self.res_max > res['fun']:
-                    print('Maximization returned value lower than actual (known) optimum ('+str(self._max)+' > '+str(self.x)+').')
+                if self.res_max < res['fun']:
+                    print('Maximization returned value lower than actual (known) optimum ('+str(-self._max)+' > '+str(-self.x)+').')
                 print('')
 
             except (KeyboardInterrupt, StopIteration) as e:
