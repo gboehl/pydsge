@@ -12,7 +12,7 @@ setup(
             'scipy',
             'numpy',
             'pandas',
-            'filterpy-dsge',
+            'econsieve',
             'emcee',
             'pathos',
             'pydsge',

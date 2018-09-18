@@ -247,7 +247,7 @@ class modloader(object):
         self.par_fix    = self.files['par_fix']
         self.prior_arg  = self.files['prior_arg']
 
-        print("Results imported. Don't forget to adjust the number of tune-in periods (self.tune).")
+        print("Results imported. Do not forget to adjust the number of tune-in periods (self.tune).")
     
     def masker(self):
         iss     = np.zeros(len(self.prior_names), dtype=bool)
