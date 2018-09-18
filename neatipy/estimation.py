@@ -150,7 +150,7 @@ def bayesian_estimation(self, alpha = 0.2, scale_obs = 0., ndraws = 500, tune = 
             self.st     = 0
             self.update_ival    = 1
             self.timer  = 0
-            self.res_max    = -np.inf
+            self.res_max    = np.inf
 
         def __call__(self, pars):
 
@@ -158,7 +158,7 @@ def bayesian_estimation(self, alpha = 0.2, scale_obs = 0., ndraws = 500, tune = 
             self.x     = pars
 
             ## better ensure we're not just running with the wolfs when maxfev is hit
-            if self.res > self.res_max:
+            if self.res < self.res_max:
                 self.res_max    = self.res
                 self.x_max      = self.x
 
@@ -189,12 +189,14 @@ def bayesian_estimation(self, alpha = 0.2, scale_obs = 0., ndraws = 500, tune = 
                 self.pbar.close()
                 print('')
                 print(res['message'])
+                if self.res_max > res['fun']:
+                    print('Maximization returned value lower than actual (known) optimum ('+str(self._max)+' > '+str(self.x)+').')
                 print('')
 
             except (KeyboardInterrupt, StopIteration) as e:
                 self.pbar.close()
                 print('')
-                print('Maximum number of function calls exceeded, exiting...')
+                print('Maximum number of function calls exceeded, exiting. Log-likelihood is '+str(np.round(-self.res_max,5))+'...')
                 print('')
 
             return self.x_max
@@ -219,7 +221,6 @@ def bayesian_estimation(self, alpha = 0.2, scale_obs = 0., ndraws = 500, tune = 
 
     pos             = [init_par*(1+1e-2*np.random.randn(ndim)) for i in range(nwalkers)]
     sampler         = wrap_sampler(pos, nwalkers, ndim, ndraws, ncores, info)
-
 
     sampler.summary     = lambda: summary(sampler.chain[tune:], priors)
     sampler.traceplot   = lambda **args: traceplot(sampler.chain, varnames=priors, tune=tune, priors=priors_lst, **args)
