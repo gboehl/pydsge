@@ -150,11 +150,17 @@ def bayesian_estimation(self, alpha = 0.2, scale_obs = 0., ndraws = 500, tune = 
             self.st     = 0
             self.update_ival    = 1
             self.timer  = 0
+            self.res_max    = -np.inf
 
         def __call__(self, pars):
 
             self.res   = -lprob(pars)
             self.x     = pars
+
+            ## better ensure we're not just running with the wolfs when maxfev is hit
+            if self.res > self.res_max:
+                self.res_max    = self.res
+                self.x_max      = self.x
 
             self.n      += 1
             self.timer  += 1
@@ -191,7 +197,7 @@ def bayesian_estimation(self, alpha = 0.2, scale_obs = 0., ndraws = 500, tune = 
                 print('Maximum number of function calls exceeded, exiting...')
                 print('')
 
-            return self.x
+            return self.x_max
 
     if find_x0:
         if not info:
