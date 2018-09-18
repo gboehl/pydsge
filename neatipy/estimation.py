@@ -4,31 +4,7 @@ import numpy as np
 import warnings
 import time
 import emcee
-
-class InvGamma(object):
-    
-    name = 'inv_gamma'
-
-    def __init__(self, a, b):
-
-        self.a = a
-        self.b = b
-
-    def logpdf(self, x):
-
-        from scipy.special import gammaln
-
-        a = self.a
-        b = self.b
-        
-        lpdf    = np.copy(x)
-
-        lpdf[x < 0]     = -1000000000000
-
-        lpdf[x >= 0]    = (np.log(2) - gammaln(b/2) + b/2*np.log(b*a**2/2)
-                -(b+1)/2*np.log(x[ x>=0 ]**2) - b*a**2/(2*x**2))
-
-        return lpdf
+from .stats import InvGamma
 
 def wrap_sampler(p0, nwalkers, ndim, ndraws, ncores, info):
     ## very very dirty hack 
@@ -266,7 +242,7 @@ class modloader(object):
         self.prior_dist = self.files['prior_dist']
         self.prior      = self.files['prior_names']
         self.tune       = self.files['tune']
-        # self.means      = self.files['means']
+        self.ndraws     = self.files['ndraws']
         self.par_fix    = self.files['par_fix']
         self.prior_arg  = self.files['prior_arg']
     
@@ -278,19 +254,19 @@ class modloader(object):
 
     def means(self):
         x                   = self.par_fix
-        x[self.prior_arg]   = self.chain[self.tune:].mean(axis=(0,1))
+        x[self.prior_arg]   = self.chain[:,self.tune:].mean(axis=(0,1))
         return x
 
     def medians(self):
         x                   = self.par_fix
-        x[self.prior_arg]   = np.median(self.chain[self.tune:], axis=(0,1))
+        x[self.prior_arg]   = np.median(self.chain[:,self.tune:], axis=(0,1))
         return x
 
     def summary(self):
 
         from neatipy.stats import summary
 
-        return summary(self.chain[self.tune:], self.prior_names)
+        return summary(self.chain[:,self.tune:], self.prior_names)
 
     def traceplot(self, chain=None, varnames=None, tune=None, priors_dist=None, **args):
 
@@ -330,6 +306,7 @@ def save_res(self, filename):
              par_fix        = self.par_fix,
              prior_arg      = self.prior_arg,
              chain          = self.sampler.chain, 
+             ndraws         = self.sampler.ndraws, 
              prior_dist     = self.sampler.prior_dist, 
              prior_names    = self.sampler.prior_names, 
              tune           = self.sampler.tune, 
