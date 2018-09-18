@@ -64,6 +64,7 @@ def bayesian_estimation(self, alpha = 0.2, scale_obs = 0., ndraws = 500, tune = 
     ## add to class so that it can be stored later
     self.par_fix    = par_fix
     self.prior_arg  = prior_arg
+    self.ndraws     = ndraws
 
     init_par    = par_fix[prior_arg]
 
@@ -245,6 +246,8 @@ class modloader(object):
         self.ndraws     = self.files['ndraws']
         self.par_fix    = self.files['par_fix']
         self.prior_arg  = self.files['prior_arg']
+
+        print("Results imported. Don't forget to adjust the number of tune-in periods (self.tune).")
     
     def masker(self):
         iss     = np.zeros(len(self.prior_names), dtype=bool)
@@ -305,8 +308,8 @@ def save_res(self, filename):
              Z              = self.Z,
              par_fix        = self.par_fix,
              prior_arg      = self.prior_arg,
+             ndraws         = self.ndraws, 
              chain          = self.sampler.chain, 
-             ndraws         = self.sampler.ndraws, 
              prior_dist     = self.sampler.prior_dist, 
              prior_names    = self.sampler.prior_names, 
              tune           = self.sampler.tune, 
