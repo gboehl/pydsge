@@ -219,7 +219,7 @@ def bayesian_estimation(self, alpha = 0.2, scale_obs = 0., ndraws = 500, tune = 
             print(str(pp)+': '+str(init_par[i].round(3)), end=', ')
     print()
 
-    pos             = [init_par*(1+1e-2*np.random.randn(ndim)) for i in range(nwalkers)]
+    pos             = [init_par*(1+1e-3*np.random.randn(ndim)) for i in range(nwalkers)]
     sampler         = wrap_sampler(pos, nwalkers, ndim, ndraws, ncores, info)
 
     sampler.summary     = lambda: summary(sampler.chain[tune:], priors)
