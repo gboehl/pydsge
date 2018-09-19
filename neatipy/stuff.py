@@ -12,7 +12,7 @@ from grgrlib import *
 from .engine import boehlgorithm
 
 
-def get_sys(self, par=None, care_for = None, info = False):
+def get_sys(self, par=None, care_for = [], info = False):
 
     self.python_other_matrices()
 
