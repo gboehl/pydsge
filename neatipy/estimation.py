@@ -245,6 +245,7 @@ class modloader(object):
         self.filename   = filename
         self.files      = np.load(filename)
         self.Z          = self.files['Z']
+        self.years      = self.files['years']
         self.prior_names    = self.files['prior_names']
         self.chain      = self.files['chain']
         self.prior_dist = self.files['prior_dist']
@@ -265,12 +266,12 @@ class modloader(object):
     def means(self):
         x                   = self.par_fix
         x[self.prior_arg]   = self.chain[:,self.tune:].mean(axis=(0,1))
-        return x
+        return list(x)
 
     def medians(self):
         x                   = self.par_fix
         x[self.prior_arg]   = np.median(self.chain[:,self.tune:], axis=(0,1))
-        return x
+        return list(x)
 
     def summary(self):
 
@@ -313,6 +314,7 @@ class modloader(object):
 def save_res(self, filename):
     np.savez(filename,
              Z              = self.Z,
+             years          = self.years,
              par_fix        = self.par_fix,
              prior_arg      = self.prior_arg,
              ndraws         = self.ndraws, 

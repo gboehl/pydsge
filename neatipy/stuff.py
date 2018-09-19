@@ -12,7 +12,7 @@ from grgrlib import *
 from .engine import boehlgorithm
 
 
-def get_sys(self, par=None, care_for = None, info = False):
+def get_sys(self, par=None, care_for = [], info = False):
 
     self.python_other_matrices()
 
@@ -153,7 +153,7 @@ def irfs(self, shocklist, wannasee = None):
         except ValueError as e:
             raise ValueError(str(e)+". You probably want to add this variable to the self.get_sys() call with the 'care_for' argument.")
     else:
-        args_see    = list(self.obs_arg)
+        args_see    = []
 
     st_vec          = np.zeros(len(self.vv))
 
@@ -188,18 +188,25 @@ def irfs(self, shocklist, wannasee = None):
         K.append(k)
         L.append(l)
 
+    if superflag:
+        warnings.warn('Numerical errors in boehlgorithm, did not converge')
+
     Y   = np.array(Y)
     K   = np.array(K)
     L   = np.array(L)
 
     care_for    = np.unique(args_see)
 
-    X   = Y[:,care_for]
+    if wannasee is None:
+        labels  = self.observables+list(self.vv[care_for])
+        X1      = (self.hx[0] @ Y.T).T + self.hx[1]
+        X2      = Y[:,care_for]
+        X       = np.hstack((X1,X2))
+    else:
+        labels  = self.vv[care_for]
+        X       = Y[:,care_for]
 
-    if superflag:
-        warnings.warn('Numerical errors in boehlgorithm, did not converge')
-
-    return X, self.vv[care_for], (Y, K, L)
+    return X, labels, (Y, K, L)
 
 
 def simulate(self, EPS=None, initial_state=None):
