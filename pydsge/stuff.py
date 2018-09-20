@@ -5,7 +5,7 @@ import numpy as np
 import numpy.linalg as nl
 import scipy.linalg as sl
 import warnings
-import pydsge
+# import pydsge
 from numba import njit
 import time
 from grgrlib import *
@@ -273,16 +273,17 @@ def o_func(self, state):
 
 from .estimation import bayesian_estimation, save_res
 from .filtering import *
+from .DSGE import DSGE
 
-pydsge.DSGE.DSGE.t_func             = t_func
-pydsge.DSGE.DSGE.o_func             = o_func
-pydsge.DSGE.DSGE.get_sys            = get_sys
-pydsge.DSGE.DSGE.irfs               = irfs
-pydsge.DSGE.DSGE.simulate           = simulate
-pydsge.DSGE.DSGE.create_filter      = create_filter
-pydsge.DSGE.DSGE.run_filter         = run_filter
-pydsge.DSGE.DSGE.get_ll             = get_ll
-pydsge.DSGE.DSGE.bayesian_estimation    = bayesian_estimation
-pydsge.DSGE.DSGE.save               = save_res
+DSGE.t_func             = t_func
+DSGE.o_func             = o_func
+DSGE.get_sys            = get_sys
+DSGE.irfs               = irfs
+DSGE.simulate           = simulate
+DSGE.create_filter      = create_filter
+DSGE.run_filter         = run_filter
+DSGE.get_ll             = get_ll
+DSGE.bayesian_estimation    = bayesian_estimation
+DSGE.save               = save_res
 
-dsge    = pydsge.DSGE.DSGE
+dsge    = DSGE

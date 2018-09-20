@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(
-        name = 'neatipy',
+        name = 'pydsge',
         version = 'alpha',
         author='Gregor Boehl',
         author_email='admin@gregorboehl.com',
@@ -15,6 +15,5 @@ setup(
             'econsieve',
             'emcee',
             'pathos',
-            'pydsge',
          ],
    )

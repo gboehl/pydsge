@@ -10,7 +10,7 @@ import numpy as np
 import numpy.linalg as nl
 import scipy.linalg as sl
 import warnings
-import pydsge
+from .DSGE import DSGE
 from numba import njit
 
 @njit(cache=True)
@@ -250,4 +250,4 @@ def boehlgorithm(model_obj, v, max_cnt = 5e1, linear = False):
     else:
         return boehlgorithm_jit(model_obj.sys, v, max_cnt)
 
-pydsge.DSGE.DSGE.preprocess   = preprocess
+DSGE.preprocess   = preprocess
