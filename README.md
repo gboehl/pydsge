@@ -6,7 +6,13 @@ The code is in alpha state and provided for reasons of replicability and code sh
 
 The beta stage will involve considerable restructuring of packages, code, and the API.
 
-The dependencies are listed in the setup.py file. Note that this package depends on the `pydsge`, `econsieve` and `grgrlib` packages which all can be found on my github page (they will thus not be installed automatically via `pip`, at least for now).
+The dependencies are listed in the setup.py file. Note that this package depends on the `econsieve` and `grgrlib` packages which both can be found on my github page (they will thus not be installed automatically via `pip`, at least for now).
+
+## parser
+
+The parser originally was a fork of Ed Herbst's fork from Pablo Winant's (excellent) package dolo. This version seemed slightly easier to adjust in order to obtain the matrices I need than in the up-to-date and more advanced version of dolo.
+
+See https://github.com/EconForge/dolo and https://github.com/eph.
 
 ## Installation with `pip`
 

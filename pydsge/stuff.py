@@ -14,7 +14,7 @@ from .engine import boehlgorithm
 
 def get_sys(self, par=None, care_for = [], info = False):
 
-    self.python_other_matrices()
+    self.get_matrices()
 
     if par is None:
         par     = self.p0()
@@ -273,7 +273,7 @@ def o_func(self, state):
 
 from .estimation import bayesian_estimation, save_res
 from .filtering import *
-from .DSGE import DSGE
+from .DSGE import DSGE 
 
 DSGE.t_func             = t_func
 DSGE.o_func             = o_func
