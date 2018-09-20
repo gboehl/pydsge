@@ -9,8 +9,7 @@ for i in os.listdir(directory):
 import numpy as np
 import numpy.linalg as nl
 import scipy.linalg as sl
-import warnings
-from .DSGE import DSGE
+from .parser import DSGE
 from numba import njit
 
 @njit(cache=True)
@@ -250,4 +249,4 @@ def boehlgorithm(model_obj, v, max_cnt = 5e1, linear = False):
     else:
         return boehlgorithm_jit(model_obj.sys, v, max_cnt)
 
-DSGE.preprocess   = preprocess
+dsge.preprocess   = preprocess

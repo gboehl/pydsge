@@ -273,17 +273,15 @@ def o_func(self, state):
 
 from .estimation import bayesian_estimation, save_res
 from .filtering import *
-from .DSGE import DSGE 
+from .parser import dsge 
 
-DSGE.t_func             = t_func
-DSGE.o_func             = o_func
-DSGE.get_sys            = get_sys
-DSGE.irfs               = irfs
-DSGE.simulate           = simulate
-DSGE.create_filter      = create_filter
-DSGE.run_filter         = run_filter
-DSGE.get_ll             = get_ll
-DSGE.bayesian_estimation    = bayesian_estimation
-DSGE.save               = save_res
-
-dsge    = DSGE
+dsge.t_func             = t_func
+dsge.o_func             = o_func
+dsge.get_sys            = get_sys
+dsge.irfs               = irfs
+dsge.simulate           = simulate
+dsge.create_filter      = create_filter
+dsge.run_filter         = run_filter
+dsge.get_ll             = get_ll
+dsge.bayesian_estimation    = bayesian_estimation
+dsge.save               = save_res
