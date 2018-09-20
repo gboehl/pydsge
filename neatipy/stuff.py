@@ -114,12 +114,14 @@ def get_sys(self, par=None, care_for = [], info = False):
               % np.round(time.time() - st,3))
 
     var_str     = [ v.name for v in vv_v ]
-    args_see    = [ var_str.index(v) for v in care_for ]
     out_msk     = fast0(N, 0) & fast0(A, 0) & fast0(b2) & fast0(cx)
     out_msk[-len(vv_v):]    = out_msk[-len(vv_v):] & fast0(self.ZZ(par), 0)
-    out_msk[-len(vv_v):][args_see]  = False
 
-    # out_msk     = np.zeros_like(out_msk, dtype=bool)
+    if care_for is 'all':
+        out_msk[-len(vv_v):][:]  = False
+    else:
+        args_see    = [ var_str.index(v) for v in care_for ]
+        out_msk[-len(vv_v):][args_see]  = False
 
     ## add everything to the DSGE object
     self.vv     = vv_v[~out_msk[-len(vv_v):]]
@@ -151,7 +153,7 @@ def irfs(self, shocklist, wannasee = None):
         try:
             args_see    = [labels.index(v) for v in wannasee]
         except ValueError as e:
-            raise ValueError(str(e)+". You probably want to add this variable to the self.get_sys() call with the 'care_for' argument.")
+            raise ValueError(str(e)+". You probably want to self.get_sys() call with the care_for = 'all' argument.")
     else:
         args_see    = []
 
