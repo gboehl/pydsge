@@ -5,12 +5,10 @@ import numpy as np
 import numpy.linalg as nl
 import scipy.linalg as sl
 import warnings
-# import pydsge
 from numba import njit
 import time
 from grgrlib import *
 from .engine import boehlgorithm
-
 
 def get_sys(self, par=None, care_for = [], info = False):
 
@@ -273,7 +271,7 @@ def o_func(self, state):
 
 from .estimation import bayesian_estimation, save_res
 from .filtering import *
-from .parser import dsge 
+from .parser import DSGE as dsge
 
 dsge.t_func             = t_func
 dsge.o_func             = o_func

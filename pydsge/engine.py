@@ -9,7 +9,7 @@ for i in os.listdir(directory):
 import numpy as np
 import numpy.linalg as nl
 import scipy.linalg as sl
-from .parser import DSGE
+from .parser import DSGE as dsge
 from numba import njit
 
 @njit(cache=True)
