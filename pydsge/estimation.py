@@ -275,13 +275,13 @@ class modloader(object):
 
     def summary(self):
 
-        from neatipy.stats import summary
+        from .stats import summary
 
         return summary(self.chain[:,self.tune:], self.prior_names)
 
     def traceplot(self, chain=None, varnames=None, tune=None, priors_dist=None, **args):
 
-        from neatipy.plots import traceplot
+        from .plots import traceplot
 
         if chain is None:
             trace_value     = self.chain[:,:,self.masker()]
@@ -298,7 +298,7 @@ class modloader(object):
 
     def posteriorplot(self, chain=None, varnames=None, tune=None, **args):
 
-        from neatipy.plots import posteriorplot
+        from .plots import posteriorplot
 
         if chain is None:
             trace_value     = self.chain[:,:,self.masker()]
