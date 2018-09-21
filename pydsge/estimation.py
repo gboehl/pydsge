@@ -101,14 +101,18 @@ def bayesian_estimation(self, alpha = 0.2, scale_obs = 0., ndraws = 500, tune = 
 
         with warnings.catch_warnings(record=True):
             try: 
+                warnings.filterwarnings('error')
+                
                 par_fix[prior_arg]  = parameters
                 par_active_lst  = list(par_fix)
 
                 self.get_sys(par_active_lst)
                 self.preprocess(info=info)
 
+                # self.create_filter(scale_obs = scale_obs, instant_warning = True)
                 self.create_filter(scale_obs = scale_obs)
-                self.ukf.R[-1,-1]  /= 100
+                # self.ukf.R[-1,-1]  /= 100
+
                 ll  = self.get_ll()
 
                 if info == 2:
