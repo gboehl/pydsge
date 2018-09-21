@@ -3,4 +3,4 @@
 
 from .stuff import *
 from .plots import *
-from .estimation import modloader
+from .processing import modloader

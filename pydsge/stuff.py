@@ -269,7 +269,8 @@ def o_func(self, state):
     """
     return self.hx[0] @ state + self.hx[1]
 
-from .estimation import bayesian_estimation, save_res
+from .estimation import bayesian_estimation
+from .processing import save_res, sampled_sim
 from .filtering import *
 from .parser import DSGE as dsge
 
@@ -283,3 +284,4 @@ dsge.run_filter         = run_filter
 dsge.get_ll             = get_ll
 dsge.bayesian_estimation    = bayesian_estimation
 dsge.save               = save_res
+dsge.sampled_sim        = sampled_sim
