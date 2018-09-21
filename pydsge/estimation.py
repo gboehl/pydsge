@@ -188,7 +188,7 @@ def bayesian_estimation(self, alpha = 0.2, scale_obs = 0., ndraws = 500, tune = 
         def go(self):
 
             try:
-                res         = so.minimize(self, self.init_par, method='Powell', tol=1e-5)
+                res         = so.minimize(self, self.init_par, method='Powell', tol=1e-3)
                 self.x      = res['x']
                 self.pbar.close()
                 print('')
