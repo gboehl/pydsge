@@ -96,8 +96,8 @@ def get_axis(ax, default_rows, default_columns, **default_kwargs):
     return ax
 
 def traceplot(trace, varnames, tune, figsize=None,
-              combined=False, grid=False, alpha=0.35, priors=None,
-              prior_alpha=1, prior_style='--', bw=4.5, ax=None):
+              combined=False, grid=False, priors=None,
+              prior_alpha=.8, prior_style='--', bw=4.5, ax=None):
     ## stolen from pymc3 with kisses
 
     if figsize is None:
@@ -112,19 +112,31 @@ def traceplot(trace, varnames, tune, figsize=None,
             prior = None
         d = trace[:,:,i]
         d_stream = d.swapaxes(0,1)
-        d   = d_stream
-        x0 = 0
         width = len(d_stream)
-        artists = kdeplot_op(ax[i, 0], d[tune:], bw, prior, prior_alpha, prior_style)[0]
+        artists = kdeplot_op(ax[i, 0], d_stream[tune:], bw, prior, prior_alpha, prior_style)[0]
         colors = [a[0].get_color() for a in artists]
         ax[i, 0].set_title(str(v))
         ax[i, 0].grid(grid)
         ax[i, 1].set_title(str(v))
-        ax[i, 1].plot(range(x0, tune), d_stream[:tune], alpha=alpha-.1)
-        ax[i, 1].plot(range(tune, x0 + width), d_stream[tune:], alpha=alpha)
+        # ax[i, 1].plot(range(0, tune+1), d_stream[:tune+1], alpha=.35)
+        # ax[i, 1].plot(range(tune, width), d_stream[tune:], alpha=.35)
+        i95s    = np.percentile(d_stream, [2.5, 97.5], axis=1).swapaxes(0,1)
+        i66s    = np.percentile(d_stream, [17, 83], axis=1)
+        means   = np.mean(d_stream, axis=1)
+        medis   = np.median(d_stream, axis=1)
+
+        ax[i, 1].fill_between(range(0, tune+1), *i66s[:,:tune+1], lw=0, alpha=.2, color='C1')
+        ax[i, 1].fill_between(range(tune, width), *i66s[:,tune:], lw=0, alpha=.3, color='C1')
+        ax[i, 1].plot(range(tune, width),   medis[tune:], '.', c='C7')
+        ax[i, 1].plot(range(0, tune+1),     medis[:tune+1], '.', c='C7', alpha=.5)
+        ax[i, 1].plot(range(tune, width),   means[tune:], lw=2, c='C0')
+        ax[i, 1].plot(range(0, tune+1),     means[:tune+1], lw=2, c='C0', alpha=.5)
+        ax[i, 1].plot(range(tune, width),   i95s[tune:], c='C5', lw=3, alpha=.6)
+        ax[i, 1].plot(range(0, tune+1),     i95s[:tune+1], c='C5', lw=3, alpha=.4)
+
         ax[i, 1].plot([tune,tune], [ np.mean(d_stream, 1)[tune] - np.std(d_stream, 1)[tune]*3, 
                                     np.mean(d_stream, 1)[tune] + np.std(d_stream, 1)[tune]*3],
-                      '--', alpha=.5, color='k')
+                      '--', alpha=.4, color='k')
 
         ax[i, 0].set_ylabel("Frequency")
         ax[i, 1].set_ylabel("Sample value")
