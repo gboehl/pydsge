@@ -100,13 +100,13 @@ def save_res(self, filename):
              tune           = self.sampler.tune, 
              means          = self.sampler.par_means)
 
-def runner_pooled(nr_samples, nr_cores):
+def runner_pooled(nr_samples, nr_cores, innovations_mask):
 
     global runner_glob
 
     def runner_loc(x):
 
-        return runner_glob(x)
+        return runner_glob(x, innovations_mask)
 
     import pathos
     pool    = pathos.pools.ProcessPool(nr_cores)
@@ -125,7 +125,8 @@ def sampled_sim(self, be_res, innovations_mask, nr_samples = 1000, nr_cores = No
     all_pars    = be_res.chain[:,be_res.tune:].reshape(-1,be_res.chain.shape[2])
 
 
-    def runner(nr):
+    # def runner(nr):
+    def runner(nr, innovations_mask):
 
         randpar                 = be_res.par_fix
         randpar[be_res.prior_arg]  = random.choice(all_pars)
@@ -146,7 +147,7 @@ def sampled_sim(self, be_res, innovations_mask, nr_samples = 1000, nr_cores = No
     global runner_glob
     runner_glob    = runner
 
-    res     = runner_pooled(nr_samples, nr_cores)
+    res     = runner_pooled(nr_samples, nr_cores, innovations_mask)
 
     SZS     = []
     SXS     = []
