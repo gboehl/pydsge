@@ -84,7 +84,9 @@ def bayesian_estimation(self, alpha = 0.2, scale_obs = 0., ndraws = 500, tune = 
         elif str(dist[0]) == 'normal':
             priors_lst.append( ss.norm(loc=pmean, scale=pstdd) )
         elif str(dist[0]) == 'gamma':
-            priors_lst.append( ss.gamma(loc=pmean, scale=pstdd) )
+            b = pstdd**2/pmean
+            a = pmean/b
+            priors_lst.append( ss.gamma(a, scale=b) )
         elif str(dist[0]) == 'beta':
             a = (1-pmean)*pmean**2/pstdd**2 - pmean
             b = a*(1/pmean - 1)
