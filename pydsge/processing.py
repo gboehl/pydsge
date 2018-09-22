@@ -4,8 +4,7 @@ import numpy as np
 import warnings
 import time
 import emcee
-# from tqdm import tqdm
-import tqdm
+from tqdm import tqdm
 from .stats import InvGamma
 import multiprocessing as mp
 import ctypes 
@@ -101,30 +100,30 @@ def save_res(self, filename):
              tune           = self.sampler.tune, 
              means          = self.sampler.par_means)
 
+def runner_pooled(nr_samples, nr_cores):
 
-def sampled_sim(self, be_res, innovations_mask, sample_nr = 1000, cores = None):
+    global runner_glob
+
+    def runner_loc(x):
+
+        return runner_glob(x)
+
+    import pathos
+    pool    = pathos.pools.ProcessPool(nr_cores)
+
+    res     = list(tqdm(pool.imap(runner_loc, range(nr_samples)), unit=' draw(s)', total=nr_samples, dynamic_ncols=True))
+
+    return res
+
+def sampled_sim(self, be_res, innovations_mask, nr_samples = 1000, nr_cores = None):
 
     import random
 
-    if cores is None:
-        cores   = mp.cpu_count()
+    if nr_cores is None:
+        nr_cores   = mp.cpu_count()
 
     all_pars    = be_res.chain[:,be_res.tune:].reshape(-1,be_res.chain.shape[2])
 
-    shp                 = innovations_mask.shape
-
-    raw                 = np.empty((sample_nr, shp[0] + 1, shp[1]))
-    shared_array_base   = mp.Array(ctypes.c_double, np.size(raw))
-    shared_array        = np.ctypeslib.as_array(shared_array_base.get_obj())
-    SZS                 = shared_array.reshape(np.shape(raw))
-
-    dim_x               = np.diff(self.sys[2].shape)[0]
-    raw                 = np.empty((sample_nr, shp[0] + 1, dim_x))
-    shared_array_base   = mp.Array(ctypes.c_double, np.size(raw))
-    shared_array        = np.ctypeslib.as_array(shared_array_base.get_obj())
-    SXS                 = shared_array.reshape(np.shape(raw))
-
-    pbar    = tqdm.tqdm(total=sample_nr, unit=' draw(s)', dynamic_ncols=True)
 
     def runner(nr):
 
@@ -142,27 +141,19 @@ def sampled_sim(self, be_res, innovations_mask, sample_nr = 1000, cores = None):
 
         SZ, SX      = self.simulate(EPS)
 
-        SZS[nr]     = SZ
-        SXS[nr]     = SX
+        return SZ, SX
 
-        pbar.update(1)
+    global runner_glob
+    runner_glob    = runner
 
-    # pool    = mp.Pool(cores)
-    # import pathos
-    # pool    = pathos.pools.ProcessPool(cores)
+    res     = runner_pooled(nr_samples, nr_cores)
 
-    # for _ in tqdm(range(sample_nr), unit=' draw(s)', dynamic_ncols=True):
-    for nr in range(sample_nr):
-        # pool.apply_async(runner, args = (nr,))
-        runner(nr)
-    # pool.map(runner, np.arange(sample_nr))
+    SZS     = []
+    SXS     = []
 
-    # pool.close()
-    # pool.join()
+    for p in res:
+        SZS.append(p[0])
+        SXS.append(p[1])
 
-    pbar.close()
+    return np.array(SZS), np.array(SXS)
 
-    # SZS     = np.array(SZS)
-    # SXS     = np.array(SXS)
-
-    return SZS, SXS
