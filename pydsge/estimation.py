@@ -192,11 +192,13 @@ def bayesian_estimation(self, alpha = 0.2, scale_obs = 0., ndraws = 500, tune = 
             try:
                 f_val       = -np.inf
                 self.x      = self.init_par
+
                 ## this while ensures that -inf is not an accepted result
                 while np.isinf(f_val):
                     res         = so.minimize(self, self.x, method='Powell', tol=1e-3)
-                    f_val        = res['fun']
-                    self.x      = res['x']
+                    f_val       = res['fun']
+                    self.x      = self.x_max
+
                 self.pbar.close()
                 print('')
                 print(res['message'])

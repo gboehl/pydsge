@@ -6,6 +6,7 @@ from .stuff import *
 import pydsge
 from econsieve import UnscentedKalmanFilter as UKF
 from econsieve import GreedyMerweScaledSigmaPoints
+from scipy.stats import norm 
 
 def create_filter(self, alpha = .25, scale_obs = 0.):
 
@@ -37,7 +38,6 @@ def get_ll(self):
 
 def get_ll(self, use_rts=True, info=False):
 
-    from scipy.stats import norm 
 
     if info == 1:
         st  = time.time()
