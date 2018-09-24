@@ -50,7 +50,7 @@ def preprocess_jit(vals, ll_max, kk_max):
     return SS_mat, SS_term, LL_mat, LL_term
 
 
-def preprocess(self, ll_max = 5, kk_max = 25, info = False):
+def preprocess(self, ll_max = 4, kk_max = 15, info = False):
     st  = time.time()
     self.precalc_mat    = preprocess_jit(self.sys, ll_max, kk_max)
     if info == 1: 

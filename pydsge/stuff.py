@@ -22,7 +22,8 @@ def get_sys(self, par=None, care_for = [], info = False):
     if not self.const_var:
         warnings.warn('Code is only meant to work with OBCs')
 
-    vv_v    = np.array(self.variables)
+    # vv_v    = np.array(self.variables)
+    vv_v    = np.array([v.name for v in self.variables])
     vv_x    = np.array(self.variables)
 
     dim_v   = len(vv_v)
@@ -111,14 +112,13 @@ def get_sys(self, par=None, care_for = [], info = False):
         print('Creation of system matrices finished in %ss.'
               % np.round(time.time() - st,3))
 
-    var_str     = [ v.name for v in vv_v ]
     out_msk     = fast0(N, 0) & fast0(A, 0) & fast0(b2) & fast0(cx)
     out_msk[-len(vv_v):]    = out_msk[-len(vv_v):] & fast0(self.ZZ(par), 0)
 
     if care_for is 'all':
         out_msk[-len(vv_v):][:]  = False
     else:
-        args_see    = [ var_str.index(v) for v in care_for ]
+        args_see    = [ vv_v.index(v) for v in care_for ]
         out_msk[-len(vv_v):][args_see]  = False
 
     ## add everything to the DSGE object
@@ -146,7 +146,8 @@ def irfs(self, shocklist, wannasee = None):
     ## shocklist: takes list of tuples of (shock, size, timing) 
     ## wannasee: list of strings of the variables to be plotted and stored
 
-    labels      = [v.name.replace('_','') for v in self.vv]
+    # labels      = [v.name.replace('_','') for v in self.vv]
+    labels      = [v.replace('_','') for v in self.vv]
     if wannasee is not None:
         try:
             args_see    = [labels.index(v) for v in wannasee]
@@ -226,8 +227,8 @@ def simulate(self, EPS=None, initial_state=None):
         st_vec          = initial_state
 
     X   = [st_vec]
-    K   = []
-    L   = []
+    K   = [0]
+    L   = [0]
     superflag   = False
 
     for eps in EPS:
@@ -251,7 +252,7 @@ def simulate(self, EPS=None, initial_state=None):
     if superflag:
         warnings.warn('Numerical errors in boehlgorithm, did not converge')
 
-    return self.simulated_Z, X
+    return self.simulated_Z, X, np.expand_dims(K, 2)
 
 def t_func(self, state, noise = None, return_flag = True, return_k = False):
 

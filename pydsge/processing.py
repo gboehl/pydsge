@@ -7,7 +7,6 @@ import emcee
 from tqdm import tqdm
 from .stats import InvGamma
 import multiprocessing as mp
-import ctypes 
 
 class modloader(object):
     
@@ -27,6 +26,9 @@ class modloader(object):
         self.ndraws     = self.files['ndraws']
         self.par_fix    = self.files['par_fix']
         self.prior_arg  = self.files['prior_arg']
+
+        if 'vv' in self.files:
+            self.vv     = self.files['vv']
 
         print("Results imported. Do not forget to adjust the number of tune-in periods (self.tune).")
     
@@ -87,9 +89,11 @@ class modloader(object):
     def innovations_mask(self):
         return np.full((self.Z.shape[0]-1, self.Z.shape[1]), np.nan)
 
+
 def save_res(self, filename):
     np.savez(filename,
              Z              = self.Z,
+             vv             = self.vv,
              years          = self.years,
              par_fix        = self.par_fix,
              prior_arg      = self.prior_arg,
@@ -99,37 +103,54 @@ def save_res(self, filename):
              prior_names    = self.sampler.prior_names, 
              tune           = self.sampler.tune, 
              means          = self.sampler.par_means)
+            
 
-def runner_pooled(nr_samples, nr_cores, innovations_mask):
+def runner_pooled(nr_samples, ncores, innovations_mask, debug):
+
+    import pathos
 
     global runner_glob
 
     def runner_loc(x):
-
         return runner_glob(x, innovations_mask)
 
-    import pathos
-    pool    = pathos.pools.ProcessPool(nr_cores)
+    pool    = pathos.pools.ProcessPool(ncores)
 
     res     = list(tqdm(pool.imap(runner_loc, range(nr_samples)), unit=' draw(s)', total=nr_samples, dynamic_ncols=True))
 
     return res
 
-def sampled_sim(self, be_res, innovations_mask, nr_samples = 1000, nr_cores = None):
+
+def sampled_sim(self, be_res = None, innovations_mask = None, nr_samples = 1000, ncores = None, debug = False):
 
     import random
+    import pathos
 
-    if nr_cores is None:
-        nr_cores   = mp.cpu_count()
+    if be_res is None:
 
-    all_pars    = be_res.chain[:,be_res.tune:].reshape(-1,be_res.chain.shape[2])
+        chain   = self.sampler.chain
+        tune    = self.sampler.tune
+        par_fix = self.par_fix
+        prior_arg   = self.prior_arg,
 
+    else:
 
-    # def runner(nr):
+        chain   = be_res.chain
+        tune    = be_res.tune
+        par_fix = be_res.par_fix
+        prior_arg   = be_res.prior_arg
+
+    if ncores is None:
+
+        ncores    = pathos.multiprocessing.cpu_count()
+
+    all_pars    = chain[:,tune:].reshape(-1,chain.shape[2])
+
     def runner(nr, innovations_mask):
 
-        randpar                 = be_res.par_fix
-        randpar[be_res.prior_arg]  = random.choice(all_pars)
+        random.seed(nr)
+        randpar             = par_fix
+        randpar[prior_arg]  = random.choice(all_pars)
 
         self.get_sys(list(randpar), info=False)                      # define parameters
         self.preprocess(info=False)                   # preprocess matrices for speedup
@@ -138,23 +159,26 @@ def sampled_sim(self, be_res, innovations_mask, nr_samples = 1000, nr_cores = No
 
         EPS     = self.run_filter(use_rts=True, info=False)[2]
 
-        EPS     = np.where(np.isnan(innovations_mask), EPS, innovations_mask)
+        if innovations_mask is not None:
 
-        SZ, SX      = self.simulate(EPS)
+            EPS     = np.where(np.isnan(innovations_mask), EPS, innovations_mask)
 
-        return SZ, SX
+        SZ, SX, SK  = self.simulate(EPS)
+
+        return SZ, SX, SK
 
     global runner_glob
     runner_glob    = runner
 
-    res     = runner_pooled(nr_samples, nr_cores, innovations_mask)
+    res     = runner_pooled(nr_samples, ncores, innovations_mask, debug)
 
     SZS     = []
     SXS     = []
+    SKS     = []
 
     for p in res:
         SZS.append(p[0])
         SXS.append(p[1])
+        SKS.append(p[2])
 
-    return np.array(SZS), np.array(SXS)
-
+    return np.array(SZS), np.array(SXS), np.array(SKS)

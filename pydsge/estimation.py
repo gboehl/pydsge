@@ -34,7 +34,7 @@ def wrap_sampler(p0, nwalkers, ndim, ndraws, ncores, info):
     return sampler
 
 
-def bayesian_estimation(self, alpha = 0.2, scale_obs = 0., ndraws = 500, tune = 0, ncores = None, nwalkers = 100, find_x0 = True, maxfev = 2500, info = False):
+def bayesian_estimation(self, alpha = 0.2, scale_obs = 0., ndraws = 500, tune = 0, ncores = None, nwalkers = 100, maxfev = 2500, info = False):
 
     import pathos
     import scipy.stats as ss
@@ -207,7 +207,7 @@ def bayesian_estimation(self, alpha = 0.2, scale_obs = 0., ndraws = 500, tune = 
 
             return self.x_max
 
-    if find_x0:
+    if maxfev:
         if not info:
             np.warnings.filterwarnings('ignore')
             print('Maximizing posterior distribution... (meanwhile warnings are disabled)')
