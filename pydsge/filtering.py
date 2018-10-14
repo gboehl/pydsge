@@ -36,8 +36,9 @@ def get_ll(self):
     return self.ll
 """
 
-def get_ll(self, use_rts=True, info=False):
+from econsieve.stats import logpdf
 
+def get_ll(self, use_rts=True, info=False):
 
     if info == 1:
         st  = time.time()
@@ -53,7 +54,8 @@ def get_ll(self, use_rts=True, info=False):
     ll  = 0
     for i in range(X1.shape[0]-1):
         eps     = X1[i+1] - self.t_func(X1[i])[0]
-        ll      += np.sum(norm.logpdf(exo @ eps, scale=stds))
+        # ll      += np.sum(norm.logpdf(exo @ eps, cov=stds))
+        ll      += logpdf(exo @ eps, cov=self.QQ(self.par))
 
     if info == 1:
         print('Filtering done in '+str(np.round(time.time()-st,3))+'seconds.')
