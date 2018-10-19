@@ -28,13 +28,22 @@ def create_filter(self, alpha = .25, scale_obs = 0.):
 
     self.ukf    = ukf
 
-"""
-def get_ll(self):
+def get_ll(self, use_rts=True, info=False):
 
-    self.ll     = self.ukf.batch_filter(self.Z)[2]
+    if info == 1:
+        st  = time.time()
+
+    X1, cov, ll     = self.ukf.batch_filter(self.Z)
+
+    if use_rts:
+        X1, cov, Ks, ll         = self.ukf.rts_smoother(X1, cov)
+
+    self.ll     = ll
+    # self.ll     = self.ukf.get_ll(self.Z, X1, cov)
 
     return self.ll
 
+"""
 from econsieve.stats import logpdf
 
 def get_ll(self, use_rts=True, info=False):
@@ -64,34 +73,6 @@ def get_ll(self, use_rts=True, info=False):
     return ll
 """
 
-def get_ll(self, use_rts=True, info=False):
-
-    from econsieve.stats import logpdf
-
-    if info == 1:
-        st  = time.time()
-
-    X1, cov, _  = self.ukf.batch_filter(self.Z)
-
-    if use_rts:
-        X1, cov, _    = self.ukf.rts_smoother(X1, cov)
-
-    exo     = nl.pinv(self.SIG)
-    stds    = self.QQ(self.par)
-
-    ll  = 0
-    for i in range(X1.shape[0]-1):
-        eps     = X1[i+1] - self.t_func(X1[i])[0]
-        ll      += logpdf(exo @ eps, cov=stds)
-
-    if info == 1:
-        print('Filtering done in '+str(np.round(time.time()-st,3))+'seconds.')
-
-    self.ll     = ll
-
-    return ll
-
-
 def run_filter(self, use_rts=True, info=False):
 
     if info == 1:
@@ -100,7 +81,7 @@ def run_filter(self, use_rts=True, info=False):
     X1, cov, ll     = self.ukf.batch_filter(self.Z)
 
     if use_rts:
-        X1, cov, _            = self.ukf.rts_smoother(X1, cov)
+        X1, cov, Ks, ll         = self.ukf.rts_smoother(X1, cov)
 
     EPS     = []
     for i in range(X1.shape[0]-1):

@@ -126,6 +126,8 @@ def sampled_sim(self, be_res = None, innovations_mask = None, nr_samples = 1000,
     import random
     import pathos
 
+    warnings.warn('Since paralellization of this function is a hack, you can not use it twice in the same python process')
+
     if be_res is None:
 
         chain   = self.sampler.chain
