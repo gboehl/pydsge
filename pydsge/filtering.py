@@ -25,6 +25,7 @@ def create_filter(self, alpha = .25, scale_obs = 0.):
     CO          = self.SIG @ self.QQ(self.par)
 
     ukf.Q 		= CO @ CO.T
+    ukf.P 		*= 1e3
 
     self.ukf    = ukf
 
@@ -36,42 +37,11 @@ def get_ll(self, use_rts=True, info=False):
     X1, cov, ll     = self.ukf.batch_filter(self.Z)
 
     if use_rts:
-        X1, cov, Ks, ll         = self.ukf.rts_smoother(X1, cov)
+        ll         = self.ukf.rts_smoother(X1, cov)[3]
 
     self.ll     = ll
-    # self.ll     = self.ukf.get_ll(self.Z, X1, cov)
 
     return self.ll
-
-"""
-from econsieve.stats import logpdf
-
-def get_ll(self, use_rts=True, info=False):
-
-    if info == 1:
-        st  = time.time()
-
-    X1, cov, _  = self.ukf.batch_filter(self.Z)
-
-    if use_rts:
-        X1, _, _    = self.ukf.rts_smoother(X1, cov)
-
-    exo     = nl.pinv(self.SIG)
-    stds    = np.diag(self.QQ(self.par))
-
-    ll  = 0
-    for i in range(X1.shape[0]-1):
-        eps     = X1[i+1] - self.t_func(X1[i])[0]
-        # ll      += np.sum(norm.logpdf(exo @ eps, cov=stds))
-        ll      += logpdf(exo @ eps, cov=self.QQ(self.par))
-
-    if info == 1:
-        print('Filtering done in '+str(np.round(time.time()-st,3))+'seconds.')
-
-    self.ll     = ll
-
-    return ll
-"""
 
 def run_filter(self, use_rts=True, info=False):
 

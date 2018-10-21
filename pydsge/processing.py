@@ -121,7 +121,7 @@ def runner_pooled(nr_samples, ncores, innovations_mask, debug):
     return res
 
 
-def sampled_sim(self, be_res = None, innovations_mask = None, nr_samples = 1000, ncores = None, debug = False):
+def sampled_sim(self, be_res = None, alpha = None, innovations_mask = None, nr_samples = 1000, ncores = None, debug = False):
 
     import random
     import pathos
@@ -157,7 +157,10 @@ def sampled_sim(self, be_res = None, innovations_mask = None, nr_samples = 1000,
         self.get_sys(list(randpar), info=False)                      # define parameters
         self.preprocess(info=False)                   # preprocess matrices for speedup
 
-        self.create_filter()
+        if alpha is not None:
+            self.create_filter(alpha=alpha)
+        else:
+            self.create_filter()
 
         EPS     = self.run_filter(use_rts=True, info=False)[2]
 
