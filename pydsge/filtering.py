@@ -25,7 +25,7 @@ def create_filter(self, alpha = .25, scale_obs = 0.):
     CO          = self.SIG @ self.QQ(self.par)
 
     ukf.Q 		= CO @ CO.T
-    ukf.P 		*= 1e3
+    # ukf.P 		*= 1e3
 
     self.ukf    = ukf
 
