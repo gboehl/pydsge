@@ -26,6 +26,8 @@ def create_filter(self, alpha = .25, scale_obs = 0.):
 
     ukf.Q 		= CO @ CO.T
     # ukf.P 		*= 1e3
+    # ukf.P 		*= 1e2
+    # ukf.P 		*= 1e1
 
     self.ukf    = ukf
 
@@ -48,10 +50,14 @@ def run_filter(self, use_rts=True, info=False):
     if info == 1:
         st  = time.time()
 
-    X1, cov, ll     = self.ukf.batch_filter(self.Z)
+    # X1, cov, ll     = self.ukf.batch_filter(self.Z)
+    X1, V1, cov, ll     = self.ukf.batch_filter(self.Z)
 
     if use_rts:
-        X1, cov, Ks, ll         = self.ukf.rts_smoother(X1, cov)
+        # X1, cov, Ks, ll         = self.ukf.rts_smoother(X1, cov)
+        X1, V1, cov, Ks, ll         = self.ukf.rts_smoother(X1, V1, cov)
+
+    X1  = np.hstack((X1, V1))
 
     EPS     = []
     for i in range(X1.shape[0]-1):
