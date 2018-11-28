@@ -34,7 +34,7 @@ def wrap_sampler(p0, nwalkers, ndim, ndraws, ncores, info):
     return sampler
 
 
-def bayesian_estimation(self, alpha = 0.2, scale_obs = 0., ndraws = 500, tune = 0, ncores = None, nwalkers = 100, maxfev = 2500, info = False):
+def bayesian_estimation(self, alpha = 0.25, scale_obs = 0., ndraws = 500, tune = 0, ncores = None, nwalkers = 100, maxfev = 2500, info = False):
 
     import pathos
     import scipy.stats as ss
@@ -50,7 +50,7 @@ def bayesian_estimation(self, alpha = 0.2, scale_obs = 0., ndraws = 500, tune = 
     self.preprocess(info=info)
 
     ## dry run before the fun beginns
-    self.create_filter(scale_obs = scale_obs)
+    self.create_ukf(scale_obs = scale_obs)
     # self.ukf.R[-1,-1]  /= 100
     self.get_ll()
     print("Model operational. Ready for estimation.")
@@ -111,9 +111,7 @@ def bayesian_estimation(self, alpha = 0.2, scale_obs = 0., ndraws = 500, tune = 
                 self.get_sys(par_active_lst)
                 self.preprocess(info=info)
 
-                # self.create_filter(scale_obs = scale_obs, instant_warning = True)
-                self.create_filter(scale_obs = scale_obs)
-                # self.ukf.R[-1,-1]  /= 100
+                self.create_ukf(scale_obs = scale_obs)
 
                 ll  = self.get_ll()
 

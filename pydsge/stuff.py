@@ -254,11 +254,31 @@ def simulate(self, EPS=None, initial_state=None):
 
     return self.simulated_Z, X, np.expand_dims(K, 2)
 
-def t_func(self, state, noise = None, return_flag = True, return_k = False):
+
+def linear_representation(self, l=0, k=0):
+
+    N, A, J, H, cx, b, x_bar  = self.sys
+
+    if not k:
+        l   = 1
+
+    SS_mat, SS_term, LL_mat, LL_term    = self.precalc_mat
+
+    dim_xx  = J.shape[0]
+
+    term        = LL_mat[l,1][:,:dim_xx] @ SS_term[l,k] + LL_term[l,1]
+    matrices 	= LL_mat[l,1][:,:dim_xx] @ SS_mat[l,k] + LL_mat[l,1][:,dim_xx:] 
+
+    return matrices[dim_xx:], term[dim_xx:]
+
+
+def t_func(self, state, noise = None, return_flag = True, return_k = False, linear = False):
+
+    newstate   = state.copy()
 
     if noise is not None:
-        state   += self.SIG @ noise
-    newstate, (l,k), flag   = boehlgorithm(self, state)
+        newstate   += self.SIG @ noise
+    newstate, (l,k), flag   = boehlgorithm(self, newstate, linear = linear)
 
     if return_k: 	    return newstate, (l,k), flag
     elif return_flag:   return newstate, flag
@@ -267,6 +287,7 @@ def t_func(self, state, noise = None, return_flag = True, return_k = False):
 def o_func(self, state):
     """
     observation function
+    (probably due for removal)
     """
     return self.hx[0] @ state + self.hx[1]
 
@@ -280,8 +301,9 @@ dsge.o_func             = o_func
 dsge.get_sys            = get_sys
 dsge.irfs               = irfs
 dsge.simulate           = simulate
-dsge.create_filter      = create_filter
+dsge.create_ukf         = create_ukf
 dsge.run_filter         = run_filter
+dsge.run_ukf            = run_ukf
 dsge.get_ll             = get_ll
 dsge.bayesian_estimation    = bayesian_estimation
 dsge.save               = save_res
