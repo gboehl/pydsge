@@ -5,10 +5,10 @@ import numpy as np
 from .stuff import *
 import pydsge
 from econsieve import UnscentedKalmanFilter as UKF
-from econsieve import GreedyMerweScaledSigmaPoints
+from econsieve import ScaledSigmaPoints as SSP
 from scipy.stats import norm 
 
-def create_filter(self, alpha = .25, scale_obs = 0.):
+def create_ukf(self, alpha = .25, scale_obs = 0.):
 
     dim_v       = len(self.vv)
     beta_ukf 	= 2.
@@ -18,32 +18,33 @@ def create_filter(self, alpha = .25, scale_obs = 0.):
     else:
         sig_obs 	= np.std(self.Z, 0)*scale_obs
 
-    spoints     = GreedyMerweScaledSigmaPoints(n=dim_v, alpha=alpha, beta=beta_ukf)
+    spoints     = SSP(n=dim_v, alpha=alpha, beta=beta_ukf)
     ukf 		= UKF(dim_x=dim_v, dim_z=self.ny, hx=self.o_func, fx=self.t_func, points=spoints)
     ukf.R 		= np.diag(sig_obs)**2
 
     CO          = self.SIG @ self.QQ(self.par)
 
     ukf.Q 		= CO @ CO.T
-    # ukf.P 		*= 1e3
 
     self.ukf    = ukf
 
-def get_ll(self, use_rts=True, info=False):
+
+def get_ll(self, use_rts=False, info=False):
 
     if info == 1:
         st  = time.time()
 
-    X1, cov, ll     = self.ukf.batch_filter(self.Z)
-
-    if use_rts:
-        ll         = self.ukf.rts_smoother(X1, cov)[3]
+    ll     = self.ukf.batch_filter(self.Z)[2]
 
     self.ll     = ll
 
+    if info == 1:
+        print('Filtering done in '+str(np.round(time.time()-st,3))+'seconds.')
+
     return self.ll
 
-def run_filter(self, use_rts=True, info=False):
+
+def run_ukf(self, use_rts=True, info=False):
 
     if info == 1:
         st  = time.time()
@@ -71,3 +72,9 @@ def run_filter(self, use_rts=True, info=False):
 
     return (self.filtered_Z, self.filtered_X, self.residuals)
 
+
+def run_filter(self):
+    
+    ## currently empty. Shall be used to inplement particle filter & smoother
+
+    pass

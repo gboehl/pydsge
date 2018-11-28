@@ -26,21 +26,21 @@ def gs_add(A, B):
 			A[i][j] += B[i][j]
 
 @njit(cache=True)
-def preprocess_jit(vals, ll_max, kk_max):
+def preprocess_jit(vals, l_max, k_max):
 
     N, A, J, H, cx, b, x_bar  = vals
 
     dim_x, dim_y    = J.shape
     dim_v           = dim_y - dim_x
 
-    ss_max 	= ll_max + kk_max
-    LL_mat 	= np.empty((ll_max,ss_max, dim_y, dim_y))
-    SS_mat 	= np.empty((ll_max,kk_max, dim_x, dim_v))
-    LL_term = np.empty((ll_max,ss_max, dim_y))
-    SS_term = np.empty((ll_max,kk_max, dim_x))
+    ss_max 	= l_max + k_max
+    LL_mat 	= np.empty((l_max,ss_max, dim_y, dim_y))
+    SS_mat 	= np.empty((l_max,k_max, dim_x, dim_v))
+    LL_term = np.empty((l_max,ss_max, dim_y))
+    SS_term = np.empty((l_max,k_max, dim_x))
 
-    for ll in range(ll_max):
-        for kk in range(kk_max):
+    for ll in range(l_max):
+        for kk in range(k_max):
             SS_mat[ll,kk], SS_term[ll,kk]   = create_SS(vals[:5],ll,kk)
         for ss in range(ss_max):
             LL_mat[ll,ss], LL_term[ll,ss]   = create_LL(vals[:5],ll,0,ss)
@@ -50,9 +50,9 @@ def preprocess_jit(vals, ll_max, kk_max):
     return SS_mat, SS_term, LL_mat, LL_term
 
 
-def preprocess(self, ll_max = 4, kk_max = 15, info = False):
+def preprocess(self, l_max = 4, k_max = 20, info = False):
     st  = time.time()
-    self.precalc_mat    = preprocess_jit(self.sys, ll_max, kk_max)
+    self.precalc_mat    = preprocess_jit(self.sys, l_max, k_max)
     if info == 1: 
         print('Preproceccing finished within %s s.' % np.round((time.time() - st), 3))
 
@@ -155,7 +155,7 @@ def LL_jit(l, k, s, v, vals):
 
 
 @njit(cache=True)
-def boehlgorithm_pp(N, A, J, H, cx, b, x_bar , v, SS_mat, SS_term, LL_mat, LL_term, max_cnt):
+def boehlgorithm_pp(N, A, J, H, cx, b, x_bar, v, SS_mat, SS_term, LL_mat, LL_term, max_cnt):
 
     dim_x, dim_y    = J.shape
 
@@ -183,7 +183,6 @@ def boehlgorithm_pp(N, A, J, H, cx, b, x_bar , v, SS_mat, SS_term, LL_mat, LL_te
             while b @ LL_pp(l, k, l+k, v, SS_mat, SS_term, LL_mat, LL_term) - x_bar < 0: 
                 k +=1
                 if k >= k_max:
-                    # print('k_max reached, exiting')
                     flag    = 2
                     break
         cnt += 1
@@ -237,7 +236,7 @@ def boehlgorithm(model_obj, v, max_cnt = 5e1, linear = False):
     if linear:
         dim_x   = model_obj.sys[2].shape[0]
 
-        return LL_jit(1, 0, 1, v, model_obj.sys[:5])[dim_x:]
+        return LL_jit(1, 0, 1, v, model_obj.sys[:5])[dim_x:], (0, 0), 0
 
     elif hasattr(model_obj, 'precalc_mat'):
 
