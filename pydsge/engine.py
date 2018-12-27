@@ -28,26 +28,28 @@ def gs_add(A, B):
 @njit(cache=True)
 def preprocess_jit(vals, l_max, k_max):
 
-    N, A, J, H, cx, b, x_bar  = vals
+    N, A, J, cx, b, x_bar   = vals
 
     dim_x, dim_y    = J.shape
     dim_v           = dim_y - dim_x
 
-    ss_max 	= l_max + k_max
-    LL_mat 	= np.empty((l_max,ss_max, dim_y, dim_y))
-    SS_mat 	= np.empty((l_max,k_max, dim_x, dim_v))
-    LL_term = np.empty((l_max,ss_max, dim_y))
-    SS_term = np.empty((l_max,k_max, dim_x))
+    s_max 	= l_max + k_max
+
+    mat         = np.empty((l_max, k_max, s_max, dim_y, dim_y-dim_x))
+    term        = np.empty((l_max, k_max, s_max, dim_y))
+    core_mat    = np.empty((l_max, s_max, dim_y, dim_y))
+    core_term   = np.empty((l_max, s_max, dim_y))
+
+    for aa in range(l_max):
+        for bb in range(s_max):
+            core_mat[aa,bb,:], core_term[aa,bb,:]   = create_core(vals[:4], aa, bb)
 
     for ll in range(l_max):
-        for kk in range(k_max):
-            SS_mat[ll,kk], SS_term[ll,kk]   = create_SS(vals[:5],ll,kk)
-        for ss in range(ss_max):
-            LL_mat[ll,ss], LL_term[ll,ss]   = create_LL(vals[:5],ll,0,ss)
-            ## here is minimal potiental for speed up:
-            # if ss >= ll-1: LL_mat[ll,ss], LL_term[ll,ss] 	= create_LL(vals[:6],ll,0,ss)
+        for ss in range(s_max):
+            for kk in range(k_max):
+                mat[ll,kk,ss], term[ll,kk,ss]   = create_finish(vals[:4], ll, kk, ss, core_mat, core_term)
 
-    return SS_mat, SS_term, LL_mat, LL_term
+    return mat, term
 
 
 def preprocess(self, l_max = 4, k_max = 20, info = False):
@@ -58,65 +60,60 @@ def preprocess(self, l_max = 4, k_max = 20, info = False):
 
 
 @njit(cache=True)
-def create_SS(vals, l, k):
+def create_core(vals, a, b):
 
-    N, A, J, H, cx  = vals
+    N, A, J, cx     = vals
     dim_x, dim_y    = J.shape
 
-    term 		= J @ geom_series(N, k) @ cx
-    if l:
-        N_k 		= nl.matrix_power(N,k)
-        A_k         = nl.matrix_power(A,l)
-        JN			= J @ N_k @ A_k
-    elif k:
-        N_k 		= nl.matrix_power(N,k)
-        JN			= J @ N_k
-    else:
-        JN    = J
-    core        = -nl.inv(JN[:,:dim_x]) 
-
-    return core @ JN[:,dim_x:], core @ term
-
-
-@njit(cache=True)
-def create_LL(vals, l, k, s):
-
-    N, A, J, H, cx  = vals
-    dim_x, dim_y    = J.shape
-
-    k0 		= max(s-l, 0)
-    l0 		= min(l, s)
-    if l0:
-        N_k 		    = nl.matrix_power(N,k0)
-        A_k             = nl.matrix_power(A,l0)
+    term			= geom_series(N, b) @ cx
+    if a:
+        N_k 		    = nl.matrix_power(N,b)
+        A_k             = nl.matrix_power(A,a)
         matrices 		= N_k @ A_k
-    elif k0:
-        N_k 		    = nl.matrix_power(N,k0)
+    elif b:
+        N_k 		    = nl.matrix_power(N,b)
         matrices 		= N_k
     else:
         matrices    = np.eye(dim_y)
-    term			= geom_series(N, k0) @ cx
 
     return matrices, term
 
 
 @njit(cache=True)
-def LL_pp(l, k, s, v, SS_mat, SS_term, LL_mat, LL_term):
+def create_finish(vals, l, k, s, core_mat, core_term):
 
-    dim_x   = SS_mat.shape[2]
+    N, A, J, cx     = vals
+    dim_x, dim_y    = J.shape
 
-    SS 	= SS_mat[l,k] @ v + SS_term[l,k]
+    JN      = J @ core_mat[l,k]
+    term    = J @ core_term[l,k]
 
-    matrices 	= LL_mat[l,s]
-    term 		= LL_term[l,s]
+    core        = -nl.inv(JN[:,:dim_x]) 
 
-    return matrices[:,:dim_x] @ SS + matrices[:,dim_x:] @ v + term 
+    SS_mat, SS_term     = core @ JN[:,dim_x:], core @ term
+
+    k0 		= max(s-l, 0)
+    l0 		= min(l, s)
+
+    matrices 	= core_mat[l0,k0]
+    term 		= core_term[l0,k0]
+
+    fin_mat     = matrices[:,:dim_x] @ SS_mat + matrices[:,dim_x:]
+    fin_term    = matrices[:,:dim_x] @ SS_term + term 
+
+    return fin_mat, fin_term
+
+
+@njit(cache=True)
+def LL_pp(l, k, s, v, mat, term):
+
+    return mat[l, k, s] @ v + term[l, k, s]
 
 
 @njit(cache=True)
 def SS_jit(vals, l, k, v):
 
-    N, A, J, H, cx  = vals
+    N, A, J, cx  = vals
     dim_x, dim_y    = J.shape
 
     term 		= J @ geom_series(N, k) @ cx
@@ -129,13 +126,16 @@ def SS_jit(vals, l, k, v):
         JN			= J @ N_k @ N
     else:
         JN    = J
+
     core        = -nl.inv(JN[:,:dim_x]) 
+
     return core @ JN[:,dim_x:] @ v + core @ term 
+
 
 @njit(cache=True)
 def LL_jit(l, k, s, v, vals):
 
-    N, A, J, H, cx  = vals
+    N, A, J, cx     = vals
     dim_x, dim_y    = J.shape
 
     k0 		= max(s-l, 0)
@@ -155,15 +155,15 @@ def LL_jit(l, k, s, v, vals):
 
 
 @njit(cache=True)
-def boehlgorithm_pp(N, A, J, H, cx, b, x_bar, v, SS_mat, SS_term, LL_mat, LL_term, max_cnt):
+def boehlgorithm_pp(N, A, J, cx, b, x_bar, v, mat, term, max_cnt):
 
     dim_x, dim_y    = J.shape
 
     l, k 		= 0, 0
     l1, k1 		= 1, 1
 
-    l_max   = SS_mat.shape[0] - 1
-    k_max   = SS_mat.shape[1] - 1
+    l_max   = mat.shape[0] - 1
+    k_max   = mat.shape[1] - 1
 
     cnt     = 0
     flag    = False
@@ -173,14 +173,14 @@ def boehlgorithm_pp(N, A, J, H, cx, b, x_bar, v, SS_mat, SS_term, LL_mat, LL_ter
             break
         l1, k1 		= l, k
         if l: l -= 1
-        while b @ LL_pp(l, k, l, v, SS_mat, SS_term, LL_mat, LL_term) - x_bar > 0:
+        while b @ LL_pp(l, k, l, v, mat, term) - x_bar > 0:
             if l >= l_max:
                 l = 0
                 break
             l 	+= 1
         if (l) == (l1):
             if k: k -= 1
-            while b @ LL_pp(l, k, l+k, v, SS_mat, SS_term, LL_mat, LL_term) - x_bar < 0: 
+            while b @ LL_pp(l, k, l+k, v, mat, term) - x_bar < 0: 
                 k +=1
                 if k >= k_max:
                     flag    = 2
@@ -188,7 +188,7 @@ def boehlgorithm_pp(N, A, J, H, cx, b, x_bar, v, SS_mat, SS_term, LL_mat, LL_ter
         cnt += 1
 
     if not k: l = 1
-    v_new 	= LL_pp(l, k, 1, v, SS_mat, SS_term, LL_mat, LL_term)[dim_x:]
+    v_new 	= LL_pp(l, k, 1, v, mat, term)[dim_x:]
 
     return v_new, (l, k), flag
 
@@ -196,7 +196,7 @@ def boehlgorithm_pp(N, A, J, H, cx, b, x_bar, v, SS_mat, SS_term, LL_mat, LL_ter
 @njit(cache=True)
 def boehlgorithm_jit(vals, v, max_cnt, k_max = 20, l_max = 20):
 
-    N, A, J, H, cx, b, x_bar    = vals
+    N, A, J, cx, b, x_bar   = vals
     dim_x, dim_y    = J.shape
     
     l, k 		= 0, 0
@@ -211,14 +211,14 @@ def boehlgorithm_jit(vals, v, max_cnt, k_max = 20, l_max = 20):
             break
         l1, k1 		= l, k
         if l: l -= 1
-        while b @ LL_jit(l, k, l, v, vals[:5]) - x_bar > 0:
+        while b @ LL_jit(l, k, l, v, vals[:4]) - x_bar > 0:
             if l > l_max:
                 l       = 0
                 break
             l 	+= 1
         if (l) == (l1):
             if k: k 		-= 1
-            while b @ LL_jit(l, k, l+k, v, vals[:5]) - x_bar < 0: 
+            while b @ LL_jit(l, k, l+k, v, vals[:4]) - x_bar < 0: 
                 k +=1
                 if k > k_max:
                     flag    = 2
@@ -226,7 +226,7 @@ def boehlgorithm_jit(vals, v, max_cnt, k_max = 20, l_max = 20):
         cnt += 1
 
     if not k: l = 1
-    v_new 	= LL_jit(l, k, 1, v, vals[:5])[dim_x:]
+    v_new 	= LL_jit(l, k, 1, v, vals[:4])[dim_x:]
 
     return v_new, (l, k), flag
 
@@ -236,15 +236,15 @@ def boehlgorithm(model_obj, v, max_cnt = 5e1, linear = False):
     if linear:
         dim_x   = model_obj.sys[2].shape[0]
 
-        return LL_jit(1, 0, 1, v, model_obj.sys[:5])[dim_x:], (0, 0), 0
+        return LL_jit(1, 0, 1, v, model_obj.sys[:4])[dim_x:], (0, 0), 0
 
     elif hasattr(model_obj, 'precalc_mat'):
 
         ## numba does not like tuples of numpy arrays
-        SS_mat, SS_term, LL_mat, LL_term    = model_obj.precalc_mat
-        N, A, J, H, cx, b, x_bar            = model_obj.sys
+        mat, term                   = model_obj.precalc_mat
+        N, A, J, cx, b, x_bar       = model_obj.sys
 
-        return boehlgorithm_pp(N, A, J, H, cx, b, x_bar, v, SS_mat, SS_term, LL_mat, LL_term, max_cnt)
+        return boehlgorithm_pp(N, A, J, cx, b, x_bar, v, mat, term, max_cnt)
     else:
         return boehlgorithm_jit(model_obj.sys, v, max_cnt)
 
