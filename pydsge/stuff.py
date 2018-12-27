@@ -137,7 +137,7 @@ def get_sys(self, par=None, care_for = [], info = False):
     self.SIG    = (BB.T @ D)[~out_msk[-len(vv_v):]]
 
     ## need to delete this zero, its just here cause I'm lazy
-    self.sys 	= N2, A2, J2, 0, cx[~out_msk], b2[~out_msk], x_bar
+    self.sys 	= N2, A2, J2, cx[~out_msk], b2[~out_msk], x_bar
 
 
 def irfs(self, shocklist, wannasee = None):
@@ -216,7 +216,7 @@ def simulate(self, EPS=None, initial_state=None):
     """
 
     if EPS is None:
-        EPS     = self.residuals
+        EPS     = self.res
 
     if initial_state is None:
         if hasattr(self, 'filtered_X'):
@@ -257,19 +257,16 @@ def simulate(self, EPS=None, initial_state=None):
 
 def linear_representation(self, l=0, k=0):
 
-    N, A, J, H, cx, b, x_bar  = self.sys
+    N, A, J, cx, b, x_bar  = self.sys
 
     if not k:
         l   = 1
 
-    SS_mat, SS_term, LL_mat, LL_term    = self.precalc_mat
+    mat, term    = self.precalc_mat
 
     dim_xx  = J.shape[0]
 
-    term        = LL_mat[l,1][:,:dim_xx] @ SS_term[l,k] + LL_term[l,1]
-    matrices 	= LL_mat[l,1][:,:dim_xx] @ SS_mat[l,k] + LL_mat[l,1][:,dim_xx:] 
-
-    return matrices[dim_xx:], term[dim_xx:]
+    return mat[dim_xx:], term[dim_xx:]
 
 
 def t_func(self, state, noise = None, return_flag = True, return_k = False, linear = False):
@@ -294,17 +291,20 @@ def o_func(self, state):
 from .estimation import bayesian_estimation
 from .processing import save_res, sampled_sim
 from .filtering import *
+from .plots import get_iv
 from .parser import DSGE as dsge
 
 dsge.t_func             = t_func
+dsge.linear_representation      = linear_representation
 dsge.o_func             = o_func
 dsge.get_sys            = get_sys
 dsge.irfs               = irfs
 dsge.simulate           = simulate
-dsge.create_ukf         = create_ukf
+dsge.create_filter      = create_filter
 dsge.run_filter         = run_filter
-dsge.run_ukf            = run_ukf
 dsge.get_ll             = get_ll
+dsge.get_iv             = get_iv
 dsge.bayesian_estimation    = bayesian_estimation
 dsge.save               = save_res
 dsge.sampled_sim        = sampled_sim
+dsge.extract            = extract

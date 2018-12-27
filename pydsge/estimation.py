@@ -51,7 +51,6 @@ def bayesian_estimation(self, alpha = 0.25, scale_obs = 0., ndraws = 500, tune =
 
     ## dry run before the fun beginns
     self.create_ukf(scale_obs = scale_obs)
-    # self.ukf.R[-1,-1]  /= 100
     self.get_ll()
     print("Model operational. Ready for estimation.")
 
