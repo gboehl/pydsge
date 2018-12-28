@@ -578,7 +578,8 @@ class DSGE(dict):
             '__data__': model_yaml,
             'name': dec['name'],
             'observables': observables,
-            'obs_equations': obs_equations
+            'obs_equations': obs_equations,
+            'filename': mfile
             }
 
         model = cls(**model_dict)

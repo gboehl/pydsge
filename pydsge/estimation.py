@@ -34,7 +34,7 @@ def wrap_sampler(p0, nwalkers, ndim, ndraws, ncores, info):
     return sampler
 
 
-def bayesian_estimation(self, alpha = 0.25, scale_obs = 0., ndraws = 500, tune = 0, ncores = None, nwalkers = 100, maxfev = 2500, info = False):
+def bayesian_estimation(self, alpha = 0.25, P = None, R = None, ndraws = 500, tune = 0, ncores = None, nwalkers = 100, maxfev = 2500, info = False):
 
     import pathos
     import scipy.stats as ss
@@ -50,7 +50,7 @@ def bayesian_estimation(self, alpha = 0.25, scale_obs = 0., ndraws = 500, tune =
     self.preprocess(info=info)
 
     ## dry run before the fun beginns
-    self.create_ukf(scale_obs = scale_obs)
+    self.create_filter(P = P, R = R)
     self.get_ll()
     print("Model operational. Ready for estimation.")
 
@@ -110,7 +110,9 @@ def bayesian_estimation(self, alpha = 0.25, scale_obs = 0., ndraws = 500, tune =
                 self.get_sys(par_active_lst)
                 self.preprocess(info=info)
 
-                self.create_ukf(scale_obs = scale_obs)
+                self.create_filter(P = P, R = R)
+
+                self.enkf.P  *= 1e1
 
                 ll  = self.get_ll()
 
@@ -220,7 +222,7 @@ def bayesian_estimation(self, alpha = 0.25, scale_obs = 0., ndraws = 500, tune =
     if maxfev:
         if not info:
             np.warnings.filterwarnings('ignore')
-            print('Maximizing posterior distribution... (meanwhile warnings are disabled)')
+            print('Maximizing posterior probability... (meanwhile warnings are disabled)')
         else:
             print('Maximizing posterior distribution...')
         result      = func_wrap(init_par).go()

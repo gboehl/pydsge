@@ -26,6 +26,7 @@ class modloader(object):
         self.ndraws     = self.files['ndraws']
         self.par_fix    = self.files['par_fix']
         self.prior_arg  = self.files['prior_arg']
+        self.modelpath  = str(self.files['modelpath'])
 
         if 'vv' in self.files:
             self.vv     = self.files['vv']
@@ -102,6 +103,7 @@ def save_res(self, filename):
              prior_dist     = self.sampler.prior_dist, 
              prior_names    = self.sampler.prior_names, 
              tune           = self.sampler.tune, 
+             modelpath      = self['filename'],
              means          = self.sampler.par_means)
             
 

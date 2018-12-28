@@ -9,7 +9,17 @@ from econsieve import EnsembleKalmanFilter as EnKF
 from econsieve import ScaledSigmaPoints as SSP
 from scipy.stats import norm 
 
-def create_filter(self, scale_obs = 0.1, N = 100):
+def create_obs_cov(self, scale_obs = 0.1):
+
+    if not hasattr(self, 'Z'):
+        warnings.warn('No time series of observables provided')
+    else:
+        sig_obs 	= np.var(self.Z, axis = 0)*scale_obs
+
+        self.obs_cov   = np.diagflat(sig_obs)
+
+
+def create_filter(self, P = None, R = None, N = 100):
 
     np.random.seed(0)
 
@@ -17,22 +27,24 @@ def create_filter(self, scale_obs = 0.1, N = 100):
 
     if not hasattr(self, 'Z'):
         warnings.warn('No time series of observables provided')
-    else:
-        sig_obs 	= np.var(self.Z, axis = 0)*scale_obs
 
     fx      = lambda x: self.t_func(x, return_flag=False)
 
     enkf    = EnKF(dim_v, self.ny, fx, self.o_func, N)
 
-    enkf.R 		= np.diag(sig_obs)**2
+    if P is not None:
+        enkf.P 		= P
+    else:
+        enkf.P 		*= 1e1
 
-    enkf.R   = np.diagflat(sig_obs)
+    if R is not None:
+        enkf.R 		= R
+    elif hasattr(self, 'obs_cov'):
+        enkf.R 		= self.obs_cov
 
     CO          = self.SIG @ self.QQ(self.par)
 
     enkf.Q 		= CO @ CO.T
-
-    enkf.P 		*= 1e1
 
     self.enkf    = enkf
 
@@ -71,7 +83,7 @@ def run_filter(self, use_rts=True, info=False):
     return X1, cov
 
 
-def extract(self, X=None, cov=None):
+def extract(self, X=None, cov=None, info=True):
 
     import numdifftools as nd
 
@@ -83,6 +95,9 @@ def extract(self, X=None, cov=None):
 
     x   = X[0]
     EPS = []
+
+    flag    = False
+    flags   = False
 
     for t in range(X[:-1].shape[0]):
 
@@ -112,12 +127,21 @@ def extract(self, X=None, cov=None):
                 delta   /= 2
                 i       = 0
                 if delta < 1e-3:
-                    print('...did not converge.')
+                    if flag:
+                        flags    = True
+                    flag    = True
                     break
 
         EPS.append(eps)
         x   = eps2x(eps)
 
+    if info:
+        if flags:
+            warnings.warn('Several issues with convergence in eps-extractor')
+        elif flag:
+            warnings.warn('Issue with convergence in eps-extractor.')
+
     self.res = np.array(EPS)
 
     return np.array(EPS)
+

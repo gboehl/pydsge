@@ -308,3 +308,4 @@ dsge.bayesian_estimation    = bayesian_estimation
 dsge.save               = save_res
 dsge.sampled_sim        = sampled_sim
 dsge.extract            = extract
+dsge.create_obs_cov     = create_obs_cov
