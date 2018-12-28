@@ -120,6 +120,10 @@ def runner_pooled(nr_samples, ncores, innovations_mask, debug):
 
     res     = list(tqdm(pool.imap(runner_loc, range(nr_samples)), unit=' draw(s)', total=nr_samples, dynamic_ncols=True))
 
+    pool.close()
+    pool.join()
+    pool.clear()
+
     return res
 
 
@@ -128,30 +132,24 @@ def sampled_sim(self, be_res = None, alpha = None, innovations_mask = None, nr_s
     import random
     import pathos
 
-    warnings.warn('Since paralellization of this function is a hack, you can not use it twice in the same python process')
-
     if be_res is None:
-
         chain   = self.sampler.chain
         tune    = self.sampler.tune
         par_fix = self.par_fix
         prior_arg   = self.prior_arg,
 
     else:
-
         chain   = be_res.chain
         tune    = be_res.tune
         par_fix = be_res.par_fix
         prior_arg   = be_res.prior_arg
 
     if ncores is None:
-
         ncores    = pathos.multiprocessing.cpu_count()
 
     all_pars    = chain[:,tune:].reshape(-1,chain.shape[2])
 
     def runner(nr, innovations_mask):
-
         random.seed(nr)
         randpar             = par_fix
         randpar[prior_arg]  = random.choice(all_pars)
@@ -159,18 +157,15 @@ def sampled_sim(self, be_res = None, alpha = None, innovations_mask = None, nr_s
         self.get_sys(list(randpar), info=False)                      # define parameters
         self.preprocess(info=False)                   # preprocess matrices for speedup
 
-        if alpha is not None:
-            self.create_filter(alpha=alpha)
-        else:
-            self.create_filter()
-
-        EPS     = self.run_filter(use_rts=True, info=False)[2]
+        self.create_filter()
+        X, cov      = self.run_filter()
+        res         = self.extract()
 
         if innovations_mask is not None:
 
-            EPS     = np.where(np.isnan(innovations_mask), EPS, innovations_mask)
+            res     = np.where(np.isnan(innovations_mask), res, innovations_mask)
 
-        SZ, SX, SK  = self.simulate(EPS)
+        SZ, SX, SK  = self.simulate(res)
 
         return SZ, SX, SK
 
