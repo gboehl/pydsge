@@ -21,7 +21,7 @@ def wrap_sampler(p0, nwalkers, ndim, ndraws, ncores, info):
 
     loc_pool    = pathos.pools.ProcessPool(ncores)
 
-    sampler = emcee.EnsembleSampler(nwalkers, ndim, lprob_local, pool loc_pool)
+    sampler = emcee.EnsembleSampler(nwalkers, ndim, lprob_local, pool = loc_pool)
 
     loc_pool.close()
     loc_pool.join()
