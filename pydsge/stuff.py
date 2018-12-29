@@ -293,26 +293,3 @@ def o_func(self, state):
     (probably due for removal)
     """
     return self.hx[0] @ state + self.hx[1]
-
-from .estimation import bayesian_estimation
-from .processing import save_res, sampled_sim, sampled_irfs
-from .filtering import *
-from .plots import get_iv
-from .parser import DSGE as dsge
-
-dsge.t_func             = t_func
-dsge.linear_representation      = linear_representation
-dsge.o_func             = o_func
-dsge.get_sys            = get_sys
-dsge.irfs               = irfs
-dsge.simulate           = simulate
-dsge.create_filter      = create_filter
-dsge.run_filter         = run_filter
-dsge.get_ll             = get_ll
-dsge.get_iv             = get_iv
-dsge.bayesian_estimation    = bayesian_estimation
-dsge.save               = save_res
-dsge.sampled_sim        = sampled_sim
-dsge.sampled_irfs       = sampled_irfs
-dsge.extract            = extract
-dsge.create_obs_cov     = create_obs_cov

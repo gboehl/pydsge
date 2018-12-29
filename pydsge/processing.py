@@ -206,7 +206,7 @@ def sampled_irfs(self, be_res, shocklist, wannasee, nr_samples = 1000, ncores = 
     self.get_sys(par, info=False)                      # define parameters
     self.preprocess(info=False)                   # preprocess matrices for speedup
 
-    Xlabels = mod.irfs(shocklist, wannasee)[1]
+    Xlabels = self.irfs(shocklist, wannasee)[1]
 
     def runner(nr, useless_arg):
         random.seed(nr)
@@ -216,7 +216,7 @@ def sampled_irfs(self, be_res, shocklist, wannasee, nr_samples = 1000, ncores = 
         self.get_sys(list(randpar), info=False)                      # define parameters
         self.preprocess(info=False)                   # preprocess matrices for speedup
 
-        xs, _, (ys, ks, ls)   = mod.irfs(shocklist, wannasee)
+        xs, _, (ys, ks, ls)   = self.irfs(shocklist, wannasee)
 
         return xs, ys, ks, ls
 
