@@ -101,7 +101,7 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
             b = a*(1/pmean - 1)
             priors_lst.append( ss.beta(a=1, b=1) )
         else:
-            print('Distribution not implemented: ', str(dist[0]))
+            raise ValueError(' Distribution *not* implemented: ', str(dist[0]))
         print('     Adding parameter %s as %s...' %(pp, dist[0]))
 
 
