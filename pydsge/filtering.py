@@ -5,9 +5,10 @@ import numpy as np
 from .stuff import *
 import pydsge
 # from econsieve import UnscentedKalmanFilter as UKF
+# from econsieve import ScaledSigmaPoints as SSP
 from econsieve import EnsembleKalmanFilter as EnKF
-from econsieve import ScaledSigmaPoints as SSP
-from scipy.stats import norm 
+from econsieve.stats import logpdf
+from scipy.optimize import minimize as so_minimize
 
 def create_obs_cov(self, scale_obs = 0.1):
 
@@ -19,18 +20,17 @@ def create_obs_cov(self, scale_obs = 0.1):
         self.obs_cov   = np.diagflat(sig_obs)
 
 
-def create_filter(self, P = None, R = None, N = 100):
+def create_filter(self, P = None, R = None, N = None):
 
     np.random.seed(0)
-
-    dim_v       = len(self.vv)
 
     if not hasattr(self, 'Z'):
         warnings.warn('No time series of observables provided')
 
-    fx      = lambda x: self.t_func(x, return_flag=False)
+    if N is None:
+        N   = 5*len(self.vv)
 
-    enkf    = EnKF(dim_v, self.ny, fx, self.o_func, N)
+    enkf    = EnKF(N, model_obj = self)
 
     if P is not None:
         enkf.P 		= P
@@ -49,17 +49,17 @@ def create_filter(self, P = None, R = None, N = 100):
     self.enkf    = enkf
 
 
-def get_ll(self, use_rts=False, info=False):
+def get_ll(self, info=False):
 
     if info == 1:
         st  = time.time()
 
-    ll     = self.enkf.batch_filter(self.Z)[2]
+    ll     = self.enkf.batch_filter(self.Z, calc_ll = True, info=info)[2]
 
     self.ll     = ll
 
     if info == 1:
-        print('Filtering done in '+str(np.round(time.time()-st,3))+'seconds.')
+        print('Filtering ll done in '+str(np.round(time.time()-st,3))+'seconds.')
 
     return self.ll
 
@@ -69,7 +69,12 @@ def run_filter(self, use_rts=True, info=False):
     if info == 1:
         st  = time.time()
 
-    X1, cov, ll     = self.enkf.batch_filter(self.Z)
+    if use_rts:
+        store   = True
+    else:
+        store   = False
+
+    X1, cov, ll     = self.enkf.batch_filter(self.Z, store=store, info=info)
 
     if use_rts:
         X1, cov     = self.enkf.rts_smoother(X1, cov)
@@ -93,55 +98,49 @@ def extract(self, X=None, cov=None, info=True):
     if cov is None:
         cov = self.filtered_cov
 
+
     x   = X[0]
     EPS = []
 
     flag    = False
     flags   = False
 
+    if info:
+        st  = time.time()
+
+
     for t in range(X[:-1].shape[0]):
 
+        # mtd     = 'BFGS'   
+        mtd     = 'L-BFGS-B' 
+
+        eps0    = np.zeros(len(self.shocks))
+
         eps2x   = lambda eps: self.t_func(x, noise=eps, return_flag=False)
-        jac     = nd.Jacobian(eps2x, step=1e-2, order=1)
-        eps     = np.zeros(len(self.shocks))
+        target  = lambda eps: -logpdf(eps2x(eps), mean = X[t+1], cov = cov[t+1])
 
-        mu      = X[t+1]
-        P_inv   = nl.pinv(cov[t+1])
+        res     = so_minimize(target, eps0, method = mtd)
 
-        i       = 0
-        delta   = 1
+        if not res['success']:
+            res     = so_minimize(target, eps0, method = 'Powell')
 
-        while True:
+            if not res['success']:
+                if flag:
+                    flags   = True
+                flag    = True
 
-            G   = jac(eps)
-            increment   = nl.pinv(G.T @ P_inv @ G) @ G.T @ P_inv @ (eps2x(eps) - X[t+1])
-            eps         -= delta*increment
-
-            fit         = np.max(np.abs(delta*increment)) 
-
-            if fit < 1e-4:
-                break
-
-            i   += 1
-            if i > 40:
-                delta   /= 2
-                i       = 0
-                if delta < 1e-3:
-                    if flag:
-                        flags    = True
-                    flag    = True
-                    break
+        eps     = res['x']
 
         EPS.append(eps)
         x   = eps2x(eps)
 
     if info:
+        print('Extraction took ', time.time() - st, 'seconds.')
         if flags:
-            warnings.warn('Several issues with convergence in eps-extractor')
+            warnings.warn('Several issues with convergence.')
         elif flag:
-            warnings.warn('Issue with convergence in eps-extractor.')
+            warnings.warn('Issue with convergence')
 
     self.res = np.array(EPS)
 
-    return np.array(EPS)
-
+    return self.res
