@@ -17,6 +17,7 @@ class modloader(object):
         self.filename   = filename
         self.files      = np.load(filename)
         self.Z          = self.files['Z']
+        # self.obs_cov    = self.files['obs_cov']
         self.years      = self.files['years']
         self.prior_names    = self.files['prior_names']
         self.chain      = self.files['chain']
@@ -96,6 +97,7 @@ def save_res(self, filename):
              Z              = self.Z,
              vv             = self.vv,
              years          = self.years,
+             obs_cov        = self.obs_cov,
              par_fix        = self.par_fix,
              prior_arg      = self.prior_arg,
              ndraws         = self.ndraws, 
@@ -159,7 +161,7 @@ def sampled_sim(self, be_res = None, alpha = None, innovations_mask = None, nr_s
 
         self.create_filter()
         X, cov      = self.run_filter()
-        res         = self.extract()
+        res         = self.extract(info=False)
 
         if innovations_mask is not None:
 
