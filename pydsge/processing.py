@@ -107,7 +107,7 @@ def save_res(self, filename):
              means          = self.sampler.par_means)
             
 
-def runner_pooled(nr_samples, ncores, innovations_mask, debug):
+def runner_pooled(nr_samples, ncores, innovations_mask):
 
     import pathos
 
@@ -127,7 +127,7 @@ def runner_pooled(nr_samples, ncores, innovations_mask, debug):
     return res
 
 
-def sampled_sim(self, be_res = None, alpha = None, innovations_mask = None, nr_samples = 1000, ncores = None, debug = False):
+def sampled_sim(self, be_res = None, alpha = None, innovations_mask = None, nr_samples = 1000, ncores = None):
 
     import random
     import pathos
@@ -172,7 +172,7 @@ def sampled_sim(self, be_res = None, alpha = None, innovations_mask = None, nr_s
     global runner_glob
     runner_glob    = runner
 
-    res     = runner_pooled(nr_samples, ncores, innovations_mask, debug)
+    res     = runner_pooled(nr_samples, ncores, innovations_mask)
 
     SZS     = []
     SXS     = []
@@ -184,3 +184,53 @@ def sampled_sim(self, be_res = None, alpha = None, innovations_mask = None, nr_s
         SKS.append(p[2])
 
     return np.array(SZS), np.array(SXS), np.array(SKS)
+
+
+def sampled_irfs(self, be_res, shocklist, wannasee, nr_samples = 1000, ncores = None):
+
+    import random
+    import pathos
+
+    chain   = be_res.chain
+    tune    = be_res.tune
+    par_fix = be_res.par_fix
+    prior_arg   = be_res.prior_arg
+
+    if ncores is None:
+        ncores    = pathos.multiprocessing.cpu_count()
+
+    all_pars    = chain[:,tune:].reshape(-1,chain.shape[2])
+
+    ## dry run
+    par     = be_res.means()
+    self.get_sys(par, info=False)                      # define parameters
+    self.preprocess(info=False)                   # preprocess matrices for speedup
+
+    Xlabels = mod.irfs(shocklist, wannasee)[1]
+
+    def runner(nr, useless_arg):
+        random.seed(nr)
+        randpar             = par_fix
+        randpar[prior_arg]  = random.choice(all_pars)
+
+        self.get_sys(list(randpar), info=False)                      # define parameters
+        self.preprocess(info=False)                   # preprocess matrices for speedup
+
+        xs, _, (ys, ks, ls)   = mod.irfs(shocklist, wannasee)
+
+        return xs, ys, ks, ls
+
+    global runner_glob
+    runner_glob    = runner
+
+    res     = runner_pooled(nr_samples, ncores, None)
+
+    X, Y, K, L  = [], [], [], []
+
+    for p in res:
+        X.append(p[0])
+        Y.append(p[1])
+        K.append(p[2])
+        L.append(p[3])
+
+    return np.array(X), Xlabels, (np.array(Y), np.array(K), np.array(L))

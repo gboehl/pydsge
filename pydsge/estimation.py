@@ -58,7 +58,9 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
     ## dry run before the fun beginns
     self.create_filter(P = P, R = R, N = N)
     self.get_ll()
+    print()
     print("Model operational. Ready for estimation.")
+    print()
 
     par_fix     = np.array(self.par).copy()
 
@@ -74,6 +76,8 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
     init_par    = par_fix[prior_arg]
 
     ndim        = len(priors.keys())
+
+    print('Starting to add parameters to the prior distribution:')
 
     priors_lst     = []
     for pp in priors:
@@ -97,8 +101,8 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
             b = a*(1/pmean - 1)
             priors_lst.append( ss.beta(a=1, b=1) )
         else:
-            print('Distribution not implemented')
-        print('Adding parameter %s as %s to the prior distributions.' %(pp, dist[0]))
+            print('Distribution not implemented: ', str(dist[0]))
+        print('     Adding parameter %s as %s...' %(pp, dist[0]))
 
 
     def llike(parameters):
@@ -210,11 +214,10 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
 
                 self.pbar.close()
                 print('')
-                print(res['message'])
                 if self.res_max < res['fun']:
-                    print('Maximization returned value lower than actual (known) optimum ('+str(-self.res_max)+' > '+str(-self.res)+').')
+                    print(res['message'], 'Maximization returned value lower than actual (known) optimum ('+str(-self.res_max)+' > '+str(-self.res)+').')
                 else:
-                    print('Log-likelihood is '+str(np.round(-res['fun'],5))+'...')
+                    print(res['message'], 'Log-likelihood is '+str(np.round(-res['fun'],5))+'.')
                 print('')
 
             except (KeyboardInterrupt, StopIteration) as e:
@@ -226,11 +229,13 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
             return self.x_max
 
     if maxfev:
+        print()
         if not info:
             np.warnings.filterwarnings('ignore')
-            print('Maximizing posterior probability... (meanwhile warnings are disabled)')
+            print('Maximizing posterior mode probability... (meanwhile warnings are disabled)')
         else:
-            print('Maximizing posterior distribution...')
+            print('Maximizing posterior mode probability...')
+        print()
         result      = func_wrap(init_par).go()
         np.warnings.filterwarnings('default')
         init_par    = result
