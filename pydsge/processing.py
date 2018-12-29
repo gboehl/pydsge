@@ -203,7 +203,7 @@ def sampled_irfs(self, be_res, shocklist, wannasee, nr_samples = 1000, ncores = 
 
     ## dry run
     par     = be_res.means()
-    self.get_sys(par, info=False)                      # define parameters
+    self.get_sys(par, 'all', info=False)                      # define parameters
     self.preprocess(info=False)                   # preprocess matrices for speedup
 
     Xlabels = self.irfs(shocklist, wannasee)[1]
@@ -213,7 +213,7 @@ def sampled_irfs(self, be_res, shocklist, wannasee, nr_samples = 1000, ncores = 
         randpar             = par_fix
         randpar[prior_arg]  = random.choice(all_pars)
 
-        self.get_sys(list(randpar), info=False)                      # define parameters
+        self.get_sys(list(randpar), 'all', info=False)                      # define parameters
         self.preprocess(info=False)                   # preprocess matrices for speedup
 
         xs, _, (ys, ks, ls)   = self.irfs(shocklist, wannasee)
