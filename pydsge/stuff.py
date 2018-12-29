@@ -210,7 +210,7 @@ def irfs(self, shocklist, wannasee = None):
     return X, labels, (Y, K, L)
 
 
-def simulate(self, EPS=None, initial_state=None):
+def simulate(self, EPS = None, initial_state = None, info = False):
     """
         EPS: shock innovations of shape (T, n_eps)
     """
@@ -231,6 +231,9 @@ def simulate(self, EPS=None, initial_state=None):
     L   = [0]
     superflag   = False
 
+    if info:
+        st  = time.time()
+
     for eps in EPS:
 
         st_vec, (l,k), flag     = self.t_func(st_vec, noise=eps, return_k=True)
@@ -249,8 +252,11 @@ def simulate(self, EPS=None, initial_state=None):
     self.simulated_X    = X
     self.simulated_Z    = (self.hx[0] @ X.T).T + self.hx[1]
 
+    if info:
+        print('Simulation took ', time.time() - st, ' seconds.')
+
     if superflag:
-        warnings.warn('Numerical errors in boehlgorithm, did not converge')
+        warnings.warn('Numerical errors in boehlgorithm during simulation, did not converge')
 
     return self.simulated_Z, X, np.expand_dims(K, 2)
 
