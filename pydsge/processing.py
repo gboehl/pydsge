@@ -234,3 +234,4 @@ def sampled_irfs(self, be_res, shocklist, wannasee, nr_samples = 1000, ncores = 
         L.append(p[3])
 
     return np.array(X), Xlabels, (np.array(Y), np.array(K), np.array(L))
+
