@@ -107,6 +107,7 @@ def save_res(self, filename):
              tune           = self.sampler.tune, 
              modelpath      = self['filename'],
              means          = self.sampler.par_means)
+    print('Results saved in ', filename)
             
 
 def runner_pooled(nr_samples, ncores, innovations_mask):
@@ -164,12 +165,14 @@ def sampled_sim(self, be_res = None, alpha = None, innovations_mask = None, nr_s
         res         = self.extract(info=False)
 
         if innovations_mask is not None:
+            res_msk     = np.where(np.isnan(innovations_mask), res, innovations_mask)
 
-            res     = np.where(np.isnan(innovations_mask), res, innovations_mask)
+        else:
+            res_msk     = res
 
-        SZ, SX, SK  = self.simulate(res)
+        SZ, SX, SK  = self.simulate(res_msk)
 
-        return SZ, SX, SK
+        return SZ, SX, SK, res
 
     global runner_glob
     runner_glob    = runner
@@ -179,13 +182,15 @@ def sampled_sim(self, be_res = None, alpha = None, innovations_mask = None, nr_s
     SZS     = []
     SXS     = []
     SKS     = []
+    EPS     = []
 
     for p in res:
         SZS.append(p[0])
         SXS.append(p[1])
         SKS.append(p[2])
+        EPS.append(p[3])
 
-    return np.array(SZS), np.array(SXS), np.array(SKS)
+    return np.array(SZS), np.array(SXS), np.array(SKS), np.array(EPS)
 
 
 def sampled_irfs(self, be_res, shocklist, wannasee, nr_samples = 1000, ncores = None):
