@@ -110,29 +110,31 @@ def get_axis(ax, default_rows, default_columns, **default_kwargs):
         raise ValueError('Subplots with shape %r required' % (default_shape,))
     return ax
 
-def traceplot(trace, varnames, tune, figsize=None,
-              combined=False, max_no=3, grid=False, priors=None,
-              prior_alpha=.8, prior_style='--', bw=4.5, axp=None):
+def traceplot(trace, varnames, tune, figsize = None,
+              combined = False, max_no = 3, grid = False, priors = None,
+              prior_alpha = .8, prior_style = '--', bw = 4.5, axp = None):
 
     ## stolen and modified from pymc3 with kisses
 
     axs     = []
 
-    for i in range(0, len(varnames), max_no):
+    for ic in range(0, len(varnames), max_no):
 
-        vnames_chunk = varnames[i:i + max_no] 
+        vnames_chunk = varnames[ic:ic + max_no] 
+        trace_chunk  = trace[:,:,ic:ic + max_no] 
 
         if figsize is None:
-            ax = get_axis(axp, len(vnames_chunk), 2, squeeze=False)
+            figsize_loc = (8, len(vnames_chunk) * 2)
         else:
-            ax = get_axis(axp, len(vnames_chunk), 2, squeeze=False, figsize=figsize)
+            figsize_loc = figsize
+        ax = get_axis(axp, len(vnames_chunk), 2, squeeze=False, figsize=figsize_loc)
 
         for i, v in enumerate(vnames_chunk):
             if priors is not None:
                 prior = priors[i]
             else:
                 prior = None
-            d = trace[:,:,i]
+            d = trace_chunk[:,:,i]
             d_stream = d.swapaxes(0,1)
             width = len(d_stream)
             artists = kdeplot_op(ax[i, 0], d_stream[tune:], bw, prior, prior_alpha, prior_style)[0]
@@ -285,48 +287,60 @@ def scale_text(figsize, text_size):
             return text_size
 
 
-def posteriorplot(trace, varnames=None, tune=0, figsize=None, text_size=None,
-                   alpha_level=0.05, round_to=3, point_estimate='mean', rope=None,
-                   ref_val=None, kde_plot=False, bw=4.5, ax=None, **kwargs):
+def posteriorplot(trace, varnames=None, tune=0, figsize=None, max_no = 4, text_size=None,
+                   alpha_level=0.05, round_to=3, point_estimate='mean', ropep=None,
+                   ref_val=None, kde_plot=False, bw=4.5, axp=None, **kwargs):
 
-    def create_axes_grid(figsize, traces):
-        l_trace = len(traces)
-        if l_trace == 1:
-            fig, ax = plt.subplots(figsize=figsize)
+    axs     = []
+
+    for ic in range(0, len(varnames), max_no):
+
+        vnames_chunk = varnames[ic:ic + max_no] 
+        trace_chunk  = trace[:,:,ic:ic + max_no] 
+
+        def create_axes_grid(figsize, traces):
+            l_trace = len(traces)
+            if l_trace == 1:
+                fig, ax = plt.subplots(figsize=figsize)
+            else:
+                n = np.ceil(l_trace / 2.0).astype(int)
+                if figsize is None:
+                    figsize_loc = (8, len(vnames_chunk)*1.5)
+                fig, ax = plt.subplots(n, 2, figsize=figsize_loc)
+                ax = ax.reshape(2 * n)
+                if l_trace % 2 == 1:
+                    ax[-1].set_axis_off()
+                    ax = ax[:-1]
+            return fig, ax
+
+        if axp is None:
+            fig, ax = create_axes_grid(figsize, vnames_chunk)
         else:
-            n = np.ceil(l_trace / 2.0).astype(int)
-            if figsize is None:
-                figsize = (12, n * 2.5)
-            fig, ax = plt.subplots(n, 2, figsize=figsize)
-            ax = ax.reshape(2 * n)
-            if l_trace % 2 == 1:
-                ax[-1].set_axis_off()
-                ax = ax[:-1]
-        return fig, ax
+            ax      = apx
 
-    if ax is None:
-        fig, ax = create_axes_grid(figsize, varnames)
+        var_num = len(vnames_chunk)
+        if ref_val is None:
+            ref_val = [None] * var_num
+        elif np.isscalar(ref_val):
+            ref_val = [ref_val for _ in range(var_num)]
 
-    var_num = len(varnames)
-    if ref_val is None:
-        ref_val = [None] * var_num
-    elif np.isscalar(ref_val):
-        ref_val = [ref_val for _ in range(var_num)]
+        if ropep is None:
+            rope = [None] * var_num
+        elif np.ndim(ropep) == 1:
+            rope = [rope] * var_num
 
-    if rope is None:
-        rope = [None] * var_num
-    elif np.ndim(rope) == 1:
-        rope = [rope] * var_num
+        if len(np.atleast_1d(ax).flatten()) != len(vnames_chunk):
+            print('Given axis does not match number of plots')
+        for idx, (a, v) in enumerate(zip(np.atleast_1d(ax), vnames_chunk)):
+            tr_values = trace_chunk[:,tune:,idx].flatten()
+            plot_posterior_op(tr_values, ax=a, bw=bw, kde_plot=kde_plot,
+                              point_estimate=point_estimate, round_to=round_to,
+                              alpha_level=alpha_level, ref_val=ref_val[idx],
+                              rope=rope[idx], text_size=scale_text(figsize, text_size), **kwargs)
+            a.set_title(v, fontsize=scale_text(figsize, text_size))
 
-    if len(np.atleast_1d(ax).flatten()) != len(varnames):
-        print('Given axis does not match number of plots')
-    for idx, (a, v) in enumerate(zip(np.atleast_1d(ax), varnames)):
-        tr_values = trace[:,tune:,idx].flatten()
-        plot_posterior_op(tr_values, ax=a, bw=bw, kde_plot=kde_plot,
-                          point_estimate=point_estimate, round_to=round_to,
-                          alpha_level=alpha_level, ref_val=ref_val[idx],
-                          rope=rope[idx], text_size=scale_text(figsize, text_size), **kwargs)
-        a.set_title(v, fontsize=scale_text(figsize, text_size))
+        plt.tight_layout()
 
-    plt.tight_layout()
-    return ax
+        axs.append(ax)
+
+    return axs
