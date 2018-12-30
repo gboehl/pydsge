@@ -131,7 +131,7 @@ def runner_pooled(nr_samples, ncores, innovations_mask):
     return res
 
 
-def sampled_sim(self, be_res = None, alpha = None, innovations_mask = None, nr_samples = 1000, ncores = None):
+def sampled_sim(self, be_res = None, alpha = None, innovations_mask = None, nr_samples = 1000, ncores = None, warnings = False):
 
     import random
     import pathos
@@ -166,12 +166,9 @@ def sampled_sim(self, be_res = None, alpha = None, innovations_mask = None, nr_s
         res         = self.extract(info=False)
 
         if innovations_mask is not None:
-            res_msk     = np.where(np.isnan(innovations_mask), res, innovations_mask)
+            res     = np.where(np.isnan(innovations_mask), res, innovations_mask)
 
-        else:
-            res_msk     = res
-
-        SZ, SX, SK  = self.simulate(res_msk)
+        SZ, SX, SK  = self.simulate(res, warnings = warnings)
 
         return SZ, SX, SK, res
 
