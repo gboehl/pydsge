@@ -111,53 +111,64 @@ def get_axis(ax, default_rows, default_columns, **default_kwargs):
     return ax
 
 def traceplot(trace, varnames, tune, figsize=None,
-              combined=False, grid=False, priors=None,
-              prior_alpha=.8, prior_style='--', bw=4.5, ax=None):
-    ## stolen from pymc3 with kisses
+              combined=False, max_no=3, grid=False, priors=None,
+              prior_alpha=.8, prior_style='--', bw=4.5, axp=None):
 
-    if figsize is None:
-        figsize = (12, len(varnames) * 2)
+    ## stolen and modified from pymc3 with kisses
 
-    ax = get_axis(ax, len(varnames), 2, squeeze=False, figsize=figsize)
+    axs     = []
 
-    for i, v in enumerate(varnames):
-        if priors is not None:
-            prior = priors[i]
+    for i in range(0, len(varnames), max_no):
+
+        vnames_chunk = varnames[i:i + max_no] 
+
+        if figsize is None:
+            ax = get_axis(axp, len(vnames_chunk), 2, squeeze=False)
         else:
-            prior = None
-        d = trace[:,:,i]
-        d_stream = d.swapaxes(0,1)
-        width = len(d_stream)
-        artists = kdeplot_op(ax[i, 0], d_stream[tune:], bw, prior, prior_alpha, prior_style)[0]
-        colors = [a[0].get_color() for a in artists]
-        ax[i, 0].set_title(str(v))
-        ax[i, 0].grid(grid)
-        ax[i, 1].set_title(str(v))
-        # ax[i, 1].plot(range(0, tune+1), d_stream[:tune+1], alpha=.35)
-        # ax[i, 1].plot(range(tune, width), d_stream[tune:], alpha=.35)
-        i95s    = np.percentile(d_stream, [2.5, 97.5], axis=1).swapaxes(0,1)
-        i66s    = np.percentile(d_stream, [17, 83], axis=1)
-        means   = np.mean(d_stream, axis=1)
-        medis   = np.median(d_stream, axis=1)
+            ax = get_axis(axp, len(vnames_chunk), 2, squeeze=False, figsize=figsize)
 
-        ax[i, 1].fill_between(range(0, tune+1), *i66s[:,:tune+1], lw=0, alpha=.2, color='C1')
-        ax[i, 1].fill_between(range(tune, width), *i66s[:,tune:], lw=0, alpha=.3, color='C1')
-        ax[i, 1].plot(range(tune, width),   medis[tune:], '.', c='C7')
-        ax[i, 1].plot(range(0, tune+1),     medis[:tune+1], '.', c='C7', alpha=.5)
-        ax[i, 1].plot(range(tune, width),   means[tune:], lw=2, c='C0')
-        ax[i, 1].plot(range(0, tune+1),     means[:tune+1], lw=2, c='C0', alpha=.5)
-        ax[i, 1].plot(range(tune, width),   i95s[tune:], c='C5', lw=3, alpha=.6)
-        ax[i, 1].plot(range(0, tune+1),     i95s[:tune+1], c='C5', lw=3, alpha=.4)
+        for i, v in enumerate(vnames_chunk):
+            if priors is not None:
+                prior = priors[i]
+            else:
+                prior = None
+            d = trace[:,:,i]
+            d_stream = d.swapaxes(0,1)
+            width = len(d_stream)
+            artists = kdeplot_op(ax[i, 0], d_stream[tune:], bw, prior, prior_alpha, prior_style)[0]
+            colors = [a[0].get_color() for a in artists]
+            ax[i, 0].set_title(str(v))
+            ax[i, 0].grid(grid)
+            ax[i, 1].set_title(str(v))
+            # i95s    = np.percentile(d_stream, [2.5, 97.5], axis=1).swapaxes(0,1)
+            i95s    = np.percentile(d_stream, [2.5, 97.5], axis=1)
+            i66s    = np.percentile(d_stream, [17, 83], axis=1)
+            means   = np.mean(d_stream, axis=1)
+            medis   = np.median(d_stream, axis=1)
 
-        ax[i, 1].plot([tune,tune], [ np.mean(d_stream, 1)[tune] - np.std(d_stream, 1)[tune]*3, 
-                                    np.mean(d_stream, 1)[tune] + np.std(d_stream, 1)[tune]*3],
-                      '--', alpha=.4, color='k')
+            # ax[i, 1].plot(range(tune, width),   i95s[tune:], c='C5', lw=3, alpha=.6)
+            # ax[i, 1].plot(range(0, tune+1),     i95s[:tune+1], c='C5', lw=3, alpha=.4)
+            ax[i, 1].fill_between(range(0, tune+1), *i95s[:,:tune+1], lw=0, alpha=.1, color='C1')
+            ax[i, 1].fill_between(range(tune, width), *i95s[:,tune:], lw=0, alpha=.2, color='C1')
+            ax[i, 1].fill_between(range(0, tune+1), *i66s[:,:tune+1], lw=0, alpha=.3, color='C1')
+            ax[i, 1].fill_between(range(tune, width), *i66s[:,tune:], lw=0, alpha=.4, color='C1')
+            # ax[i, 1].plot(range(tune, width),   medis[tune:], '.', c='C7')
+            # ax[i, 1].plot(range(0, tune+1),     medis[:tune+1], '.', c='C7', alpha=.5)
+            ax[i, 1].plot(range(tune, width),   means[tune:], lw=2, c='C0')
+            ax[i, 1].plot(range(0, tune+1),     means[:tune+1], lw=2, c='C0', alpha=.5)
 
-        ax[i, 0].set_ylabel("Frequency")
-        ax[i, 1].set_ylabel("Sample value")
-        ax[i, 0].set_ylim(bottom=0)
-    plt.tight_layout()
-    return ax
+            ax[i, 1].plot([tune,tune], [ np.mean(d_stream, 1)[tune] - np.std(d_stream, 1)[tune]*3, 
+                                        np.mean(d_stream, 1)[tune] + np.std(d_stream, 1)[tune]*3],
+                          '--', alpha=.4, color='k')
+
+            ax[i, 0].set_ylabel("Frequency")
+            ax[i, 1].set_ylabel("Sample value")
+            ax[i, 0].set_ylim(bottom=0)
+
+        plt.tight_layout()
+        axs.append(ax)
+
+    return axs
 
 
 def plot_posterior_op(trace_values, ax, bw, kde_plot, point_estimate, round_to,
