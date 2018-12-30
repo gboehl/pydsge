@@ -17,7 +17,8 @@ class modloader(object):
         self.filename   = filename
         self.files      = np.load(filename)
         self.Z          = self.files['Z']
-        # self.obs_cov    = self.files['obs_cov']
+        if 'obs_cov' in self.files.files:
+            self.obs_cov    = self.files['obs_cov']
         self.years      = self.files['years']
         self.prior_names    = self.files['prior_names']
         self.chain      = self.files['chain']
@@ -193,7 +194,7 @@ def sampled_sim(self, be_res = None, alpha = None, innovations_mask = None, nr_s
     return np.array(SZS), np.array(SXS), np.array(SKS), np.array(EPS)
 
 
-def sampled_irfs(self, be_res, shocklist, wannasee, nr_samples = 1000, ncores = None):
+def sampled_irfs(self, be_res, shocklist, wannasee, nr_samples = 1000, ncores = None, warnings = False):
 
     import random
     import pathos
@@ -223,7 +224,7 @@ def sampled_irfs(self, be_res, shocklist, wannasee, nr_samples = 1000, ncores = 
         self.get_sys(list(randpar), 'all', info=False)                      # define parameters
         self.preprocess(info=False)                   # preprocess matrices for speedup
 
-        xs, _, (ys, ks, ls)   = self.irfs(shocklist, wannasee)
+        xs, _, (ys, ks, ls)   = self.irfs(shocklist, wannasee, warnings = False)
 
         return xs, ys, ks, ls
 

@@ -140,7 +140,7 @@ def get_sys(self, par=None, care_for = [], info = False):
     self.sys 	= N2, A2, J2, cx[~out_msk], b2[~out_msk], x_bar
 
 
-def irfs(self, shocklist, wannasee = None):
+def irfs(self, shocklist, wannasee = None, warnings=True):
 
     ## returns time series of impule responses 
     ## shocklist: takes list of tuples of (shock, size, timing) 
@@ -189,7 +189,7 @@ def irfs(self, shocklist, wannasee = None):
         K.append(k)
         L.append(l)
 
-    if superflag:
+    if superflag and warnings:
         warnings.warn('Numerical errors in boehlgorithm, did not converge')
 
     Y   = np.array(Y)
@@ -248,9 +248,10 @@ def simulate(self, EPS = None, initial_state = None, info = False):
     X   = np.array(X)
     K   = np.array(K)
     L   = np.array(L)
+    Z   = (self.hx[0] @ X.T).T + self.hx[1]
 
     self.simulated_X    = X
-    self.simulated_Z    = (self.hx[0] @ X.T).T + self.hx[1]
+    self.simulated_Z    = Z
 
     if info:
         print('Simulation took ', time.time() - st, ' seconds.')
@@ -258,7 +259,7 @@ def simulate(self, EPS = None, initial_state = None, info = False):
     if superflag:
         warnings.warn('Numerical errors in boehlgorithm during simulation, did not converge')
 
-    return self.simulated_Z, X, np.expand_dims(K, 2)
+    return Z, X, np.expand_dims(K, 2)
 
 
 def linear_representation(self, l=0, k=0):
