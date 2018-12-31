@@ -21,15 +21,16 @@ class modloader(object):
             self.obs_cov        = self.files['obs_cov']
         if 'description' in self.files.files:
             self.description    = self.files['description']
+        if 'priors' in self.files.files:
+            self.priors         = self.files['priors'].item()
         self.years      = self.files['years']
-        self.prior_names    = self.files['prior_names']
         self.chain      = self.files['chain']
+        self.prior_names    = self.files['prior_names']
         self.prior_dist = self.files['prior_dist']
-        self.prior      = self.files['prior_names']
+        self.prior_arg  = self.files['prior_arg']
         self.tune       = self.files['tune']
         self.ndraws     = self.files['ndraws']
         self.par_fix    = self.files['par_fix']
-        self.prior_arg  = self.files['prior_arg']
         self.modelpath  = str(self.files['modelpath'])
 
         if 'vv' in self.files:
@@ -39,7 +40,7 @@ class modloader(object):
     
     def masker(self):
         iss     = np.zeros(len(self.prior_names), dtype=bool)
-        for v in self.prior:
+        for v in self.prior_names:
             iss = iss | (self.prior_names == v)
         return iss
 
@@ -57,7 +58,12 @@ class modloader(object):
 
         from .stats import summary
 
-        return summary(self.chain[:,self.tune:], self.prior_names)
+        if not hasattr(self, 'priors'):
+            self_priors     = None
+        else:
+            self_priors     = self.priors
+
+        return summary(self.chain[:,self.tune:], self.prior_names, self_priors)
 
     def traceplot(self, chain=None, varnames=None, tune=None, priors_dist=None, **args):
 
@@ -68,7 +74,7 @@ class modloader(object):
         else:
             trace_value    = chain
         if varnames is None:
-            varnames        = self.prior
+            varnames        = self.prior_names
         if tune is None:
             tune            = self.tune
         if priors_dist is None:
@@ -85,11 +91,11 @@ class modloader(object):
         else:
             trace_value     = chain
         if varnames is None:
-            varnames        = self.prior
+            varnames        = self.prior_names
         if tune is None:
             tune            = self.tune
 
-        return posteriorplot(trace_value, varnames=self.prior, tune=self.tune, **args)
+        return posteriorplot(trace_value, varnames=self.prior_names, tune=self.tune, **args)
 
     def innovations_mask(self):
         return np.full((self.Z.shape[0]-1, self.Z.shape[1]), np.nan)
@@ -103,11 +109,12 @@ def save_res(self, filename, description = ''):
              description    = description,
              obs_cov        = self.obs_cov,
              par_fix        = self.par_fix,
-             prior_arg      = self.prior_arg,
              ndraws         = self.ndraws, 
              chain          = self.sampler.chain, 
              prior_dist     = self.sampler.prior_dist, 
              prior_names    = self.sampler.prior_names, 
+             prior_arg      = self.prior_arg,
+             priors         = self['__data__']['estimation']['prior'],
              tune           = self.sampler.tune, 
              modelpath      = self['filename'],
              means          = self.sampler.par_means)
