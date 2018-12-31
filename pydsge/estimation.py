@@ -122,7 +122,7 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
 
                 self.create_filter(P = P, R = R, N = N)
 
-                self.enkf.P  *= 1e1
+                self.tvf.P  *= 1e1
 
                 ll  = self.get_ll()
 

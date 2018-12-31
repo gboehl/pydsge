@@ -6,7 +6,7 @@ from .stuff import *
 import pydsge
 # from econsieve import UnscentedKalmanFilter as UKF
 # from econsieve import ScaledSigmaPoints as SSP
-from econsieve import EnsembleKalmanFilter as EnKF
+from econsieve import TVF
 from econsieve.stats import logpdf
 from scipy.optimize import minimize as so_minimize
 
@@ -30,23 +30,23 @@ def create_filter(self, P = None, R = None, N = None):
     if N is None:
         N   = 5*len(self.vv)
 
-    enkf    = EnKF(N, model_obj = self)
+    tvf    = TVF(N, model_obj = self)
 
     if P is not None:
-        enkf.P 		= P
+        tvf.P 		= P
     else:
-        enkf.P 		*= 1e1
+        tvf.P 		*= 1e1
 
     if R is not None:
-        enkf.R 		= R
+        tvf.R 		= R
     elif hasattr(self, 'obs_cov'):
-        enkf.R 		= self.obs_cov
+        tvf.R 		= self.obs_cov
 
     CO          = self.SIG @ self.QQ(self.par)
 
-    enkf.Q 		= CO @ CO.T
+    tvf.Q 		= CO @ CO.T
 
-    self.enkf    = enkf
+    self.tvf    = tvf
 
 
 def get_ll(self, info=False):
@@ -54,7 +54,7 @@ def get_ll(self, info=False):
     if info == 1:
         st  = time.time()
 
-    ll     = self.enkf.batch_filter(self.Z, calc_ll = True, info=info)[2]
+    ll     = self.tvf.batch_filter(self.Z, calc_ll = True, info=info)[2]
 
     self.ll     = ll
 
@@ -74,10 +74,10 @@ def run_filter(self, use_rts=True, info=False):
     else:
         store   = False
 
-    X1, cov, ll     = self.enkf.batch_filter(self.Z, store=store, info=info)
+    X1, cov, ll     = self.tvf.batch_filter(self.Z, store=store, info=info)
 
     if use_rts:
-        X1, cov     = self.enkf.rts_smoother(X1, cov)
+        X1, cov     = self.tvf.rts_smoother(X1, cov)
 
     if info == 1:
         print('Filtering done in '+str(np.round(time.time()-st,3))+'seconds.')
