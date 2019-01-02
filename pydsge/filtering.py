@@ -90,8 +90,6 @@ def run_filter(self, use_rts=True, info=False):
 
 def extract(self, X=None, cov=None, info=True):
 
-    import numdifftools as nd
-
     if X is None:
         X   = self.filtered_X
 
