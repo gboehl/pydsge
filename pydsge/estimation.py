@@ -232,9 +232,9 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
         print()
         if not info:
             np.warnings.filterwarnings('ignore')
-            print('Maximizing posterior mode probability (meanwhile warnings are disabled):')
+            print('Maximizing posterior mode density (meanwhile warnings are disabled):')
         else:
-            print('Maximizing posterior mode probability:')
+            print('Maximizing posterior mode density:')
         print()
         result      = func_wrap(init_par).go()
         np.warnings.filterwarnings('default')
