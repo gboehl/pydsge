@@ -111,6 +111,10 @@ class DSGE(dict):
         return self['par_ordering']
 
     @property
+    def parafunc(self):
+        return self['other_parameters']
+
+    @property
     def shocks(self):
         return self['shk_ordering']
 
