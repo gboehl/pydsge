@@ -187,7 +187,7 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
                     self.update_ival *= 2
                 if difft > 1 and self.update_ival > 1:
                     self.update_ival /= 2
-                self.pbar.set_description('ll: '+str(-self.res.round(5)).rjust(12, ' '))
+                self.pbar.set_description('ll: '+str(-self.res.round(5)).rjust(12, ' ')+' ['+str(-self.res_max.round(5))+']')
                 self.st  = time.time()
                 self.timer  = 0
 
