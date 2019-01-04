@@ -84,9 +84,10 @@ def get_sys(self, par=None, care_for = [], info = False):
 
 
     if 'x_bar' in [p.name for p in self.parameters]:
-        x_bar       = par[[p.name for p in self.parameters].index('x_bar')]
-    elif 'x_bar' in [p.name for p in self.parafunc]:
-        x_bar       = par[[p.name for p in self.parafunc].index('x_bar')]
+        x_bar   = par[[p.name for p in self.parameters].index('x_bar')]
+    elif 'x_bar' in self.parafunc[0]:
+        pf      = self.parafunc
+        x_bar   = pf[1](par)[pf[0].index('x_bar')]
     else:
         warnings.warn("\nx_bar (maximum value of the constraint) not specified. Assuming x_bar = -1 for now.\n")
         x_bar       = -1

@@ -111,10 +111,6 @@ class DSGE(dict):
         return self['par_ordering']
 
     @property
-    def parafunc(self):
-        return self['other_parameters']
-
-    @property
     def shocks(self):
         return self['shk_ordering']
 
@@ -303,12 +299,11 @@ class DSGE(dict):
 
         def add_para_func(f):
             def wrapped_f(px):
-                # return f([px, psi(px)])
                 return f(px + psi(px))
             return wrapped_f
 
         self.PSI = add_para_func(PSI)
-        # self.PPI = add_para_func(PPI)
+        self.parafunc   = [p.name for p in self['other_para']], psi
 
         self.DD = add_para_func(DD)
         self.ZZ = add_para_func(ZZ)
