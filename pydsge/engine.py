@@ -186,9 +186,8 @@ def boehlgorithm_pp(N, A, J, cx, b, x_bar, v, mat, term, max_cnt):
                     flag    = 2
                     break
         cnt += 1
-    if l:
+    if l and k:
         if b @ LL_pp(l, k, 0, v, mat, term) - x_bar < 0: 
-            print('It is happening..!')
             l   = 0
 
     if not k: l = 1
