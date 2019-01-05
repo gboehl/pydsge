@@ -172,12 +172,18 @@ def boehlgorithm_pp(N, A, J, cx, b, x_bar, v, mat, term, max_cnt):
             flag    = 1
             break
         l1, k1 		= l, k
+
         if l: l -= 1
         while b @ LL_pp(l, k, l, v, mat, term) - x_bar > 0:
             if l >= l_max:
                 l = 0
                 break
             l 	+= 1
+
+        if l and k:
+            if b @ LL_pp(l, k, 0, v, mat, term) - x_bar < 0: 
+                l   = 0
+
         if (l) == (l1):
             if k: k -= 1
             while b @ LL_pp(l, k, l+k, v, mat, term) - x_bar < 0: 
@@ -186,9 +192,6 @@ def boehlgorithm_pp(N, A, J, cx, b, x_bar, v, mat, term, max_cnt):
                     flag    = 2
                     break
         cnt += 1
-    if l and k:
-        if b @ LL_pp(l, k, 0, v, mat, term) - x_bar < 0: 
-            l   = 0
 
     if not k: l = 1
     v_new 	= LL_pp(l, k, 1, v, mat, term)[dim_x:]
