@@ -40,7 +40,7 @@ def wrap_sampler(p0, nwalkers, ndim, ndraws, ncores, info):
     return sampler
 
 
-def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune = 0, ncores = None, nwalkers = 100, maxfev = 2500, info = False):
+def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune = None, ncores = None, nwalkers = 100, maxfev = 2500, info = False):
 
     import pathos
     import scipy.stats as ss
@@ -52,6 +52,9 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
 
     if ncores is None:
         ncores    = pathos.multiprocessing.cpu_count()
+
+    if tune is None:
+        tune    = int(ndraws/5.)
 
     self.preprocess(info=info)
 
