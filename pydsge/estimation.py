@@ -54,7 +54,7 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
         ncores    = pathos.multiprocessing.cpu_count()
 
     if tune is None:
-        tune    = int(ndraws/5.)
+        tune    = int(ndraws*4/5.)
 
     self.preprocess(info=info)
 
