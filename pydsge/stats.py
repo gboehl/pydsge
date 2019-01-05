@@ -43,49 +43,33 @@ def _hpd_df(x, alpha):
 def summary(trace, varnames, priors, alpha=0.05):
     ## in parts stolen from pymc3 because it looks really nice
 
-    if priors is None:
+    f_prs = [lambda x: pd.Series(x, name='distribution'),
+             lambda x: pd.Series(x, name='mean/alpha'),
+             lambda x: pd.Series(x, name='sd/beta')]
 
-        funcs = [lambda x: pd.Series(np.mean(x), name='mean'),
-                 lambda x: pd.Series(np.std(x), name='sd'),
-                 lambda x: pd.Series(mc_error(x), name='mc_error'),
-                 lambda x: _hpd_df(x, alpha)]
+    funcs = [lambda x: pd.Series(np.mean(x), name='mean'),
+             lambda x: pd.Series(np.std(x), name='sd'),
+             lambda x: pd.Series(mc_error(x), name='mc_error'),
+             lambda x: _hpd_df(x, alpha)]
 
-        var_dfs = []
-        for i, var in enumerate(varnames):
-            vals = trace[:,:,i]
-            var_df = pd.concat([f(vals) for f in funcs], axis=1)
-            var_df.index = [var]
-            var_dfs.append(var_df)
 
-        dforg = pd.concat(var_dfs, axis=0)
+    var_dfs = []
+    for i, var in enumerate(varnames):
+        lst     = []
+        vals    = trace[:,:,i]
 
-        return dforg
-
-    else:
-
-        f_prs = [lambda x: pd.Series(x, name='distribution'),
-                 lambda x: pd.Series(x, name='mean/alpha'),
-                 lambda x: pd.Series(x, name='sd/beta')]
-
-        funcs = [lambda x: pd.Series(np.mean(x), name='mean'),
-                 lambda x: pd.Series(np.std(x), name='sd'),
-                 lambda x: pd.Series(mc_error(x), name='mc_error'),
-                 lambda x: _hpd_df(x, alpha)]
-
-        var_dfs = []
-        for i, var in enumerate(varnames):
-            lst     = []
-            vals    = trace[:,:,i]
+        if priors is not None:
             prior   = priors[var]
             [lst.append(f(prior[j])) for j,f in enumerate(f_prs)]
-            [lst.append(f(vals)) for f in funcs]
-            var_df  = pd.concat(lst, axis=1)
-            var_df.index    = [var]
-            var_dfs.append(var_df)
+            
+        [lst.append(f(vals)) for f in funcs]
+        var_df  = pd.concat(lst, axis=1)
+        var_df.index    = [var]
+        var_dfs.append(var_df)
 
-        dforg = pd.concat(var_dfs, axis=0)
+    dforg = pd.concat(var_dfs, axis=0)
 
-        return dforg
+    return dforg
 
 
 def mc_mean(trace, varnames):
