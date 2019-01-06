@@ -140,11 +140,9 @@ def runner_pooled(nr_samples, ncores, innovations_mask):
 
     return res
 
-
-def sampled_sim(self, be_res = None, alpha = None, innovations_mask = None, nr_samples = 1000, ncores = None, warn = False):
+def posterior_sample(self, be_res = None, seed = 0):
 
     import random
-    import pathos
 
     if be_res is None:
         chain   = self.sampler.chain
@@ -158,22 +156,32 @@ def sampled_sim(self, be_res = None, alpha = None, innovations_mask = None, nr_s
         par_fix = be_res.par_fix
         prior_arg   = be_res.prior_arg
 
+    all_pars    = chain[:,tune:].reshape(-1,chain.shape[2])
+
+    random.seed(seed)
+    randpar             = par_fix
+    randpar[prior_arg]  = random.choice(all_pars)
+
+    return list(randpar)
+
+
+def sampled_sim(self, be_res = None, innovations_mask = None, nr_samples = 1000, ncores = None, mtd = None, warn = False):
+
+    import pathos
+
     if ncores is None:
         ncores    = pathos.multiprocessing.cpu_count()
 
-    all_pars    = chain[:,tune:].reshape(-1,chain.shape[2])
-
     def runner(nr, innovations_mask):
-        random.seed(nr)
-        randpar             = par_fix
-        randpar[prior_arg]  = random.choice(all_pars)
 
-        self.get_sys(list(randpar), info=False)                      # define parameters
+        par     = self.posterior_sample(be_res = be_res, seed = nr)
+
+        self.get_sys(par, info=False)                      # define parameters
         self.preprocess(info=False)                   # preprocess matrices for speedup
 
         self.create_filter()
         X, cov      = self.run_filter()
-        res         = self.extract(info=False)
+        res         = self.extract(mtd = mtd, info=False)
 
         if innovations_mask is not None:
             res     = np.where(np.isnan(innovations_mask), res, innovations_mask)
@@ -203,18 +211,10 @@ def sampled_sim(self, be_res = None, alpha = None, innovations_mask = None, nr_s
 
 def sampled_irfs(self, be_res, shocklist, wannasee, nr_samples = 1000, ncores = None, warn = False):
 
-    import random
     import pathos
-
-    chain   = be_res.chain
-    tune    = be_res.tune
-    par_fix = be_res.par_fix
-    prior_arg   = be_res.prior_arg
 
     if ncores is None:
         ncores    = pathos.multiprocessing.cpu_count()
-
-    all_pars    = chain[:,tune:].reshape(-1,chain.shape[2])
 
     ## dry run
     par     = be_res.means()
@@ -224,11 +224,10 @@ def sampled_irfs(self, be_res, shocklist, wannasee, nr_samples = 1000, ncores = 
     Xlabels = self.irfs(shocklist, wannasee)[1]
 
     def runner(nr, useless_arg):
-        random.seed(nr)
-        randpar             = par_fix
-        randpar[prior_arg]  = random.choice(all_pars)
 
-        self.get_sys(list(randpar), 'all', info=False)                      # define parameters
+        par     = self.posterior_sample(be_res = be_res, seed = nr)
+
+        self.get_sys(par, 'all', info=False)                      # define parameters
         self.preprocess(info=False)                   # preprocess matrices for speedup
 
         xs, _, (ys, ks, ls)   = self.irfs(shocklist, wannasee, warn = False)

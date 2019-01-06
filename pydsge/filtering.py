@@ -83,16 +83,18 @@ def run_filter(self, use_rts=True, info=False):
     return X1, cov
 
 
-def extract(self, X=None, cov=None, info=True):
+def extract(self, mean = None, cov = None, mtd = None, info = True):
 
-    if X is None:
-        X   = self.filtered_X
+    if mean is None:
+        mean   = self.filtered_X
 
     if cov is None:
         cov = self.filtered_cov
 
+    if mtd is None:
+        mtd     = 'L-BFGS-B' 
 
-    x   = X[0]
+    x   = mean[0]
     EPS = []
 
     flag    = False
@@ -101,21 +103,26 @@ def extract(self, X=None, cov=None, info=True):
     if info:
         st  = time.time()
 
+    def target(eps, x, mean, cov):
 
-    for t in range(X[:-1].shape[0]):
+        state, flag     = self.t_func(x, noise=eps)
 
-        # mtd     = 'BFGS'   
-        mtd     = 'L-BFGS-B' 
+        if flag:
+            return np.inf
+        else:
+            return -logpdf(state, mean = mean, cov = cov)
+
+
+    for t in range(mean[:-1].shape[0]):
+
 
         eps0    = np.zeros(len(self.shocks))
 
-        eps2x   = lambda eps: self.t_func(x, noise=eps, return_flag=False)
-        target  = lambda eps: -logpdf(eps2x(eps), mean = X[t+1], cov = cov[t+1])
+        res     = so_minimize(target, eps0, method = mtd, args = (x, mean[t+1], cov[t+1]))
 
-        res     = so_minimize(target, eps0, method = mtd)
-
-        if not res['success']:
-            res     = so_minimize(target, eps0, method = 'Powell')
+        ## backup option
+        if not res['success'] and mtd is not 'Powell':
+            res     = so_minimize(target, eps0, method = 'Powell', args = (x, mean[t+1], cov[t+1]))
 
             if not res['success']:
                 if flag:
@@ -125,14 +132,15 @@ def extract(self, X=None, cov=None, info=True):
         eps     = res['x']
 
         EPS.append(eps)
-        x   = eps2x(eps)
+
+        x   = self.t_func(x, noise=eps)[0]
 
     if info:
         print('Extraction took ', time.time() - st, 'seconds.')
-        if flags:
-            warnings.warn('Several issues with convergence.')
-        elif flag:
-            warnings.warn('Issue with convergence')
+    if flags:
+        warnings.warn('Issues(!) with convergence.')
+    elif flag:
+        warnings.warn('Issue with convergence')
 
     self.res = np.array(EPS)
 
