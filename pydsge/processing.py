@@ -141,7 +141,7 @@ def runner_pooled(nr_samples, ncores, innovations_mask):
     return res
 
 
-def sampled_sim(self, be_res = None, alpha = None, innovations_mask = None, nr_samples = 1000, ncores = None, warnings = False):
+def sampled_sim(self, be_res = None, alpha = None, innovations_mask = None, nr_samples = 1000, ncores = None, warn = False):
 
     import random
     import pathos
@@ -178,7 +178,7 @@ def sampled_sim(self, be_res = None, alpha = None, innovations_mask = None, nr_s
         if innovations_mask is not None:
             res     = np.where(np.isnan(innovations_mask), res, innovations_mask)
 
-        SZ, SX, SK  = self.simulate(res, warnings = warnings)
+        SZ, SX, SK  = self.simulate(res, warn = warnings)
 
         return SZ, SX, SK, res
 
@@ -201,7 +201,7 @@ def sampled_sim(self, be_res = None, alpha = None, innovations_mask = None, nr_s
     return np.array(SZS), np.array(SXS), np.array(SKS), np.array(EPS)
 
 
-def sampled_irfs(self, be_res, shocklist, wannasee, nr_samples = 1000, ncores = None, warnings = False):
+def sampled_irfs(self, be_res, shocklist, wannasee, nr_samples = 1000, ncores = None, warn = False):
 
     import random
     import pathos
@@ -231,7 +231,7 @@ def sampled_irfs(self, be_res, shocklist, wannasee, nr_samples = 1000, ncores = 
         self.get_sys(list(randpar), 'all', info=False)                      # define parameters
         self.preprocess(info=False)                   # preprocess matrices for speedup
 
-        xs, _, (ys, ks, ls)   = self.irfs(shocklist, wannasee, warnings = False)
+        xs, _, (ys, ks, ls)   = self.irfs(shocklist, wannasee, warn = False)
 
         return xs, ys, ks, ls
 
