@@ -105,7 +105,7 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
             priors_lst.append( ss.beta(a=1, b=1) )
         else:
             raise ValueError(' Distribution *not* implemented: ', str(dist[0]))
-        print('     Adding parameter %s as %s...' %(pp, dist[0]))
+        print('     Adding parameter %s as %s with mean %s and std %s...' %(pp, dist[0], pmean, pstdd))
 
 
     def llike(parameters):
@@ -254,7 +254,7 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
     pos             = [init_par*(1+1e-3*np.random.randn(ndim)) for i in range(nwalkers)]
     sampler         = wrap_sampler(pos, nwalkers, ndim, ndraws, ncores, info)
 
-    sampler.summary     = lambda: summary(sampler.chain[tune:], priors, self['__data__']['estimation']['prior'])
+    sampler.summary     = lambda: summary(sampler.chain[:,tune:,:], priors)
     sampler.traceplot   = lambda **args: traceplot(sampler.chain, varnames=priors, tune=tune, priors=priors_lst, **args)
     sampler.posteriorplot   = lambda **args: posteriorplot(sampler.chain, varnames=priors, tune=tune, **args)
 

@@ -36,7 +36,7 @@ class modloader(object):
         if 'vv' in self.files:
             self.vv     = self.files['vv']
 
-        print("Results imported. Do not forget to adjust the number of tune-in periods (self.tune).")
+        print("Results imported. Number of burn-in periods is %s out of %s" %(self.tune, self.ndraws))
     
     def masker(self):
         iss     = np.zeros(len(self.prior_names), dtype=bool)
@@ -63,7 +63,7 @@ class modloader(object):
         else:
             self_priors     = self.priors
 
-        return summary(self.chain[:,self.tune:], self.prior_names, self_priors)
+        return summary(self.chain[:,self.tune:], self_priors)
 
     def traceplot(self, chain=None, varnames=None, tune=None, priors_dist=None, **args):
 

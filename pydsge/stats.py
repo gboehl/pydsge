@@ -40,8 +40,11 @@ def _hpd_df(x, alpha):
 
     return pd.DataFrame(hpd_vals, columns=cnames)
 
-def summary(trace, varnames, priors, alpha=0.05):
+def summary(trace, varnames, priors = None, alpha=0.05):
     ## in parts stolen from pymc3 because it looks really nice
+
+    if priors is None:
+        priors = varnames
 
     f_prs = [lambda x: pd.Series(x, name='distribution'),
              lambda x: pd.Series(x, name='mean/alpha'),
@@ -51,7 +54,6 @@ def summary(trace, varnames, priors, alpha=0.05):
              lambda x: pd.Series(np.std(x), name='sd'),
              lambda x: pd.Series(mc_error(x), name='mc_error'),
              lambda x: _hpd_df(x, alpha)]
-
 
     var_dfs = []
     for i, var in enumerate(varnames):
