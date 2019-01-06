@@ -181,7 +181,7 @@ def sampled_sim(self, be_res = None, innovations_mask = None, nr_samples = 1000,
 
         self.create_filter()
         X, cov      = self.run_filter()
-        res         = self.extract(mtd = mtd, info=False)
+        res         = self.extract(mtd = mtd, info=False)[2]
 
         if innovations_mask is not None:
             res     = np.where(np.isnan(innovations_mask), res, innovations_mask)
