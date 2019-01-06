@@ -83,65 +83,16 @@ def run_filter(self, use_rts=True, info=False):
     return X1, cov
 
 
-def extract(self, mean = None, cov = None, mtd = None, info = True):
+def extract(self, pmean = None, cov = None, mtd = None, info = True):
 
-    if mean is None:
-        mean   = self.filtered_X
+    if pmean is None:
+        pmean   = self.filtered_X
 
     if cov is None:
         cov = self.filtered_cov
 
-    if mtd is None:
-        mtd     = 'L-BFGS-B' 
+    means, cov, res     = self.enkf.ipa(pmean, cov, mtd, info)
 
-    x   = mean[0]
-    EPS = []
+    self.res            = res
 
-    flag    = False
-    flags   = False
-
-    if info:
-        st  = time.time()
-
-    def target(eps, x, mean, cov):
-
-        state, flag     = self.t_func(x, noise=eps)
-
-        if flag:
-            return np.inf
-        else:
-            return -logpdf(state, mean = mean, cov = cov)
-
-
-    for t in range(mean[:-1].shape[0]):
-
-
-        eps0    = np.zeros(len(self.shocks))
-
-        res     = so_minimize(target, eps0, method = mtd, args = (x, mean[t+1], cov[t+1]))
-
-        ## backup option
-        if not res['success'] and mtd is not 'Powell':
-            res     = so_minimize(target, eps0, method = 'Powell', args = (x, mean[t+1], cov[t+1]))
-
-            if not res['success']:
-                if flag:
-                    flags   = True
-                flag    = True
-
-        eps     = res['x']
-
-        EPS.append(eps)
-
-        x   = self.t_func(x, noise=eps)[0]
-
-    if info:
-        print('Extraction took ', time.time() - st, 'seconds.')
-    if flags:
-        warnings.warn('Issues(!) with convergence.')
-    elif flag:
-        warnings.warn('Issue with convergence')
-
-    self.res = np.array(EPS)
-
-    return self.res
+    return means, cov, res
