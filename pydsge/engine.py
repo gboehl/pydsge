@@ -105,57 +105,13 @@ def create_finish(vals, l, k, s, core_mat, core_term):
 
 
 @njit(cache=True)
-def LL_pp(l, k, s, v, mat, term):
+def LL_jit(l, k, s, v, mat, term):
 
     return mat[l, k, s] @ v + term[l, k, s]
 
 
 @njit(cache=True)
-def SS_jit(vals, l, k, v):
-
-    N, A, J, cx  = vals
-    dim_x, dim_y    = J.shape
-
-    term 		= J @ geom_series(N, k) @ cx
-    if l:
-        N_k 		= nl.matrix_power(N,k)
-        A_k         = nl.matrix_power(A,l)
-        JN			= J @ N_k @ A_k
-    elif k:
-        N_k 		= nl.matrix_power(N,k-1)
-        JN			= J @ N_k @ N
-    else:
-        JN    = J
-
-    core        = -nl.inv(JN[:,:dim_x]) 
-
-    return core @ JN[:,dim_x:] @ v + core @ term 
-
-
-@njit(cache=True)
-def LL_jit(l, k, s, v, vals):
-
-    N, A, J, cx     = vals
-    dim_x, dim_y    = J.shape
-
-    k0 		= max(s-l, 0)
-    l0 		= min(l, s)
-    if l0:
-        N_k 		    = nl.matrix_power(N,k0)
-        A_k             = nl.matrix_power(A,l0)
-        matrices 		= N_k @ A_k
-    elif k0:
-        N_k 		    = nl.matrix_power(N,k0)
-        matrices 		= N_k
-    else:
-        matrices    = np.eye(dim_y)
-    term			= geom_series(N, k0) @ cx
-
-    return matrices[:,:dim_x] @ SS_jit(vals, l, k, v) + matrices[:,dim_x:] @ v + term
-
-
-@njit(cache=True)
-def boehlgorithm_pp(N, A, J, cx, b, x_bar, v, mat, term, max_cnt):
+def boehlgorithm_jit(N, A, J, cx, b, x_bar, v, mat, term, max_cnt):
 
     dim_x, dim_y    = J.shape
 
@@ -173,85 +129,66 @@ def boehlgorithm_pp(N, A, J, cx, b, x_bar, v, mat, term, max_cnt):
             break
         l1, k1 		= l, k
 
+        ## try lower l. If l is stable, loop will increment and exit
         if l: l -= 1
-        while b @ LL_pp(l, k, l, v, mat, term) - x_bar > 0:
+        while b @ LL_jit(l, k, l, v, mat, term) - x_bar > 0:
             if l >= l_max:
                 l = 0
                 break
             l 	+= 1
 
+        ## if l > 0, then x > x_bar. If not, set l = 0
         if l and k:
-            if b @ LL_pp(l, k, 0, v, mat, term) - x_bar < 0: 
+            if b @ LL_jit(l, k, 0, v, mat, term) - x_bar < 0: 
                 l   = 0
 
+        ## if l is stable, loop over k
         if (l) == (l1):
             if k: k -= 1
-            while b @ LL_pp(l, k, l+k, v, mat, term) - x_bar < 0: 
+            while b @ LL_jit(l, k, l+k, v, mat, term) - x_bar < 0: 
                 k +=1
                 if k >= k_max:
                     flag    = 2
                     break
         cnt += 1
 
-    if not k: l = 1
-    v_new 	= LL_pp(l, k, 1, v, mat, term)[dim_x:]
-
-    return v_new, (l, k), flag
-
-
-@njit(cache=True)
-def boehlgorithm_jit(vals, v, max_cnt, k_max = 20, l_max = 20):
-
-    N, A, J, cx, b, x_bar   = vals
-    dim_x, dim_y    = J.shape
-    
-    l, k 		= 0, 0
-    l1, k1 		= 1, 1
-
-    cnt     = 0
-    flag    = False
-    while (l, k) != (l1, k1):
-        cnt += 1
-        if cnt  > max_cnt:
-            flag    = 1
-            break
-        l1, k1 		= l, k
-        if l: l -= 1
-        while b @ LL_jit(l, k, l, v, vals[:4]) - x_bar > 0:
-            if l > l_max:
-                l       = 0
+    ## if there is no convergence, abstract form l > 0
+    if flag:
+        k   = 0
+        while b @ LL_jit(l, k, l+k, v, mat, term) - x_bar < 0: 
+            k +=1
+            if k >= k_max:
+                flag    = 2
                 break
-            l 	+= 1
-        if (l) == (l1):
-            if k: k 		-= 1
-            while b @ LL_jit(l, k, l+k, v, vals[:4]) - x_bar < 0: 
-                k +=1
-                if k > k_max:
-                    flag    = 2
-                    break
-        cnt += 1
 
     if not k: l = 1
-    v_new 	= LL_jit(l, k, 1, v, vals[:4])[dim_x:]
+    v_new 	= LL_jit(l, k, 1, v, mat, term)[dim_x:]
 
     return v_new, (l, k), flag
 
 
-def boehlgorithm(model_obj, v, max_cnt = 5e1, linear = False):
+def boehlgorithm(self, v, max_cnt = 5e1, linear = False):
 
-    if linear:
-        dim_x   = model_obj.sys[2].shape[0]
+    if not linear:
 
-        return LL_jit(1, 0, 1, v, model_obj.sys[:4])[dim_x:], (0, 0), 0
-
-    elif hasattr(model_obj, 'precalc_mat'):
+        if not hasattr(self, 'precalc_mat'):
+            self.preprocess(self, l_max = 4, k_max = 20, info = False)
 
         ## numba does not like tuples of numpy arrays
-        mat, term                   = model_obj.precalc_mat
-        N, A, J, cx, b, x_bar       = model_obj.sys
+        mat, term                   = self.precalc_mat
+        N, A, J, cx, b, x_bar       = self.sys
 
-        return boehlgorithm_pp(N, A, J, cx, b, x_bar, v, mat, term, max_cnt)
+        return boehlgorithm_jit(N, A, J, cx, b, x_bar, v, mat, term, max_cnt)
+
     else:
-        return boehlgorithm_jit(model_obj.sys, v, max_cnt)
 
-dsge.preprocess   = preprocess
+        if not hasattr(self, 'precalc_mat'):
+            self.preprocess(self, l_max = 1, k_max = 1, info = False)
+
+        mat, term       = self.precalc_mat
+        dim_x           = self.sys[2].shape[0]
+
+        return LL_jit(1, 0, 1, v, self.sys[:4])[dim_x:], (0, 0), 0
+
+
+

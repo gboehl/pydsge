@@ -5,6 +5,7 @@ from .stuff import *
 from .plots import *
 from .processing import *
 from .estimation import bayesian_estimation
+from .engine import preprocess
 from .filtering import *
 from .plots import get_iv
 from .parser import DSGE as dsge
@@ -26,3 +27,4 @@ dsge.sampled_irfs       = sampled_irfs
 dsge.extract            = extract
 dsge.create_obs_cov     = create_obs_cov
 dsge.posterior_sample   = posterior_sample
+dsge.preprocess         = preprocess

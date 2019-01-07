@@ -242,19 +242,6 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
         else:
             print(str(pp)+': '+str(init_par[i].round(3)), end=', ')
     print()
-    # print(priors.keys())
-    # print(priors_lst)
-    pd = []
-    for p in priors_lst:
-        if hasattr(p, 'dist'):
-            pd.append(p.dist)
-        else:
-            pd.append('doesnt have')
-    # pd  = [p.dist for p in priors_lst]
-    for ii, pk in enumerate(priors.keys()):
-        print(pk, pd[ii])
-    print()
-    print(dict(zip(priors.keys(), pd)))
 
     pos             = [init_par*(1+1e-3*np.random.randn(ndim)) for i in range(nwalkers)]
     sampler         = wrap_sampler(pos, nwalkers, ndim, ndraws, ncores, info)
