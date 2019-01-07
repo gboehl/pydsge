@@ -83,7 +83,7 @@ def run_filter(self, use_rts=True, info=False):
     return X1, cov
 
 
-def extract(self, pmean = None, cov = None, mtd = None, info = True):
+def extract(self, pmean = None, cov = None, mtd = None, converged_only = False, info = True):
 
     if pmean is None:
         pmean   = self.filtered_X
@@ -91,7 +91,8 @@ def extract(self, pmean = None, cov = None, mtd = None, info = True):
     if cov is None:
         cov = self.filtered_cov
 
-    means, cov, res     = self.enkf.ipa(pmean, cov, mtd, info)
+    # means, cov, res     = self.enkf.ipa(pmean, cov, mtd, info)
+    means, cov, res     = self.enkf.ipa(pmean, cov, mtd, converged_only, info)
 
     self.res            = res
 
