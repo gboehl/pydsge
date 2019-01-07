@@ -123,6 +123,8 @@ def traceplot(trace, varnames, tune, figsize = None,
 
         vnames_chunk = varnames[ic:ic + max_no] 
         trace_chunk  = trace[:,:,ic:ic + max_no] 
+        if priors is not None:
+            priors_chunk = priors[ic:ic + max_no] 
 
         if figsize is None:
             figsize_loc = (8, len(vnames_chunk) * 2)
@@ -132,9 +134,10 @@ def traceplot(trace, varnames, tune, figsize = None,
 
         for i, v in enumerate(vnames_chunk):
             if priors is not None:
-                prior = priors[i]
+                prior = priors_chunk[i]
             else:
                 prior = None
+
             d = trace_chunk[:,:,i]
             d_stream = d.swapaxes(0,1)
             width = len(d_stream)

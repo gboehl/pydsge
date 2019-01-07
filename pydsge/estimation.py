@@ -205,14 +205,6 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
                 f_val       = -np.inf
                 self.x      = self.init_par
 
-                """
-                ## this while ensures that -inf is not an accepted result
-                while np.isinf(f_val):
-                    res         = so.minimize(self, self.x, method='Powell', tol=1e-3)
-                    f_val       = res['fun']
-                    self.x      = self.x_max
-                """
-
                 res         = so.minimize(self, self.x, method='Powell', tol=1e-3)
 
                 self.pbar.close()
@@ -250,6 +242,19 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
         else:
             print(str(pp)+': '+str(init_par[i].round(3)), end=', ')
     print()
+    # print(priors.keys())
+    # print(priors_lst)
+    pd = []
+    for p in priors_lst:
+        if hasattr(p, 'dist'):
+            pd.append(p.dist)
+        else:
+            pd.append('doesnt have')
+    # pd  = [p.dist for p in priors_lst]
+    for ii, pk in enumerate(priors.keys()):
+        print(pk, pd[ii])
+    print()
+    print(dict(zip(priors.keys(), pd)))
 
     pos             = [init_par*(1+1e-3*np.random.randn(ndim)) for i in range(nwalkers)]
     sampler         = wrap_sampler(pos, nwalkers, ndim, ndraws, ncores, info)
