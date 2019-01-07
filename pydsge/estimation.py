@@ -262,7 +262,7 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
     sampler.prior_names = [ pp for pp in priors.keys() ]
     sampler.tune        = tune
     par_mean            = par_fix
-    par_mean[prior_arg] = mc_mean(sampler.chain[tune:], varnames=priors)
+    par_mean[prior_arg] = mc_mean(sampler.chain[:,tune:], varnames=priors)
     sampler.par_means   = list(par_mean)
 
     self.sampler        = sampler
