@@ -46,7 +46,7 @@ def wrap_sampler(p0, nwalkers, ndim, ndraws, priors, ncores, update_freq, info):
     return sampler
 
 
-def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune = None, ncores = None, nwalkers = 100, maxfev = 2500, update_freq = 100, info = False):
+def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune = None, ncores = None, nwalkers = 100, maxfev = 2500, update_freq = None, info = False):
 
     import pathos
     import scipy.stats as ss
@@ -59,6 +59,9 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
 
     if tune is None:
         tune    = int(ndraws*4/5.)
+
+    if update_freq is None:
+        update_freq     = int(ndraws/4.)
 
     self.preprocess(info=info)
 
@@ -191,10 +194,10 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
             if self.timer == self.update_ival:
                 self.pbar.update(self.update_ival)
                 if update_freq and not self.n % update_freq:
-                    self.pbar.write('')
                     self.pbar.write('Current best guess:')
                     self.pbar.write(row_format.format("", *priors))
                     self.pbar.write(row_format.format("", *[round(m_val, 3) for m_val in self.x_max]))
+                    self.pbar.write('')
                 difft   = time.time() - self.st
                 if difft < 0.5:
                     self.update_ival *= 2
@@ -248,11 +251,8 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
         init_par    = result
 
     print('Initial values:')
-    for i, pp in enumerate(priors):
-        if i == len(priors)-1:
-            print(str(pp)+': '+str(init_par[i].round(3)))
-        else:
-            print(str(pp)+': '+str(init_par[i].round(3)), end=', ')
+    print(row_format.format("", *priors))
+    print(row_format.format("", *[round(m_val, 3) for m_val in init_par]))
     print()
 
     pos             = [init_par*(1+1e-3*np.random.randn(ndim)) for i in range(nwalkers)]
