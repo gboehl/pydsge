@@ -4,9 +4,9 @@ import numpy as np
 import warnings
 import time
 import emcee
-from .stats import InvGamma
+from .stats import InvGamma, summary, mc_mean
 
-def wrap_sampler(p0, nwalkers, ndim, ndraws, ncores, info):
+def wrap_sampler(p0, nwalkers, ndim, ndraws, priors, ncores, update_freq, info):
     ## very very dirty hack 
 
     import tqdm
@@ -23,15 +23,21 @@ def wrap_sampler(p0, nwalkers, ndim, ndraws, ncores, info):
 
     sampler = emcee.EnsembleSampler(nwalkers, ndim, lprob_local, pool = loc_pool)
 
-    loc_pool.close()
-    loc_pool.join()
-    loc_pool.clear()
-
     if not info: np.warnings.filterwarnings('ignore')
 
     pbar    = tqdm.tqdm(total=ndraws, unit='sample(s)', dynamic_ncols=True)
+
+    cnt     = 0
     for result in sampler.sample(p0, iterations=ndraws):
+        if update_freq and pbar.n and not pbar.n % update_freq:
+            pbar.write('')
+            pbar.write('MCMC summary from last %s iterations:' %update_freq)
+            pbar.write(str(summary(sampler.chain[:,pbar.n-update_freq:pbar.n,:], priors).round(3)))
         pbar.update(1)
+
+    loc_pool.close()
+    loc_pool.join()
+    loc_pool.clear()
 
     if not info: np.warnings.filterwarnings('default')
 
@@ -40,14 +46,12 @@ def wrap_sampler(p0, nwalkers, ndim, ndraws, ncores, info):
     return sampler
 
 
-def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune = None, ncores = None, nwalkers = 100, maxfev = 2500, info = False):
+def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune = None, ncores = None, nwalkers = 100, maxfev = 2500, update_freq = 100, info = False):
 
     import pathos
     import scipy.stats as ss
     import scipy.optimize as so
     import tqdm
-    from .stats import summary
-    from .stats import mc_mean
     from .plots import traceplot, posteriorplot
 
     if ncores is None:
@@ -153,6 +157,7 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
     global lprob_global
 
     lprob_global    = lprob
+    row_format ="{:>8}" * (len(priors) + 1)
 
     class func_wrap(object):
         ## thats a wrapper to have a progress par in the posterior maximization
@@ -185,6 +190,11 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
 
             if self.timer == self.update_ival:
                 self.pbar.update(self.update_ival)
+                if update_freq and not self.n % update_freq:
+                    self.pbar.write('')
+                    self.pbar.write('Current best guess:')
+                    self.pbar.write(row_format.format("", *priors))
+                    self.pbar.write(row_format.format("", *[round(m_val, 3) for m_val in self.x_max]))
                 difft   = time.time() - self.st
                 if difft < 0.5:
                     self.update_ival *= 2
@@ -224,6 +234,7 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
             return self.x_max
 
     if maxfev:
+
         print()
         if not info:
             np.warnings.filterwarnings('ignore')
@@ -231,6 +242,7 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
         else:
             print('Maximizing posterior mode density:')
         print()
+
         result      = func_wrap(init_par).go()
         np.warnings.filterwarnings('default')
         init_par    = result
@@ -244,7 +256,7 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
     print()
 
     pos             = [init_par*(1+1e-3*np.random.randn(ndim)) for i in range(nwalkers)]
-    sampler         = wrap_sampler(pos, nwalkers, ndim, ndraws, ncores, info)
+    sampler         = wrap_sampler(pos, nwalkers, ndim, ndraws, priors, ncores, update_freq, info)
 
     sampler.summary     = lambda: summary(sampler.chain[:,tune:,:], priors)
     sampler.traceplot   = lambda **args: traceplot(sampler.chain, varnames=priors, tune=tune, priors=priors_lst, **args)
