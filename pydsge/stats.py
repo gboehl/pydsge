@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 import pandas as pd
+import warnings
 
 def mc_error(x):
     means   = np.mean(x,0)
@@ -21,13 +22,18 @@ def calc_min_interval(x, alpha):
     interval_width = x[interval_idx_inc:] - x[:n_intervals]
 
     if len(interval_width) == 0:
-        raise ValueError('Too few elements for interval calculation')
+        # raise ValueError('Too few elements for interval calculation')
+        warnings.warn('Too few elements for interval calculation.')
 
-    min_idx = np.argmin(interval_width)
-    hdi_min = x[min_idx]
-    hdi_max = x[min_idx + interval_idx_inc]
+        return None, None
 
-    return hdi_min, hdi_max
+    else:
+
+        min_idx = np.argmin(interval_width)
+        hdi_min = x[min_idx]
+        hdi_max = x[min_idx + interval_idx_inc]
+
+        return hdi_min, hdi_max
 
 
 def _hpd_df(x, alpha):
