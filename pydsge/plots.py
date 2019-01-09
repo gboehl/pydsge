@@ -111,7 +111,7 @@ def get_axis(ax, default_rows, default_columns, **default_kwargs):
     return fig, ax
 
 def traceplot(trace, varnames, tune, figsize = None,
-              combined = False, max_no = 3, grid = False, priors = None,
+              combined = False, max_no = 3, priors = None,
               prior_alpha = .8, prior_style = '--', bw = 4.5, axp = None):
 
     ## stolen and modified from pymc3 with kisses
@@ -133,32 +133,37 @@ def traceplot(trace, varnames, tune, figsize = None,
         fig, ax = get_axis(axp, len(vnames_chunk), 2, squeeze=False, figsize=figsize_loc)
 
         for i, v in enumerate(vnames_chunk):
+
             if priors is not None:
                 prior = priors_chunk[i]
             else:
                 prior = None
 
-            d = trace_chunk[:,:,i]
-            d_stream = d.swapaxes(0,1)
-            width = len(d_stream)
-            artists = kdeplot_op(ax[i, 0], d_stream[tune:], bw, prior, prior_alpha, prior_style)[0]
-            colors = [a[0].get_color() for a in artists]
+            d           = trace_chunk[:,:,i]
+
+            d_stream    = d.swapaxes(0,1)
+            width       = len(d_stream)
+
+            if not np.isclose(d,0).all():
+
+                artists     = kdeplot_op(ax[i, 0], d_stream[tune:], bw, prior, prior_alpha, prior_style)[0]
+                colors      = [a[0].get_color() for a in artists]
+
+            else:
+
+                ax[i,0].set_visible(False)
+
             ax[i, 0].set_title(str(v))
-            ax[i, 0].grid(grid)
             ax[i, 1].set_title(str(v))
             i95s    = np.percentile(d_stream, [2.5, 97.5], axis=1)
             i66s    = np.percentile(d_stream, [17, 83], axis=1)
             means   = np.mean(d_stream, axis=1)
             medis   = np.median(d_stream, axis=1)
 
-            # ax[i, 1].plot(range(tune, width),   i95s[tune:], c='C5', lw=3, alpha=.6)
-            # ax[i, 1].plot(range(0, tune+1),     i95s[:tune+1], c='C5', lw=3, alpha=.4)
             ax[i, 1].fill_between(range(0, tune+1), *i95s[:,:tune+1], lw=0, alpha=.1, color='C1')
             ax[i, 1].fill_between(range(tune, width), *i95s[:,tune:], lw=0, alpha=.2, color='C1')
             ax[i, 1].fill_between(range(0, tune+1), *i66s[:,:tune+1], lw=0, alpha=.3, color='C1')
             ax[i, 1].fill_between(range(tune, width), *i66s[:,tune:], lw=0, alpha=.4, color='C1')
-            # ax[i, 1].plot(range(tune, width),   medis[tune:], '.', c='C7')
-            # ax[i, 1].plot(range(0, tune+1),     medis[:tune+1], '.', c='C7', alpha=.5)
             ax[i, 1].plot(range(tune, width),   means[tune:], lw=2, c='C0')
             ax[i, 1].plot(range(0, tune+1),     means[:tune+1], lw=2, c='C0', alpha=.5)
 
