@@ -1,14 +1,15 @@
 #!/bin/python2
 # -*- coding: utf-8 -*-
 
-directory = '/home/gboehl/repos/'
-import os, sys, importlib, time
-for i in os.listdir(directory):
-    sys.path.append(directory+i)
+# directory = '/home/gboehl/repos/'
+# import os, sys, importlib, time
+# for i in os.listdir(directory):
+    # sys.path.append(directory+i)
 
 import numpy as np
 import numpy.linalg as nl
 import scipy.linalg as sl
+import time
 from .parser import DSGE as dsge
 from numba import njit
 
