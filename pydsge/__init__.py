@@ -22,6 +22,7 @@ dsge.get_ll             = get_ll
 dsge.get_iv             = get_iv
 dsge.bayesian_estimation    = bayesian_estimation
 dsge.save               = save_res
+dsge.epstract           = epstract
 dsge.sampled_sim        = sampled_sim
 dsge.sampled_irfs       = sampled_irfs
 dsge.extract            = extract

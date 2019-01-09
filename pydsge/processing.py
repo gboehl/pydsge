@@ -165,7 +165,7 @@ def posterior_sample(self, be_res = None, seed = 0):
     return list(randpar)
 
 
-def sampled_sim(self, be_res = None, innovations_mask = None, nr_samples = 1000, ncores = None, mtd = None, warn = False):
+def epstract(self, be_res, nr_samples = 1000, ncores = None, mtd = None, converged_only = False, info = False):
 
     import pathos
 
@@ -181,32 +181,93 @@ def sampled_sim(self, be_res = None, innovations_mask = None, nr_samples = 1000,
 
         self.create_filter()
         X, cov      = self.run_filter()
-        res         = self.extract(mtd = mtd, info=False)[2]
+        eps         = self.extract(mtd = mtd, info = info, converged_only = converged_only)[2]
+
+        return eps, par
+
+    global runner_glob
+    runner_glob    = runner
+
+    res     = runner_pooled(nr_samples, ncores, None)
+
+    no_obs, dim_z   = self.Z.shape
+    dim_e           = len(self.shocks)
+
+    PAR     = []
+    EPS     = []
+
+    for p in res:
+
+        EPS.append(p[0])
+        PAR.append(p[1])
+
+    EPS     = np.array(EPS)
+    PAR     = np.array(PAR)
+
+    self.epstracted     = EPS, PAR
+
+    return EPS, PAR
+
+
+def sampled_sim(self, innovations_mask = None, epstracted = None, ncores = None, warnings = True, info = False):
+
+    import pathos
+
+    if epstracted is None:
+        epstracted = self.epstracted
+
+    if ncores is None:
+        ncores    = pathos.multiprocessing.cpu_count()
+
+    EPS, PAR    = epstracted     
+    nr_samples  = EPS.shape[0]
+
+    def runner(nr, innovations_mask):
+
+        par     = list(PAR[nr])
+        
+        self.get_sys(par, info=False)                      # define parameters
+        self.preprocess(info=False)                   # preprocess matrices for speedup
+
+        eps     = EPS[nr]
 
         if innovations_mask is not None:
-            res     = np.where(np.isnan(innovations_mask), res, innovations_mask)
+            eps     = np.where(np.isnan(innovations_mask), eps, innovations_mask)
 
-        SZ, SX, SK  = self.simulate(res, warn = warnings)
+        SZ, SX, SK  = self.simulate(eps, warn = warnings)
 
-        return SZ, SX, SK, res
+        return SZ, SX, SK, self.vv
 
     global runner_glob
     runner_glob    = runner
 
     res     = runner_pooled(nr_samples, ncores, innovations_mask)
 
-    SZS     = []
-    SXS     = []
-    SKS     = []
-    EPS     = []
-
+    dim_x   = 1e50
     for p in res:
-        SZS.append(p[0])
-        SXS.append(p[1])
-        SKS.append(p[2])
-        EPS.append(p[3])
+        if len(p[3]) < dim_x:
+            minr    = p[3]
+            dim_x   = len(minr)
 
-    return np.array(SZS), np.array(SXS), np.array(SKS), np.array(EPS)
+    no_obs, dim_z   = self.Z.shape
+    dim_e           = len(self.shocks)
+
+    SZS     = np.empty((nr_samples, no_obs, dim_z))
+    SXS     = np.empty((nr_samples, no_obs, dim_x))
+    SKS     = np.empty((nr_samples, no_obs, 1))
+
+    for n, p in enumerate(res):
+
+        if len(p[3]) > dim_x:
+            idx     = [ list(p[3]).index(v) for v in minr ]
+            SXS[n,:]  = p[1][:,idx]
+        else:
+            SXS[n,:]  = p[1]
+
+        SZS[n,:]  = p[0]
+        SKS[n,:]  = p[2]
+
+    return SZS, SXS, SKS
 
 
 def sampled_irfs(self, be_res, shocklist, wannasee, nr_samples = 1000, ncores = None, warn = False):

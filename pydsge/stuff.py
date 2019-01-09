@@ -239,12 +239,9 @@ def simulate(self, EPS = None, initial_state = None, info = False, warn = True):
 
     for eps in EPS:
 
-        # st_vec, (l,k), flag     = self.t_func(st_vec, noise=eps, return_k=True)
         st_vec_new, (l,k), flag     = self.t_func(st_vec, noise=eps, return_k=True)
 
         if flag: 
-            np.savez('/home/gboehl/rsh/bs18/debug', st_vec = st_vec, eps = eps)
-            print('happening: ', flag)
             superflag   = True
 
         st_vec  = st_vec_new 
