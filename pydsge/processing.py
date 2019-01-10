@@ -183,7 +183,7 @@ def epstract(self, be_res = None, nr_samples = 1000, save = None, ncores = None,
 
             if np.all(COV == self.obs_cov):
                 if EPS.shape[0] >= nr_samples:
-                    print('epstract(): Epstract already exists')
+                    print('epstract: Epstract already exists')
 
                     self.epstracted     = EPS, PAR, self.obs_cov
 
@@ -265,6 +265,14 @@ def sampled_sim(self, innovations_mask = None, nr_samples = None, epstracted = N
         self.get_sys(par, info=False)                      # define parameters
         self.preprocess(info=False)                   # preprocess matrices for speedup
 
+        # eps     = EPS[nr]
+        # eps2     = EPS[nr]
+        self.create_filter()
+        # X, cov      = self.run_filter(use_rts=False) ## geht nich!
+
+        X, cov, ll     = self.enkf.batch_filter(self.Z, store=True)
+        # self.run_filter()
+        # eps         = self.extract(method = None, info = False, converged_only = True)[2]
         eps     = EPS[nr]
 
         if innovations_mask is not None:
