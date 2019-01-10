@@ -165,7 +165,7 @@ def posterior_sample(self, be_res = None, seed = 0):
     return list(randpar)
 
 
-def epstract(self, be_res = None, nr_samples = 1000, save = None, ncores = None, mtd = None, converged_only = False, info = False):
+def epstract(self, be_res = None, nr_samples = 1000, save = None, ncores = None, method = None, converged_only = True, info = False):
 
     PAR     = []
     EPS     = []
@@ -209,7 +209,7 @@ def epstract(self, be_res = None, nr_samples = 1000, save = None, ncores = None,
 
         self.create_filter()
         X, cov      = self.run_filter()
-        eps         = self.extract(mtd = mtd, info = info, converged_only = converged_only)[2]
+        eps         = self.extract(method = method, info = info, converged_only = converged_only)[2]
 
         return eps, par
 
@@ -243,7 +243,7 @@ def epstract(self, be_res = None, nr_samples = 1000, save = None, ncores = None,
     return EPS, PAR
 
 
-def sampled_sim(self, innovations_mask = None, epstracted = None, ncores = None, warnings = True, info = False):
+def sampled_sim(self, innovations_mask = None, epstracted = None, ncores = None, show_warnings = False, info = False):
 
     import pathos
 
@@ -268,7 +268,7 @@ def sampled_sim(self, innovations_mask = None, epstracted = None, ncores = None,
         if innovations_mask is not None:
             eps     = np.where(np.isnan(innovations_mask), eps, innovations_mask)
 
-        SZ, SX, SK  = self.simulate(eps, warn = warnings)
+        SZ, SX, SK  = self.simulate(eps, show_warnings = show_warnings)
 
         return SZ, SX, SK, self.vv
 
@@ -304,7 +304,7 @@ def sampled_sim(self, innovations_mask = None, epstracted = None, ncores = None,
     return SZS, SXS, SKS
 
 
-def sampled_irfs(self, be_res, shocklist, wannasee, nr_samples = 1000, ncores = None, warn = False):
+def sampled_irfs(self, be_res, shocklist, wannasee, nr_samples = 1000, ncores = None, show_warnings = False):
 
     import pathos
 
@@ -325,7 +325,7 @@ def sampled_irfs(self, be_res, shocklist, wannasee, nr_samples = 1000, ncores = 
         self.get_sys(par, 'all', info=False)                      # define parameters
         self.preprocess(info=False)                   # preprocess matrices for speedup
 
-        xs, _, (ys, ks, ls)   = self.irfs(shocklist, wannasee, warn = False)
+        xs, _, (ys, ks, ls)   = self.irfs(shocklist, wannasee, show_warnings = show_warnings)
 
         return xs, ys, ks, ls
 
