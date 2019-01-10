@@ -143,7 +143,7 @@ def get_sys(self, par=None, care_for = [], info = False):
     self.sys 	= N2, A2, J2, cx[~out_msk], b2[~out_msk], x_bar
 
 
-def irfs(self, shocklist, wannasee = None, warn=True):
+def irfs(self, shocklist, wannasee = None, show_warnings = True):
 
     ## returns time series of impule responses 
     ## shocklist: takes list of tuples of (shock, size, timing) 
@@ -192,7 +192,7 @@ def irfs(self, shocklist, wannasee = None, warn=True):
         K.append(k)
         L.append(l)
 
-    if superflag and warn:
+    if superflag and show_warnings:
         warnings.warn('Numerical errors in boehlgorithm, did not converge')
 
     Y   = np.array(Y)
@@ -213,7 +213,7 @@ def irfs(self, shocklist, wannasee = None, warn=True):
     return X, labels, (Y, K, L)
 
 
-def simulate(self, EPS = None, initial_state = None, info = False, warn = True):
+def simulate(self, EPS = None, initial_state = None, info = False, show_warnings = True):
     """
         EPS: shock innovations of shape (T, n_eps)
     """
@@ -261,7 +261,7 @@ def simulate(self, EPS = None, initial_state = None, info = False, warn = True):
     if info:
         print('Simulation took ', time.time() - st, ' seconds.')
 
-    if superflag and warn:
+    if superflag and show_warnings:
         warnings.warn('Numerical errors in boehlgorithm during simulation, did not converge')
 
     return Z, X, np.expand_dims(K, 2)
