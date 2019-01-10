@@ -165,7 +165,35 @@ def posterior_sample(self, be_res = None, seed = 0):
     return list(randpar)
 
 
-def epstract(self, be_res, nr_samples = 1000, ncores = None, mtd = None, converged_only = False, info = False):
+def epstract(self, be_res = None, nr_samples = 1000, save = None, ncores = None, mtd = None, converged_only = False, info = False):
+
+    PAR     = []
+    EPS     = []
+
+    if save is not None:
+
+        import os.path
+
+        if os.path.isfile(save):
+
+            files   = np.load(save)
+            EPS     = files['EPS']
+            PAR     = files['PAR']
+            COV     = files['COV']
+
+            if np.all(COV == self.obs_cov):
+                if EPS.shape[0] >= nr_samples:
+                    print('epstract(): Epstract already exists')
+
+                    self.epstracted     = EPS, PAR, self.obs_cov
+
+                    return EPS, PAR
+
+                else:
+                    print('Appending to existing epstract...')
+
+                    EPS     = list(EPS)
+                    PAR     = list(PAR)
 
     import pathos
 
@@ -188,13 +216,13 @@ def epstract(self, be_res, nr_samples = 1000, ncores = None, mtd = None, converg
     global runner_glob
     runner_glob    = runner
 
+    nr_samples  = nr_samples - len(EPS)
+
     res     = runner_pooled(nr_samples, ncores, None)
 
     no_obs, dim_z   = self.Z.shape
     dim_e           = len(self.shocks)
 
-    PAR     = []
-    EPS     = []
 
     for p in res:
 
@@ -204,7 +232,13 @@ def epstract(self, be_res, nr_samples = 1000, ncores = None, mtd = None, converg
     EPS     = np.array(EPS)
     PAR     = np.array(PAR)
 
-    self.epstracted     = EPS, PAR
+    if save is not None:
+        np.savez(save,
+                 EPS    = EPS,
+                 PAR    = PAR,
+                 COV    = self.obs_cov)
+
+    self.epstracted     = EPS, PAR, self.obs_cov
 
     return EPS, PAR
 
@@ -219,7 +253,7 @@ def sampled_sim(self, innovations_mask = None, epstracted = None, ncores = None,
     if ncores is None:
         ncores    = pathos.multiprocessing.cpu_count()
 
-    EPS, PAR    = epstracted     
+    EPS, PAR, obs_cov   = epstracted     
     nr_samples  = EPS.shape[0]
 
     def runner(nr, innovations_mask):
