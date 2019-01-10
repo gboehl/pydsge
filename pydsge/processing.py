@@ -243,7 +243,7 @@ def epstract(self, be_res = None, nr_samples = 1000, save = None, ncores = None,
     return EPS, PAR
 
 
-def sampled_sim(self, innovations_mask = None, epstracted = None, ncores = None, show_warnings = False, info = False):
+def sampled_sim(self, innovations_mask = None, nr_samples = None, epstracted = None, ncores = None, show_warnings = False, info = False):
 
     import pathos
 
@@ -254,7 +254,9 @@ def sampled_sim(self, innovations_mask = None, epstracted = None, ncores = None,
         ncores    = pathos.multiprocessing.cpu_count()
 
     EPS, PAR, obs_cov   = epstracted     
-    nr_samples  = EPS.shape[0]
+
+    if nr_samples is None:
+        nr_samples  = EPS.shape[0]
 
     def runner(nr, innovations_mask):
 
