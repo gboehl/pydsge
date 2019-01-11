@@ -7,7 +7,7 @@ import time
 import emcee
 from .stats import InvGamma, summary, mc_mean
 
-def wrap_sampler(p0, nwalkers, ndim, ndraws, priors, ncores, update_freq, info):
+def wrap_sampler(p0, nwalkers, ndim, ndraws, priors, ncores, update_freq, description, info):
     ## very very dirty hack 
 
     import tqdm
@@ -32,6 +32,8 @@ def wrap_sampler(p0, nwalkers, ndim, ndraws, priors, ncores, update_freq, info):
     for result in sampler.sample(p0, iterations=ndraws):
         if update_freq and pbar.n and not pbar.n % update_freq:
             pbar.write('')
+            if description is not None:
+                pbar.write('Estimation description: ', description)
             pbar.write('MCMC summary from last %s iterations:' %update_freq)
             pbar.write(str(summary(sampler.chain[:,pbar.n-update_freq:pbar.n,:], priors).round(3)))
         pbar.update(1)
@@ -63,6 +65,11 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
 
     if update_freq is None:
         update_freq     = int(ndraws/4.)
+
+    description     = None
+
+    if hasattr(self, 'description'):
+        description     = self.description
 
     self.preprocess(info=info)
 
@@ -279,7 +286,7 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
     print()
 
     pos             = [init_par*(1+1e-3*np.random.randn(ndim)) for i in range(nwalkers)]
-    sampler         = wrap_sampler(pos, nwalkers, ndim, ndraws, priors, ncores, update_freq, info)
+    sampler         = wrap_sampler(pos, nwalkers, ndim, ndraws, priors, ncores, update_freq, description, info)
 
     sampler.summary     = lambda: summary(sampler.chain[:,tune:,:], priors)
     sampler.traceplot   = lambda **args: traceplot(sampler.chain, varnames=priors, tune=tune, priors=priors_lst, **args)
