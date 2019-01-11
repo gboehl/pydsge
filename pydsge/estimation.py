@@ -33,8 +33,9 @@ def wrap_sampler(p0, nwalkers, ndim, ndraws, priors, ncores, update_freq, descri
         if update_freq and pbar.n and not pbar.n % update_freq:
             pbar.write('')
             if description is not None:
-                pbar.write('Estimation description: ', description)
-            pbar.write('MCMC summary from last %s iterations:' %update_freq)
+                pbar.write('MCMC summary from last %s iterations (%s):' %(update_freq,str(description)))
+            else:
+                pbar.write('MCMC summary from last %s iterations:' %update_freq)
             pbar.write(str(summary(sampler.chain[:,pbar.n-update_freq:pbar.n,:], priors).round(3)))
         pbar.update(1)
 
@@ -272,6 +273,8 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
         np.warnings.filterwarnings('default')
         init_par    = result
 
+    print()
+    print('Inital values for MCMC:')
     with os.popen('stty size', 'r') as rows_cols:
         cols            = rows_cols.read().split()[1]
         lnum            = (len(priors)*8)//(int(cols)-8) + 1

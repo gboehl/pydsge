@@ -101,12 +101,20 @@ class modloader(object):
         return np.full((self.Z.shape[0]-1, self.Z.shape[1]), np.nan)
 
 
-def save_res(self, filename, description = ''):
+def save_res(self, filename, description = None):
+
+    if not hasattr(self, 'description'):
+
+        self.description     = description
+
+        if description is None:
+            self.description     = ''
+
     np.savez(filename,
              Z              = self.Z,
              vv             = self.vv,
              years          = self.years,
-             description    = description,
+             description    = self.description,
              obs_cov        = self.obs_cov,
              par_fix        = self.par_fix,
              ndraws         = self.ndraws, 
