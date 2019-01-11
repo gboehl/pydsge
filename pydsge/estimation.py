@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 import warnings
+import os
 import time
 import emcee
 from .stats import InvGamma, summary, mc_mean
@@ -160,7 +161,7 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
     global lprob_global
 
     lprob_global    = lprob
-    row_format ="{:>8}" * (len(priors) + 1)
+    prior_names     = [ pp for pp in priors.keys() ]
 
     class func_wrap(object):
         ## thats a wrapper to have a progress par in the posterior maximization
@@ -193,16 +194,30 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
 
             if self.timer == self.update_ival:
                 self.pbar.update(self.update_ival)
+
+                ## prints information snapshots
                 if update_freq and not self.n % update_freq:
-                    self.pbar.write('Current best guess:')
-                    self.pbar.write(row_format.format("", *priors))
-                    self.pbar.write(row_format.format("", *[round(m_val, 3) for m_val in self.x_max]))
+                    ## getting the number of colums isn't that easy
+                    with os.popen('stty size', 'r') as rows_cols:
+                        cols            = rows_cols.read().split()[1]
+                        self.pbar.write('Current best guess:')
+                        ## split the info such that it is readable
+                        lnum            = (len(priors)*8)//(int(cols)-8) + 1
+                        priors_chunks   = np.array_split(np.array(prior_names), lnum)
+                        vals_chunks     = np.array_split([round(m_val, 3) for m_val in self.x_max], lnum)
+                        for pchunk, vchunk in zip(priors_chunks, vals_chunks):
+                            row_format ="{:>8}" * (len(pchunk) + 1)
+                            self.pbar.write(row_format.format("", *pchunk))
+                            self.pbar.write(row_format.format("", *vchunk))
+                            self.pbar.write('')
                     self.pbar.write('')
+
                 difft   = time.time() - self.st
                 if difft < 0.5:
                     self.update_ival *= 2
                 if difft > 1 and self.update_ival > 1:
                     self.update_ival /= 2
+
                 self.pbar.set_description('ll: '+str(-self.res.round(5)).rjust(12, ' ')+' ['+str(-self.res_max.round(5))+']')
                 self.st  = time.time()
                 self.timer  = 0
@@ -250,9 +265,17 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
         np.warnings.filterwarnings('default')
         init_par    = result
 
-    print('Initial values:')
-    print(row_format.format("", *priors))
-    print(row_format.format("", *[round(m_val, 3) for m_val in init_par]))
+    with os.popen('stty size', 'r') as rows_cols:
+        cols            = rows_cols.read().split()[1]
+        lnum            = (len(priors)*8)//(int(cols)-8) + 1
+        priors_chunks   = np.array_split(np.array(prior_names), lnum)
+        vals_chunks     = np.array_split([round(m_val, 3) for m_val in init_par], lnum)
+        for pchunk, vchunk in zip(priors_chunks, vals_chunks):
+            row_format ="{:>8}" * (len(pchunk) + 1)
+            print(row_format.format("", *pchunk))
+            print(row_format.format("", *vchunk))
+            print()
+
     print()
 
     pos             = [init_par*(1+1e-3*np.random.randn(ndim)) for i in range(nwalkers)]
@@ -263,7 +286,7 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
     sampler.posteriorplot   = lambda **args: posteriorplot(sampler.chain, varnames=priors, tune=tune, **args)
 
     sampler.prior_dist  = priors_lst
-    sampler.prior_names = [ pp for pp in priors.keys() ]
+    sampler.prior_names = prior_names
     sampler.tune        = tune
     par_mean            = par_fix
     par_mean[prior_arg] = mc_mean(sampler.chain[:,tune:], varnames=priors)
