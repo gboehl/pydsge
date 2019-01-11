@@ -59,7 +59,7 @@ def get_ll(self, info=False):
     self.ll     = ll
 
     if info == 1:
-        print('Filtering ll done in '+str(np.round(time.time()-st,3))+'seconds.')
+        print('get_ll: Filtering done in '+str(np.round(time.time()-st,3))+'seconds.')
 
     return self.ll
 
@@ -75,7 +75,7 @@ def run_filter(self, use_rts=True, info=False):
         X1, cov     = self.enkf.rts_smoother(X1, cov)
 
     if info == 1:
-        print('Filtering done in '+str(np.round(time.time()-st,3))+'seconds.')
+        print('run_filter: Filtering done in '+str(np.round(time.time()-st,3))+'seconds.')
 
     self.filtered_X      = X1
     self.filtered_cov    = cov
@@ -83,7 +83,7 @@ def run_filter(self, use_rts=True, info=False):
     return X1, cov
 
 
-def extract(self, pmean = None, cov = None, method = None, converged_only = False, info = True):
+def extract(self, pmean = None, cov = None, method = None, converged_only = False, return_flag = False, info = True):
 
     if pmean is None:
         pmean   = self.filtered_X
@@ -91,8 +91,11 @@ def extract(self, pmean = None, cov = None, method = None, converged_only = Fals
     if cov is None:
         cov = self.filtered_cov
 
-    means, cov, res     = self.enkf.ipa(pmean, cov, method, converged_only, info)
+    means, cov, res, flag   = self.enkf.ipa(pmean, cov, method, converged_only, show_warnings = False, return_flag = True, info = info)
 
     self.res            = res
+
+    if return_flag:
+        return means, cov, res, flag
 
     return means, cov, res

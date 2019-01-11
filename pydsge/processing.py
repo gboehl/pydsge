@@ -165,7 +165,7 @@ def posterior_sample(self, be_res = None, seed = 0):
     return list(randpar)
 
 
-def epstract(self, be_res = None, nr_samples = 1000, save = None, ncores = None, method = None, converged_only = True, info = False):
+def epstract(self, be_res = None, nr_samples = 1000, save = None, ncores = None, method = None, converged_only = True, max_att = 3, info = False):
 
     EPS     = []
     X0      = []
@@ -207,21 +207,29 @@ def epstract(self, be_res = None, nr_samples = 1000, save = None, ncores = None,
     if ncores is None:
         ncores    = pathos.multiprocessing.cpu_count()
 
-    yet         = len(EPS)
+    yet         = 0
+    if len(EPS):    yet = len(EPS)
     nr_samples  = nr_samples - yet
 
     def runner(nr, innovations_mask):
+        
+        flag    = True
 
-        par     = self.posterior_sample(be_res = be_res, seed = yet+nr)
+        for att in range(max_att):
 
-        self.get_sys(par, info=False)                      # define parameters
-        self.preprocess(info=False)                   # preprocess matrices for speedup
+            par     = self.posterior_sample(be_res = be_res, seed = yet + nr + att*nr_samples)
 
-        self.create_filter()
-        X, cov      = self.run_filter()
-        eps         = self.extract(method = method, info = info, converged_only = converged_only)[2]
+            self.get_sys(par, info=False)                      # define parameters
+            self.preprocess(info=False)                   # preprocess matrices for speedup
 
-        return eps, X[0], par
+            self.create_filter()
+            X, cov      = self.run_filter()
+            eps, flag   = self.extract(method = method, info = info, converged_only = converged_only, return_flag = True)[2:]
+
+            if not flag:
+                return eps, X[0], par
+
+        raise ValueError('epstract: Could not extract shock after %s attemps.' %max_att)
 
     global runner_glob
     runner_glob    = runner
