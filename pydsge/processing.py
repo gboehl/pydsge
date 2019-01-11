@@ -132,7 +132,7 @@ def runner_pooled(nr_samples, ncores, innovations_mask):
 
     pool    = pathos.pools.ProcessPool(ncores)
 
-    res     = list(tqdm(pool.uimap(runner_loc, range(nr_samples)), unit=' draw(s)', total=nr_samples, dynamic_ncols=True))
+    res     = list(tqdm(pool.uimap(runner_loc, range(nr_samples)), unit=' sample(s)', total=nr_samples, dynamic_ncols=True))
 
     pool.close()
     pool.join()
