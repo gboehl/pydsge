@@ -167,8 +167,9 @@ def posterior_sample(self, be_res = None, seed = 0):
 
 def epstract(self, be_res = None, nr_samples = 1000, save = None, ncores = None, method = None, converged_only = True, info = False):
 
-    PAR     = []
     EPS     = []
+    X0      = []
+    PAR     = []
 
     if save is not None:
 
@@ -178,21 +179,27 @@ def epstract(self, be_res = None, nr_samples = 1000, save = None, ncores = None,
 
             files   = np.load(save)
             EPS     = files['EPS']
+            X0      = files['X0']
             PAR     = files['PAR']
             COV     = files['COV']
+            smethod = files['method']
 
-            if np.all(COV == self.obs_cov):
+            c0  = method == smethod 
+            c1  = method is None and smethod == -1
+
+            if np.all(COV == self.obs_cov) and (c0 or c1):
                 if EPS.shape[0] >= nr_samples:
                     print('epstract: Epstract already exists')
 
-                    self.epstracted     = EPS, PAR, self.obs_cov
+                    self.epstracted     = EPS, X0, PAR, self.obs_cov, method
 
-                    return EPS, PAR
+                    return EPS, X0, PAR
 
                 else:
                     print('Appending to existing epstract...')
 
                     EPS     = list(EPS)
+                    X0      = list(X0)
                     PAR     = list(PAR)
 
     import pathos
@@ -200,9 +207,12 @@ def epstract(self, be_res = None, nr_samples = 1000, save = None, ncores = None,
     if ncores is None:
         ncores    = pathos.multiprocessing.cpu_count()
 
+    yet         = len(EPS)
+    nr_samples  = nr_samples - yet
+
     def runner(nr, innovations_mask):
 
-        par     = self.posterior_sample(be_res = be_res, seed = nr)
+        par     = self.posterior_sample(be_res = be_res, seed = yet+nr)
 
         self.get_sys(par, info=False)                      # define parameters
         self.preprocess(info=False)                   # preprocess matrices for speedup
@@ -211,36 +221,40 @@ def epstract(self, be_res = None, nr_samples = 1000, save = None, ncores = None,
         X, cov      = self.run_filter()
         eps         = self.extract(method = method, info = info, converged_only = converged_only)[2]
 
-        return eps, par
+        return eps, X[0], par
 
     global runner_glob
     runner_glob    = runner
-
-    nr_samples  = nr_samples - len(EPS)
 
     res     = runner_pooled(nr_samples, ncores, None)
 
     no_obs, dim_z   = self.Z.shape
     dim_e           = len(self.shocks)
 
-
     for p in res:
-
-        EPS.append(p[0])
-        PAR.append(p[1])
+        EPS .append(p[0])
+        X0  .append(p[1])
+        PAR .append(p[2])
 
     EPS     = np.array(EPS)
+    X0      = np.array(X0, dtype=object)
     PAR     = np.array(PAR)
 
     if save is not None:
+        smethod     = method
+        if method is None:
+            smethod     = -1
         np.savez(save,
                  EPS    = EPS,
+                 X0     = X0,
                  PAR    = PAR,
-                 COV    = self.obs_cov)
+                 COV    = self.obs_cov,
+                 method = smethod
+                )
 
-    self.epstracted     = EPS, PAR, self.obs_cov
+    self.epstracted     = EPS, X0, PAR, self.obs_cov, method
 
-    return EPS, PAR
+    return EPS, X0, PAR
 
 
 def sampled_sim(self, innovations_mask = None, nr_samples = None, epstracted = None, ncores = None, show_warnings = False, info = False):
@@ -248,12 +262,12 @@ def sampled_sim(self, innovations_mask = None, nr_samples = None, epstracted = N
     import pathos
 
     if epstracted is None:
-        epstracted = self.epstracted
+        epstracted  = self.epstracted[:3]
 
     if ncores is None:
-        ncores    = pathos.multiprocessing.cpu_count()
+        ncores  = pathos.multiprocessing.cpu_count()
 
-    EPS, PAR, obs_cov   = epstracted     
+    EPS, X0, PAR    = epstracted     
 
     if nr_samples is None:
         nr_samples  = EPS.shape[0]
@@ -261,24 +275,17 @@ def sampled_sim(self, innovations_mask = None, nr_samples = None, epstracted = N
     def runner(nr, innovations_mask):
 
         par     = list(PAR[nr])
+        eps     = EPS[nr]
+        x0      = X0[nr]
         
         self.get_sys(par, info=False)                      # define parameters
         self.preprocess(info=False)                   # preprocess matrices for speedup
 
-        # eps     = EPS[nr]
-        # eps2     = EPS[nr]
-        self.create_filter()
-        # X, cov      = self.run_filter(use_rts=False) ## geht nich!
-
-        X, cov, ll     = self.enkf.batch_filter(self.Z, store=True)
-        # self.run_filter()
-        # eps         = self.extract(method = None, info = False, converged_only = True)[2]
-        eps     = EPS[nr]
 
         if innovations_mask is not None:
             eps     = np.where(np.isnan(innovations_mask), eps, innovations_mask)
 
-        SZ, SX, SK  = self.simulate(eps, show_warnings = show_warnings)
+        SZ, SX, SK  = self.simulate(eps, initial_state = x0, show_warnings = show_warnings)
 
         return SZ, SX, SK, self.vv
 
