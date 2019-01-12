@@ -36,7 +36,7 @@ class modloader(object):
         if 'vv' in self.files:
             self.vv     = self.files['vv']
 
-        print("Results imported. Number of burn-in periods is %s out of %s" %(self.tune, self.ndraws))
+        print("modloader: Results imported. Number of burn-in periods is %s out of %s" %(self.tune, self.ndraws))
     
     def masker(self):
         iss     = np.zeros(len(self.prior_names), dtype=bool)
@@ -126,7 +126,7 @@ def save_res(self, filename, description = None):
              tune           = self.sampler.tune, 
              modelpath      = self['filename'],
              means          = self.sampler.par_means)
-    print('Results saved in ', filename)
+    print('save_res: Results saved in ', filename)
             
 
 def runner_pooled(nr_samples, ncores, innovations_mask):
@@ -173,7 +173,7 @@ def posterior_sample(self, be_res = None, seed = 0):
     return list(randpar)
 
 
-def epstract(self, be_res = None, nr_samples = 1000, save = None, ncores = None, method = None, converged_only = True, max_att = 3, info = False):
+def epstract(self, be_res = None, nr_samples = 1000, save = None, ncores = None, method = None, converged_only = True, max_att = 3, verbose = False):
 
     EPS     = []
     X0      = []
@@ -204,7 +204,7 @@ def epstract(self, be_res = None, nr_samples = 1000, save = None, ncores = None,
                     return EPS, X0, PAR
 
                 else:
-                    print('Appending to existing epstract...')
+                    print('epstract: Appending to existing epstract...')
 
                     EPS     = list(EPS)
                     X0      = list(X0)
@@ -227,12 +227,12 @@ def epstract(self, be_res = None, nr_samples = 1000, save = None, ncores = None,
 
             par     = self.posterior_sample(be_res = be_res, seed = yet + nr + att*nr_samples)
 
-            self.get_sys(par, info=False)                      # define parameters
-            self.preprocess(info=False)                   # preprocess matrices for speedup
+            self.get_sys(par, verbose=False)                      # define parameters
+            self.preprocess(verbose=False)                   # preprocess matrices for speedup
 
             self.create_filter()
             X, cov      = self.run_filter()
-            eps, flag   = self.extract(method = method, info = info, converged_only = converged_only, return_flag = True)[2:]
+            eps, flag   = self.extract(method = method, verbose = verbose, converged_only = converged_only, return_flag = True)[2:]
 
             if not flag:
                 return eps, X[0], par
@@ -273,7 +273,7 @@ def epstract(self, be_res = None, nr_samples = 1000, save = None, ncores = None,
     return EPS, X0, PAR
 
 
-def sampled_sim(self, innovations_mask = None, nr_samples = None, epstracted = None, ncores = None, show_warnings = False, info = False):
+def sampled_sim(self, innovations_mask = None, nr_samples = None, epstracted = None, ncores = None, show_warnings = False, verbose = False):
 
     import pathos
 
@@ -297,14 +297,13 @@ def sampled_sim(self, innovations_mask = None, nr_samples = None, epstracted = N
         eps     = EPS[nr]
         x0      = X0[nr]
         
-        self.get_sys(par, info=False)                      # define parameters
-        self.preprocess(info=False)                   # preprocess matrices for speedup
-
+        self.get_sys(par, verbose = verbose)
+        self.preprocess(verbose = verbose)
 
         if innovations_mask is not None:
             eps     = np.where(np.isnan(innovations_mask), eps, innovations_mask)
 
-        SZ, SX, SK  = self.simulate(eps, initial_state = x0, show_warnings = show_warnings)
+        SZ, SX, SK  = self.simulate(eps, initial_state = x0, show_warnings = show_warnings, verbose = verbose)
 
         return SZ, SX, SK, self.vv
 
@@ -349,8 +348,8 @@ def sampled_irfs(self, be_res, shocklist, wannasee, nr_samples = 1000, ncores = 
 
     ## dry run
     par     = be_res.means()
-    self.get_sys(par, 'all', info=False)                      # define parameters
-    self.preprocess(info=False)                   # preprocess matrices for speedup
+    self.get_sys(par, 'all', verbose=False)                      # define parameters
+    self.preprocess(verbose=False)                   # preprocess matrices for speedup
 
     Xlabels = self.irfs(shocklist, wannasee)[1]
 
@@ -358,8 +357,8 @@ def sampled_irfs(self, be_res, shocklist, wannasee, nr_samples = 1000, ncores = 
 
         par     = self.posterior_sample(be_res = be_res, seed = nr)
 
-        self.get_sys(par, 'all', info=False)                      # define parameters
-        self.preprocess(info=False)                   # preprocess matrices for speedup
+        self.get_sys(par, 'all', verbose=False)                      # define parameters
+        self.preprocess(verbose=False)                   # preprocess matrices for speedup
 
         xs, _, (ys, ks, ls)   = self.irfs(shocklist, wannasee, show_warnings = show_warnings)
 

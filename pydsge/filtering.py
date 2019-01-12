@@ -49,32 +49,32 @@ def create_filter(self, P = None, R = None, N = None):
     self.enkf    = enkf
 
 
-def get_ll(self, info=False):
+def get_ll(self, verbose=False):
 
-    if info == 1:
+    if verbose == 1:
         st  = time.time()
 
-    ll     = self.enkf.batch_filter(self.Z, calc_ll = True, info=info)[2]
+    ll     = self.enkf.batch_filter(self.Z, calc_ll = True, verbose=verbose)[2]
 
     self.ll     = ll
 
-    if info == 1:
+    if verbose == 1:
         print('get_ll: Filtering done in '+str(np.round(time.time()-st,3))+'seconds.')
 
     return self.ll
 
 
-def run_filter(self, use_rts=True, info=False):
+def run_filter(self, use_rts=True, verbose=False):
 
-    if info == 1:
+    if verbose == 1:
         st  = time.time()
 
-    X1, cov, ll     = self.enkf.batch_filter(self.Z, store=use_rts, info=info)
+    X1, cov, ll     = self.enkf.batch_filter(self.Z, store=use_rts, verbose=verbose)
 
     if use_rts:
         X1, cov     = self.enkf.rts_smoother(X1, cov)
 
-    if info == 1:
+    if verbose == 1:
         print('run_filter: Filtering done in '+str(np.round(time.time()-st,3))+'seconds.')
 
     self.filtered_X      = X1
@@ -83,7 +83,7 @@ def run_filter(self, use_rts=True, info=False):
     return X1, cov
 
 
-def extract(self, pmean = None, cov = None, method = None, converged_only = False, return_flag = False, info = True):
+def extract(self, pmean = None, cov = None, method = None, converged_only = False, return_flag = False, verbose = True):
 
     if pmean is None:
         pmean   = self.filtered_X
@@ -91,7 +91,7 @@ def extract(self, pmean = None, cov = None, method = None, converged_only = Fals
     if cov is None:
         cov = self.filtered_cov
 
-    means, cov, res, flag   = self.enkf.ipa(pmean, cov, method, converged_only, show_warnings = False, return_flag = True, info = info)
+    means, cov, res, flag   = self.enkf.ipa(pmean, cov, method, converged_only, show_warnings = False, return_flag = True, verbose = verbose)
 
     self.res            = res
 

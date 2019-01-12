@@ -7,7 +7,7 @@ import time
 import emcee
 from .stats import InvGamma, summary, mc_mean
 
-def wrap_sampler(p0, nwalkers, ndim, ndraws, priors, ncores, update_freq, description, info):
+def wrap_sampler(p0, nwalkers, ndim, ndraws, priors, ncores, update_freq, description, verbose):
     ## very very dirty hack 
 
     import tqdm
@@ -24,7 +24,7 @@ def wrap_sampler(p0, nwalkers, ndim, ndraws, priors, ncores, update_freq, descri
 
     sampler = emcee.EnsembleSampler(nwalkers, ndim, lprob_local, pool = loc_pool)
 
-    if not info: np.warnings.filterwarnings('ignore')
+    if not verbose: np.warnings.filterwarnings('ignore')
 
     pbar    = tqdm.tqdm(total=ndraws, unit='sample(s)', dynamic_ncols=True)
 
@@ -43,14 +43,14 @@ def wrap_sampler(p0, nwalkers, ndim, ndraws, priors, ncores, update_freq, descri
     loc_pool.join()
     loc_pool.clear()
 
-    if not info: np.warnings.filterwarnings('default')
+    if not verbose: np.warnings.filterwarnings('default')
 
     pbar.close()
 
     return sampler
 
 
-def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune = None, ncores = None, nwalkers = 100, maxfev = 2500, update_freq = None, info = False):
+def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune = None, ncores = None, nwalkers = 100, maxfev = 2500, update_freq = None, verbose = False):
 
     import pathos
     import scipy.stats as ss
@@ -72,13 +72,13 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
     if hasattr(self, 'description'):
         description     = self.description
 
-    self.preprocess(info=info)
+    self.preprocess(verbose=verbose)
 
     ## dry run before the fun beginns
     self.create_filter(P = P, R = R, N = N)
-    self.get_ll()
+    self.get_ll(verbose = verbose)
     print()
-    print("Model operational. Ready for estimation.")
+    print("bayesian_estimation: Model operational. Ready for estimation.")
     print()
 
     par_fix     = np.array(self.par).copy()
@@ -96,7 +96,7 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
 
     ndim        = len(priors.keys())
 
-    print('Starting to add parameters to the prior distribution:')
+    print('bayesian_estimation: Adding parameters to the prior distribution:')
 
     priors_lst     = []
     for pp in priors:
@@ -121,12 +121,12 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
             priors_lst.append( ss.beta(a=1, b=1) )
         else:
             raise ValueError(' Distribution *not* implemented: ', str(dist[0]))
-        print('     Adding parameter %s as %s with mean %s and std %s...' %(pp, dist[0], pmean, pstdd))
+        print('     parameter %s as %s with mean %s and std %s...' %(pp, dist[0], pmean, pstdd))
 
 
     def llike(parameters):
 
-        if info == 2:
+        if verbose == 2:
             st  = time.time()
 
         with warnings.catch_warnings(record=True):
@@ -136,24 +136,24 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
                 par_fix[prior_arg]  = parameters
                 par_active_lst  = list(par_fix)
 
-                self.get_sys(par_active_lst)
-                self.preprocess(info=info)
+                self.get_sys(par_active_lst, verbose=verbose)
+                self.preprocess(verbose=verbose)
 
                 self.create_filter(P = P, R = R, N = N)
 
                 self.enkf.P  *= 1e1
 
-                ll  = self.get_ll()
+                ll  = self.get_ll(verbose=verbose)
 
-                if info == 2:
-                    print('Sample took '+str(np.round(time.time() - st))+'s.')
+                if verbose == 2:
+                    print('bayesian_estimation -> llike: Sample took '+str(np.round(time.time() - st))+'s.')
 
                 return ll
 
             except:
 
-                if info == 2:
-                    print('Sample took '+str(np.round(time.time() - st))+'s. (failure)')
+                if verbose == 2:
+                    print('bayesian_estimation -> llike: Sample took '+str(np.round(time.time() - st))+'s. (failure)')
 
                 return -np.inf
 
@@ -171,10 +171,10 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
     lprob_global    = lprob
     prior_names     = [ pp for pp in priors.keys() ]
 
-    class func_wrap(object):
+    class pmdm(object):
         ## thats a wrapper to have a progress par in the posterior maximization
         
-        name = 'func_wrap'
+        name = 'pmdm'
 
         def __init__(self, init_par):
 
@@ -246,15 +246,15 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
                 self.pbar.close()
                 print('')
                 if self.res_max < res['fun']:
-                    print(res['message'], 'Maximization returned value lower than actual (known) optimum ('+str(-self.res_max)+' > '+str(-self.res)+').')
+                    print('pmdm:', res['message'], 'Maximization returned value lower than actual (known) optimum ('+str(-self.res_max)+' > '+str(-self.res)+').')
                 else:
-                    print(res['message'], 'Log-likelihood is '+str(np.round(-res['fun'],5))+'.')
+                    print('pmdm:', res['message'], 'Log-likelihood is '+str(np.round(-res['fun'],5))+'.')
                 print('')
 
             except (KeyboardInterrupt, StopIteration) as e:
                 self.pbar.close()
                 print('')
-                print('Maximum number of function calls exceeded, exiting. Log-likelihood is '+str(np.round(-self.res_max,5))+'...')
+                print('pmdm: Maximum number of function calls exceeded, exiting. Log-likelihood is '+str(np.round(-self.res_max,5))+'...')
                 print('')
 
             return self.x_max
@@ -262,19 +262,19 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
     if maxfev:
 
         print()
-        if not info:
+        if not verbose:
             np.warnings.filterwarnings('ignore')
-            print('Maximizing posterior mode density (meanwhile warnings are disabled):')
+            print('pmdm: Maximizing posterior mode density (meanwhile warnings are disabled):')
         else:
-            print('Maximizing posterior mode density:')
+            print('pmdm: Maximizing posterior mode density:')
         print()
 
-        result      = func_wrap(init_par).go()
+        result      = pmdm(init_par).go()
         np.warnings.filterwarnings('default')
         init_par    = result
 
     print()
-    print('Inital values for MCMC:')
+    print('bayesian_estimation: Inital values for MCMC:')
     with os.popen('stty size', 'r') as rows_cols:
         cols            = rows_cols.read().split()[1]
         lnum            = (len(priors)*8)//(int(cols)-8) + 1
@@ -289,7 +289,7 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
     print()
 
     pos             = [init_par*(1+1e-3*np.random.randn(ndim)) for i in range(nwalkers)]
-    sampler         = wrap_sampler(pos, nwalkers, ndim, ndraws, priors, ncores, update_freq, description, info)
+    sampler         = wrap_sampler(pos, nwalkers, ndim, ndraws, priors, ncores, update_freq, description, verbose)
 
     sampler.summary     = lambda: summary(sampler.chain[:,tune:,:], priors)
     sampler.traceplot   = lambda **args: traceplot(sampler.chain, varnames=priors, tune=tune, priors=priors_lst, **args)

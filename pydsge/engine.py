@@ -13,20 +13,20 @@ import time
 from .parser import DSGE as dsge
 from numba import njit
 
-@njit(cache=True)
+@njit(nogil=True, cache=True)
 def geom_series(M, n):
     res  = np.zeros(M.shape)
     for i in range(n):
         gs_add(res,nl.matrix_power(M,i))
     return res
 
-@njit(cache=True)
+@njit(nogil=True, cache=True)
 def gs_add(A, B):
 	for i in range(len(A)):
 		for j in range(len(A)):
 			A[i][j] += B[i][j]
 
-@njit(cache=True)
+@njit(nogil=True, cache=True)
 def preprocess_jit(vals, l_max, k_max):
 
     N, A, J, cx, b, x_bar   = vals
@@ -53,14 +53,14 @@ def preprocess_jit(vals, l_max, k_max):
     return mat, term
 
 
-def preprocess(self, l_max = 4, k_max = 20, info = False):
+def preprocess(self, l_max = 4, k_max = 20, verbose = False):
     st  = time.time()
     self.precalc_mat    = preprocess_jit(self.sys, l_max, k_max)
-    if info == 1: 
-        print('Preproceccing finished within %s s.' % np.round((time.time() - st), 3))
+    if verbose == 1: 
+        print('preprocess: preproceccing finished within %s s.' % np.round((time.time() - st), 3))
 
 
-@njit(cache=True)
+@njit(nogil=True, cache=True)
 def create_core(vals, a, b):
 
     N, A, J, cx     = vals
@@ -80,7 +80,7 @@ def create_core(vals, a, b):
     return matrices, term
 
 
-@njit(cache=True)
+@njit(nogil=True, cache=True)
 def create_finish(vals, l, k, s, core_mat, core_term):
 
     N, A, J, cx     = vals
@@ -105,13 +105,13 @@ def create_finish(vals, l, k, s, core_mat, core_term):
     return fin_mat, fin_term
 
 
-@njit(cache=True)
+@njit(nogil=True, cache=True)
 def LL_jit(l, k, s, v, mat, term):
 
     return mat[l, k, s] @ v + term[l, k, s]
 
 
-@njit(cache=True)
+@njit(nogil=True, cache=True)
 def boehlgorithm_jit(N, A, J, cx, b, x_bar, v, mat, term, max_cnt):
 
     dim_x, dim_y    = J.shape
@@ -173,7 +173,7 @@ def boehlgorithm(self, v, max_cnt = 5e1, linear = False):
     if not linear:
 
         if not hasattr(self, 'precalc_mat'):
-            self.preprocess(self, l_max = 4, k_max = 20, info = False)
+            self.preprocess(self, l_max = 4, k_max = 20, verbose = False)
 
         ## numba does not like tuples of numpy arrays
         mat, term                   = self.precalc_mat
@@ -184,7 +184,7 @@ def boehlgorithm(self, v, max_cnt = 5e1, linear = False):
     else:
 
         if not hasattr(self, 'precalc_mat'):
-            self.preprocess(self, l_max = 1, k_max = 1, info = False)
+            self.preprocess(self, l_max = 1, k_max = 1, verbose = False)
 
         mat, term       = self.precalc_mat
         dim_x           = self.sys[2].shape[0]

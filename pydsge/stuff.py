@@ -10,7 +10,7 @@ import time
 from grgrlib import *
 from .engine import boehlgorithm
 
-def get_sys(self, par=None, care_for = [], info = False):
+def get_sys(self, par=None, care_for = [], verbose = False):
 
     self.get_matrices()
 
@@ -111,8 +111,8 @@ def get_sys(self, par=None, care_for = [], info = False):
     cc2  = cx[dim_x:]
     bb1  = b2[:dim_x]
 
-    if info == 1:
-        print('Creation of system matrices finished in %ss.'
+    if verbose == 1:
+        print('get_sys: Creation of system matrices finished in %ss.'
               % np.round(time.time() - st,3))
 
     out_msk     = fast0(N, 0) & fast0(A, 0) & fast0(b2) & fast0(cx)
@@ -213,7 +213,7 @@ def irfs(self, shocklist, wannasee = None, show_warnings = True):
     return X, labels, (Y, K, L)
 
 
-def simulate(self, EPS = None, initial_state = None, info = False, show_warnings = True):
+def simulate(self, EPS = None, initial_state = None, verbose = False, show_warnings = True):
     """
         EPS: shock innovations of shape (T, n_eps)
     """
@@ -234,7 +234,7 @@ def simulate(self, EPS = None, initial_state = None, info = False, show_warnings
     L   = [0]
     superflag   = False
 
-    if info:
+    if verbose:
         st  = time.time()
 
     for eps in EPS:
@@ -258,8 +258,8 @@ def simulate(self, EPS = None, initial_state = None, info = False, show_warnings
     self.simulated_X    = X
     self.simulated_Z    = Z
 
-    if info:
-        print('Simulation took ', time.time() - st, ' seconds.')
+    if verbose:
+        print('simulate: Simulation took ', time.time() - st, ' seconds.')
 
     if superflag and show_warnings:
         warnings.warn('Numerical errors in boehlgorithm during simulation, did not converge')
