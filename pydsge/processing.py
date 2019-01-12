@@ -283,7 +283,10 @@ def sampled_sim(self, innovations_mask = None, nr_samples = None, epstracted = N
     if ncores is None:
         ncores  = pathos.multiprocessing.cpu_count()
 
-    EPS, X0, PAR    = epstracted     
+    EPS, X0, PAR  = epstracted     
+
+    ## X0 had to be saved as an object array. pathos can't deal with that
+    X0  = [x.astype(float) for x in X0 ]
 
     if nr_samples is None:
         nr_samples  = EPS.shape[0]
