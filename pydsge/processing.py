@@ -303,7 +303,10 @@ def sampled_sim(self, innovations_mask = None, nr_samples = None, epstracted = N
         if innovations_mask is not None:
             eps     = np.where(np.isnan(innovations_mask), eps, innovations_mask)
 
-        SZ, SX, SK  = self.simulate(eps, initial_state = x0, show_warnings = show_warnings, verbose = verbose)
+        SZ, SX, SK, flag    = self.simulate(eps, initial_state = x0, show_warnings = show_warnings, verbose = verbose, return_flag = True)
+
+        if flag:
+            return None, None, None, None
 
         return SZ, SX, SK, self.vv
 
