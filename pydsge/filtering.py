@@ -8,7 +8,6 @@ import pydsge
 # from econsieve import ScaledSigmaPoints as SSP
 from econsieve import EnKF
 from econsieve.stats import logpdf
-from scipy.optimize import minimize as so_minimize
 
 def create_obs_cov(self, scale_obs = 0.1):
 
