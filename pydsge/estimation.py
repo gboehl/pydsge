@@ -77,8 +77,9 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
     ## dry run before the fun beginns
     self.create_filter(P = P, R = R, N = N)
     self.get_ll(verbose = verbose)
+
     print()
-    print("bayesian_estimation: Model operational. Ready for estimation.")
+    print("[bayesian_estimation:] Model operational. Ready for estimation.")
     print()
 
     par_fix     = np.array(self.par).copy()
@@ -96,7 +97,7 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
 
     ndim        = len(priors.keys())
 
-    print('bayesian_estimation: Adding parameters to the prior distribution:')
+    print('[bayesian_estimation:] Adding parameters to the prior distribution:')
 
     priors_lst     = []
     for pp in priors:
@@ -106,7 +107,7 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
 
         ## simply make use of frozen distributions
         if str(dist[0]) == 'uniform':
-            priors_lst.append( ss.uniform(loc=pmean, scale=pmean+pstdd) )
+            priors_lst.append( ss.uniform(loc=pmean, scale=pstdd-pmean) )
         elif str(dist[0]) == 'inv_gamma':
             priors_lst.append( InvGamma(a=pmean, b=pstdd) )
         elif str(dist[0]) == 'normal':
@@ -146,14 +147,14 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
                 ll  = self.get_ll(verbose=verbose)
 
                 if verbose == 2:
-                    print('bayesian_estimation -> llike: Sample took '+str(np.round(time.time() - st))+'s.')
+                    print('[bayesian_estimation -> llike:] Sample took '+str(np.round(time.time() - st))+'s.')
 
                 return ll
 
             except:
 
                 if verbose == 2:
-                    print('bayesian_estimation -> llike: Sample took '+str(np.round(time.time() - st))+'s. (failure)')
+                    print('[bayesian_estimation -> llike:] Sample took '+str(np.round(time.time() - st))+'s. (failure)')
 
                 return -np.inf
 
@@ -208,7 +209,7 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
                     ## getting the number of colums isn't that easy
                     with os.popen('stty size', 'r') as rows_cols:
                         cols            = rows_cols.read().split()[1]
-                        self.pbar.write('Current best guess:')
+                        self.pbar.write('[bayesian_estimation -> pmdm:] Current best guess:')
                         ## split the info such that it is readable
                         lnum            = (len(priors)*8)//(int(cols)-8) + 1
                         priors_chunks   = np.array_split(np.array(prior_names), lnum)
@@ -246,15 +247,15 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
                 self.pbar.close()
                 print('')
                 if self.res_max < res['fun']:
-                    print('pmdm:', res['message'], 'Maximization returned value lower than actual (known) optimum ('+str(-self.res_max)+' > '+str(-self.res)+').')
+                    print('[bayesian_estimation -> pmdm:]', res['message'], 'Maximization returned value lower than actual (known) optimum ('+str(-self.res_max)+' > '+str(-self.res)+').')
                 else:
-                    print('pmdm:', res['message'], 'Log-likelihood is '+str(np.round(-res['fun'],5))+'.')
+                    print('[bayesian_estimation -> pmdm:]', res['message'], 'Log-likelihood is '+str(np.round(-res['fun'],5))+'.')
                 print('')
 
             except (KeyboardInterrupt, StopIteration) as e:
                 self.pbar.close()
                 print('')
-                print('pmdm: Maximum number of function calls exceeded, exiting. Log-likelihood is '+str(np.round(-self.res_max,5))+'...')
+                print('[bayesian_estimation -> pmdm:] Maximum number of function calls exceeded, exiting. Log-likelihood is '+str(np.round(-self.res_max,5))+'...')
                 print('')
 
             return self.x_max
@@ -264,9 +265,9 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
         print()
         if not verbose:
             np.warnings.filterwarnings('ignore')
-            print('pmdm: Maximizing posterior mode density (meanwhile warnings are disabled):')
+            print('[bayesian_estimation -> pmdm:] Maximizing posterior mode density (meanwhile warnings are disabled):')
         else:
-            print('pmdm: Maximizing posterior mode density:')
+            print('[bayesian_estimation -> pmdm:] Maximizing posterior mode density:')
         print()
 
         result      = pmdm(init_par).go()
@@ -274,7 +275,7 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
         init_par    = result
 
     print()
-    print('bayesian_estimation: Inital values for MCMC:')
+    print('[bayesian_estimation:] Inital values for MCMC:')
     with os.popen('stty size', 'r') as rows_cols:
         cols            = rows_cols.read().split()[1]
         lnum            = (len(priors)*8)//(int(cols)-8) + 1

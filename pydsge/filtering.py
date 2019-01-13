@@ -59,7 +59,7 @@ def get_ll(self, verbose=False):
     self.ll     = ll
 
     if verbose == 1:
-        print('get_ll: Filtering done in '+str(np.round(time.time()-st,3))+'seconds.')
+        print('[get_ll:] Filtering done in '+str(np.round(time.time()-st,3))+'seconds.')
 
     return self.ll
 
@@ -75,7 +75,7 @@ def run_filter(self, use_rts=True, verbose=False):
         X1, cov     = self.enkf.rts_smoother(X1, cov)
 
     if verbose == 1:
-        print('run_filter: Filtering done in '+str(np.round(time.time()-st,3))+'seconds.')
+        print('[run_filter:] Filtering done in '+str(np.round(time.time()-st,3))+'seconds.')
 
     self.filtered_X      = X1
     self.filtered_cov    = cov
@@ -91,7 +91,7 @@ def extract(self, pmean = None, cov = None, method = None, converged_only = Fals
     if cov is None:
         cov = self.filtered_cov
 
-    means, cov, res, flag   = self.enkf.ipa(pmean, cov, method, converged_only, show_warnings = False, return_flag = True, verbose = verbose)
+    means, cov, res, flag   = self.enkf.ipas(pmean, cov, method, converged_only, show_warnings = False, return_flag = True, verbose = verbose)
 
     self.res            = res
 

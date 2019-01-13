@@ -36,7 +36,7 @@ class modloader(object):
         if 'vv' in self.files:
             self.vv     = self.files['vv']
 
-        print("modloader: Results imported. Number of burn-in periods is %s out of %s" %(self.tune, self.ndraws))
+        print("[modloader:] Results imported. Number of burn-in periods is %s out of %s" %(self.tune, self.ndraws))
     
     def masker(self):
         iss     = np.zeros(len(self.prior_names), dtype=bool)
@@ -126,7 +126,7 @@ def save_res(self, filename, description = None):
              tune           = self.sampler.tune, 
              modelpath      = self['filename'],
              means          = self.sampler.par_means)
-    print('save_res: Results saved in ', filename)
+    print('[save_res:] Results saved in ', filename)
             
 
 def runner_pooled(nr_samples, ncores, innovations_mask):
@@ -197,14 +197,14 @@ def epstract(self, be_res = None, nr_samples = 1000, save = None, ncores = None,
 
             if np.all(COV == self.obs_cov) and (c0 or c1):
                 if EPS.shape[0] >= nr_samples:
-                    print('epstract: Epstract already exists')
+                    print('[epstract:] Epstract already exists')
 
                     self.epstracted     = EPS, X0, PAR, self.obs_cov, method
 
                     return EPS, X0, PAR
 
                 else:
-                    print('epstract: Appending to existing epstract...')
+                    print('[epstract:] Appending to existing epstract...')
 
                     EPS     = list(EPS)
                     X0      = list(X0)
@@ -305,8 +305,8 @@ def sampled_sim(self, innovations_mask = None, nr_samples = None, epstracted = N
 
         SZ, SX, SK, flag    = self.simulate(eps, initial_state = x0, show_warnings = show_warnings, verbose = verbose, return_flag = True)
 
-        if flag:
-            return None, None, None, None
+        # if flag:
+            # return None, None, None, None
 
         return SZ, SX, SK, self.vv
 
@@ -317,29 +317,39 @@ def sampled_sim(self, innovations_mask = None, nr_samples = None, epstracted = N
 
     dim_x   = 1e50
     for p in res:
-        if len(p[3]) < dim_x:
-            minr    = p[3]
-            dim_x   = len(minr)
+        # if p[0] is not None:
+            if len(p[3]) < dim_x:
+                minr    = p[3]
+                dim_x   = len(minr)
 
-    no_obs, dim_z   = self.Z.shape
-    dim_e           = len(self.shocks)
+    # no_obs, dim_z   = self.Z.shape
+    # dim_e           = len(self.shocks)
 
-    SZS     = np.empty((nr_samples, no_obs, dim_z))
-    SXS     = np.empty((nr_samples, no_obs, dim_x))
-    SKS     = np.empty((nr_samples, no_obs, 1))
+    # SZS     = np.empty((nr_samples, no_obs, dim_z))
+    # SXS     = np.empty((nr_samples, no_obs, dim_x))
+    # SKS     = np.empty((nr_samples, no_obs, 1))
+    SZS     = []
+    SXS     = []
+    SKS     = []
 
     for n, p in enumerate(res):
 
-        if len(p[3]) > dim_x:
-            idx     = [ list(p[3]).index(v) for v in minr ]
-            SXS[n,:]  = p[1][:,idx]
-        else:
-            SXS[n,:]  = p[1]
+        # if p[0] is not None:
+            # SZS[n,:]  = p[0]
+            # SKS[n,:]  = p[2]
+            SZS.append(p[0])
+            SKS.append(p[2])
 
-        SZS[n,:]  = p[0]
-        SKS[n,:]  = p[2]
+            if len(p[3]) > dim_x:
+                    idx     = [ list(p[3]).index(v) for v in minr ]
+                    # SXS[n,:]  = p[1][:,idx]
+                    SXS.append(p[1][:,idx])
+            else:
+                # SXS[n,:]  = p[1]
+                SXS.append(p[1])
 
-    return SZS, SXS, SKS
+    # return SZS, SXS, SKS
+    return np.array(SZS), np.array(SXS), np.array(SKS)
 
 
 def sampled_irfs(self, be_res, shocklist, wannasee, nr_samples = 1000, ncores = None, show_warnings = False):
