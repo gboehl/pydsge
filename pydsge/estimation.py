@@ -209,7 +209,7 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
                     ## getting the number of colums isn't that easy
                     with os.popen('stty size', 'r') as rows_cols:
                         cols            = rows_cols.read().split()[1]
-                        self.pbar.write('[bayesian_estimation -> pmdm:] Current best guess @ iteration %s:' %self.n)
+                        self.pbar.write('[bayesian_estimation -> pmdm:] Current best guess @ iteration %s (ll: %s):' %(self.n, self.res_max.round(5)))
                         ## split the info such that it is readable
                         lnum            = (len(priors)*8)//(int(cols)-8) + 1
                         priors_chunks   = np.array_split(np.array(prior_names), lnum)
