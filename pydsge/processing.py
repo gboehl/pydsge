@@ -186,9 +186,6 @@ def epstract(self, be_res = None, nr_samples = 1000, save = None, ncores = None,
         if os.path.isfile(save):
 
             files   = np.load(save)
-            EPS     = files['EPS']
-            X0      = files['X0']
-            PAR     = files['PAR']
             COV     = files['COV']
             smethod = files['method']
 
@@ -196,6 +193,11 @@ def epstract(self, be_res = None, nr_samples = 1000, save = None, ncores = None,
             c1  = method is None and smethod == -1
 
             if np.all(COV == self.obs_cov) and (c0 or c1):
+
+                EPS     = files['EPS']
+                X0      = files['X0']
+                PAR     = files['PAR']
+
                 if EPS.shape[0] >= nr_samples:
                     print('[epstract:] Epstract already exists')
 
