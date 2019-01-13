@@ -582,6 +582,9 @@ class DSGE(dict):
             }
 
         model = cls(**model_dict)
+
+        model.get_matrices()
+
         return model
 
 

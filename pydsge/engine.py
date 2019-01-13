@@ -56,7 +56,7 @@ def preprocess_jit(vals, l_max, k_max):
 def preprocess(self, l_max = 4, k_max = 20, verbose = False):
     st  = time.time()
     self.precalc_mat    = preprocess_jit(self.sys, l_max, k_max)
-    if verbose == 1: 
+    if verbose:
         print('[preprocess:] Preproceccing finished within %s s.' % np.round((time.time() - st), 3))
 
 

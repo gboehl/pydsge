@@ -51,14 +51,14 @@ def create_filter(self, P = None, R = None, N = None):
 
 def get_ll(self, verbose=False):
 
-    if verbose == 1:
+    if verbose:
         st  = time.time()
 
     ll     = self.enkf.batch_filter(self.Z, calc_ll = True, verbose=verbose)[2]
 
     self.ll     = ll
 
-    if verbose == 1:
+    if verbose:
         print('[get_ll:] Filtering done in '+str(np.round(time.time()-st,3))+'seconds.')
 
     return self.ll
@@ -66,7 +66,7 @@ def get_ll(self, verbose=False):
 
 def run_filter(self, use_rts=True, verbose=False):
 
-    if verbose == 1:
+    if verbose:
         st  = time.time()
 
     X1, cov, ll     = self.enkf.batch_filter(self.Z, store=use_rts, verbose=verbose)
@@ -74,7 +74,7 @@ def run_filter(self, use_rts=True, verbose=False):
     if use_rts:
         X1, cov     = self.enkf.rts_smoother(X1, cov)
 
-    if verbose == 1:
+    if verbose:
         print('[run_filter:] Filtering done in '+str(np.round(time.time()-st,3))+'seconds.')
 
     self.filtered_X      = X1

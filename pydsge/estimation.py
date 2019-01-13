@@ -50,7 +50,7 @@ def wrap_sampler(p0, nwalkers, ndim, ndraws, priors, ncores, update_freq, descri
     return sampler
 
 
-def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune = None, ncores = None, nwalkers = 100, maxfev = 2500, update_freq = None, verbose = False):
+def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune = None, ncores = None, nwalkers = 100, maxfev = 2500, pmdm_method = None , update_freq = None, verbose = False):
 
     import pathos
     import scipy.stats as ss
@@ -66,6 +66,14 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
 
     if update_freq is None:
         update_freq     = int(ndraws/4.)
+
+    if pmdm_method is None:
+        pmdm_method     = 'Powell'
+    elif isinstance(pmdm_method, int):
+        methodl     = ["L-BFGS-B", "Nelder-Mead", "Powell", "CG", "BFGS", "TNC", "COBYLA"]
+        pmdm_method  = methodl[pmdm_method]
+        if verbose:
+            print('[bayesian_estimation -> pmdm:] Using %s for optimization. Available methods are %s.' %(pmdm_method, ', '.join(methodl)))
 
     description     = None
 
@@ -147,21 +155,23 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
                 ll  = self.get_ll(verbose=verbose)
 
                 if verbose == 2:
-                    print('[bayesian_estimation -> llike:] Sample took '+str(np.round(time.time() - st))+'s.')
+                    print('[bayesian_estimation -> llike:] Sample took '+str(np.round(time.time() - st, 3))+'s.')
 
                 return ll
 
             except:
 
                 if verbose == 2:
-                    print('[bayesian_estimation -> llike:] Sample took '+str(np.round(time.time() - st))+'s. (failure)')
+                    print('[bayesian_estimation -> llike:] Sample took '+str(np.round(time.time() - st, 3))+'s. (failure)')
 
                 return -np.inf
 
     def lprior(pars):
+
         prior = 0
         for i in range(len(priors_lst)):
             prior   += priors_lst[i].logpdf(pars[i])
+
         return prior
 
     def lprob(pars):
@@ -242,7 +252,7 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
                 f_val       = -np.inf
                 self.x      = self.init_par
 
-                res         = so.minimize(self, self.x, method='Powell', tol=1e-3)
+                res         = so.minimize(self, self.x, method=pmdm_method, tol=1e-3)
 
                 self.pbar.close()
                 print('')

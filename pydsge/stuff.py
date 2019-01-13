@@ -12,12 +12,10 @@ from .engine import boehlgorithm
 
 def get_sys(self, par=None, care_for = [], verbose = False):
 
-    self.get_matrices()
+    st  = time.time()
 
     if par is None:
         par     = self.p0()
-
-    st  = time.time()
 
     if not self.const_var:
         warnings.warn('Code is only meant to work with OBCs')
@@ -111,10 +109,6 @@ def get_sys(self, par=None, care_for = [], verbose = False):
     cc2  = cx[dim_x:]
     bb1  = b2[:dim_x]
 
-    if verbose == 1:
-        print('[get_sys:] Creation of system matrices finished in %ss.'
-              % np.round(time.time() - st,3))
-
     out_msk     = fast0(N, 0) & fast0(A, 0) & fast0(b2) & fast0(cx)
     out_msk[-len(vv_v):]    = out_msk[-len(vv_v):] & fast0(self.ZZ(par), 0)
 
@@ -141,6 +135,11 @@ def get_sys(self, par=None, care_for = [], verbose = False):
 
     ## need to delete this zero, its just here cause I'm lazy
     self.sys 	= N2, A2, J2, cx[~out_msk], b2[~out_msk], x_bar
+
+    if verbose:
+        print('[get_sys:] Creation of system matrices finished in %ss.'
+              % np.round(time.time() - st,3))
+
 
 
 def irfs(self, shocklist, wannasee = None, show_warnings = True):
