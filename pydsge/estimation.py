@@ -7,7 +7,7 @@ import time
 import emcee
 from .stats import InvGamma, summary, mc_mean
 
-def wrap_sampler(p0, nwalkers, ndim, ndraws, priors, ncores, update_freq, description, verbose):
+def mcmc(p0, nwalkers, ndim, ndraws, priors, ncores, update_freq, description, verbose):
     ## very very dirty hack 
 
     import tqdm
@@ -33,9 +33,9 @@ def wrap_sampler(p0, nwalkers, ndim, ndraws, priors, ncores, update_freq, descri
         if update_freq and pbar.n and not pbar.n % update_freq:
             pbar.write('')
             if description is not None:
-                pbar.write('MCMC summary from last %s of %s iterations (%s):' %(update_freq, pbar.n, str(description)))
+                pbar.write('[bayesian_estimation -> mcmc:] Summary from last %s of %s iterations (%s):' %(update_freq, pbar.n, str(description)))
             else:
-                pbar.write('MCMC summary from last %s of %s iterations:' %(update_freq, pbar.n))
+                pbar.write('[bayesian_estimation -> mcmc:] Summary from last %s of %s iterations:' %(update_freq, pbar.n))
             pbar.write(str(summary(sampler.chain[:,pbar.n-update_freq:pbar.n,:], priors).round(3)))
         pbar.update(1)
 
@@ -219,16 +219,19 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
                     ## getting the number of colums isn't that easy
                     with os.popen('stty size', 'r') as rows_cols:
                         cols            = rows_cols.read().split()[1]
-                        self.pbar.write('[bayesian_estimation -> pmdm:] Current best guess @ iteration %s (ll: %s):' %(self.n, self.res_max.round(5)))
-                        ## split the info such that it is readable
-                        lnum            = (len(priors)*8)//(int(cols)-8) + 1
-                        priors_chunks   = np.array_split(np.array(prior_names), lnum)
-                        vals_chunks     = np.array_split([round(m_val, 3) for m_val in self.x_max], lnum)
-                        for pchunk, vchunk in zip(priors_chunks, vals_chunks):
-                            row_format ="{:>8}" * (len(pchunk) + 1)
-                            self.pbar.write(row_format.format("", *pchunk))
-                            self.pbar.write(row_format.format("", *vchunk))
-                            self.pbar.write('')
+                    if description is not None:
+                        self.pbar.write('[bayesian_estimation -> pmdm:] Current best guess @ iteration %s and ll of %s (%s):' %(self.n, self.res_max.round(5), str(description)))
+                    else:
+                        self.pbar.write('[bayesian_estimation -> pmdm:] Current best guess @ iteration %s and ll of %s):' %(self.n, self.res_max.round(5)))
+                    ## split the info such that it is readable
+                    lnum            = (len(priors)*8)//(int(cols)-8) + 1
+                    priors_chunks   = np.array_split(np.array(prior_names), lnum)
+                    vals_chunks     = np.array_split([round(m_val, 3) for m_val in self.x_max], lnum)
+                    for pchunk, vchunk in zip(priors_chunks, vals_chunks):
+                        row_format ="{:>8}" * (len(pchunk) + 1)
+                        self.pbar.write(row_format.format("", *pchunk))
+                        self.pbar.write(row_format.format("", *vchunk))
+                        self.pbar.write('')
                     self.pbar.write('')
 
                 difft   = time.time() - self.st
@@ -300,7 +303,7 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
     print()
 
     pos             = [init_par*(1+1e-3*np.random.randn(ndim)) for i in range(nwalkers)]
-    sampler         = wrap_sampler(pos, nwalkers, ndim, ndraws, priors, ncores, update_freq, description, verbose)
+    sampler         = mcmc(pos, nwalkers, ndim, ndraws, priors, ncores, update_freq, description, verbose)
 
     sampler.summary     = lambda: summary(sampler.chain[:,tune:,:], priors)
     sampler.traceplot   = lambda **args: traceplot(sampler.chain, varnames=priors, tune=tune, priors=priors_lst, **args)
