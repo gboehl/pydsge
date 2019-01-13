@@ -3,6 +3,7 @@
 import numpy as np
 import pandas as pd
 import warnings
+import os
 
 def mc_error(x):
     means   = np.mean(x,0)
@@ -49,6 +50,9 @@ def _hpd_df(x, alpha):
 def summary(trace, varnames, priors = None, alpha=0.05):
     ## in parts stolen from pymc3 because it looks really nice
 
+    with os.popen('stty size', 'r') as rows_cols:
+        cols            = rows_cols.read().split()[1]
+
     if priors is None:
         priors = varnames
 
@@ -66,7 +70,7 @@ def summary(trace, varnames, priors = None, alpha=0.05):
         lst     = []
         vals    = trace[:,:,i]
 
-        if priors is not None:
+        if priors is not None and int(cols) > 90:
             prior   = priors[var]
             [lst.append(f(prior[j])) for j,f in enumerate(f_prs)]
             
