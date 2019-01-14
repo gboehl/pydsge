@@ -19,6 +19,8 @@ class modloader(object):
         self.Z          = self.files['Z']
         if 'obs_cov' in self.files.files:
             self.obs_cov        = self.files['obs_cov']
+        if 'init_cov' in self.files.files:
+            self.init_cov       = self.files['init_cov']
         if 'description' in self.files.files:
             self.description    = self.files['description']
         if 'priors' in self.files.files:
@@ -116,6 +118,7 @@ def save_res(self, filename, description = None):
              years          = self.years,
              description    = self.description,
              obs_cov        = self.obs_cov,
+             init_cov       = self.enkf.P,
              par_fix        = self.par_fix,
              ndraws         = self.ndraws, 
              chain          = self.sampler.chain, 
