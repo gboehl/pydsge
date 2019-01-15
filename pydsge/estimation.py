@@ -207,25 +207,25 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
             if self.timer == self.update_ival:
                 self.pbar.update(self.update_ival)
 
-                ## prints information snapshots
-                if update_freq and not self.n % update_freq:
-                    ## getting the number of colums isn't that easy
-                    with os.popen('stty size', 'r') as rows_cols:
-                        cols            = rows_cols.read().split()[1]
-                    if description is not None:
-                        self.pbar.write('[bayesian_estimation -> pmdm:] Current best guess @ iteration %s and ll of %s (%s):' %(self.n, self.res_max.round(5), str(description)))
-                    else:
-                        self.pbar.write('[bayesian_estimation -> pmdm:] Current best guess @ iteration %s and ll of %s):' %(self.n, self.res_max.round(5)))
-                    ## split the info such that it is readable
-                    lnum            = (len(priors)*8)//(int(cols)-8) + 1
-                    priors_chunks   = np.array_split(np.array(prior_names), lnum)
-                    vals_chunks     = np.array_split([round(m_val, 3) for m_val in self.x_max], lnum)
-                    for pchunk, vchunk in zip(priors_chunks, vals_chunks):
-                        row_format ="{:>8}" * (len(pchunk) + 1)
-                        self.pbar.write(row_format.format("", *pchunk))
-                        self.pbar.write(row_format.format("", *vchunk))
-                        self.pbar.write('')
+            ## prints information snapshots
+            if update_freq and not self.n % update_freq:
+                ## getting the number of colums isn't that easy
+                with os.popen('stty size', 'r') as rows_cols:
+                    cols            = rows_cols.read().split()[1]
+                if description is not None:
+                    self.pbar.write('[bayesian_estimation -> pmdm:] Current best guess @ iteration %s and ll of %s (%s):' %(self.n, self.res_max.round(5), str(description)))
+                else:
+                    self.pbar.write('[bayesian_estimation -> pmdm:] Current best guess @ iteration %s and ll of %s):' %(self.n, self.res_max.round(5)))
+                ## split the info such that it is readable
+                lnum            = (len(priors)*8)//(int(cols)-8) + 1
+                priors_chunks   = np.array_split(np.array(prior_names), lnum)
+                vals_chunks     = np.array_split([round(m_val, 3) for m_val in self.x_max], lnum)
+                for pchunk, vchunk in zip(priors_chunks, vals_chunks):
+                    row_format ="{:>8}" * (len(pchunk) + 1)
+                    self.pbar.write(row_format.format("", *pchunk))
+                    self.pbar.write(row_format.format("", *vchunk))
                     self.pbar.write('')
+                self.pbar.write('')
 
                 difft   = time.time() - self.st
                 if difft < 1:
