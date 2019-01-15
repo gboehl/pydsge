@@ -205,7 +205,18 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
             self.timer  += 1
 
             if self.timer == self.update_ival:
+
                 self.pbar.update(self.update_ival)
+
+                difft   = time.time() - self.st
+                if difft < 1:
+                    self.update_ival *= 2
+                if difft > 2 and self.update_ival > 1:
+                    self.update_ival /= 2
+
+                self.pbar.set_description('ll: '+str(-self.res.round(5)).rjust(12, ' ')+' ['+str(-self.res_max.round(5))+']')
+                self.st  = time.time()
+                self.timer  = 0
 
             ## prints information snapshots
             if update_freq and not self.n % update_freq:
@@ -227,15 +238,6 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
                     self.pbar.write('')
                 self.pbar.write('')
 
-                difft   = time.time() - self.st
-                if difft < 1:
-                    self.update_ival *= 2
-                if difft > 2 and self.update_ival > 1:
-                    self.update_ival /= 2
-
-                self.pbar.set_description('ll: '+str(-self.res.round(5)).rjust(12, ' ')+' ['+str(-self.res_max.round(5))+']')
-                self.st  = time.time()
-                self.timer  = 0
 
             if self.n >= maxfev:
                 raise StopIteration
