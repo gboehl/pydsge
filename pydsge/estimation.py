@@ -81,7 +81,7 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
         description     = self.description
 
     if P is None:
-        P   = np.eye(len(mod.vv))*1e1
+        P   = np.eye(len(self.vv))*1e1
 
     self.preprocess(verbose=verbose)
 
