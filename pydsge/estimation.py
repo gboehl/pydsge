@@ -80,6 +80,9 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
     if hasattr(self, 'description'):
         description     = self.description
 
+    if P is None:
+        P   = np.eye(len(mod.vv))*1e1
+
     self.preprocess(verbose=verbose)
 
     ## dry run before the fun beginns
@@ -149,8 +152,6 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
                 self.preprocess(verbose=verbose)
 
                 self.create_filter(P = P, R = R, N = N)
-
-                self.enkf.P  *= 1e1
 
                 ll  = self.get_ll(verbose=verbose)
 
