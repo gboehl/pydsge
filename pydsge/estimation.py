@@ -67,14 +67,6 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
     if update_freq is None:
         update_freq     = int(ndraws/4.)
 
-    if pmdm_method is None:
-        pmdm_method     = 'Powell'
-    elif isinstance(pmdm_method, int):
-        methodl     = ["L-BFGS-B", "Nelder-Mead", "Powell", "CG", "BFGS", "TNC", "COBYLA"]
-        pmdm_method  = methodl[pmdm_method]
-        if verbose:
-            print('[bayesian_estimation -> pmdm:] Using %s for optimization. Available methods are %s.' %(pmdm_method, ', '.join(methodl)))
-
     description     = None
 
     if hasattr(self, 'description'):
@@ -276,12 +268,19 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
 
     if maxfev:
 
+
         print()
         if not verbose:
             np.warnings.filterwarnings('ignore')
-            print('[bayesian_estimation -> pmdm:] Maximizing posterior mode density (meanwhile warnings are disabled):')
+            print('[bayesian_estimation -> pmdm:] Maximizing posterior mode density (meanwhile warnings are disabled)')
         else:
             print('[bayesian_estimation -> pmdm:] Maximizing posterior mode density:')
+        if pmdm_method is None:
+            pmdm_method     = 'Powell'
+        elif isinstance(pmdm_method, int):
+            methodl     = ["L-BFGS-B", "Nelder-Mead", "Powell", "CG", "BFGS", "TNC", "COBYLA"]
+            pmdm_method  = methodl[pmdm_method]
+            print('[bayesian_estimation -> pmdm:] Using %s for optimization. Available methods are %s.' %(pmdm_method, ', '.join(methodl)))
         print()
 
         result      = pmdm(init_par).go()
@@ -301,20 +300,21 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
             print(row_format.format("", *vchunk))
             print()
 
-    print()
 
-    pos             = [init_par*(1+1e-3*np.random.randn(ndim)) for i in range(nwalkers)]
-    sampler         = mcmc(pos, nwalkers, ndim, ndraws, priors, ncores, update_freq, description, verbose)
+    if ndraws:
+        print()
+        pos             = [init_par*(1+1e-3*np.random.randn(ndim)) for i in range(nwalkers)]
+        sampler         = mcmc(pos, nwalkers, ndim, ndraws, priors, ncores, update_freq, description, verbose)
 
-    sampler.summary     = lambda: summary(sampler.chain[:,tune:,:], priors)
-    sampler.traceplot   = lambda **args: traceplot(sampler.chain, varnames=priors, tune=tune, priors=priors_lst, **args)
-    sampler.posteriorplot   = lambda **args: posteriorplot(sampler.chain, varnames=priors, tune=tune, **args)
+        sampler.summary     = lambda: summary(sampler.chain[:,tune:,:], priors)
+        sampler.traceplot   = lambda **args: traceplot(sampler.chain, varnames=priors, tune=tune, priors=priors_lst, **args)
+        sampler.posteriorplot   = lambda **args: posteriorplot(sampler.chain, varnames=priors, tune=tune, **args)
 
-    sampler.prior_dist  = priors_lst
-    sampler.prior_names = prior_names
-    sampler.tune        = tune
-    par_mean            = par_fix
-    par_mean[prior_arg] = mc_mean(sampler.chain[:,tune:], varnames=priors)
-    sampler.par_means   = list(par_mean)
+        sampler.prior_dist  = priors_lst
+        sampler.prior_names = prior_names
+        sampler.tune        = tune
+        par_mean            = par_fix
+        par_mean[prior_arg] = mc_mean(sampler.chain[:,tune:], varnames=priors)
+        sampler.par_means   = list(par_mean)
 
-    self.sampler        = sampler
+        self.sampler        = sampler
