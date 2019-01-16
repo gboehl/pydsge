@@ -37,6 +37,7 @@ def mcmc(p0, nwalkers, ndim, ndraws, priors, ncores, update_freq, description, v
             else:
                 pbar.write('[bayesian_estimation -> mcmc:] Summary from last %s of %s iterations:' %(update_freq, pbar.n))
             pbar.write(str(summary(sampler.chain[:,pbar.n-update_freq:pbar.n,:], priors).round(3)))
+            pbar.write("Mean acceptance fraction: {0:.3f}".format(np.mean(sampler.acceptance_fraction)))
         pbar.update(1)
 
     loc_pool.close()
