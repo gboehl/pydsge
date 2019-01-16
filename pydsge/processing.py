@@ -25,6 +25,8 @@ class modloader(object):
             self.description    = self.files['description']
         if 'priors' in self.files.files:
             self.priors         = self.files['priors'].item()
+        if 'acc_frac' in self.files.files:
+            self.acc_frac         = self.files['acc_frac']
         self.years      = self.files['years']
         self.chain      = self.files['chain']
         self.prior_names    = self.files['prior_names']
@@ -122,6 +124,7 @@ def save_res(self, filename, description = None):
              par_fix        = self.par_fix,
              ndraws         = self.ndraws, 
              chain          = self.sampler.chain, 
+             acc_frac       = self.sampler.acc_frac,
              prior_dist     = self.sampler.prior_dist, 
              prior_names    = self.sampler.prior_names, 
              prior_arg      = self.prior_arg,

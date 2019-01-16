@@ -308,6 +308,9 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
         pos             = [init_par*(1+1e-3*np.random.randn(ndim)) for i in range(nwalkers)]
         sampler         = mcmc(pos, nwalkers, ndim, ndraws, priors, ncores, update_freq, description, verbose)
 
+        print("Mean acceptance fraction: {0:.3f}"
+                .format(np.mean(sampler.acceptance_fraction)))
+
         sampler.summary     = lambda: summary(sampler.chain[:,tune:,:], priors)
         sampler.traceplot   = lambda **args: traceplot(sampler.chain, varnames=priors, tune=tune, priors=priors_lst, **args)
         sampler.posteriorplot   = lambda **args: posteriorplot(sampler.chain, varnames=priors, tune=tune, **args)
