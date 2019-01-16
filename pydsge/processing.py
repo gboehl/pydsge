@@ -179,13 +179,13 @@ def posterior_sample(self, be_res = None, seed = 0):
     return list(randpar)
 
 
-def epstract(self, be_res = None, nr_samples = 1000, save = None, ncores = None, method = None, converged_only = True, max_att = 3, verbose = False):
+def epstract(self, be_res = None, nr_samples = 1000, save = None, ncores = None, method = None, converged_only = True, max_att = 3, force = False, verbose = False):
 
     EPS     = []
     X0      = []
     PAR     = []
 
-    if save is not None:
+    if not force and save is not None:
 
         import os.path
 

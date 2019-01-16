@@ -7,7 +7,7 @@ import time
 import emcee
 from .stats import InvGamma, summary, mc_mean
 
-def mcmc(p0, nwalkers, ndim, ndraws, priors, ncores, update_freq, description, verbose):
+def mcmc(p0, nwalkers, ndim, ndraws, priors, sampler, ntemp, ncores, update_freq, description, verbose):
     ## very very dirty hack 
 
     import tqdm
@@ -22,7 +22,11 @@ def mcmc(p0, nwalkers, ndim, ndraws, priors, ncores, update_freq, description, v
 
     loc_pool    = pathos.pools.ProcessPool(ncores)
 
-    sampler = emcee.EnsembleSampler(nwalkers, ndim, lprob_local, pool = loc_pool)
+    if sampler is 'ptes':
+        sampler = emcee.EnsembleSampler(nwalkers, ndim, lprob_local, pool = loc_pool)
+    else:
+        sampler = emcee.PTSampler(ntemp, nwalkers, ndim, lprob_local, pool = loc_pool)
+
 
     if not verbose: np.warnings.filterwarnings('ignore')
 
@@ -51,7 +55,7 @@ def mcmc(p0, nwalkers, ndim, ndraws, priors, ncores, update_freq, description, v
     return sampler
 
 
-def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune = None, ncores = None, nwalkers = 100, maxfev = 2500, pmdm_method = None , update_freq = None, verbose = False):
+def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune = None, ncores = None, nwalkers = 100, ntemp = 4, maxfev = 2500, pmdm_method = None, sampler = None, update_freq = None, verbose = False):
 
     import pathos
     import scipy.stats as ss
@@ -307,7 +311,7 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
     if ndraws:
         print()
         pos             = [init_par*(1+1e-3*np.random.randn(ndim)) for i in range(nwalkers)]
-        sampler         = mcmc(pos, nwalkers, ndim, ndraws, priors, ncores, update_freq, description, verbose)
+        sampler         = mcmc(pos, nwalkers, ndim, ndraws, priors, sampler, ntemp, ncores, update_freq, description, verbose)
 
         print("Mean acceptance fraction: {0:.3f}"
                 .format(np.mean(sampler.acceptance_fraction)))
