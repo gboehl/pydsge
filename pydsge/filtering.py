@@ -68,7 +68,7 @@ def run_filter(self, use_rts=True, verbose=False):
     if verbose:
         st  = time.time()
 
-    X1, cov     = self.enkf.batch_filter(self.Z, store=use_rts, verbose=verbose)
+    X1, cov, _      = self.enkf.batch_filter(self.Z, store=use_rts, verbose=verbose)
 
     if use_rts:
         X1, cov     = self.enkf.rts_smoother(X1, cov)
