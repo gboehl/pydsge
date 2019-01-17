@@ -14,13 +14,6 @@ from .parser import DSGE as dsge
 from numba import njit
 
 @njit(nogil=True, cache=True)
-def geom_series(M, n):
-    res  = np.zeros(M.shape)
-    for i in range(n):
-        gs_add(res,nl.matrix_power(M,i))
-    return res
-
-@njit(nogil=True, cache=True)
 def gs_add(A, B):
 	for i in range(len(A)):
 		for j in range(len(A)):
@@ -39,16 +32,45 @@ def preprocess_jit(vals, l_max, k_max):
     mat         = np.empty((l_max, k_max, s_max, dim_y, dim_y-dim_x))
     term        = np.empty((l_max, k_max, s_max, dim_y))
     core_mat    = np.empty((l_max, s_max, dim_y, dim_y))
-    core_term   = np.empty((l_max, s_max, dim_y))
+    core_term   = np.empty((s_max, dim_y))
 
-    for aa in range(l_max):
-        for bb in range(s_max):
-            core_mat[aa,bb,:], core_term[aa,bb,:]   = create_core(vals[:4], aa, bb)
+    core_mat[0,0,:] = np.eye(dim_y)
+    res             = np.zeros((dim_y,dim_y))
 
-    for ll in range(l_max):
-        for ss in range(s_max):
-            for kk in range(k_max):
-                mat[ll,kk,ss], term[ll,kk,ss]   = create_finish(vals[:4], ll, kk, ss, core_mat, core_term)
+    for s in range(0,s_max):
+
+        if s:
+            core_mat[0,s,:]   = core_mat[0,s-1,:] @ N
+            gs_add(res, core_mat[0,s,:])
+
+        core_term[s,:]   = res @ cx
+
+        for l in range(1,l_max):
+
+            core_mat[l,s,:]   = core_mat[l-1,s,:] @ A
+
+    for l in range(l_max):
+        for k in range(k_max):
+
+            JN      = J @ core_mat[l,k]
+            sterm   = J @ core_term[k]
+
+            core    = -nl.inv(JN[:,:dim_x]) 
+
+            SS_mat, SS_term     = core @ JN[:,dim_x:], core @ sterm
+
+            for s in range(s_max):
+
+                k0 		= max(s-l, 0)
+                l0 		= min(l, s)
+
+                matrices 	= core_mat[l0,k0]
+                oterm 		= core_term[k0]
+
+                fin_mat     = matrices[:,:dim_x] @ SS_mat + matrices[:,dim_x:]
+                fin_term    = matrices[:,:dim_x] @ SS_term + oterm 
+
+                mat[l,k,s], term[l,k,s]   = fin_mat, fin_term
 
     return mat, term
 
@@ -58,51 +80,6 @@ def preprocess(self, l_max = 4, k_max = 20, verbose = False):
     self.precalc_mat    = preprocess_jit(self.sys, l_max, k_max)
     if verbose:
         print('[preprocess:] Preproceccing finished within %s s.' % np.round((time.time() - st), 3))
-
-
-@njit(nogil=True, cache=True)
-def create_core(vals, a, b):
-
-    N, A, J, cx     = vals
-    dim_x, dim_y    = J.shape
-
-    term			= geom_series(N, b) @ cx
-    if a:
-        N_k 		    = nl.matrix_power(N,b)
-        A_k             = nl.matrix_power(A,a)
-        matrices 		= N_k @ A_k
-    elif b:
-        N_k 		    = nl.matrix_power(N,b)
-        matrices 		= N_k
-    else:
-        matrices    = np.eye(dim_y)
-
-    return matrices, term
-
-
-@njit(nogil=True, cache=True)
-def create_finish(vals, l, k, s, core_mat, core_term):
-
-    N, A, J, cx     = vals
-    dim_x, dim_y    = J.shape
-
-    JN      = J @ core_mat[l,k]
-    term    = J @ core_term[l,k]
-
-    core        = -nl.inv(JN[:,:dim_x]) 
-
-    SS_mat, SS_term     = core @ JN[:,dim_x:], core @ term
-
-    k0 		= max(s-l, 0)
-    l0 		= min(l, s)
-
-    matrices 	= core_mat[l0,k0]
-    term 		= core_term[l0,k0]
-
-    fin_mat     = matrices[:,:dim_x] @ SS_mat + matrices[:,dim_x:]
-    fin_term    = matrices[:,:dim_x] @ SS_term + term 
-
-    return fin_mat, fin_term
 
 
 @njit(nogil=True, cache=True)
