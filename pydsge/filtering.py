@@ -85,10 +85,10 @@ def run_filter(self, use_rts=True, verbose=False):
 def extract(self, pmean = None, cov = None, method = None, converged_only = False, return_flag = False, verbose = True):
 
     if pmean is None:
-        pmean   = self.filtered_X
+        pmean   = self.filtered_X.copy()
 
     if cov is None:
-        cov = self.filtered_cov
+        cov     = self.filtered_cov
 
     means, cov, res, flag   = self.enkf.ipas(pmean, cov, method, converged_only, show_warnings = False, return_flag = True, verbose = verbose)
 
