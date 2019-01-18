@@ -15,17 +15,25 @@ def mcmc(p0, nwalkers, ndim, ndraws, priors, sampler, ntemp, ncores, update_freq
 
     ## globals are *evil*
     global lprob_global
+    global llike_global
+    global lprior_global
 
     ## import the global function and hack it to pretend it is defined on the top level
     def lprob_local(par):
         return lprob_global(par)
 
+    def llike_local(par):
+        return llike_global(par)
+    
+    def lprior_local(par):
+        return lprior_global(par)
+
     loc_pool    = pathos.pools.ProcessPool(ncores)
 
     if sampler is 'ptes':
-        sampler = emcee.EnsembleSampler(nwalkers, ndim, lprob_local, pool = loc_pool)
+        sampler = emcee.PTSampler(ntemps = ntemp, nwalkers = nwalkers, dim = ndim, logp = lprior_local, logl = llike_local, pool = loc_pool)
     else:
-        sampler = emcee.PTSampler(ntemp, nwalkers, ndim, lprob_local, pool = loc_pool)
+        sampler = emcee.EnsembleSampler(nwalkers, ndim, lprob_local, pool = loc_pool)
 
 
     if not verbose: np.warnings.filterwarnings('ignore')
@@ -40,7 +48,8 @@ def mcmc(p0, nwalkers, ndim, ndraws, priors, sampler, ntemp, ncores, update_freq
                 pbar.write('[bayesian_estimation -> mcmc:] Summary from last %s of %s iterations (%s):' %(update_freq, pbar.n, str(description)))
             else:
                 pbar.write('[bayesian_estimation -> mcmc:] Summary from last %s of %s iterations:' %(update_freq, pbar.n))
-            pbar.write(str(summary(sampler.chain[:,pbar.n-update_freq:pbar.n,:], priors).round(3)))
+            # pbar.write(str(summary(sampler.chain[:,pbar.n-update_freq:pbar.n,:], priors).round(3)))
+            pbar.write(str(summary(sampler.chain.reshape(-1, ndraws, ndim)[:,pbar.n-update_freq:pbar.n,:], priors).round(3)))
             pbar.write("Mean acceptance fraction: {0:.3f}".format(np.mean(sampler.acceptance_fraction)))
         pbar.update(1)
 
@@ -176,8 +185,12 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
         return lprior(pars) + llike(pars)
     
     global lprob_global
+    global llike_global
+    global lprior_global
 
     lprob_global    = lprob
+    llike_global    = llike
+    lprior_global   = lprior
     prior_names     = [ pp for pp in priors.keys() ]
 
     class pmdm(object):
@@ -275,7 +288,6 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
 
     if maxfev:
 
-
         print()
         if not verbose:
             np.warnings.filterwarnings('ignore')
@@ -310,21 +322,28 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
 
     if ndraws:
         print()
-        pos             = [init_par*(1+1e-3*np.random.randn(ndim)) for i in range(nwalkers)]
+        if sampler == 'ptes':
+            # pos             = [init_par*(1+1e-3*np.random.randn(ntemp, ndim)) for i in range(nwalkers)]
+            pos             = init_par*(1+1e-3*np.random.randn(ntemp, nwalkers, ndim))
+        else:
+            pos             = [init_par*(1+1e-3*np.random.randn(ndim)) for i in range(nwalkers)]
         sampler         = mcmc(pos, nwalkers, ndim, ndraws, priors, sampler, ntemp, ncores, update_freq, description, verbose)
 
         print("Mean acceptance fraction: {0:.3f}"
                 .format(np.mean(sampler.acceptance_fraction)))
 
-        sampler.summary     = lambda: summary(sampler.chain[:,tune:,:], priors)
-        sampler.traceplot   = lambda **args: traceplot(sampler.chain, varnames=priors, tune=tune, priors=priors_lst, **args)
-        sampler.posteriorplot   = lambda **args: posteriorplot(sampler.chain, varnames=priors, tune=tune, **args)
+        self.chain          = sampler.chain.reshape(-1, ndraws, ndim)
+
+        sampler.summary     = lambda: summary(self.chain[:,tune:,:], priors)
+        sampler.traceplot   = lambda **args: traceplot(self.chain, varnames=priors, tune=tune, priors=priors_lst, **args)
+        sampler.posteriorplot   = lambda **args: posteriorplot(self.chain, varnames=priors, tune=tune, **args)
+
+        par_mean            = par_fix
+        par_mean[prior_arg] = mc_mean(self.chain[:,tune:], varnames=priors)
 
         sampler.prior_dist  = priors_lst
         sampler.prior_names = prior_names
         sampler.tune        = tune
-        par_mean            = par_fix
-        par_mean[prior_arg] = mc_mean(sampler.chain[:,tune:], varnames=priors)
         sampler.par_means   = list(par_mean)
 
         self.sampler        = sampler
