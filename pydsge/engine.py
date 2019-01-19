@@ -14,12 +14,6 @@ from .parser import DSGE as dsge
 from numba import njit
 
 @njit(nogil=True, cache=True)
-def gs_add(A, B):
-	for i in range(len(A)):
-		for j in range(len(A)):
-			A[i][j] += B[i][j]
-
-@njit(nogil=True, cache=True)
 def preprocess_jit(vals, l_max, k_max):
 
     N, A, J, cx, b, x_bar   = vals
@@ -41,7 +35,7 @@ def preprocess_jit(vals, l_max, k_max):
 
         if s:
             core_mat[0,s,:]   = core_mat[0,s-1,:] @ N
-            gs_add(res, core_mat[0,s,:])
+            res     += core_mat[0,s-1,:]
 
         core_term[s,:]   = res @ cx
 
