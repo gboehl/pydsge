@@ -137,7 +137,7 @@ def get_sys(self, par=None, care_for = [], verbose = False):
     self.sys 	= N2, A2, J2, cx[~out_msk], b2[~out_msk], x_bar
 
     if verbose:
-        print('[get_sys:] Creation of system matrices finished in %ss.'
+        print('[get_sys:]'.ljust(15, ' ')+'Creation of system matrices finished in %ss.'
               % np.round(time.time() - st,3))
 
 
@@ -258,7 +258,7 @@ def simulate(self, EPS = None, initial_state = None, verbose = False, show_warni
     self.simulated_Z    = Z
 
     if verbose:
-        print('[simulate:] Simulation took ', time.time() - st, ' seconds.')
+        print('[simulate:]'.ljust(15, ' ')+'Simulation took ', time.time() - st, ' seconds.')
 
     if superflag and show_warnings:
         warnings.warn('Numerical errors in boehlgorithm during simulation, did not converge')

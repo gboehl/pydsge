@@ -45,10 +45,9 @@ def mcmc(p0, nwalkers, ndim, ndraws, priors, sampler, ntemp, ncores, update_freq
         if update_freq and pbar.n and not pbar.n % update_freq:
             pbar.write('')
             if description is not None:
-                pbar.write('[bayesian_estimation -> mcmc:] Summary from last %s of %s iterations (%s):' %(update_freq, pbar.n, str(description)))
+                pbar.write('[bayesian_estimation -> mcmc:]'.ljust(30, ' ')+'Summary from last %s of %s iterations (%s):' %(update_freq, pbar.n, str(description)))
             else:
-                pbar.write('[bayesian_estimation -> mcmc:] Summary from last %s of %s iterations:' %(update_freq, pbar.n))
-            # pbar.write(str(summary(sampler.chain[:,pbar.n-update_freq:pbar.n,:], priors).round(3)))
+                pbar.write('[bayesian_estimation -> mcmc:]'.ljust(30, ' ')+' Summary from last %s of %s iterations:' %(update_freq, pbar.n))
             pbar.write(str(summary(sampler.chain.reshape(-1, ndraws, ndim)[:,pbar.n-update_freq:pbar.n,:], priors).round(3)))
             pbar.write("Mean acceptance fraction: {0:.3f}".format(np.mean(sampler.acceptance_fraction)))
         pbar.update(1)
@@ -96,7 +95,7 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
     self.get_ll(verbose = verbose)
 
     print()
-    print("[bayesian_estimation:] Model operational. Ready for estimation.")
+    print("[bayesian_estimation:]'.ljust(30, ' ')+'Model operational. Ready for estimation.")
     print()
 
     par_fix     = np.array(self.par).copy()
@@ -114,7 +113,7 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
 
     ndim        = len(priors.keys())
 
-    print('[bayesian_estimation:] Adding parameters to the prior distribution:')
+    print('[bayesian_estimation:]'.ljust(30, ' ')+'Adding parameters to the prior distribution:')
 
     priors_lst     = []
     for pp in priors:
@@ -162,14 +161,14 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
                 ll  = self.get_ll(verbose=verbose)
 
                 if verbose == 2:
-                    print('[bayesian_estimation -> llike:] Sample took '+str(np.round(time.time() - st, 3))+'s.')
+                    print('[bayesian_estimation -> llike:]'.ljust(30, ' ')+'Sample took '+str(np.round(time.time() - st, 3))+'s.')
 
                 return ll
 
             except:
 
                 if verbose == 2:
-                    print('[bayesian_estimation -> llike:] Sample took '+str(np.round(time.time() - st, 3))+'s. (failure)')
+                    print('[bayesian_estimation -> llike:]'.ljust(30, ' ')+'Sample took '+str(np.round(time.time() - st, 3))+'s. (failure)')
 
                 return -np.inf
 
@@ -242,9 +241,9 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
                 with os.popen('stty size', 'r') as rows_cols:
                     cols            = rows_cols.read().split()[1]
                 if description is not None:
-                    self.pbar.write('[bayesian_estimation -> pmdm:] Current best guess @ iteration %s and ll of %s (%s):' %(self.n, self.res_max.round(5), str(description)))
+                    self.pbar.write('[bayesian_estimation -> pmdm:]'.ljust(30, ' ')+'Current best guess @ iteration %s and ll of %s (%s):' %(self.n, self.res_max.round(5), str(description)))
                 else:
-                    self.pbar.write('[bayesian_estimation -> pmdm:] Current best guess @ iteration %s and ll of %s):' %(self.n, self.res_max.round(5)))
+                    self.pbar.write('[bayesian_estimation -> pmdm:]'.ljust(30, ' ')+'Current best guess @ iteration %s and ll of %s):' %(self.n, self.res_max.round(5)))
                 ## split the info such that it is readable
                 lnum            = (len(priors)*8)//(int(cols)-8) + 1
                 priors_chunks   = np.array_split(np.array(prior_names), lnum)

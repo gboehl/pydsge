@@ -40,7 +40,7 @@ class modloader(object):
         if 'vv' in self.files:
             self.vv     = self.files['vv']
 
-        print("[modloader:] Results imported. Number of burn-in periods is %s out of %s" %(self.tune, self.ndraws))
+        print('[modloader:]'.ljust(15, ' ')+'Results imported. Number of burn-in periods is %s out of %s' %(self.tune, self.ndraws))
     
     def masker(self):
         iss     = np.zeros(len(self.prior_names), dtype=bool)
@@ -133,7 +133,7 @@ def save_res(self, filename, description = None):
              tune           = self.sampler.tune, 
              modelpath      = self['filename'],
              means          = self.sampler.par_means)
-    print('[save_res:] Results saved in ', filename)
+    print('[save_res:]'.ljust(15, ' ')+'Results saved in ', filename)
             
 
 def runner_pooled(nr_samples, ncores, innovations_mask):
@@ -206,14 +206,14 @@ def epstract(self, be_res = None, nr_samples = 1000, save = None, ncores = None,
                 PAR     = files['PAR']
 
                 if EPS.shape[0] >= nr_samples:
-                    print('[epstract:] Epstract already exists')
+                    print('[epstract:]'.ljust(15, ' ')+'Epstract already exists')
 
                     self.epstracted     = EPS, X0, PAR, self.obs_cov, method
 
                     return EPS, X0, PAR
 
                 else:
-                    print('[epstract:] Appending to existing epstract...')
+                    print('[epstract:]'.ljust(15, ' ')+'Appending to existing epstract...')
 
                     EPS     = list(EPS)
                     X0      = list(X0)
