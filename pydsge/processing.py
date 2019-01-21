@@ -50,7 +50,11 @@ class modloader(object):
 
     def means(self):
         x                   = self.par_fix
-        x[self.prior_arg]   = self.chain[:,self.tune:].mean(axis=(0,1))
+
+        cshp        = self.chain.shape
+        sum_chain   = self.chain.reshape(-1, cshp[-2], cshp[-1])
+
+        x[self.prior_arg]   = sum_chain[:,self.tune:].mean(axis=(0,1))
         return list(x)
 
     def medians(self):
@@ -181,7 +185,7 @@ def posterior_sample(self, be_res = None, seed = 0):
         par_fix = be_res.par_fix
         prior_arg   = be_res.prior_arg
 
-    all_pars    = chain[:,tune:].reshape(-1,chain.shape[2])
+    all_pars    = chain[...,tune:,:].reshape(-1,chain.shape[-1])
 
     random.seed(seed)
     randpar             = par_fix
