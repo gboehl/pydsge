@@ -67,14 +67,18 @@ class modloader(object):
         else:
             self_priors     = self.priors
 
-        return summary(self.chain[:,self.tune:], self_priors)
+        cshp        = self.chain.shape
+        sum_chain   = self.chain.reshape(-1, cshp[-2], cshp[-1])
+        summ        = summary(sum_chain[:,self.tune:], self_priors)
+        return summ
 
-    def traceplot(self, chain=None, varnames=None, tune=None, priors_dist=None, **args):
+    def traceplot(self, chain = None, varnames = None, tune = None, priors_dist=None, draw_lines = None, **args):
 
         from .plots import traceplot
 
         if chain is None:
-            trace_value     = self.chain[:,:,self.masker()]
+            # trace_value     = self.chain[:,:,self.masker()]
+            trace_value     = self.chain[...,self.masker()]
         else:
             trace_value    = chain
         if varnames is None:
@@ -84,7 +88,13 @@ class modloader(object):
         if priors_dist is None:
              priors_dist         = self.prior_dist
 
-        return traceplot(trace_value, varnames=varnames, tune=tune, priors=priors_dist, **args)
+        if draw_lines is None:
+            if trace_value.ndim == 4:
+                draw_lines  = True
+            else:
+                draw_lines  = False
+
+        return traceplot(trace_value, varnames=varnames, tune=tune, priors=priors_dist, draw_lines = draw_lines, **args)
 
     def posteriorplot(self, chain=None, varnames=None, tune=None, **args):
 

@@ -120,6 +120,9 @@ def get_sys(self, par=None, care_for = [], verbose = False):
 
     ## add everything to the DSGE object
     self.vv     = vv_v[~out_msk[-len(vv_v):]]
+    self.vx     = vv_x3
+    self.dim_x  = dim_x
+    self.dim_v  = len(self.vv)
 
     self.observables    = self['observables']
     self.par    = par
