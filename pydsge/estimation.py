@@ -95,7 +95,7 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
     self.get_ll(verbose = verbose)
 
     print()
-    print("[bayesian_estimation:]'.ljust(30, ' ')+'Model operational. Ready for estimation.")
+    print('[bayesian_estimation:]'.ljust(30, ' ')+'Model operational. Ready for estimation.')
     print()
 
     par_fix     = np.array(self.par).copy()
