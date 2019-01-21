@@ -167,13 +167,13 @@ def traceplot(trace, varnames, tune, figsize = None,
                 else:
                     temp_iter   = 1
 
-                for temp in range(temp_iter):
+                for temp in reversed(range(temp_iter)):
 
                     d_stream_line   = d[temp].swapaxes(0,1)
-                    colors          = cm.hot(np.linspace(0, 1, temp_iter+2))[1:-1][::-1]
+                    colors          = cm.gist_heat(np.linspace(0, 1, temp_iter))
 
-                    ax[i, 1].plot(range(0, tune+1), d_stream_line[:tune+1], lw=.01, c=colors[temp], alpha = 0.5)
-                    ax[i, 1].plot(range(tune, width), d_stream_line[tune:], lw=.02, c=colors[temp], alpha = 0.5)
+                    ax[i, 1].plot(range(0, tune+1), d_stream_line[:tune+1], c=colors[temp], alpha = 0.01)
+                    ax[i, 1].plot(range(tune, width), d_stream_line[tune:], c=colors[temp], alpha = 0.015)
                     ax[i, 1].plot([tune,tune], [ np.mean(d_stream, 1)[tune] - np.std(d_stream, 1)[tune]*3, 
                                                 np.mean(d_stream, 1)[tune] + np.std(d_stream, 1)[tune]*3],
                                   '--', alpha=.4, color='k')
