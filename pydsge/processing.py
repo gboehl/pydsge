@@ -41,6 +41,7 @@ class modloader(object):
             self.vv     = self.files['vv']
 
         print('[modloader:]'.ljust(15, ' ')+'Results imported. Number of burn-in periods is %s out of %s' %(self.tune, self.ndraws))
+        print('[modloader:]'.ljust(15, ' ')+'Description: '+str(self.description))
     
     def masker(self):
         iss     = np.zeros(len(self.prior_names), dtype=bool)

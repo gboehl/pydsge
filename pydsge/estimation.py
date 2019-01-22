@@ -45,9 +45,9 @@ def mcmc(p0, nwalkers, ndim, ndraws, priors, sampler, ntemp, ncores, update_freq
         if update_freq and pbar.n and not pbar.n % update_freq:
             pbar.write('')
             if description is not None:
-                pbar.write('[bayesian_estimation -> mcmc:]'.ljust(30, ' ')+'Summary from last %s of %s iterations (%s):' %(update_freq, pbar.n, str(description)))
+                pbar.write('[bayesian_estimation -> mcmc:]'.ljust(45, ' ')+'Summary from last %s of %s iterations (%s):' %(update_freq, pbar.n, str(description)))
             else:
-                pbar.write('[bayesian_estimation -> mcmc:]'.ljust(30, ' ')+' Summary from last %s of %s iterations:' %(update_freq, pbar.n))
+                pbar.write('[bayesian_estimation -> mcmc:]'.ljust(45, ' ')+' Summary from last %s of %s iterations:' %(update_freq, pbar.n))
             pbar.write(str(summary(sampler.chain.reshape(-1, ndraws, ndim)[:,pbar.n-update_freq:pbar.n,:], priors).round(3)))
             pbar.write("Mean acceptance fraction: {0:.3f}".format(np.mean(sampler.acceptance_fraction)))
         pbar.update(1)

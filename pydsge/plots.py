@@ -115,7 +115,7 @@ def traceplot(trace, varnames, tune, figsize = None,
               combined = False, max_no = 3, priors = None,
               prior_alpha = .8, prior_style = '--', draw_lines = False, bw = 4.5, axp = None):
 
-    ## stolen and modified from pymc3 with kisses
+    ## inspired by pymc3 with kisses
 
     axs     = []
     figs    = []
