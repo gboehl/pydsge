@@ -153,7 +153,7 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
                 par_fix[prior_arg]  = parameters
                 par_active_lst  = list(par_fix)
 
-                self.get_sys(par_active_lst, verbose=verbose)
+                self.get_sys(par = par_active_lst, reduce_sys = True, verbose = verbose)
                 self.preprocess(verbose=verbose)
 
                 self.create_filter(P = P, R = R, N = N)
@@ -267,7 +267,7 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
                 f_val       = -np.inf
                 self.x      = self.init_par
 
-                res         = so.minimize(self, self.x, method=pmdm_method, tol=1e-3)
+                res         = so.minimize(self, self.x, method=pmdm_method, tol=1e-1)
 
                 self.pbar.close()
                 print('')

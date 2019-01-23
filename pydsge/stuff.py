@@ -10,7 +10,7 @@ import time
 from grgrlib import *
 from .engine import boehlgorithm
 
-def get_sys(self, par=None, care_for = [], verbose = False):
+def get_sys(self, par=None, reduce_sys = False, verbose = False):
 
     st  = time.time()
 
@@ -112,11 +112,8 @@ def get_sys(self, par=None, care_for = [], verbose = False):
     out_msk     = fast0(N, 0) & fast0(A, 0) & fast0(b2) & fast0(cx)
     out_msk[-len(vv_v):]    = out_msk[-len(vv_v):] & fast0(self.ZZ(par), 0)
 
-    if care_for is 'all':
+    if not reduce_sys:
         out_msk[-len(vv_v):][:]  = False
-    else:
-        args_see    = [ vv_v.index(v) for v in care_for ]
-        out_msk[-len(vv_v):][args_see]  = False
 
     ## add everything to the DSGE object
     self.vv     = vv_v[~out_msk[-len(vv_v):]]
@@ -150,13 +147,12 @@ def irfs(self, shocklist, wannasee = None, show_warnings = True):
     ## shocklist: takes list of tuples of (shock, size, timing) 
     ## wannasee: list of strings of the variables to be plotted and stored
 
-    # labels      = [v.name.replace('_','') for v in self.vv]
     labels      = [v.replace('_','') for v in self.vv]
     if wannasee is not None:
         try:
             args_see    = [labels.index(v) for v in wannasee]
         except ValueError as e:
-            raise ValueError(str(e)+". You probably want to self.get_sys() call with the care_for = 'all' argument.")
+            raise ValueError(str(e)+". You probably don't want to call self.get_sys() with the 'reduce_sys = True' argument.")
     else:
         args_see    = []
 
