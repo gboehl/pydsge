@@ -120,7 +120,7 @@ def get_sys(self, par=None, care_for = [], verbose = False):
 
     ## add everything to the DSGE object
     self.vv     = vv_v[~out_msk[-len(vv_v):]]
-    self.vx     = vv_x3
+    self.vx     = np.array([v.name for v in vv_x3])
     self.dim_x  = dim_x
     self.dim_v  = len(self.vv)
 
@@ -136,7 +136,6 @@ def get_sys(self, par=None, care_for = [], verbose = False):
 
     self.SIG    = (BB.T @ D)[~out_msk[-len(vv_v):]]
 
-    ## need to delete this zero, its just here cause I'm lazy
     self.sys 	= N2, A2, J2, cx[~out_msk], b2[~out_msk], x_bar
 
     if verbose:
