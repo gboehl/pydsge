@@ -267,7 +267,7 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
                 f_val       = -np.inf
                 self.x      = self.init_par
 
-                res         = so.minimize(self, self.x, method=pmdm_method, tol=1e-1)
+                res         = so.minimize(self, self.x, method=pmdm_method, tol=1e-2)
 
                 self.pbar.close()
                 print('')
