@@ -82,7 +82,7 @@ def run_filter(self, use_rts=True, verbose=False):
     return X1, cov
 
 
-def extract(self, pmean = None, cov = None, method = None, converged_only = False, return_flag = False, verbose = True):
+def extract(self, pmean = None, cov = None, method = None, converged_only = False, return_flag = False, show_warnings = True, verbose = True):
 
     if pmean is None:
         pmean   = self.filtered_X.copy()
@@ -90,7 +90,7 @@ def extract(self, pmean = None, cov = None, method = None, converged_only = Fals
     if cov is None:
         cov     = self.filtered_cov
 
-    means, cov, res, flag   = self.enkf.ipas(pmean, cov, method, converged_only, show_warnings = False, return_flag = True, verbose = verbose)
+    means, cov, res, flag   = self.enkf.ipas(pmean, cov, method, converged_only, show_warnings = show_warnings, return_flag = True, verbose = verbose)
 
     self.res            = res
 
