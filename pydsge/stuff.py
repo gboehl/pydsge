@@ -148,7 +148,7 @@ def irfs(self, shocklist, wannasee = None, show_warnings = True):
     ## wannasee: list of strings of the variables to be plotted and stored
 
     labels      = [v.replace('_','') for v in self.vv]
-    if wannasee is not None:
+    if wannasee is not None and not 'all':
         try:
             args_see    = [labels.index(v) for v in wannasee]
         except ValueError as e:
@@ -203,6 +203,10 @@ def irfs(self, shocklist, wannasee = None, show_warnings = True):
         X1      = (self.hx[0] @ Y.T).T + self.hx[1]
         X2      = Y[:,care_for]
         X       = np.hstack((X1,X2))
+    elif wannasee is 'all':
+        tt      = ~fast0(Y,0)
+        labels  = list(self.vv[tt])
+        X       = Y[:,tt]
     else:
         labels  = self.vv[care_for]
         X       = Y[:,care_for]
