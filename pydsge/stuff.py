@@ -141,7 +141,7 @@ def get_sys(self, par=None, reduce_sys = False, verbose = False):
 
 
 
-def irfs(self, shocklist, wannasee = None, show_warnings = True):
+def irfs(self, shocklist, wannasee = None, use_bruite = False, show_warnings = True):
 
     ## returns time series of impule responses 
     ## shocklist: takes list of tuples of (shock, size, timing) 
@@ -180,7 +180,7 @@ def irfs(self, shocklist, wannasee = None, show_warnings = True):
                 for shk in shk_process:
                     args_see += list(shk)
                 
-        st_vec, (l,k), flag     = self.t_func(st_vec, shk_vec, return_k=True)
+        st_vec, (l,k), flag     = self.t_func(st_vec, shk_vec, return_k = True, use_bruite = use_bruite)
 
         if flag: 
             superflag   = True
@@ -286,13 +286,13 @@ def linear_representation(self, l=0, k=0):
     return mat[dim_xx:], term[dim_xx:]
 
 
-def t_func(self, state, noise = None, return_flag = True, return_k = False, linear = False):
+def t_func(self, state, noise = None, return_flag = True, return_k = False, linear = False, use_bruite = False):
 
     newstate   = state.copy()
 
     if noise is not None:
         newstate   += self.SIG @ noise
-    newstate, (l,k), flag   = boehlgorithm(self, newstate, linear = linear)
+    newstate, (l,k), flag   = boehlgorithm(self, newstate, linear = linear, use_bruite = use_bruite)
 
     if return_k: 	    return newstate, (l,k), flag
     elif return_flag:   return newstate, flag

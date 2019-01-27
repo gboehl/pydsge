@@ -31,7 +31,7 @@ def preprocess_jit(vals, l_max, k_max):
     core_mat[0,0,:] = np.eye(dim_y)
     res             = np.zeros((dim_y,dim_y))
 
-    for s in range(0,s_max):
+    for s in range(s_max):
 
         if s:
             core_mat[0,s,:]   = core_mat[0,s-1,:] @ N
@@ -55,21 +55,41 @@ def preprocess_jit(vals, l_max, k_max):
 
             for s in range(s_max):
 
-                k0 		= max(s-l, 0)
-                l0 		= min(l, s)
+                doit    = True
+                if s > l:
+                    # l0  = l
+                    # if s > l+k+1:
+                        # doit    = False
+                    # if s == l+k+1:
+                        # k0  = k 
+                        # s0  = 1
+                    if s > l+k:
+                        k0  = k 
+                        s0  = s-l-k
+                    else:
+                        k0  = s-l
+                        s0  = 0
+                else:
+                    l0  = s
+                    k0  = 0
+                    s0  = 0
 
-                matrices 	= core_mat[l0,k0]
-                oterm 		= core_term[k0]
+                if doit:
 
-                fin_mat     = matrices[:,:dim_x] @ SS_mat + matrices[:,dim_x:]
-                fin_term    = matrices[:,:dim_x] @ SS_term + oterm 
+                    matrices 	= core_mat[l0,k0]
+                    oterm 		= core_term[k0]
 
-                mat[l,k,s], term[l,k,s]   = fin_mat, fin_term
+                    fin_mat     = matrices[:,:dim_x] @ SS_mat + matrices[:,dim_x:]
+                    fin_term    = matrices[:,:dim_x] @ SS_term + oterm 
+
+                    # mat[l,k,s], term[l,k,s]   = fin_mat, fin_term
+                    mat[l,k,s], term[l,k,s]   = nl.matrix_power(A,s0) @ fin_mat, nl.matrix_power(A,s0) @ fin_term
+                    # mat[l,k,s], term[l,k,s]   = core_mat[s0,0] @ fin_mat, core_mat[s0,0] @ fin_term
 
     return mat, term
 
 
-def preprocess(self, l_max = 4, k_max = 20, verbose = False):
+def preprocess(self, l_max = 5, k_max = 20, verbose = False):
     st  = time.time()
     self.precalc_mat    = preprocess_jit(self.sys, l_max, k_max)
     if verbose:
@@ -83,74 +103,134 @@ def LL_jit(l, k, s, v, mat, term):
 
 
 @njit(nogil=True, cache=True)
-def boehlgorithm_jit(N, A, J, cx, b, x_bar, v, mat, term, max_cnt):
+def boehlgorithm_jit(N, A, J, cx, b, x_bar, v, mat, term, max_cnt, use_bruite):
 
     dim_x, dim_y    = J.shape
-
-    l, k 		= 0, 0
-    l1, k1 		= 1, 1
 
     l_max   = mat.shape[0] - 1
     k_max   = mat.shape[1] - 1
 
-    cnt     = 0
     flag    = False
-    while (l, k) != (l1, k1):
-        if cnt  > max_cnt:
-            flag    = 1
-            break
-        l1, k1 		= l, k
 
-        ## try lower l. If l is stable, loop will increment and exit
-        if l: l -= 1
-        while b @ LL_jit(l, k, l, v, mat, term) - x_bar > 0:
-            if l >= l_max:
-                l = 0
+    if not use_bruite:
+        l, k 		= 0, 0
+        l1, k1 		= 1, 1
+
+        cnt     = 0
+        flag    = False
+
+        while (l, k) != (l1, k1):
+            if cnt  > max_cnt:
+                flag    = 1
                 break
+            l1, k1 		= l, k
+
+            ## try lower l. If l is stable, loop will increment again and exit
+            if l: 
+                if b @ LL_jit(l, k, l-1, v, mat, term) - x_bar < 0:
+                    l -= 1
+            while b @ LL_jit(l, k, l, v, mat, term) - x_bar > 0:
+                if l >= l_max:
+                    l = 0
+                    break
+                l 	+= 1
+
+            ## if l is stable, loop over k
+            if (l) == (l1):
+                if k: 
+                    if b @ LL_jit(l, k, l+k-1, v, mat, term) - x_bar > 0: 
+                        k -= 1
+                while b @ LL_jit(l, k, l+k, v, mat, term) - x_bar < 0: 
+                    k +=1
+                    if k >= k_max:
+                        flag    = 2
+                        break
+            cnt += 1
+
+        ## if l, the first period should always be unconstrained
+        if l: 
+            if b @ LL_jit(l, k, 0, v, mat, term) - x_bar < 0: 
+                flag    = 1
+
+        if flag == 1:
+            ## if there was no equilibirum, try to find it by bruit forcing
+            l, k    = bruite(N, A, J, cx, b, x_bar, v, mat, term, max_cnt)
+            if l >= 0:
+                flag    = 0
+
+    else:
+        l   = 0
+        k   = 0
+        while b @ LL_jit(l, 0, l, v, mat, term) - x_bar > 0:
+            if l == l_max: break
             l 	+= 1
 
-        ## if l > 0, then x > x_bar. If not, set l = 0
-        if l and k:
-            if b @ LL_jit(l, k, 0, v, mat, term) - x_bar < 0: 
-                l   = 0
+        if l < l_max:
+            l, k    = bruite(N, A, J, cx, b, x_bar, v, mat, term, max_cnt)
+            if l == -1:
+                flag    = 1
+                l,k     = 1,0
 
-        ## if l is stable, loop over k
-        if (l) == (l1):
-            if k: k -= 1
-            while b @ LL_jit(l, k, l+k, v, mat, term) - x_bar < 0: 
-                k +=1
-                if k >= k_max:
-                    flag    = 2
-                    break
-        cnt += 1
-
-    ## if there is no convergence, abstract form l > 0
-    if flag:
-        k   = 0
-        while b @ LL_jit(l, k, l+k, v, mat, term) - x_bar < 0: 
-            k +=1
-            if k >= k_max:
-                flag    = 2
-                break
-
-    if not k: l = 1
+    if not k:
+        l = 1
     v_new 	= LL_jit(l, k, 1, v, mat, term)[dim_x:]
 
     return v_new, (l, k), flag
 
 
-def boehlgorithm(self, v, max_cnt = 5e1, linear = False):
+@njit(nogil=True, cache=True)
+def bruite(N, A, J, cx, b, x_bar, v, mat, term, max_cnt):
+
+    dim_x, dim_y    = J.shape
+
+    l_max   = mat.shape[0] 
+    k_max   = mat.shape[1]
+
+    LK  = []
+    for l in range(l_max):
+        for k in range(k_max):
+            yes     = True
+            if k: 
+                if b @ LL_jit(l, k, k+l-1, v, mat, term) - x_bar > 0:
+                    yes     = False
+                if yes: 
+                    if b @ LL_jit(l, k, l, v, mat, term) - x_bar > 0:
+                        yes     = False
+            if l: 
+                if yes:
+                    if b @ LL_jit(l, k, l-1, v, mat, term) - x_bar < 0:
+                        yes     = False
+                if yes:
+                    if b @ LL_jit(l, k, 0, v, mat, term) - x_bar < 0:
+                        yes     = False
+            if yes:
+                if b @ LL_jit(l, k, k+l, v, mat, term) - x_bar < 0:
+                    yes     = False
+            if yes and k: 
+                LK.append((l,k))
+
+    if not LK:
+        LK  = [(-1,-1)]
+
+    lk  = np.array(LK)
+    lk_sum  = np.sum(lk, axis=1)
+    mark    = np.argmin(lk_sum)
+
+    return lk[mark]
+
+
+def boehlgorithm(self, v, max_cnt = 4e1, linear = False, use_bruite = False):
 
     if not linear:
 
         if not hasattr(self, 'precalc_mat'):
-            self.preprocess(self, l_max = 4, k_max = 20, verbose = False)
+            self.preprocess(self, verbose = False)
 
         ## numba does not like tuples of numpy arrays
         mat, term                   = self.precalc_mat
         N, A, J, cx, b, x_bar       = self.sys
 
-        return boehlgorithm_jit(N, A, J, cx, b, x_bar, v, mat, term, max_cnt)
+        return boehlgorithm_jit(N, A, J, cx, b, x_bar, v, mat, term, max_cnt, use_bruite)
 
     else:
 
