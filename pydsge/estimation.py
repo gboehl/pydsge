@@ -63,7 +63,7 @@ def mcmc(p0, nwalkers, ndim, ndraws, priors, sampler, ntemp, ncores, update_freq
     return sampler
 
 
-def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune = None, ncores = None, nwalkers = 100, ntemp = 4, maxfev = 2500, pmdm_method = None, sampler = None, update_freq = None, verbose = False):
+def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune = None, ncores = None, nwalkers = 100, ntemp = 4, maxfev = 2500, use_bruite = 0, pmdm_method = None, sampler = None, update_freq = None, verbose = False):
 
     import pathos
     import scipy.stats as ss
@@ -92,7 +92,7 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
 
     ## dry run before the fun beginns
     self.create_filter(P = P, R = R, N = N)
-    self.get_ll(verbose = verbose)
+    self.get_ll(verbose = verbose, use_bruite = use_bruite)
 
     print()
     print('[bayesian_estimation:]'.ljust(30, ' ')+'Model operational. Ready for estimation.')
@@ -158,7 +158,7 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
 
                 self.create_filter(P = P, R = R, N = N)
 
-                ll  = self.get_ll(verbose=verbose)
+                ll  = self.get_ll(verbose=verbose, use_bruite = use_bruite)
 
                 if verbose == 2:
                     print('[bayesian_estimation -> llike:]'.ljust(30, ' ')+'Sample took '+str(np.round(time.time() - st, 3))+'s.')

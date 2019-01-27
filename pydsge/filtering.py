@@ -48,10 +48,13 @@ def create_filter(self, P = None, R = None, N = None):
     self.enkf    = enkf
 
 
-def get_ll(self, verbose=False):
+def get_ll(self, verbose = False, use_bruite = 0):
 
     if verbose:
         st  = time.time()
+
+    ## set approximation to get ll
+    self.enkf.fx    = lambda x: self.t_func(x, use_bruite = use_bruite)
 
     ll     = self.enkf.batch_filter(self.Z, calc_ll = True, verbose=verbose)[2]
 
@@ -63,7 +66,10 @@ def get_ll(self, verbose=False):
     return self.ll
 
 
-def run_filter(self, use_rts=True, verbose=False):
+def run_filter(self, use_rts=True, verbose=False, use_bruite = 1):
+
+    ## set approximation level
+    self.enkf.fx    = lambda x: self.t_func(x, use_bruite = use_bruite)
 
     if verbose:
         st  = time.time()

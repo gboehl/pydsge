@@ -107,7 +107,7 @@ def boehlgorithm_jit(N, A, J, cx, b, x_bar, v, mat, term, max_cnt, use_bruite):
 
     flag    = 0
 
-    if not use_bruite:
+    if use_bruite < 2:
         l, k 		= 0, 0
         l1, k1 		= 1, 1
 
@@ -135,7 +135,7 @@ def boehlgorithm_jit(N, A, J, cx, b, x_bar, v, mat, term, max_cnt, use_bruite):
                     if b @ LL_jit(l, k, l+k-1, v, mat, term) - x_bar > 0: 
                         k -= 1
                 while b @ LL_jit(l, k, l+k, v, mat, term) - x_bar < 0: 
-                    k +=1
+                    k += 1
                     if k >= k_max:
                         flag    = 2
                         break
@@ -147,12 +147,11 @@ def boehlgorithm_jit(N, A, J, cx, b, x_bar, v, mat, term, max_cnt, use_bruite):
                 flag    = 1
 
         if flag == 1:
-            ## if there was no equilibirum, try to find it by bruit forcing
-            l, k    = bruite(b, x_bar, v, mat, term)
-            if l == -1:
-                l, k    = 1, 0
-            else:
-                flag    = 0
+            if use_bruite:
+                ## if there was no equilibirum, try to find it by bruit forcing
+                l, k    = bruite(b, x_bar, v, mat, term)
+                if l > -1:
+                    flag    = 0
 
     else:
         l   = 0
@@ -166,6 +165,15 @@ def boehlgorithm_jit(N, A, J, cx, b, x_bar, v, mat, term, max_cnt, use_bruite):
             if l == -1:
                 flag    = 1
                 l, k    = 1, 0
+
+    ## if still no solution, use approximation
+    if flag == 1:
+        l, k    = 0, 0
+        while b @ LL_jit(l, k, l+k, v, mat, term) - x_bar < 0: 
+            k += 1
+            if k >= k_max:
+                flag    = 3
+                break
 
     if not k:
         l = 1
