@@ -26,12 +26,6 @@ def create_filter(self, P = None, R = None, N = None):
     if not hasattr(self, 'Z'):
         warnings.warn('No time series of observables provided')
 
-    if N is None:
-        if hasattr(self, 'nparticles'):
-            N   = self.nparticles
-        else:
-            N   = 5*len(self.vv)
-
     enkf    = EnKF(N, model_obj = self)
 
     if P is not None:

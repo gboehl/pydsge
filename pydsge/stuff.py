@@ -10,7 +10,7 @@ import time
 from grgrlib import *
 from .engine import boehlgorithm
 
-def get_sys(self, par=None, reduce_sys = False, verbose = False):
+def get_sys(self, par=None, reduce_sys = True, verbose = False):
 
     st  = time.time()
 
@@ -20,7 +20,6 @@ def get_sys(self, par=None, reduce_sys = False, verbose = False):
     if not self.const_var:
         warnings.warn('Code is only meant to work with OBCs')
 
-    # vv_v    = np.array(self.variables)
     vv_v    = np.array([v.name for v in self.variables])
     vv_x    = np.array(self.variables)
 
