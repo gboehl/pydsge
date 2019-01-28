@@ -16,6 +16,10 @@ from numba import njit
 @njit(nogil=True, cache=True)
 def preprocess_jit(vals, l_max, k_max):
 
+    ## these must be the real max values, not only the size of the matrices
+    l_max   += 1
+    k_max   += 1
+
     N, A, J, cx, b, x_bar   = vals
 
     dim_x, dim_y    = J.shape
@@ -84,7 +88,7 @@ def preprocess_jit(vals, l_max, k_max):
     return mat, term
 
 
-def preprocess(self, l_max = 5, k_max = 25, verbose = False):
+def preprocess(self, l_max = 5, k_max = 15, verbose = False):
     st  = time.time()
     self.precalc_mat    = preprocess_jit(self.sys, l_max, k_max)
     if verbose:
@@ -137,6 +141,7 @@ def boehlgorithm_jit(N, A, J, cx, b, x_bar, v, mat, term, max_cnt, use_bruite):
                 while b @ LL_jit(l, k, l+k, v, mat, term) - x_bar < 0: 
                     k += 1
                     if k >= k_max:
+                        k       = k_max
                         flag    = 2
                         break
             cnt += 1

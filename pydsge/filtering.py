@@ -41,11 +41,13 @@ def create_filter(self, P = None, R = None, N = None):
     elif hasattr(self, 'obs_cov'):
         enkf.R 		= self.obs_cov
 
-    CO          = self.SIG @ self.QQ(self.par)
+    enkf.eps_cov    = self.QQ(self.par)
+
+    CO          = self.SIG @ enkf.eps_cov
 
     enkf.Q 		= CO @ CO.T
 
-    self.enkf    = enkf
+    self.enkf   = enkf
 
 
 def get_ll(self, verbose = False, use_bruite = 0):
@@ -66,7 +68,7 @@ def get_ll(self, verbose = False, use_bruite = 0):
     return self.ll
 
 
-def run_filter(self, use_rts=True, verbose=False, use_bruite = 1):
+def run_filter(self, use_rts=True, verbose=False, use_bruite = 2):
 
     ## set approximation level
     self.enkf.fx    = lambda x: self.t_func(x, use_bruite = use_bruite)
@@ -88,15 +90,17 @@ def run_filter(self, use_rts=True, verbose=False, use_bruite = 1):
     return X1, cov
 
 
-def extract(self, pmean = None, cov = None, method = None, converged_only = False, return_flag = False, show_warnings = True, verbose = True):
+def extract(self, pmean = None, cov = None, method = None, converged_only = False, return_flag = False, use_bruite = 2, itype = (0,1), show_warnings = True, verbose = True):
+
+    self.enkf.fx    = lambda x, noise: self.t_func(x, noise, use_bruite = use_bruite)
 
     if pmean is None:
         pmean   = self.filtered_X.copy()
 
     if cov is None:
-        cov     = self.filtered_cov
+        cov     = self.filtered_cov.copy()
 
-    means, cov, res, flag   = self.enkf.ipas(pmean, cov, method, converged_only, show_warnings = show_warnings, return_flag = True, verbose = verbose)
+    means, cov, res, flag   = self.enkf.ipas(pmean, cov, method, converged_only, show_warnings = show_warnings, itype = itype, return_flag = True, verbose = verbose)
 
     self.res            = res
 
