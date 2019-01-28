@@ -118,9 +118,9 @@ class modloader(object):
 
         return posteriorplot(trace_value, varnames=self.prior_names, tune=self.tune, **args)
 
-    def innovations_mask(self):
-        return np.full((self.Z.shape[0]-1, self.Z.shape[1]), np.nan)
 
+def mask(self):
+    return np.full((self.Z.shape[0]-1, self.Z.shape[1]), np.nan)
 
 def save_res(self, filename, description = None):
 
@@ -140,7 +140,6 @@ def save_res(self, filename, description = None):
              init_cov       = self.enkf.P,
              par_fix        = self.par_fix,
              ndraws         = self.ndraws, 
-             # chain          = self.chain, 
              chain          = self.sampler.chain, 
              acc_frac       = self.sampler.acceptance_fraction,
              prior_dist     = self.sampler.prior_dist, 
@@ -153,14 +152,14 @@ def save_res(self, filename, description = None):
     print('[save_res:]'.ljust(15, ' ')+'Results saved in ', filename)
             
 
-def runner_pooled(nr_samples, ncores, innovations_mask):
+def runner_pooled(nr_samples, ncores, mask):
 
     import pathos
 
     global runner_glob
 
     def runner_loc(x):
-        return runner_glob(x, innovations_mask)
+        return runner_glob(x, mask)
 
     pool    = pathos.pools.ProcessPool(ncores)
 
@@ -197,10 +196,11 @@ def posterior_sample(self, be_res = None, seed = 0):
     return list(randpar)
 
 
-def epstract(self, be_res = None, nr_samples = 1000, save = None, ncores = None, method = None, converged_only = True, max_att = 3, force = False, verbose = False):
+def epstract(self, be_res, nr_samples = 100, save = None, ncores = None, method = None, itype = (0,1), converged_only = True, max_attempts = 3, force = False, verbose = False):
 
+    XX      = []
+    COV     = []
     EPS     = []
-    X0      = []
     PAR     = []
 
     if not force and save is not None:
@@ -210,30 +210,32 @@ def epstract(self, be_res = None, nr_samples = 1000, save = None, ncores = None,
         if os.path.isfile(save):
 
             files   = np.load(save)
-            COV     = files['COV']
+            OBS_COV = files['OBS_COV']
             smethod = files['method']
 
             c0  = method == smethod 
             c1  = method is None and smethod == -1
 
-            if np.all(COV == self.obs_cov) and (c0 or c1):
+            if np.all(OBS_COV == self.obs_cov) and (c0 or c1):
 
                 EPS     = files['EPS']
-                X0      = files['X0']
+                COV     = files['COV']
+                XX      = files['XX']
                 PAR     = files['PAR']
 
                 if EPS.shape[0] >= nr_samples:
                     print('[epstract:]'.ljust(15, ' ')+'Epstract already exists')
 
-                    self.epstracted     = EPS, X0, PAR, self.obs_cov, method
+                    self.epstracted     = XX, COV, EPS, PAR, self.obs_cov, method
 
-                    return EPS, X0, PAR
+                    return XX, COV, EPS, PAR
 
                 else:
                     print('[epstract:]'.ljust(15, ' ')+'Appending to existing epstract...')
 
+                    XX      = list(XX)
+                    COV     = list(COV)
                     EPS     = list(EPS)
-                    X0      = list(X0)
                     PAR     = list(PAR)
 
     import pathos
@@ -245,25 +247,25 @@ def epstract(self, be_res = None, nr_samples = 1000, save = None, ncores = None,
     if len(EPS):    yet = len(EPS)
     nr_samples  = nr_samples - yet
 
-    def runner(nr, innovations_mask):
+    def runner(nr, mask):
         
         flag    = True
 
-        for att in range(max_att):
+        for att in range(max_attempts):
 
             par     = self.posterior_sample(be_res = be_res, seed = yet + nr + att*nr_samples)
 
-            self.get_sys(par, verbose=False)                      # define parameters
-            self.preprocess(verbose=False)                   # preprocess matrices for speedup
+            self.get_sys(par, verbose = False)                      # define parameters
+            self.preprocess(verbose = False)                   # preprocess matrices for speedup
 
             self.create_filter()
-            X, cov      = self.run_filter()
-            eps, flag   = self.extract(method = method, verbose = verbose, converged_only = converged_only, return_flag = True)[2:]
+            SX, scov    = self.run_filter()
+            IX, icov, eps, flag     = self.extract(method = method, verbose = verbose, converged_only = converged_only, itype = itype, return_flag = True)
 
             if not flag:
-                return eps, X[0], par
+                return IX, icov, eps, par
 
-        raise ValueError('epstract: Could not extract shock after %s attemps.' %max_att)
+        raise ValueError('epstract: Could not extract shocks after %s attemps.' %max_attempts)
 
     global runner_glob
     runner_glob    = runner
@@ -274,12 +276,13 @@ def epstract(self, be_res = None, nr_samples = 1000, save = None, ncores = None,
     dim_e           = len(self.shocks)
 
     for p in res:
-        EPS .append(p[0])
-        X0  .append(p[1])
-        PAR .append(p[2])
+        XX  .append(p[0])
+        COV .append(p[1])
+        EPS .append(p[2])
+        PAR .append(p[3])
 
     EPS     = np.array(EPS)
-    X0      = np.array(X0, dtype=object)
+    XX      = np.array(XX, dtype=object)
     PAR     = np.array(PAR)
 
     if save is not None:
@@ -288,93 +291,79 @@ def epstract(self, be_res = None, nr_samples = 1000, save = None, ncores = None,
             smethod     = -1
         np.savez(save,
                  EPS    = EPS,
-                 X0     = X0,
+                 XX     = XX,
                  PAR    = PAR,
                  COV    = self.obs_cov,
                  method = smethod
                 )
 
-    self.epstracted     = EPS, X0, PAR, self.obs_cov, method
+    self.epstracted     = XX, COV, EPS, PAR, self.obs_cov, method
 
-    return EPS, X0, PAR
+    return XX, COV, EPS, PAR
 
 
-def sampled_sim(self, innovations_mask = None, nr_samples = None, epstracted = None, ncores = None, show_warnings = False, verbose = False):
+def sampled_sim(self, epstracted = None, mask = None, nr_samples = None, ncores = None, show_warnings = False, verbose = False):
 
     import pathos
-
-    if epstracted is None:
-        epstracted  = self.epstracted[:3]
 
     if ncores is None:
         ncores  = pathos.multiprocessing.cpu_count()
 
-    EPS, X0, PAR  = epstracted     
+    if epstracted is None:
+        epstracted  = self.epstracted[:3]
 
-    ## X0 had to be saved as an object array. pathos can't deal with that
-    X0  = [x.astype(float) for x in X0 ]
+    EPS, XX, PAR  = epstracted     
+
+    ## XX had to be saved as an object array. pathos can't deal with that
+    XX  = [x.astype(float) for x in XX ]
 
     if nr_samples is None:
         nr_samples  = EPS.shape[0]
 
-    def runner(nr, innovations_mask):
+    def runner(nr, mask):
 
         par     = list(PAR[nr])
         eps     = EPS[nr]
-        x0      = X0[nr]
+        x0      = XX[nr]
         
         self.get_sys(par, verbose = verbose)
         self.preprocess(verbose = verbose)
 
-        if innovations_mask is not None:
-            eps     = np.where(np.isnan(innovations_mask), eps, innovations_mask)
+        if mask is not None:
+            eps     = np.where(np.isnan(mask), eps, mask)
 
-        SZ, SX, SK, flag    = self.simulate(eps, initial_state = x0, show_warnings = show_warnings, verbose = verbose, return_flag = True)
+        SX, SK, flag    = self.simulate(eps, initial_state = x0, show_warnings = show_warnings, verbose = verbose, return_flag = True)
 
-        # if flag:
-            # return None, None, None, None
+        SZ   = (self.hx[0] @ SX.T).T + self.hx[1]
 
         return SZ, SX, SK, self.vv
 
     global runner_glob
     runner_glob    = runner
 
-    res     = runner_pooled(nr_samples, ncores, innovations_mask)
+    res     = runner_pooled(nr_samples, ncores, mask)
 
     dim_x   = 1e50
     for p in res:
-        # if p[0] is not None:
-            if len(p[3]) < dim_x:
-                minr    = p[3]
-                dim_x   = len(minr)
+        if len(p[3]) < dim_x:
+            minr    = p[3]
+            dim_x   = len(minr)
 
-    # no_obs, dim_z   = self.Z.shape
-    # dim_e           = len(self.shocks)
-
-    # SZS     = np.empty((nr_samples, no_obs, dim_z))
-    # SXS     = np.empty((nr_samples, no_obs, dim_x))
-    # SKS     = np.empty((nr_samples, no_obs, 1))
     SZS     = []
     SXS     = []
     SKS     = []
 
     for n, p in enumerate(res):
 
-        # if p[0] is not None:
-            # SZS[n,:]  = p[0]
-            # SKS[n,:]  = p[2]
-            SZS.append(p[0])
-            SKS.append(p[2])
+        SZS.append(p[0])
+        SKS.append(p[2])
 
-            if len(p[3]) > dim_x:
-                    idx     = [ list(p[3]).index(v) for v in minr ]
-                    # SXS[n,:]  = p[1][:,idx]
-                    SXS.append(p[1][:,idx])
-            else:
-                # SXS[n,:]  = p[1]
-                SXS.append(p[1])
+        if len(p[3]) > dim_x:
+                idx     = [ list(p[3]).index(v) for v in minr ]
+                SXS.append(p[1][:,idx])
+        else:
+            SXS.append(p[1])
 
-    # return SZS, SXS, SKS
     return np.array(SZS), np.array(SXS), np.array(SKS)
 
 

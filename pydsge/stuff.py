@@ -214,13 +214,16 @@ def irfs(self, shocklist, wannasee = None, use_bruite = False, show_warnings = T
     return X, labels, (Y, K, L)
 
 
-def simulate(self, EPS = None, initial_state = None, verbose = False, show_warnings = True, return_flag = False):
+def simulate(self, eps = None, mask = None, initial_state = None, verbose = False, show_warnings = True, return_flag = False):
     """
-        EPS: shock innovations of shape (T, n_eps)
+        eps: shock innovations of shape (T, n_eps)
     """
 
-    if EPS is None:
-        EPS     = self.res
+    if eps is None:
+        eps     = self.res.copy()
+
+    if mask is not None:
+        eps     = np.where(np.isnan(mask), eps, mask)
 
     if initial_state is None:
         if hasattr(self, 'filtered_X'):
@@ -238,9 +241,9 @@ def simulate(self, EPS = None, initial_state = None, verbose = False, show_warni
     if verbose:
         st  = time.time()
 
-    for eps in EPS:
+    for eps_t in eps:
 
-        st_vec_new, (l,k), flag     = self.t_func(st_vec, noise=eps, return_k=True)
+        st_vec_new, (l,k), flag     = self.t_func(st_vec, noise=eps_t, return_k=True)
 
         if flag: 
             superflag   = True
@@ -254,22 +257,19 @@ def simulate(self, EPS = None, initial_state = None, verbose = False, show_warni
     X   = np.array(X)
     K   = np.array(K)
     L   = np.array(L)
-    Z   = (self.hx[0] @ X.T).T + self.hx[1]
 
     self.simulated_X    = X
-    self.simulated_Z    = Z
 
     if verbose:
         print('[simulate:]'.ljust(15, ' ')+'Simulation took ', time.time() - st, ' seconds.')
 
     if superflag and show_warnings:
-        warnings.warn('Numerical errors in boehlgorithm during simulation, did not converge')
+        print('[simulate:]'.ljust(15, ' ')+'Numerical errors in boehlgorithm during simulation, did not converge')
 
     if return_flag:
+        return X, np.expand_dims(K, 2), superflag
 
-        return Z, X, np.expand_dims(K, 2), superflag
-
-    return Z, X, np.expand_dims(K, 2)
+    return X, np.expand_dims(K, 2)
 
 
 def linear_representation(self, l=0, k=0):

@@ -29,3 +29,4 @@ dsge.extract            = extract
 dsge.create_obs_cov     = create_obs_cov
 dsge.posterior_sample   = posterior_sample
 dsge.preprocess         = preprocess
+dsge.mask               = mask

@@ -27,12 +27,17 @@ def create_filter(self, P = None, R = None, N = None):
         warnings.warn('No time series of observables provided')
 
     if N is None:
-        N   = 5*len(self.vv)
+        if hasattr(self, 'nparticles'):
+            N   = self.nparticles
+        else:
+            N   = 5*len(self.vv)
 
     enkf    = EnKF(N, model_obj = self)
 
     if P is not None:
         enkf.P 		= P
+    elif hasattr(self, 'P'):
+        enkf.P  = self.P
     else:
         enkf.P 		*= 1e1
 
@@ -90,7 +95,7 @@ def run_filter(self, use_rts=True, verbose=False, use_bruite = 2):
     return X1, cov
 
 
-def extract(self, pmean = None, cov = None, method = None, converged_only = False, return_flag = False, use_bruite = 2, itype = (0,1), show_warnings = True, verbose = True):
+def extract(self, pmean = None, cov = None, method = None, converged_only = True, return_flag = False, use_bruite = 2, itype = (0,1), show_warnings = True, verbose = True):
 
     self.enkf.fx    = lambda x, noise: self.t_func(x, noise, use_bruite = use_bruite)
 
