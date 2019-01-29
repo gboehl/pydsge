@@ -88,7 +88,7 @@ def preprocess_jit(vals, l_max, k_max):
     return mat, term
 
 
-def preprocess(self, l_max = 4, k_max = 18, verbose = False):
+def preprocess(self, l_max = 4, k_max = 17, verbose = False):
     st  = time.time()
     self.precalc_mat    = preprocess_jit(self.sys, l_max, k_max)
     if verbose:
@@ -125,8 +125,13 @@ def boehlgorithm_jit(N, A, J, cx, b, x_bar, v, mat, term, max_cnt, use_bruite):
 
             ## try lower l. If l is stable, loop will increment again and exit
             if l: 
-                if b @ LL_jit(l, k, l-1, v, mat, term) - x_bar < 0:
+                ## this should be sligtly more precise but, more expensive
+                if use_bruite:
+                    if b @ LL_jit(l, k, l-1, v, mat, term) - x_bar < 0:
+                        l -= 1
+                else:
                     l -= 1
+
             while b @ LL_jit(l, k, l, v, mat, term) - x_bar > 0:
                 if l >= l_max:
                     l = 0
@@ -136,8 +141,13 @@ def boehlgorithm_jit(N, A, J, cx, b, x_bar, v, mat, term, max_cnt, use_bruite):
             ## if l is stable, loop over k
             if (l) == (l1):
                 if k: 
-                    if b @ LL_jit(l, k, l+k-1, v, mat, term) - x_bar > 0: 
+                    ## this should be sligtly more precise but, more expensive
+                    if use_bruite:
+                        if b @ LL_jit(l, k, l+k-1, v, mat, term) - x_bar > 0: 
+                            k -= 1
+                    else:
                         k -= 1
+
                 while b @ LL_jit(l, k, l+k, v, mat, term) - x_bar < 0: 
                     k += 1
                     if k >= k_max:
