@@ -280,9 +280,9 @@ def linear_representation(self, l=0, k=0):
 
     mat, term    = self.precalc_mat
 
-    dim_xx  = J.shape[0]
+    dim_x  = J.shape[0]
 
-    return mat[dim_xx:], term[dim_xx:]
+    return mat[1, 0, 1][dim_x:]
 
 
 def t_func(self, state, noise = None, return_flag = True, return_k = False, linear = False, use_bruite = False):
