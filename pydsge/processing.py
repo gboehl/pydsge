@@ -196,7 +196,7 @@ def posterior_sample(self, be_res = None, seed = 0):
     return list(randpar)
 
 
-def epstract(self, be_res, nr_samples = 100, save = None, ncores = None, method = None, itype = (0,1), converged_only = True, max_attempts = 3, force = False, verbose = False):
+def epstract(self, be_res = None, nr_samples = 100, save = None, ncores = None, method = None, itype = (0,1), converged_only = True, max_attempts = 3, force = False, verbose = False):
 
     XX      = []
     COV     = []
