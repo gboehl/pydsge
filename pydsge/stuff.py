@@ -213,7 +213,7 @@ def irfs(self, shocklist, wannasee = None, use_bruite = False, show_warnings = T
     return X, labels, (Y, K, L)
 
 
-def simulate(self, eps = None, mask = None, initial_state = None, verbose = False, show_warnings = True, return_flag = False):
+def simulate(self, eps = None, mask = None, initial_state = None, use_bruite = 2, verbose = False, show_warnings = True, return_flag = False):
     """
         eps: shock innovations of shape (T, n_eps)
     """
@@ -242,7 +242,7 @@ def simulate(self, eps = None, mask = None, initial_state = None, verbose = Fals
 
     for eps_t in eps:
 
-        st_vec_new, (l,k), flag     = self.t_func(st_vec, noise=eps_t, return_k=True)
+        st_vec_new, (l,k), flag     = self.t_func(st_vec, noise=eps_t, return_k=True, use_bruite = use_bruite)
 
         if flag: 
             superflag   = True

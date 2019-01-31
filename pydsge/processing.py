@@ -196,12 +196,15 @@ def posterior_sample(self, be_res = None, seed = 0):
     return list(randpar)
 
 
-def epstract(self, be_res = None, nr_samples = 100, save = None, ncores = None, method = None, itype = (0,1), converged_only = True, max_attempts = 3, force = False, verbose = False):
+def epstract(self, be_res = None, N = None, nr_samples = 100, save = None, ncores = None, method = None, itype = (0,1), converged_only = True, max_attempts = 3, force = False, verbose = False):
 
     XX      = []
     COV     = []
     EPS     = []
     PAR     = []
+
+    if N is None:
+        N   = 300
 
     if not force and save is not None:
 
@@ -258,7 +261,7 @@ def epstract(self, be_res = None, nr_samples = 100, save = None, ncores = None, 
             self.get_sys(par, verbose = False)                      # define parameters
             self.preprocess(verbose = False)                   # preprocess matrices for speedup
 
-            self.create_filter()
+            self.create_filter(N = N)
             SX, scov    = self.run_filter()
             IX, icov, eps, flag     = self.extract(method = method, verbose = verbose, converged_only = converged_only, itype = itype, return_flag = True)
 
@@ -291,9 +294,10 @@ def epstract(self, be_res = None, nr_samples = 100, save = None, ncores = None, 
             smethod     = -1
         np.savez(save,
                  EPS    = EPS,
+                 COV    = COV,
                  XX     = XX,
                  PAR    = PAR,
-                 COV    = self.obs_cov,
+                 OBS_COV    = self.obs_cov,
                  method = smethod
                 )
 
@@ -310,12 +314,12 @@ def sampled_sim(self, epstracted = None, mask = None, nr_samples = None, ncores 
         ncores  = pathos.multiprocessing.cpu_count()
 
     if epstracted is None:
-        epstracted  = self.epstracted[:3]
+        epstracted  = self.epstracted[:4]
 
-    EPS, XX, PAR  = epstracted     
+    XX, COV, EPS, PAR  = epstracted     
 
     ## XX had to be saved as an object array. pathos can't deal with that
-    XX  = [x.astype(float) for x in XX ]
+    X0  = [x.astype(float) for x in XX[:,0,:] ]
 
     if nr_samples is None:
         nr_samples  = EPS.shape[0]
@@ -324,7 +328,7 @@ def sampled_sim(self, epstracted = None, mask = None, nr_samples = None, ncores 
 
         par     = list(PAR[nr])
         eps     = EPS[nr]
-        x0      = XX[nr]
+        x0      = X0[nr]
         
         self.get_sys(par, verbose = verbose)
         self.preprocess(verbose = verbose)
