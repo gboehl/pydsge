@@ -63,7 +63,7 @@ def mcmc(p0, nwalkers, ndim, ndraws, priors, sampler, ntemp, ncores, update_freq
     return sampler
 
 
-def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune = None, ncores = None, nwalkers = 100, ntemp = 4, maxfev = 2500, use_bruite = 0, pmdm_method = None, sampler = None, update_freq = None, verbose = False):
+def bayesian_estimation(self, N = None, ndraws = 500, tune = None, ncores = None, nwalkers = 100, ntemp = 4, maxfev = 2500, use_bruite = 0, pmdm_method = None, sampler = None, update_freq = None, verbose = False):
 
     import pathos
     import scipy.stats as ss
@@ -80,18 +80,18 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
     if update_freq is None:
         update_freq     = int(ndraws/4.)
 
-    description     = None
-
     if hasattr(self, 'description'):
         description     = self.description
+    else:
+        description     = None
 
-    if P is None:
-        P   = np.eye(len(self.vv))*1e1
+    if N is None:
+        N   = 300
 
     self.preprocess(verbose=verbose)
 
     ## dry run before the fun beginns
-    self.create_filter(P = P, R = R, N = N)
+    self.create_filter(N = N)
     self.get_ll(verbose = verbose, use_bruite = use_bruite)
 
     print()
@@ -163,14 +163,14 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
                 ll  = self.get_ll(verbose=verbose, use_bruite = use_bruite)
 
                 if verbose == 2:
-                    print('[bayesian_estimation -> llike:]'.ljust(30, ' ')+' Sample took '+str(np.round(time.time() - st, 3))+'s.')
+                    print('[bayesian_estimation -> llike:]'.ljust(45, ' ')+' Sample took '+str(np.round(time.time() - st, 3))+'s.')
 
                 return ll
 
             except:
 
                 if verbose == 2:
-                    print('[bayesian_estimation -> llike:]'.ljust(30, ' ')+' Sample took '+str(np.round(time.time() - st, 3))+'s. (failure)')
+                    print('[bayesian_estimation -> llike:]'.ljust(45, ' ')+' Sample took '+str(np.round(time.time() - st, 3))+'s. (failure)')
 
                 return -np.inf
 
@@ -243,9 +243,9 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
                 with os.popen('stty size', 'r') as rows_cols:
                     cols            = rows_cols.read().split()[1]
                 if description is not None:
-                    self.pbar.write('[bayesian_estimation -> pmdm:]'.ljust(30, ' ')+' Current best guess @ iteration %s and ll of %s (%s):' %(self.n, self.res_max.round(5), str(description)))
+                    self.pbar.write('[bayesian_estimation -> pmdm:]'.ljust(45, ' ')+' Current best guess @ iteration %s and ll of %s (%s):' %(self.n, self.res_max.round(5), str(description)))
                 else:
-                    self.pbar.write('[bayesian_estimation -> pmdm:]'.ljust(30, ' ')+' Current best guess @ iteration %s and ll of %s):' %(self.n, self.res_max.round(5)))
+                    self.pbar.write('[bayesian_estimation -> pmdm:]'.ljust(45, ' ')+' Current best guess @ iteration %s and ll of %s):' %(self.n, self.res_max.round(5)))
                 ## split the info such that it is readable
                 lnum            = (len(priors)*8)//(int(cols)-8) + 1
                 priors_chunks   = np.array_split(np.array(prior_names), lnum)
@@ -274,15 +274,15 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
                 self.pbar.close()
                 print('')
                 if self.res_max < res['fun']:
-                    print('[bayesian_estimation -> pmdm:]'.ljust(30, ' ')+str(res['message'])+' Maximization returned value lower than actual (known) optimum ('+str(-self.res_max)+' > '+str(-self.res)+').')
+                    print('[bayesian_estimation -> pmdm:]'.ljust(45, ' ')+str(res['message'])+' Maximization returned value lower than actual (known) optimum ('+str(-self.res_max)+' > '+str(-self.res)+').')
                 else:
-                    print('[bayesian_estimation -> pmdm:]'.ljust(30, ' ')+str(res['message'])+' Log-likelihood is '+str(np.round(-res['fun'],5))+'.')
+                    print('[bayesian_estimation -> pmdm:]'.ljust(45, ' ')+str(res['message'])+' Log-likelihood is '+str(np.round(-res['fun'],5))+'.')
                 print('')
 
             except (KeyboardInterrupt, StopIteration) as e:
                 self.pbar.close()
                 print('')
-                print('[bayesian_estimation -> pmdm:]'.ljust(30, ' ')+' Maximum number of function calls exceeded, exiting. Log-likelihood is '+str(np.round(-self.res_max,5))+'...')
+                print('[bayesian_estimation -> pmdm:]'.ljust(45, ' ')+' Maximum number of function calls exceeded, exiting. Log-likelihood is '+str(np.round(-self.res_max,5))+'...')
                 print('')
 
             return self.x_max
@@ -292,15 +292,15 @@ def bayesian_estimation(self, N = None, P = None, R = None, ndraws = 500, tune =
         print()
         if not verbose:
             np.warnings.filterwarnings('ignore')
-            print('[bayesian_estimation -> pmdm:]'.ljust(30, ' ')+' Maximizing posterior mode density (meanwhile warnings are disabled)')
+            print('[bayesian_estimation -> pmdm:]'.ljust(45, ' ')+' Maximizing posterior mode density (meanwhile warnings are disabled)')
         else:
-            print('[bayesian_estimation -> pmdm:]'.ljust(30, ' ')+' Maximizing posterior mode density:')
+            print('[bayesian_estimation -> pmdm:]'.ljust(45, ' ')+' Maximizing posterior mode density:')
         if pmdm_method is None:
             pmdm_method     = 'Powell'
         elif isinstance(pmdm_method, int):
             methodl     = ["L-BFGS-B", "Nelder-Mead", "Powell", "CG", "BFGS", "TNC", "COBYLA"]
             pmdm_method  = methodl[pmdm_method]
-            print('[bayesian_estimation -> pmdm:]'.ljust(30, ' ')+' Using %s for optimization. Available methods are %s.' %(pmdm_method, ', '.join(methodl)))
+            print('[bayesian_estimation -> pmdm:]'.ljust(45, ' ')+' Using %s for optimization. Available methods are %s.' %(pmdm_method, ', '.join(methodl)))
         print()
 
         result      = pmdm(init_par).go()
