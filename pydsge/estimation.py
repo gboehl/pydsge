@@ -158,7 +158,8 @@ def bayesian_estimation(self, N = 300, ndraws = 3000, tune = None, ncores = None
                 ## these max vals should be sufficient given we're only dealing with stochastic linearization
                 self.preprocess(l_max = 3, k_max = 16, verbose=verbose)
 
-                self.create_filter(P = P, R = R, N = N)
+                self.create_filter(N = N)
+                # self.create_filter(P = P, R = R, N = N)
 
                 ll  = self.get_ll(verbose=verbose, use_bruite = use_bruite)
 
@@ -199,7 +200,7 @@ def bayesian_estimation(self, N = 300, ndraws = 3000, tune = None, ncores = None
         
         name = 'pmdm'
 
-        def __init__(self, init_par):
+        def __init__(self, init_par, method):
 
             self.n      = 0
             self.maxfev = maxfev
@@ -209,6 +210,7 @@ def bayesian_estimation(self, N = 300, ndraws = 3000, tune = None, ncores = None
             self.update_ival    = 1
             self.timer  = 0
             self.res_max    = np.inf
+            self.method     = method
 
         def __call__(self, pars):
 
@@ -269,7 +271,7 @@ def bayesian_estimation(self, N = 300, ndraws = 3000, tune = None, ncores = None
                 f_val       = -np.inf
                 self.x      = self.init_par
 
-                res         = so.minimize(self, self.x, method=pmdm_method, tol=1e-2)
+                res         = so.minimize(self, self.x, method=self.method, tol=1e-2)
 
                 self.pbar.close()
                 print('')
@@ -306,7 +308,7 @@ def bayesian_estimation(self, N = 300, ndraws = 3000, tune = None, ncores = None
             print('[bayesian_estimation -> pmdm:]'.ljust(45, ' ')+' Using %s for optimization. Available methods are %s.' %(pmdm_method, ', '.join(methodl)))
         print()
 
-        result      = pmdm(init_par).go()
+        result      = pmdm(init_par, pmdm_method).go()
         np.warnings.filterwarnings('default')
         init_par    = result
 
