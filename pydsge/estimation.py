@@ -63,7 +63,7 @@ def mcmc(p0, nwalkers, ndim, ndraws, priors, sampler, ntemp, ncores, update_freq
     return sampler
 
 
-def bayesian_estimation(self, N = None, ndraws = 500, tune = None, ncores = None, nwalkers = 100, ntemp = 4, maxfev = 2500, use_bruite = 0, pmdm_method = None, sampler = None, update_freq = None, verbose = False):
+def bayesian_estimation(self, N = 300, ndraws = 3000, tune = None, ncores = None, nwalkers = 100, ntemp = 4, maxfev = None, use_bruite = 0, pmdm_method = None, sampler = None, update_freq = None, verbose = False):
 
     import pathos
     import scipy.stats as ss
@@ -85,8 +85,8 @@ def bayesian_estimation(self, N = None, ndraws = 500, tune = None, ncores = None
     else:
         description     = None
 
-    if N is None:
-        N   = 300
+    if maxfev is None:
+        maxfev  = ndraws
 
     self.preprocess(verbose=verbose)
 
@@ -296,9 +296,12 @@ def bayesian_estimation(self, N = None, ndraws = 500, tune = None, ncores = None
         else:
             print('[bayesian_estimation -> pmdm:]'.ljust(45, ' ')+' Maximizing posterior mode density:')
         if pmdm_method is None:
-            pmdm_method     = 'Powell'
+            pmdm_method     = 'Nelder-Mead'
         elif isinstance(pmdm_method, int):
-            methodl     = ["L-BFGS-B", "Nelder-Mead", "Powell", "CG", "BFGS", "TNC", "COBYLA"]
+            methodl     = ["Nelder-Mead", "Powell", "CG", "BFGS"]
+            ## Nelder-Mead is fast and reliable, but doesn't max out the likelihood completely
+            ## Powell provides the highes likelihood but is slow and sometimes ends up in strange corners of the parameter space
+            ## CG and BFGS are hit and go but *can* perform well
             pmdm_method  = methodl[pmdm_method]
             print('[bayesian_estimation -> pmdm:]'.ljust(45, ' ')+' Using %s for optimization. Available methods are %s.' %(pmdm_method, ', '.join(methodl)))
         print()
