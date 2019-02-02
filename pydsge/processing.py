@@ -43,7 +43,7 @@ class modloader(object):
         print('[modloader:]'.ljust(15, ' ')+'Results imported. Number of burn-in periods is %s out of %s' %(self.tune, self.ndraws))
         print('[modloader:]'.ljust(15, ' ')+'Description: '+str(self.description))
     
-    def masker(self):
+    def chain_masker(self):
         iss     = np.zeros(len(self.prior_names), dtype=bool)
         for v in self.prior_names:
             iss = iss | (self.prior_names == v)
@@ -82,7 +82,7 @@ class modloader(object):
         from .plots import traceplot
 
         if chain is None:
-            trace_value     = self.chain[...,self.masker()]
+            trace_value     = self.chain[...,self.chain_masker()]
         else:
             trace_value    = chain
         if varnames is None:
@@ -106,7 +106,7 @@ class modloader(object):
         from .plots import posteriorplot
 
         if chain is None:
-            trace_raw   = self.chain[...,self.masker()]
+            trace_raw   = self.chain[...,self.chain_masker()]
         else:
             trace_raw   = chain
         if varnames is None:
@@ -334,7 +334,7 @@ def sampled_sim(self, epstracted = None, mask = None, nr_samples = None, ncores 
         self.preprocess(verbose = verbose)
 
         if mask is not None:
-            eps     = np.where(np.isnan(mask), eps, mask)
+            eps     = np.where(np.isnan(mask), eps, mask*eps)
 
         SX, SK, flag    = self.simulate(eps, initial_state = x0, show_warnings = show_warnings, verbose = verbose, return_flag = True)
 

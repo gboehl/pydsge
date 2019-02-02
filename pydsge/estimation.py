@@ -95,7 +95,7 @@ def bayesian_estimation(self, N = 300, ndraws = 3000, tune = None, ncores = None
     self.get_ll(verbose = verbose, use_bruite = use_bruite)
 
     print()
-    print('[bayesian_estimation:]'.ljust(30, ' ')+' Model operational. Ready for estimation.')
+    print('[bayesian_estimation:]'.ljust(30, ' ')+' Model operational. %s states, %s observables. Ready for estimation.' %(len(self.vv), len(self.observables)))
     print()
 
     par_fix     = np.array(self.par).copy()
@@ -138,7 +138,7 @@ def bayesian_estimation(self, N = 300, ndraws = 3000, tune = None, ncores = None
             priors_lst.append( ss.beta(a=1, b=1) )
         else:
             raise ValueError(' Distribution *not* implemented: ', str(dist[0]))
-        print('     parameter %s as %s with mean %s and std %s...' %(pp, dist[0], pmean, pstdd))
+        print('     parameter %s as %s with mean/alpha %s and std/beta %s...' %(pp, dist[0], pmean, pstdd))
 
 
     def llike(parameters):
@@ -300,10 +300,12 @@ def bayesian_estimation(self, N = 300, ndraws = 3000, tune = None, ncores = None
         if pmdm_method is None:
             pmdm_method     = 'Nelder-Mead'
         elif isinstance(pmdm_method, int):
-            methodl     = ["Nelder-Mead", "Powell", "CG", "BFGS"]
+            methodl     = ["Nelder-Mead", "Powell", "CG", "BFGS", "SLSQP"]
             ## Nelder-Mead is fast and reliable, but doesn't max out the likelihood completely
             ## Powell provides the highes likelihood but is slow and sometimes ends up in strange corners of the parameter space
             ## CG and BFGS are hit and go but *can* perform well
+            ## CG and BFGS are hit and go but *can* perform well
+            ## SLSQP is fast but not very precise
             pmdm_method  = methodl[pmdm_method]
             print('[bayesian_estimation -> pmdm:]'.ljust(45, ' ')+' Using %s for optimization. Available methods are %s.' %(pmdm_method, ', '.join(methodl)))
         print()

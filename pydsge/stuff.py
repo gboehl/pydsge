@@ -222,7 +222,7 @@ def simulate(self, eps = None, mask = None, initial_state = None, use_bruite = 2
         eps     = self.res.copy()
 
     if mask is not None:
-        eps     = np.where(np.isnan(mask), eps, mask)
+        eps     = np.where(np.isnan(mask), eps, mask*eps)
 
     if initial_state is None:
         if hasattr(self, 'filtered_X'):
