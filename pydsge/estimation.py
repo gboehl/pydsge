@@ -168,8 +168,10 @@ def bayesian_estimation(self, N = 300, ndraws = 3000, tune = None, ncores = None
 
                 return ll
 
-            except:
+            except KeyboardInterrupt:
+                raise
 
+            except:
                 if verbose == 2:
                     print('[bayesian_estimation -> llike:]'.ljust(45, ' ')+' Sample took '+str(np.round(time.time() - st, 3))+'s. (failure)')
 
@@ -281,10 +283,16 @@ def bayesian_estimation(self, N = 300, ndraws = 3000, tune = None, ncores = None
                     print('[bayesian_estimation -> pmdm:]'.ljust(45, ' ')+str(res['message'])+' Log-likelihood is '+str(np.round(-res['fun'],5))+'.')
                 print('')
 
-            except (KeyboardInterrupt, StopIteration) as e:
+            except StopIteration:
                 self.pbar.close()
                 print('')
                 print('[bayesian_estimation -> pmdm:]'.ljust(45, ' ')+' Maximum number of function calls exceeded, exiting. Log-likelihood is '+str(np.round(-self.res_max,5))+'...')
+                print('')
+
+            except KeyboardInterrupt:
+                self.pbar.close()
+                print('')
+                print('[bayesian_estimation -> pmdm:]'.ljust(45, ' ')+' Iteration interrupted manually. Log-likelihood is '+str(np.round(-self.res_max,5))+'...')
                 print('')
 
             return self.x_max
