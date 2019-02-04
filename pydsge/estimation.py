@@ -135,7 +135,7 @@ def bayesian_estimation(self, N = 300, ndraws = 3000, tune = None, ncores = None
         elif str(dist[0]) == 'beta':
             a = (1-pmean)*pmean**2/pstdd**2 - pmean
             b = a*(1/pmean - 1)
-            priors_lst.append( ss.beta(a=1, b=1) )
+            priors_lst.append( ss.beta(a=a, b=b) )
         else:
             raise ValueError(' Distribution *not* implemented: ', str(dist[0]))
         print('     parameter %s as %s with mean/alpha %s and std/beta %s...' %(pp, dist[0], pmean, pstdd))
