@@ -131,7 +131,7 @@ def save_res(self, filename, description = None):
         if description is None:
             self.description     = ''
 
-    np.savez(filename,
+    np.savez_compressed(filename,
              Z              = self.Z,
              vv             = self.vv,
              years          = self.years,

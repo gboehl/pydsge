@@ -140,20 +140,27 @@ def get_sys(self, par=None, reduce_sys = True, verbose = False):
 
 
 
-def irfs(self, shocklist, wannasee=None, use_bruite=False, show_warnings=True, verbose=False):
+def irfs(self, shocklist, wannasee=None, use_bruite=2, show_warnings=True, verbose=False):
 
     ## returns time series of impule responses 
     ## shocklist: takes list of tuples of (shock, size, timing) 
     ## wannasee: list of strings of the variables to be plotted and stored
 
-    labels      = [v.replace('_','') for v in self.vv]
-    if wannasee is not None and not 'all':
-        try:
-            args_see    = [labels.index(v) for v in wannasee]
-        except ValueError as e:
-            raise ValueError(str(e)+". You probably don't want to call self.get_sys() with the 'reduce_sys = True' argument.")
-    else:
-        args_see    = []
+    slabels     = [v.replace('_','') for v in self.vv]
+    olabels     = [v.name.replace('_','') for v in self.observables]
+
+    args_sts     = []
+    args_obs        = []
+
+    if wannasee is not None and wannasee is not 'all':
+        for v_raw in wannasee:
+            v   = v_raw.replace('_','') 
+            if v in slabels:
+                args_sts.append(slabels.index(v))
+            elif v in olabels:
+                args_obs.append(olabels.index(v))
+            else:
+                raise Exception("Variable %s neither in states nor observables. You might don't want to call self.get_sys() with the 'reduce_sys = False' argument. Note that underscores '_' are discarged." %v)
 
     st_vec          = np.zeros(len(self.vv))
 
@@ -179,7 +186,7 @@ def irfs(self, shocklist, wannasee=None, use_bruite=False, show_warnings=True, v
                 shk_process     = (self.SIG @ shk_vec).nonzero()
 
                 for shk in shk_process:
-                    args_see += list(shk)
+                    args_sts += list(shk)
                 
         st_vec, (l,k), flag     = self.t_func(st_vec, shk_vec, return_k = True, use_bruite = use_bruite)
 
@@ -197,24 +204,35 @@ def irfs(self, shocklist, wannasee=None, use_bruite=False, show_warnings=True, v
     K   = np.array(K)
     L   = np.array(L)
 
-    care_for    = np.unique(args_see)
+    care_for_sts    = np.unique(args_sts)
+    care_for_obs    = np.unique(args_obs)
 
     if wannasee is None:
         Z       = (self.hx[0] @ Y.T).T + self.hx[1]
         tt      = ~fast0(Z-Z.mean(axis=0),0)
-        labels  = list(np.array(self.observables)[tt])+list(self.vv[care_for])
-        X2      = Y[:,care_for]
+        llabels = list(np.array(self.observables)[tt])+list(self.vv[care_for_sts])
+        X2      = Y[:,care_for_sts]
         X       = np.hstack((Z[:,tt],X2))
     elif wannasee is 'all':
         tt      = ~fast0(Y-Y.mean(axis=0),0)
-        labels  = list(self.vv[tt])
+        llabels = list(self.vv[tt])
         X       = Y[:,tt]
     else:
-        labels  = self.vv[care_for]
-        X       = Y[:,care_for]
+        llabels = list(self.vv[care_for_sts])
+        X       = Y[:,care_for_sts]
+        if care_for_obs.size:
+            llabels = list(np.array(self.observables)[care_for_obs]) + llabels
+            Z       = ((self.hx[0] @ Y.T).T + self.hx[1])[:,care_for_obs]
+            X       = np.hstack((Z,X))
 
     if verbose:
         print('[irfs:]'.ljust(15, ' ')+'Simulation took ', time.time() - st, ' seconds.')
+
+    labels  = []
+    for l in llabels:
+        if not isinstance(l, str):
+            l   = l.name
+        labels.append(l)
 
     return X, labels, (Y, K, L)
 
