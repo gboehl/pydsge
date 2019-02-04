@@ -140,7 +140,7 @@ def get_sys(self, par=None, reduce_sys = True, verbose = False):
 
 
 
-def irfs(self, shocklist, wannasee = None, use_bruite = False, show_warnings = True):
+def irfs(self, shocklist, wannasee=None, use_bruite=False, show_warnings=True, verbose=False):
 
     ## returns time series of impule responses 
     ## shocklist: takes list of tuples of (shock, size, timing) 
@@ -161,6 +161,8 @@ def irfs(self, shocklist, wannasee = None, use_bruite = False, show_warnings = T
     K   = []
     L   = []
     superflag   = False
+
+    st  = time.time()
 
     for t in range(30):
 
@@ -198,17 +200,21 @@ def irfs(self, shocklist, wannasee = None, use_bruite = False, show_warnings = T
     care_for    = np.unique(args_see)
 
     if wannasee is None:
-        labels  = self.observables+list(self.vv[care_for])
-        X1      = (self.hx[0] @ Y.T).T + self.hx[1]
+        Z       = (self.hx[0] @ Y.T).T + self.hx[1]
+        tt      = ~fast0(Z-Z.mean(axis=0),0)
+        labels  = list(np.array(self.observables)[tt])+list(self.vv[care_for])
         X2      = Y[:,care_for]
-        X       = np.hstack((X1,X2))
+        X       = np.hstack((Z[:,tt],X2))
     elif wannasee is 'all':
-        tt      = ~fast0(Y,0)
+        tt      = ~fast0(Y-Y.mean(axis=0),0)
         labels  = list(self.vv[tt])
         X       = Y[:,tt]
     else:
         labels  = self.vv[care_for]
         X       = Y[:,care_for]
+
+    if verbose:
+        print('[irfs:]'.ljust(15, ' ')+'Simulation took ', time.time() - st, ' seconds.')
 
     return X, labels, (Y, K, L)
 

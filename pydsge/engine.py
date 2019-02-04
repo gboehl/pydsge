@@ -165,7 +165,7 @@ def boehlgorithm_jit(N, A, J, cx, b, x_bar, v, mat, term, max_cnt, use_bruite):
             if use_bruite:
                 ## if there was no equilibirum, try to find it by bruit forcing
                 l, k    = bruite(b, x_bar, v, mat, term)
-                if l > -1:
+                if l < 999:
                     flag    = 0
 
     else:
@@ -177,7 +177,7 @@ def boehlgorithm_jit(N, A, J, cx, b, x_bar, v, mat, term, max_cnt, use_bruite):
 
         if l < l_max:
             l, k    = bruite(b, x_bar, v, mat, term)
-            if l == -1:
+            if l == 999:
                 flag    = 1
                 l, k    = 1, 0
 
@@ -203,8 +203,11 @@ def bruite(b, x_bar, v, mat, term):
     l_max   = mat.shape[0] - 1
     k_max   = mat.shape[1] - 1
 
+    ll, kk  = 999, 999
     for l in range(l_max):
         for k in range(k_max):
+            if l+k > ll+kk:
+                break
             yes     = True
             if k: 
                 if b @ LL_jit(l, k, k+l-1, v, mat, term) - x_bar > 0:
@@ -223,9 +226,9 @@ def bruite(b, x_bar, v, mat, term):
                 if b @ LL_jit(l, k, k+l, v, mat, term) - x_bar < 0:
                     yes     = False
             if yes and k: 
-                return (l, k)
+                ll, kk  = l, k
 
-    return (-1, -1)
+    return ll, kk
 
 
 def boehlgorithm(self, v, max_cnt = 4e1, linear = False, use_bruite = False):
