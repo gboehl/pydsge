@@ -229,7 +229,9 @@ def bayesian_estimation(self, N = 300, ndraws = 3000, tune = None, ncores = None
 
             if self.timer == self.update_ival:
 
-                self.pbar.update(self.update_ival)
+                ## ensure displayed number is correct
+                self.pbar.n     = self.n
+                self.pbar.update(0)
 
                 difft   = time.time() - self.st
                 if difft < 1:
@@ -238,7 +240,7 @@ def bayesian_estimation(self, N = 300, ndraws = 3000, tune = None, ncores = None
                     self.update_ival /= 2
 
                 self.pbar.set_description('ll: '+str(-self.res.round(5)).rjust(12, ' ')+' ['+str(-self.res_max.round(5))+']')
-                self.st  = time.time()
+                self.st     = time.time()
                 self.timer  = 0
 
             ## prints information snapshots
