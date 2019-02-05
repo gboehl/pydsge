@@ -30,7 +30,10 @@ def get_sys(self, par=None, reduce_sys = True, verbose = False):
     AA  = self.AA(par)              # forward
     BB  = self.BB(par)              # contemp
     CC  = self.CC(par)              # backward
-    b   = self.bb(par).flatten()    # constraint
+    bb  = self.bb(par).flatten()    # constraint
+
+    ## the special case in which the constraint is just a cut-off of another variable requires
+    b   = bb.astype(float)
 
     ## define transition shocks -> state
     D   = self.PSI(par)
