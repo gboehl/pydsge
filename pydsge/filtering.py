@@ -67,7 +67,7 @@ def get_ll(self, verbose = False, use_bruite = 0):
     return self.ll
 
 
-def run_filter(self, use_rts=True, verbose=False, use_bruite = 2):
+def run_filter(self, use_rts=True, verbose=False, use_bruite = 1):
 
     ## set approximation level
     self.enkf.fx    = lambda x: self.t_func(x, use_bruite = use_bruite)
@@ -89,7 +89,7 @@ def run_filter(self, use_rts=True, verbose=False, use_bruite = 2):
     return X1, cov
 
 
-def extract(self, pmean = None, cov = None, method = None, converged_only = True, return_flag = False, use_bruite = 2, itype = (0,1), presmoothing = None, show_warnings = True, verbose = True):
+def extract(self, pmean = None, cov = None, method = None, converged_only = True, return_flag = False, use_bruite = 1, itype = (0,1), presmoothing = None, show_warnings = True, verbose = True):
 
     self.enkf.fx    = lambda x, noise: self.t_func(x, noise, use_bruite = use_bruite)
 
