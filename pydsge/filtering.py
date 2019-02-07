@@ -89,7 +89,7 @@ def run_filter(self, use_rts=True, verbose=False, use_bruite = 1):
     return X1, cov
 
 
-def extract(self, pmean = None, cov = None, method = None, converged_only = True, return_flag = False, use_bruite = 1, itype = (0,1), presmoothing = None, show_warnings = True, verbose = True):
+def extract(self, pmean = None, cov = None, method = None, converged_only = True, return_flag = False, use_bruite = 1, itype = (0,1), presmoothing = None, preextract = None, min_options = None, show_warnings = True, verbose = True):
 
     self.enkf.fx    = lambda x, noise: self.t_func(x, noise, use_bruite = use_bruite)
 
@@ -99,7 +99,7 @@ def extract(self, pmean = None, cov = None, method = None, converged_only = True
     if cov is None:
         cov     = self.filtered_cov.copy()
 
-    means, cov, res, flag   = self.enkf.ipas(pmean, cov, method, converged_only, show_warnings = show_warnings, itype = itype, presmoothing = presmoothing, return_flag = True, verbose = verbose)
+    means, cov, res, flag   = self.enkf.ipas(pmean, cov, method, converged_only, show_warnings = show_warnings, itype = itype, presmoothing = presmoothing, min_options = min_options, return_flag = True, verbose = verbose)
 
     self.res            = res
 

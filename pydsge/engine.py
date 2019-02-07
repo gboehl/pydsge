@@ -252,7 +252,7 @@ def boehlgorithm(self, v, max_cnt = 4e1, linear = False, use_bruite = False):
         mat, term       = self.precalc_mat
         dim_x           = self.sys[2].shape[0]
 
-        return LL_jit(1, 0, 1, v, self.sys[:4])[dim_x:], (0, 0), 0
+        return LL_jit(1, 0, 1, v, *self.precalc_mat)[dim_x:], (0, 0), 0
 
 
 
