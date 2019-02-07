@@ -274,13 +274,17 @@ class DSGE(dict):
         #sys.stdout.flush()
         ss = {}
 
-        for p in self['other_para']:
-            ss[str(p)] = eval(str(self['para_func'][p.name]), context)
-            context[str(p)] = ss[str(p)]
-            #print("\r Constructing substitution dictionary [{0:20s}]".format(p.name),)
-        #sys.stdout.flush()
-        #print ""
-        #context_f['numpy'] = 'numpy'
+        # print(context['lamp_p'])
+        checker     = np.zeros_like(self['other_para'], dtype=bool)
+        while ~checker.all():
+            for i,p in enumerate(self['other_para']):
+                try:
+                    ss[str(p)] = eval(str(self['para_func'][p.name]), context)
+                    context[str(p)] = ss[str(p)]
+                    checker[i]  = True
+                except NameError:
+                    ss[str(p)] = eval(str(0), context)
+                    context[str(p)] = ss[str(p)]
 
         DD = DD.subs(subs_dict)
         ZZ = ZZ.subs(subs_dict)
