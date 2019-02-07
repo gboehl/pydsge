@@ -111,6 +111,10 @@ class DSGE(dict):
         return self['par_ordering']
 
     @property
+    def par_names(self):
+        return [ p.name for p in self['par_ordering'] ]
+
+    @property
     def shocks(self):
         return self['shk_ordering']
 
