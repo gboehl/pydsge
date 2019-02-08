@@ -4,9 +4,8 @@
 import numpy as np
 from .stuff import *
 import pydsge
-# from econsieve import UnscentedKalmanFilter as UKF
-# from econsieve import ScaledSigmaPoints as SSP
 from econsieve import EnKF
+from econsieve import KalmanFilter
 from econsieve.stats import logpdf
 
 
@@ -20,34 +19,42 @@ def create_obs_cov(self, scale_obs=0.1):
         self.obs_cov = np.diagflat(sig_obs)
 
 
-def create_filter(self, P=None, R=None, N=None):
+def create_filter(self, P=None, R=None, N=None, linear=False):
 
     np.random.seed(0)
 
     if not hasattr(self, 'Z'):
         warnings.warn('No time series of observables provided')
 
-    enkf = EnKF(N, model_obj=self)
+    if linear:
+        xkf = KalmanFilter(dim_x=len(self.vv), dim_z=self.ny)
+        xkf.F = self.linear_representation()
+        xkf.H = self.hx
+    else:
+        xkf = EnKF(N, model_obj=self)
 
     if P is not None:
-        enkf.P = P
+        xkf.P = P
     elif hasattr(self, 'P'):
-        enkf.P = self.P
+        xkf.P = self.P
     else:
-        enkf.P *= 1e1
+        xkf.P *= 1e1
 
     if R is not None:
-        enkf.R = R
+        xkf.R = R
     elif hasattr(self, 'obs_cov'):
-        enkf.R = self.obs_cov
+        xkf.R = self.obs_cov
 
-    enkf.eps_cov = self.QQ(self.par)
+    xkf.eps_cov = self.QQ(self.par)
 
-    CO = self.SIG @ enkf.eps_cov
+    CO = self.SIG @ xkf.eps_cov
 
-    enkf.Q = CO @ CO.T
+    xkf.Q = CO @ CO.T
 
-    self.enkf = enkf
+    if linear:
+        self.kf = xkf
+    else:
+        self.enkf = xkf
 
 
 def get_ll(self, verbose=False, use_bruite=0):
@@ -55,10 +62,13 @@ def get_ll(self, verbose=False, use_bruite=0):
     if verbose:
         st = time.time()
 
-    # set approximation to get ll
-    self.enkf.fx = lambda x: self.t_func(x, use_bruite=use_bruite)
+    if hasattr(self, 'enkf'):
+        # set approximation to get ll
+        self.enkf.fx = lambda x: self.t_func(x, use_bruite=use_bruite)
 
-    ll = self.enkf.batch_filter(self.Z, calc_ll=True, verbose=verbose)[2]
+        ll = self.enkf.batch_filter(self.Z, calc_ll=True, verbose=verbose)[2]
+    else:
+        ll = self.kf.batch_filter(self.Z)[2]
 
     self.ll = ll
 
@@ -71,16 +81,23 @@ def get_ll(self, verbose=False, use_bruite=0):
 
 def run_filter(self, use_rts=True, verbose=False, use_bruite=1):
 
-    # set approximation level
-    self.enkf.fx = lambda x: self.t_func(x, use_bruite=use_bruite)
-
     if verbose:
         st = time.time()
 
-    X1, cov, _ = self.enkf.batch_filter(self.Z, store=use_rts, verbose=verbose)
+    if hasattr(self, 'enkf'):
+        # set approximation level
+        self.enkf.fx = lambda x: self.t_func(x, use_bruite=use_bruite)
 
-    if use_rts:
-        X1, cov = self.enkf.rts_smoother(X1, cov)
+        X1, cov, _ = self.enkf.batch_filter(
+            self.Z, store=use_rts, verbose=verbose)
+
+        if use_rts:
+            X1, cov = self.enkf.rts_smoother(X1, cov)
+    else:
+        X1, cov, ll, _, _ = self.kf.batch_filter(self.Z)
+
+        if use_rts:
+            X1, cov, _, _ = self.kf.rts_smoother(X1, cov)
 
     if verbose:
         print('[run_filter:]'.ljust(15, ' ')+'Filtering done in ' +
