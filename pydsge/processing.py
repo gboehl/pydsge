@@ -133,13 +133,18 @@ def save_res(self, filename, description=None):
         if description is None:
             self.description = ''
 
+    if hasattr(self, 'kf'):
+        init_cov=self.kf.P,
+    else:
+        init_cov=self.enkf.P,
+
     np.savez_compressed(filename,
                         Z=self.Z,
                         vv=self.vv,
                         years=self.years,
                         description=self.description,
                         obs_cov=self.obs_cov,
-                        init_cov=self.enkf.P,
+                        init_cov=init_cov,
                         par_fix=self.par_fix,
                         ndraws=self.ndraws,
                         chain=self.sampler.chain,
