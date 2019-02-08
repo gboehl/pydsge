@@ -154,7 +154,7 @@ def save_res(self, filename, description=None):
     print('[save_res:]'.ljust(15, ' ')+'Results saved in ', filename)
 
 
-def runner_pooled(nr_samples, ncores, mask):
+def runner_pooled(nr_samples, ncores, mask, use_pbar):
 
     import pathos
 
@@ -165,8 +165,11 @@ def runner_pooled(nr_samples, ncores, mask):
 
     pool = pathos.pools.ProcessPool(ncores)
 
-    res = list(tqdm(pool.uimap(runner_loc, range(nr_samples)),
-                    unit=' sample(s)', total=nr_samples, dynamic_ncols=True))
+    if use_pbar:
+        res = list(tqdm(pool.uimap(runner_loc, range(nr_samples)),
+                        unit=' sample(s)', total=nr_samples, dynamic_ncols=True))
+    else:
+        res = list(pool.uimap(runner_loc, range(nr_samples)))
 
     pool.close()
     pool.join()
@@ -208,7 +211,7 @@ def epstract(self, be_res=None, N=None, nr_samples=100, save=None, ncores=None, 
     PAR = []
 
     if N is None:
-        N = 300
+        N = 500
 
     if not force and save is not None:
 
@@ -285,7 +288,7 @@ def epstract(self, be_res=None, N=None, nr_samples=100, save=None, ncores=None, 
     global runner_glob
     runner_glob = runner
 
-    res = runner_pooled(nr_samples, ncores, None)
+    res = runner_pooled(nr_samples, ncores, None, not verbose)
 
     no_obs, dim_z = self.Z.shape
     dim_e = len(self.shocks)
@@ -358,7 +361,7 @@ def sampled_sim(self, epstracted=None, mask=None, nr_samples=None, ncores=None, 
     global runner_glob
     runner_glob = runner
 
-    res = runner_pooled(nr_samples, ncores, mask)
+    res = runner_pooled(nr_samples, ncores, mask, True)
 
     dim_x = 1e50
     for p in res:
