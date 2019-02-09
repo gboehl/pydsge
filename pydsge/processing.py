@@ -134,9 +134,9 @@ def save_res(self, filename, description=None):
             self.description = ''
 
     if hasattr(self, 'kf'):
-        init_cov=self.kf.P,
+        init_cov=self.kf.P
     else:
-        init_cov=self.enkf.P,
+        init_cov=self.enkf.P
 
     np.savez_compressed(filename,
                         Z=self.Z,

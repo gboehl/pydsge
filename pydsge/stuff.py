@@ -313,9 +313,9 @@ def linear_representation(self, l=0, k=0):
     if not k:
         l = 1
 
-    if not hasattr(self, 'par_lr') or self.par is not self.par_lr:
+    if not hasattr(self, 'precalc_mat') or (hasattr(self, 'par_lr') and self.par_lr is not self.par):
         self.preprocess(l_max=1, k_max=0, verbose=False)
-        self.par_lr     = self.par
+        self.par_lr = self.par
 
     mat, term = self.precalc_mat
 
