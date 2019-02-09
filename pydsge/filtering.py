@@ -70,6 +70,9 @@ def get_ll(self, verbose=False, use_bruite=0):
     else:
         ll = self.kf.batch_filter(self.Z)[2]
 
+    if np.isnan(ll):
+        ll  = -np.inf
+
     self.ll = ll
 
     if verbose:
