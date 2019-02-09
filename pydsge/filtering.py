@@ -94,7 +94,7 @@ def run_filter(self, use_rts=True, verbose=False, use_bruite=1):
         if use_rts:
             X1, cov = self.enkf.rts_smoother(X1, cov)
     else:
-        X1, cov, ll, _, _ = self.kf.batch_filter(self.Z)
+        X1, cov, ll = self.kf.batch_filter(self.Z)
 
         if use_rts:
             X1, cov, _, _ = self.kf.rts_smoother(X1, cov)

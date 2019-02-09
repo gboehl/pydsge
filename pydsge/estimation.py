@@ -40,24 +40,28 @@ def mcmc(p0, nwalkers, ndim, ndraws, priors, sampler, ntemp, ncores, update_freq
 
     if not verbose:
         np.warnings.filterwarnings('ignore')
-
-    pbar = tqdm.tqdm(total=ndraws, unit='sample(s)', dynamic_ncols=True)
+        pbar = tqdm.tqdm(total=ndraws, unit='sample(s)', dynamic_ncols=True)
+        report  = pbar.write
+    else:
+        report  = print
 
     cnt = 0
     for result in sampler.sample(p0, iterations=ndraws):
-        if update_freq and pbar.n and not pbar.n % update_freq:
-            pbar.write('')
+        if update_freq and cnt and not cnt % update_freq:
+            report('')
             if description is not None:
-                pbar.write('[bayesian_estimation -> mcmc:]'.ljust(45, ' ') +
-                           ' Summary from last %s of %s iterations (%s):' % (update_freq, pbar.n, str(description)))
+                report('[bayesian_estimation -> mcmc:]'.ljust(45, ' ') +
+                           ' Summary from last %s of %s iterations (%s):' % (update_freq, cnt, str(description)))
             else:
-                pbar.write('[bayesian_estimation -> mcmc:]'.ljust(45, ' ') +
-                           ' Summary from last %s of %s iterations:' % (update_freq, pbar.n))
-            pbar.write(str(summary(sampler.chain.reshape(-1, ndraws, ndim)
-                                   [:, pbar.n-update_freq:pbar.n, :], priors).round(3)))
-            pbar.write("Mean acceptance fraction: {0:.3f}".format(
+                report('[bayesian_estimation -> mcmc:]'.ljust(45, ' ') +
+                           ' Summary from last %s of %s iterations:' % (update_freq, cnt))
+            report(str(summary(sampler.chain.reshape(-1, ndraws, ndim)
+                                   [:, cnt-update_freq:cnt, :], priors).round(3)))
+            report("Mean acceptance fraction: {0:.3f}".format(
                 np.mean(sampler.acceptance_fraction)))
-        pbar.update(1)
+        if not verbose:
+            pbar.update(1)
+        cnt     += 1
 
     loc_pool.close()
     loc_pool.join()
@@ -97,7 +101,9 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
         maxfev = ndraws
 
     if not linear:
-        self.preprocess(verbose=verbose)
+        self.preprocess(verbose=verbose>1)
+    else:
+        self.preprocess(l_max=1, k_max=0, verbose=False)
 
     # dry run before the fun beginns
     self.create_filter(N=N, linear=linear)
@@ -165,11 +171,13 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
                 par_active_lst = list(par_fix)
 
                 self.get_sys(par=par_active_lst,
-                             reduce_sys=True, verbose=verbose)
+                             reduce_sys=True, verbose=verbose>1)
 
                 # these max vals should be sufficient given we're only dealing with stochastic linearization
                 if not linear:
-                    self.preprocess(l_max=3, k_max=16, verbose=verbose)
+                    self.preprocess(l_max=3, k_max=16, verbose=verbose>1)
+                else:
+                    self.preprocess(l_max=1, k_max=0, verbose=False)
 
                 self.create_filter(N=N, linear=linear)
 
@@ -220,7 +228,8 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
 
             self.n = 0
             self.maxfev = maxfev
-            self.pbar = tqdm.tqdm(total=maxfev, dynamic_ncols=True)
+            if not verbose:
+                self.pbar = tqdm.tqdm(total=maxfev, dynamic_ncols=True)
             self.init_par = init_par
             self.st = 0
             self.update_ival = 1
@@ -241,7 +250,7 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
             self.n += 1
             self.timer += 1
 
-            if self.timer == self.update_ival:
+            if not verbose and self.timer == self.update_ival:
 
                 # ensure displayed number is correct
                 self.pbar.n = self.n
@@ -258,16 +267,21 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
                 self.st = time.time()
                 self.timer = 0
 
+            if not verbose:
+                report  = self.pbar.write
+            else:
+                report  = print
+
             # prints information snapshots
             if update_freq and not self.n % update_freq:
                 # getting the number of colums isn't that easy
                 with os.popen('stty size', 'r') as rows_cols:
                     cols = rows_cols.read().split()[1]
                 if description is not None:
-                    self.pbar.write('[bayesian_estimation -> pmdm:]'.ljust(
+                    report('[bayesian_estimation -> pmdm:]'.ljust(
                         45, ' ')+' Current best guess @ iteration %s and ll of %s (%s):' % (self.n, self.res_max.round(5), str(description)))
                 else:
-                    self.pbar.write('[bayesian_estimation -> pmdm:]'.ljust(
+                    report('[bayesian_estimation -> pmdm:]'.ljust(
                         45, ' ')+' Current best guess @ iteration %s and ll of %s):' % (self.n, self.res_max.round(5)))
                 # split the info such that it is readable
                 lnum = (len(priors)*8)//(int(cols)-8) + 1
@@ -276,10 +290,10 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
                     [round(m_val, 3) for m_val in self.x_max], lnum)
                 for pchunk, vchunk in zip(priors_chunks, vals_chunks):
                     row_format = "{:>8}" * (len(pchunk) + 1)
-                    self.pbar.write(row_format.format("", *pchunk))
-                    self.pbar.write(row_format.format("", *vchunk))
-                    self.pbar.write('')
-                self.pbar.write('')
+                    report(row_format.format("", *pchunk))
+                    report(row_format.format("", *vchunk))
+                    report('')
+                report('')
 
             if self.n >= maxfev:
                 raise StopIteration
@@ -294,7 +308,8 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
 
                 res = so.minimize(self, self.x, method=self.method, tol=1e-2)
 
-                self.pbar.close()
+                if not verbose:
+                    self.pbar.close()
                 print('')
                 if self.res_max < res['fun']:
                     print('[bayesian_estimation -> pmdm:]'.ljust(45, ' ')+str(res['message']) +
@@ -305,14 +320,16 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
                 print('')
 
             except StopIteration:
-                self.pbar.close()
+                if not verbose:
+                    self.pbar.close()
                 print('')
                 print('[bayesian_estimation -> pmdm:]'.ljust(45, ' ') +
                       ' Maximum number of function calls exceeded, exiting. Log-likelihood is '+str(np.round(-self.res_max, 5))+'...')
                 print('')
 
             except KeyboardInterrupt:
-                self.pbar.close()
+                if not verbose:
+                    self.pbar.close()
                 print('')
                 print('[bayesian_estimation -> pmdm:]'.ljust(45, ' ') +
                       ' Iteration interrupted manually. Log-likelihood is '+str(np.round(-self.res_max, 5))+'...')
