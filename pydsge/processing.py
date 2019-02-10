@@ -1,12 +1,14 @@
 #!/bin/python2
 # -*- coding: utf-8 -*-
-import numpy as np
 import warnings
 import time
 import emcee
+import pathos
+import os.path
+import numpy as np
+import multiprocessing as mp
 from tqdm import tqdm
 from .stats import InvGamma
-import multiprocessing as mp
 
 
 class modloader(object):
@@ -134,9 +136,9 @@ def save_res(self, filename, description=None):
             self.description = ''
 
     if hasattr(self, 'kf'):
-        init_cov=self.kf.P
+        init_cov = self.kf.P
     else:
-        init_cov=self.enkf.P
+        init_cov = self.enkf.P
 
     np.savez_compressed(filename,
                         Z=self.Z,
@@ -218,44 +220,36 @@ def epstract(self, be_res=None, N=None, nr_samples=100, save=None, ncores=None, 
     if N is None:
         N = 500
 
-    if not force and save is not None:
+    if not force and save is not None and os.path.isfile(save):
 
-        import os.path
+        files = np.load(save)
+        OBS_COV = files['OBS_COV']
+        smethod = files['method']
 
-        if os.path.isfile(save):
+        c0 = method == smethod
+        c1 = method is None and smethod == -1
 
-            files = np.load(save)
-            OBS_COV = files['OBS_COV']
-            smethod = files['method']
+        EPS = files['EPS']
+        COV = files['COV']
+        XX = files['XX']
+        PAR = files['PAR']
 
-            c0 = method == smethod
-            c1 = method is None and smethod == -1
+        if EPS.shape[0] >= nr_samples:
+            print('[epstract:]'.ljust(15, ' ') +
+                  'Epstract already exists')
 
-            if np.all(OBS_COV == self.obs_cov) and (c0 or c1):
+            self.epstracted = XX, COV, EPS, PAR, self.obs_cov, method
 
-                EPS = files['EPS']
-                COV = files['COV']
-                XX = files['XX']
-                PAR = files['PAR']
+            return XX, COV, EPS, PAR
 
-                if EPS.shape[0] >= nr_samples:
-                    print('[epstract:]'.ljust(15, ' ') +
-                          'Epstract already exists')
+        else:
+            print('[epstract:]'.ljust(15, ' ') +
+                  'Appending to existing epstract...')
 
-                    self.epstracted = XX, COV, EPS, PAR, self.obs_cov, method
-
-                    return XX, COV, EPS, PAR
-
-                else:
-                    print('[epstract:]'.ljust(15, ' ') +
-                          'Appending to existing epstract...')
-
-                    XX = list(XX)
-                    COV = list(COV)
-                    EPS = list(EPS)
-                    PAR = list(PAR)
-
-    import pathos
+            XX = list(XX)
+            COV = list(COV)
+            EPS = list(EPS)
+            PAR = list(PAR)
 
     if ncores is None:
         ncores = pathos.multiprocessing.cpu_count()
@@ -326,9 +320,7 @@ def epstract(self, be_res=None, N=None, nr_samples=100, save=None, ncores=None, 
     return XX, COV, EPS, PAR
 
 
-def sampled_sim(self, epstracted=None, mask=None, nr_samples=None, ncores=None, show_warnings=False, verbose=False):
-
-    import pathos
+def sampled_sim(self, epstracted=None, mask=None, linear=False, nr_samples=None, ncores=None, show_warnings=False, verbose=False):
 
     if ncores is None:
         ncores = pathos.multiprocessing.cpu_count()
@@ -357,7 +349,7 @@ def sampled_sim(self, epstracted=None, mask=None, nr_samples=None, ncores=None, 
             eps = np.where(np.isnan(mask), eps, mask*eps)
 
         SX, SK, flag = self.simulate(
-            eps, initial_state=x0, show_warnings=show_warnings, verbose=verbose, return_flag=True)
+            eps, initial_state=x0, linear=linear, show_warnings=show_warnings, verbose=verbose, return_flag=True)
 
         SZ = (self.hx[0] @ SX.T).T + self.hx[1]
 
