@@ -173,10 +173,10 @@ def runner_pooled(nr_samples, ncores, mask, use_pbar):
     pool = pathos.pools.ProcessPool(ncores)
 
     if use_pbar:
-        res = list(tqdm(pool.uimap(runner_loc, range(nr_samples)),
+        res = list(tqdm(pool.imap(runner_loc, range(nr_samples)),
                         unit=' sample(s)', total=nr_samples, dynamic_ncols=True))
     else:
-        res = list(pool.uimap(runner_loc, range(nr_samples)))
+        res = list(pool.imap(runner_loc, range(nr_samples)))
 
     pool.close()
     pool.join()
@@ -320,7 +320,7 @@ def epstract(self, be_res=None, N=None, nr_samples=100, save=None, ncores=None, 
     return XX, COV, EPS, PAR
 
 
-def sampled_sim(self, epstracted=None, mask=None, linear=False, nr_samples=None, ncores=None, show_warnings=False, verbose=False):
+def sampled_sim(self, epstracted=None, mask=None, forecast=False, linear=False, nr_samples=None, ncores=None, show_warnings=False, verbose=False):
 
     if ncores is None:
         ncores = pathos.multiprocessing.cpu_count()
@@ -331,10 +331,20 @@ def sampled_sim(self, epstracted=None, mask=None, linear=False, nr_samples=None,
     XX, COV, EPS, PAR = epstracted
 
     # XX had to be saved as an object array. pathos can't deal with that
-    X0 = [x.astype(float) for x in XX[:, 0, :]]
+    if XX.ndim > 2:
+        X0 = [x.astype(float) for x in XX[:, 0, :]]
+    else:
+        X0 = [x.astype(float) for x in XX]
 
     if nr_samples is None:
         nr_samples = EPS.shape[0]
+
+    if forecast:
+        E0  = np.zeros((EPS.shape[0], forecast, EPS.shape[2]))
+        EPS     = np.hstack([EPS, E0])
+        if mask is not None:
+            m0      = np.zeros((forecast, EPS.shape[2]))
+            mask    = np.vstack([mask, m0])
 
     def runner(nr, mask):
 
