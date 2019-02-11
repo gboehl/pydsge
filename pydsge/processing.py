@@ -122,7 +122,9 @@ class modloader(object):
         return posteriorplot(trace_value, varnames=self.prior_names, tune=self.tune, **args)
 
 
-def mask(self):
+def mask(self, verbose=False):
+    if verbose:
+        print('[mask:]'.ljust(15, ' ') + 'Shocks:', self.shocks)
     return np.full((self.Z.shape[0]-1, self.Z.shape[1]), np.nan)
 
 
