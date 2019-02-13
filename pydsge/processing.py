@@ -342,11 +342,11 @@ def sampled_sim(self, epstracted=None, mask=None, forecast=False, linear=False, 
         nr_samples = EPS.shape[0]
 
     if forecast:
-        E0  = np.zeros((EPS.shape[0], forecast, EPS.shape[2]))
-        EPS     = np.hstack([EPS, E0])
+        E0 = np.zeros((EPS.shape[0], forecast, EPS.shape[2]))
+        EPS = np.hstack([EPS, E0])
         if mask is not None:
-            m0      = np.zeros((forecast, EPS.shape[2]))
-            mask    = np.vstack([mask, m0])
+            m0 = np.zeros((forecast, EPS.shape[2]))
+            mask = np.vstack([mask, m0])
 
     def runner(nr, mask):
 
@@ -359,6 +359,10 @@ def sampled_sim(self, epstracted=None, mask=None, forecast=False, linear=False, 
 
         if mask is not None:
             eps = np.where(np.isnan(mask), eps, mask*eps)
+
+            ss = np.where(self.SIG)[0]
+            mask1 = np.where(np.isnan(mask[0]), 1, mask[0])
+            x0[ss] = self.SIG[ss] @ np.diag(mask1) @ self.SIG.T @ x0
 
         SX, SK, flag = self.simulate(
             eps, initial_state=x0, linear=linear, show_warnings=show_warnings, verbose=verbose, return_flag=True)
