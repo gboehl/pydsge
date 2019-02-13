@@ -212,7 +212,7 @@ def posterior_sample(self, be_res=None, seed=0):
     return list(randpar)
 
 
-def epstract(self, be_res=None, N=None, nr_samples=100, save=None, ncores=None, method=None, itype=(0, 1), converged_only=True, max_attempts=3, presmoothing=None, min_options=None, force=False, verbose=False):
+def epstract(self, be_res=None, N=None, nr_samples=100, save=None, ncores=None, method=None, itype=(0, 1), converged_only=True, max_attempts=3, presmoothing=None, min_options=None, reduce_sys=None, force=False, verbose=False):
 
     XX = []
     COV = []
@@ -221,6 +221,9 @@ def epstract(self, be_res=None, N=None, nr_samples=100, save=None, ncores=None, 
 
     if N is None:
         N = 500
+
+    if reduce_sys is None:
+        reduce_sys = self.is_reduced
 
     if not force and save is not None and os.path.isfile(save):
 
@@ -271,7 +274,7 @@ def epstract(self, be_res=None, N=None, nr_samples=100, save=None, ncores=None, 
                 be_res=be_res, seed=yet + nr + att*nr_samples)
 
             # define parameters
-            self.get_sys(par, verbose=False)
+            self.get_sys(par, reduce_sys=reduce_sys, verbose=False)
             # preprocess matrices for speedup
             self.preprocess(verbose=False)
 
@@ -322,13 +325,16 @@ def epstract(self, be_res=None, N=None, nr_samples=100, save=None, ncores=None, 
     return XX, COV, EPS, PAR
 
 
-def sampled_sim(self, epstracted=None, mask=None, forecast=False, linear=False, nr_samples=None, ncores=None, show_warnings=False, verbose=False):
+def sampled_sim(self, epstracted=None, mask=None, reduce_sys=None, forecast=False, linear=False, nr_samples=None, ncores=None, show_warnings=False, verbose=False):
 
     if ncores is None:
         ncores = pathos.multiprocessing.cpu_count()
 
     if epstracted is None:
         epstracted = self.epstracted[:4]
+
+    if reduce_sys is None:
+        reduce_sys = self.is_reduced
 
     XX, COV, EPS, PAR = epstracted
 
@@ -354,7 +360,7 @@ def sampled_sim(self, epstracted=None, mask=None, forecast=False, linear=False, 
         eps = EPS[nr]
         x0 = X0[nr]
 
-        self.get_sys(par, verbose=verbose)
+        self.get_sys(par, reduce_sys=reduce_sys, verbose=verbose)
         self.preprocess(verbose=verbose)
 
         if mask is not None:
@@ -400,17 +406,20 @@ def sampled_sim(self, epstracted=None, mask=None, forecast=False, linear=False, 
     return np.array(SZS), np.array(SXS), np.array(SKS)
 
 
-def sampled_irfs(self, be_res, shocklist, wannasee, nr_samples=1000, ncores=None, show_warnings=False):
+def sampled_irfs(self, be_res, shocklist, wannasee, reduce_sys=None, nr_samples=1000, ncores=None, show_warnings=False):
 
     import pathos
 
     if ncores is None:
         ncores = pathos.multiprocessing.cpu_count()
 
+    if reduce_sys is None:
+        reduce_sys = self.is_reduced
+
     # dry run
     par = be_res.means()
     # define parameters
-    self.get_sys(par, 'all', verbose=False)
+    self.get_sys(par, reduce_sys=reduce_sys, verbose=False)
     # preprocess matrices for speedup
     self.preprocess(verbose=False)
 
@@ -421,7 +430,7 @@ def sampled_irfs(self, be_res, shocklist, wannasee, nr_samples=1000, ncores=None
         par = self.posterior_sample(be_res=be_res, seed=nr)
 
         # define parameters
-        self.get_sys(par, 'all', verbose=False)
+        self.get_sys(par, reduce_sys=reduce_sys, verbose=False)
         # preprocess matrices for speedup
         self.preprocess(verbose=False)
 

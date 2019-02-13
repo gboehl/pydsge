@@ -14,6 +14,8 @@ from .engine import boehlgorithm
 def get_sys(self, par=None, reduce_sys=True, verbose=False):
 
     st = time.time()
+    
+    self.is_reduced = reduce_sys
 
     if par is None:
         par = self.p0()
