@@ -14,6 +14,7 @@ def create_obs_cov(self, scale_obs=0.1):
     if not hasattr(self, 'Z'):
         warnings.warn('No time series of observables provided')
     else:
+        # sig_obs = np.var(self.Z, axis=0)*scale_obs**2
         sig_obs = np.var(self.Z, axis=0)*scale_obs
 
         self.obs_cov = np.diagflat(sig_obs)

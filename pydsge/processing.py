@@ -442,7 +442,7 @@ def sampled_irfs(self, be_res, shocklist, wannasee, reduce_sys=None, nr_samples=
     global runner_glob
     runner_glob = runner
 
-    res = runner_pooled(nr_samples, ncores, None)
+    res = runner_pooled(nr_samples, ncores, None, True)
 
     X, Y, K, L = [], [], [], []
 
