@@ -224,15 +224,21 @@ def epstract(self, be_res=None, N=None, nr_samples=100, save=None, ncores=None, 
 
     if reduce_sys is None:
         reduce_sys = self.is_reduced
+    else:
+        self.is_reduced = reduce_sys
 
     if not force and save is not None and os.path.isfile(save):
 
         files = np.load(save)
         OBS_COV = files['OBS_COV']
         smethod = files['method']
+        if 'is_reduced' in files:
+            if reduce_sys is not None and reduce_sys is not files['is_reduced']:
+                print('[epstract:]'.ljust(15, ' ') + "Epstract overwrites 'reduce_sys'.")
 
-        c0 = method == smethod
-        c1 = method is None and smethod == -1
+            reduce_sys = files['is_reduced']
+        if 'presmoothing' in files:
+            presmoothing    = files['presmoothing']
 
         EPS = files['EPS']
         COV = files['COV']
@@ -241,7 +247,7 @@ def epstract(self, be_res=None, N=None, nr_samples=100, save=None, ncores=None, 
 
         if EPS.shape[0] >= nr_samples:
             print('[epstract:]'.ljust(15, ' ') +
-                  'Epstract already exists')
+                  'Epstract already exists (presmoothing: %s, reduced: %s)' %(presmoothing, reduce_sys))
 
             self.epstracted = XX, COV, EPS, PAR, self.obs_cov, method
 
@@ -317,7 +323,9 @@ def epstract(self, be_res=None, N=None, nr_samples=100, save=None, ncores=None, 
                  XX=XX,
                  PAR=PAR,
                  OBS_COV=self.obs_cov,
-                 method=smethod
+                 method=smethod,
+                 presmoothing=presmoothing,
+                 is_reduced=reduce_sys
                  )
 
     self.epstracted = XX, COV, EPS, PAR, self.obs_cov, method
