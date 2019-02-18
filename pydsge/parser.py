@@ -36,19 +36,6 @@ class DSGE(dict):
 
         self['info']['nstate'] = len(self.variables) + len(fvars)
 
-        # ceq     = self['const_eq']
-
-        # if ceq:
-            # vic_future     = [v for v in ceq.atoms() if isinstance(v, Variable) and v.date > 0]
-
-            # if vic_future:
-                # print('constraint depending of future value is not implemented')
-
-        # vars_in_const       = [ v for v in ceq.atoms() if isinstance(v, Variable) ] 
-        # additional_fvars    = [v(+1) for v in self['const_var'] if v(+1) not in fvars] 
-        # fvars   += additional_fvars
-        # print(fvars)
-
         self['fvars'] = fvars
         self['fvars_lagged'] = [Parameter('__LAGGED_'+f.name) for f in fvars]
         self['lvars'] = lvars
@@ -282,7 +269,10 @@ class DSGE(dict):
                     ss[str(p)] = eval(str(self['para_func'][p.name]), context)
                     context[str(p)] = ss[str(p)]
                     checker[i]  = True
-                except NameError:
+                except NameError as e:
+                    for pfp in self['para_func'][p.name]:
+                        if pfp not in self['para_func'].keys():
+                            raise NameError(e)
                     ss[str(p)] = eval(str(0), context)
                     context[str(p)] = ss[str(p)]
 
