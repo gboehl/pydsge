@@ -29,7 +29,7 @@ def get_sys(self, par=None, reduce_sys=True, verbose=False):
     dim_v = len(vv_v)
 
     # obtain matrices from pydsge
-    # this can be further accelerated by getting them directly from the equations in pydsge
+    # this could be further accelerated by getting them directly from the equations in pydsge
     AA = self.AA(par)              # forward
     BB = self.BB(par)              # contemp
     CC = self.CC(par)              # backward
@@ -117,9 +117,17 @@ def get_sys(self, par=None, reduce_sys=True, verbose=False):
 
     out_msk = fast0(N, 0) & fast0(A, 0) & fast0(b2) & fast0(cx)
     out_msk[-len(vv_v):] = out_msk[-len(vv_v):] & fast0(self.ZZ(par), 0)
+    # store those that are/could be reduced
+    self.out_msk    = out_msk[-len(vv_v):].copy()
 
     if not reduce_sys:
         out_msk[-len(vv_v):][:] = False
+
+    if hasattr(self, 'P'):
+        if self.P.shape[0] != sum(~out_msk[-len(vv_v):]):
+            P_new   = np.zeros((len(self.out_msk),len(self.out_msk)))
+            P_new[~self.out_msk][:,~self.out_msk]     = self.P
+            self.P  = P_new
 
     # add everything to the DSGE object
     self.vv = vv_v[~out_msk[-len(vv_v):]]

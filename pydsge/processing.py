@@ -9,6 +9,7 @@ import numpy as np
 import multiprocessing as mp
 from tqdm import tqdm
 from .stats import InvGamma
+from .parser import DSGE as dsge
 
 
 class modloader(object):
@@ -20,14 +21,10 @@ class modloader(object):
         self.filename = filename
         self.files = np.load(filename)
         self.Z = self.files['Z']
-        if 'obs_cov' in self.files.files:
-            self.obs_cov = self.files['obs_cov']
-        if 'init_cov' in self.files.files:
-            self.init_cov = self.files['init_cov']
-        if 'description' in self.files.files:
-            self.description = self.files['description']
-        if 'priors' in self.files.files:
-            self.priors = self.files['priors'].item()
+        self.obs_cov = self.files['obs_cov']
+        self.init_cov = self.files['init_cov']
+        self.description = self.files['description']
+        self.priors = self.files['priors'].item()
         if 'acc_frac' in self.files.files:
             self.acc_frac = self.files['acc_frac']
         self.years = self.files['years']
@@ -39,6 +36,14 @@ class modloader(object):
         self.ndraws = self.files['ndraws']
         self.par_fix = self.files['par_fix']
         self.modelpath = str(self.files['modelpath'])
+
+        self.mod = dsge.read(self.modelpath)
+        self.mod.obs_cov     = self.obs_cov
+        self.mod.P           = self.init_cov
+        self.mod.years 	= list(self.years)
+        self.mod.Z       = self.Z
+
+
 
         if 'vv' in self.files:
             self.vv = self.files['vv']
@@ -212,7 +217,7 @@ def posterior_sample(self, be_res=None, seed=0):
     return list(randpar)
 
 
-def epstract(self, be_res=None, N=None, nr_samples=100, save=None, ncores=None, method=None, itype=(0, 1), converged_only=True, max_attempts=3, presmoothing=None, min_options=None, reduce_sys=None, force=False, verbose=False):
+def epstract(self, be_res=None, N=None, nr_samples=100, save=None, ncores=None, method=None, itype=(0, 1), converged_only=True, max_attempts=3, presmoothing=None, min_options=None, reduce_sys=False, force=False, verbose=False):
 
     XX = []
     COV = []
@@ -222,10 +227,8 @@ def epstract(self, be_res=None, N=None, nr_samples=100, save=None, ncores=None, 
     if N is None:
         N = 500
 
-    if reduce_sys is None:
-        reduce_sys = self.is_reduced
-    else:
-        self.is_reduced = reduce_sys
+    if reduce_sys is not self.is_reduced:
+        self.get_sys(reduce_sys=reduce_sys)
 
     if not force and save is not None and os.path.isfile(save):
 
@@ -233,7 +236,7 @@ def epstract(self, be_res=None, N=None, nr_samples=100, save=None, ncores=None, 
         OBS_COV = files['OBS_COV']
         smethod = files['method']
         if 'is_reduced' in files:
-            if reduce_sys is not None and reduce_sys is not files['is_reduced']:
+            if reduce_sys is not files['is_reduced']:
                 print('[epstract:]'.ljust(15, ' ') + "Epstract overwrites 'reduce_sys'.")
 
             reduce_sys = files['is_reduced']

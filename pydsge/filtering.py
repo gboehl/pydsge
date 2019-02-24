@@ -31,7 +31,7 @@ def create_filter(self, P=None, R=None, N=None, linear=False):
         xkf.F = self.linear_representation()
         xkf.H = self.hx
     else:
-        xkf = EnKF(N, model_obj=self)
+        xkf = EnKF(N=N, dim_x=len(self.vv), dim_z=self.ny, fx=self.t_func, hx=self.o_func, model_obj=self)
 
     if P is not None:
         xkf.P = P
@@ -123,8 +123,13 @@ def extract(self, pmean=None, cov=None, method=None, converged_only=True, return
     if cov is None:
         cov = self.filtered_cov.copy()
 
+    T1 = self.linear_representation()
+    T1, T2 = self.hx[0] @ T1, self.hx[0] @ T1 @ self.SIG
+    T3 = self.hx[1]
+    mod_objs    = (T1, T2, T3), self.SIG
+
     means, cov, res, flag = self.enkf.ipas(pmean, cov, method, converged_only, show_warnings=show_warnings,
-                                           itype=itype, presmoothing=presmoothing, min_options=min_options, return_flag=True, verbose=verbose)
+                                           itype=itype, presmoothing=presmoothing, objects=mod_objs, min_options=min_options, return_flag=True, verbose=verbose)
 
     self.res = res
 
