@@ -38,12 +38,10 @@ class modloader(object):
         self.modelpath = str(self.files['modelpath'])
 
         self.mod = dsge.read(self.modelpath)
-        self.mod.obs_cov     = self.obs_cov
-        self.mod.P           = self.init_cov
-        self.mod.years 	= list(self.years)
-        self.mod.Z       = self.Z
-
-
+        self.mod.obs_cov = self.obs_cov
+        self.mod.P = self.init_cov
+        self.mod.years = list(self.years)
+        self.mod.Z = self.Z
 
         if 'vv' in self.files:
             self.vv = self.files['vv']
@@ -237,11 +235,12 @@ def epstract(self, be_res=None, N=None, nr_samples=100, save=None, ncores=None, 
         smethod = files['method']
         if 'is_reduced' in files:
             if reduce_sys is not files['is_reduced']:
-                print('[epstract:]'.ljust(15, ' ') + "Epstract overwrites 'reduce_sys'.")
+                print('[epstract:]'.ljust(15, ' ') +
+                      "Epstract overwrites 'reduce_sys'.")
 
             reduce_sys = files['is_reduced']
         if 'presmoothing' in files:
-            presmoothing    = files['presmoothing']
+            presmoothing = files['presmoothing']
 
         EPS = files['EPS']
         COV = files['COV']
@@ -249,8 +248,12 @@ def epstract(self, be_res=None, N=None, nr_samples=100, save=None, ncores=None, 
         PAR = files['PAR']
 
         if EPS.shape[0] >= nr_samples:
-            print('[epstract:]'.ljust(15, ' ') +
-                  'Epstract already exists (presmoothing: %s, reduced: %s)' %(presmoothing, reduce_sys))
+            if presmoothing is None:
+                print('[epstract:]'.ljust(15, ' ') +
+                      'Epstract already exists (reduced: %s)' % reduce_sys)
+            else:
+                print('[epstract:]'.ljust(15, ' ') +
+                      'Epstract already exists (presmoothing: %s, reduced: %s)' % (presmoothing, reduce_sys))
 
             self.epstracted = XX, COV, EPS, PAR, self.obs_cov, method
 
