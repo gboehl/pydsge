@@ -236,7 +236,7 @@ def boehlgorithm(self, v, max_cnt = 4e1, linear = False, use_bruite = False):
     if not linear:
 
         if not hasattr(self, 'precalc_mat'):
-            self.preprocess(self, verbose = False)
+            self.preprocess(verbose = False)
 
         ## numba does not like tuples of numpy arrays
         mat, term                   = self.precalc_mat
@@ -247,7 +247,7 @@ def boehlgorithm(self, v, max_cnt = 4e1, linear = False, use_bruite = False):
     else:
 
         if not hasattr(self, 'precalc_mat'):
-            self.preprocess(self, l_max = 1, k_max = 1, verbose = False)
+            self.preprocess(l_max = 1, k_max = 1, verbose = False)
 
         mat, term       = self.precalc_mat
         dim_x           = self.sys[2].shape[0]

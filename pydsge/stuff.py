@@ -14,7 +14,7 @@ from .engine import boehlgorithm
 def get_sys(self, par=None, reduce_sys=True, verbose=False):
 
     st = time.time()
-    
+
     self.is_reduced = reduce_sys
 
     if par is None:
@@ -206,7 +206,8 @@ def irfs(self, shocklist, wannasee=None, use_bruite=2, show_warnings=True, verbo
         L.append(l)
 
     if superflag and show_warnings:
-        warnings.warn('Numerical errors in boehlgorithm, did not converge')
+        print('[irfs:]'.ljust(15, ' ') +
+              ' No rational expectations solution found.')
 
     Y = np.array(Y)
     K = np.array(K)
@@ -300,7 +301,7 @@ def simulate(self, eps=None, mask=None, initial_state=None, linear=False, use_br
 
     if superflag and show_warnings:
         print('[simulate:]'.ljust(
-            15, ' ')+'Numerical errors in boehlgorithm during simulation, did not converge')
+            15, ' ')+' No rational expectations solution found.')
 
     if return_flag:
         return X, np.expand_dims(K, 2), superflag
@@ -346,6 +347,5 @@ def t_func(self, state, noise=None, return_flag=True, return_k=False, linear=Fal
 def o_func(self, state):
     """
     observation function
-    (probably due for removal)
     """
     return self.hx[0] @ state + self.hx[1]
