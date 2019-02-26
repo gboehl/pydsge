@@ -70,7 +70,7 @@ def get_ll(self, verbose=False):
         # set approximation to get ll
         self.enkf.fx = lambda x: self.t_func(x)
 
-        ll = self.enkf.batch_filter(self.Z, calc_ll=True, verbose=verbose)[2]
+        ll = self.enkf.batch_filter(self.Z, calc_ll=True, verbose=verbose)
     else:
         ll = self.kf.batch_filter(self.Z)[2]
 
@@ -95,7 +95,7 @@ def run_filter(self, use_rts=True, rcond=1e-14, verbose=False):
         # set approximation level
         self.enkf.fx = lambda x: self.t_func(x)
 
-        X1, cov, _ = self.enkf.batch_filter(
+        X1, cov = self.enkf.batch_filter(
             self.Z, store=use_rts, verbose=verbose)
 
         if use_rts:
