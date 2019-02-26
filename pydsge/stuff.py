@@ -118,19 +118,23 @@ def get_sys(self, par=None, reduce_sys=True, verbose=False):
     out_msk = fast0(N, 0) & fast0(A, 0) & fast0(b2) & fast0(cx)
     out_msk[-len(vv_v):] = out_msk[-len(vv_v):] & fast0(self.ZZ(par), 0)
     # store those that are/could be reduced
-    self.out_msk    = out_msk[-len(vv_v):].copy()
+    self.out_msk = out_msk[-len(vv_v):].copy()
 
     if not reduce_sys:
-        out_msk[-len(vv_v):][:] = False
+        out_msk[-len(vv_v):] = False
+
+    s_out_msk = out_msk[-len(vv_v):]
 
     if hasattr(self, 'P'):
-        if self.P.shape[0] != sum(~out_msk[-len(vv_v):]):
-            P_new   = np.zeros((len(self.out_msk),len(self.out_msk)))
-            P_new[~self.out_msk][:,~self.out_msk]     = self.P
-            self.P  = P_new
+        if self.P.shape[0] < sum(~s_out_msk):
+            P_new = np.zeros((len(self.out_msk), len(self.out_msk)))
+            P_new[~self.out_msk][:, ~self.out_msk] = self.P
+            self.P = P_new
+        elif self.P.shape[0] > sum(~s_out_msk):
+            self.P = self.P[~s_out_msk][:, ~s_out_msk]
 
     # add everything to the DSGE object
-    self.vv = vv_v[~out_msk[-len(vv_v):]]
+    self.vv = vv_v[~s_out_msk]
     self.vx = np.array([v.name for v in vv_x3])
     self.dim_x = dim_x
     self.dim_v = len(self.vv)
@@ -138,14 +142,14 @@ def get_sys(self, par=None, reduce_sys=True, verbose=False):
     self.observables = self['observables']
     self.par = par
 
-    self.hx = self.ZZ(par)[:, ~out_msk[-len(vv_v):]], self.DD(par).squeeze()
+    self.hx = self.ZZ(par)[:, ~s_out_msk], self.DD(par).squeeze()
     self.obs_arg = np.where(self.hx[0])[1]
 
     N2 = N[~out_msk][:, ~out_msk]
     A2 = A[~out_msk][:, ~out_msk]
     J2 = J[:, ~out_msk]
 
-    self.SIG = (BB.T @ D)[~out_msk[-len(vv_v):]]
+    self.SIG = (BB.T @ D)[~s_out_msk]
 
     self.sys = N2, A2, J2, cx[~out_msk], b2[~out_msk], x_bar
 
@@ -154,7 +158,7 @@ def get_sys(self, par=None, reduce_sys=True, verbose=False):
               % np.round(time.time() - st, 3))
 
 
-def irfs(self, shocklist, wannasee=None, use_bruite=2, show_warnings=True, verbose=False):
+def irfs(self, shocklist, wannasee=None, show_warnings=True, verbose=False):
 
     # returns time series of impule responses
     # shocklist: takes list of tuples of (shock, size, timing)
@@ -203,8 +207,7 @@ def irfs(self, shocklist, wannasee=None, use_bruite=2, show_warnings=True, verbo
                 for shk in shk_process:
                     args_sts += list(shk)
 
-        st_vec, (l, k), flag = self.t_func(
-            st_vec, shk_vec, return_k=True, use_bruite=use_bruite)
+        st_vec, (l, k), flag = self.t_func(st_vec, shk_vec, return_k=True)
 
         if flag:
             superflag = True
@@ -256,7 +259,7 @@ def irfs(self, shocklist, wannasee=None, use_bruite=2, show_warnings=True, verbo
     return X, labels, (Y, K, L)
 
 
-def simulate(self, eps=None, mask=None, initial_state=None, linear=False, use_bruite=1, verbose=False, show_warnings=True, return_flag=False):
+def simulate(self, eps=None, mask=None, initial_state=None, linear=False, verbose=False, show_warnings=True, return_flag=False):
     """
         eps: shock innovations of shape (T, n_eps)
     """
@@ -286,7 +289,7 @@ def simulate(self, eps=None, mask=None, initial_state=None, linear=False, use_br
     for eps_t in eps:
 
         st_vec_new, (l, k), flag = self.t_func(
-            st_vec, noise=eps_t, return_k=True, use_bruite=use_bruite, linear=linear)
+            st_vec, noise=eps_t, return_k=True, linear=linear)
 
         if flag:
             superflag = True
@@ -335,14 +338,13 @@ def linear_representation(self, l=0, k=0):
     return mat[1, 0, 1][dim_x:]
 
 
-def t_func(self, state, noise=None, return_flag=True, return_k=False, linear=False, use_bruite=False):
+def t_func(self, state, noise=None, return_flag=True, return_k=False, linear=False):
 
     newstate = state.copy()
 
     if noise is not None:
         newstate += self.SIG @ noise
-    newstate, (l, k), flag = boehlgorithm(
-        self, newstate, linear=linear, use_bruite=use_bruite)
+    newstate, (l, k), flag = boehlgorithm(self, newstate, linear=linear)
 
     if return_k:
         return newstate, (l, k), flag

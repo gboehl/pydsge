@@ -21,6 +21,9 @@ def create_obs_cov(self, scale_obs=0.1):
 
 def create_filter(self, P=None, R=None, N=None, linear=False):
 
+    if N is None:
+        N = 500
+
     np.random.seed(0)
 
     if not hasattr(self, 'Z'):
@@ -31,7 +34,8 @@ def create_filter(self, P=None, R=None, N=None, linear=False):
         xkf.F = self.linear_representation()
         xkf.H = self.hx
     else:
-        xkf = EnKF(N=N, dim_x=len(self.vv), dim_z=self.ny, fx=self.t_func, hx=self.o_func, model_obj=self)
+        xkf = EnKF(N=N, dim_x=len(self.vv), dim_z=self.ny,
+                   fx=self.t_func, hx=self.o_func, model_obj=self)
 
     if P is not None:
         xkf.P = P
@@ -57,21 +61,21 @@ def create_filter(self, P=None, R=None, N=None, linear=False):
         self.enkf = xkf
 
 
-def get_ll(self, verbose=False, use_bruite=0):
+def get_ll(self, verbose=False):
 
     if verbose:
         st = time.time()
 
     if hasattr(self, 'enkf'):
         # set approximation to get ll
-        self.enkf.fx = lambda x: self.t_func(x, use_bruite=use_bruite)
+        self.enkf.fx = lambda x: self.t_func(x)
 
         ll = self.enkf.batch_filter(self.Z, calc_ll=True, verbose=verbose)[2]
     else:
         ll = self.kf.batch_filter(self.Z)[2]
 
     if np.isnan(ll):
-        ll  = -np.inf
+        ll = -np.inf
 
     self.ll = ll
 
@@ -82,20 +86,20 @@ def get_ll(self, verbose=False, use_bruite=0):
     return self.ll
 
 
-def run_filter(self, use_rts=True, verbose=False, use_bruite=1):
+def run_filter(self, use_rts=True, rcond=1e-14, verbose=False):
 
     if verbose:
         st = time.time()
 
     if hasattr(self, 'enkf'):
         # set approximation level
-        self.enkf.fx = lambda x: self.t_func(x, use_bruite=use_bruite)
+        self.enkf.fx = lambda x: self.t_func(x)
 
         X1, cov, _ = self.enkf.batch_filter(
             self.Z, store=use_rts, verbose=verbose)
 
         if use_rts:
-            X1, cov = self.enkf.rts_smoother(X1, cov)
+            X1, cov = self.enkf.rts_smoother(X1, cov, rcond=rcond)
     else:
         X1, cov, ll = self.kf.batch_filter(self.Z)
 
@@ -112,10 +116,9 @@ def run_filter(self, use_rts=True, verbose=False, use_bruite=1):
     return X1, cov
 
 
-def extract(self, pmean=None, cov=None, method=None, converged_only=True, return_flag=False, use_bruite=1, itype=(0, 1), presmoothing=None, min_options=None, show_warnings=True, verbose=True):
+def extract(self, pmean=None, cov=None, method=None, converged_only=True, return_flag=False, itype=(0, 1), presmoothing=None, min_options=None, show_warnings=True, verbose=True):
 
-    self.enkf.fx = lambda x, noise: self.t_func(
-        x, noise, use_bruite=use_bruite)
+    self.enkf.fx = lambda x, noise: self.t_func(x, noise)
 
     if pmean is None:
         pmean = self.filtered_X.copy()
@@ -126,7 +129,7 @@ def extract(self, pmean=None, cov=None, method=None, converged_only=True, return
     T1 = self.linear_representation()
     T1, T2 = self.hx[0] @ T1, self.hx[0] @ T1 @ self.SIG
     T3 = self.hx[1]
-    mod_objs    = (T1, T2, T3), self.SIG
+    mod_objs = (T1, T2, T3), self.SIG
 
     means, cov, res, flag = self.enkf.ipas(pmean, cov, method, converged_only, show_warnings=show_warnings,
                                            itype=itype, presmoothing=presmoothing, objects=mod_objs, min_options=min_options, return_flag=True, verbose=verbose)
