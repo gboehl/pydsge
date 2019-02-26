@@ -107,13 +107,10 @@ def LL_jit(l, k, s, v, mat, term):
 @njit(nogil=True, cache=True)
 def boehlgorithm_jit(N, A, J, cx, b, x_bar, v, mat, term, max_cnt):
 
-    dim_x, dim_y = J.shape
-
     l_max = mat.shape[0] - 1
     k_max = mat.shape[1] - 1
 
     flag = 0
-
     l, k = 0, 0
 
     # check if (0,0) is a solution
@@ -133,16 +130,16 @@ def boehlgorithm_jit(N, A, J, cx, b, x_bar, v, mat, term, max_cnt):
             flag = 1
             l, k = 0, 0
             while b @ LL_jit(l, k, l+k, v, mat, term) - x_bar < 0:
-                k += 1
                 if k == k_max:
                     # set error flag 'no solution + k_max reached'
                     flag = 3
                     break
+                k += 1
 
     # either l or k must be > 0
     if not k:
         l = 1
-    v_new = LL_jit(l, k, 1, v, mat, term)[dim_x:]
+    v_new = LL_jit(l, k, 1, v, mat, term)[J.shape[0]:]
 
     return v_new, (l, k), flag
 
@@ -154,21 +151,20 @@ def bruite_wrapper(b, x_bar, v, mat, term):
     k_max = mat.shape[1] - 1
 
     for l in range(l_max):
-        for k in range(k_max):
+        for k in range(1, k_max):
             if k:
                 if b @ LL_jit(l, k, k+l-1, v, mat, term) - x_bar > 0:
-                    break
+                    continue
                 if b @ LL_jit(l, k, l, v, mat, term) - x_bar > 0:
-                    break
+                    continue
             if l:
                 if b @ LL_jit(l, k, l-1, v, mat, term) - x_bar < 0:
-                    break
+                    continue
                 if b @ LL_jit(l, k, 0, v, mat, term) - x_bar < 0:
-                    break
+                    continue
             if b @ LL_jit(l, k, k+l, v, mat, term) - x_bar < 0:
-                break
-            if k or l == l_max-1:
-                return l, k
+                continue
+            return l, k
 
     return 999, 999
 
