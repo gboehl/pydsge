@@ -75,7 +75,7 @@ def mcmc(p0, nwalkers, ndim, ndraws, priors, sampler, ntemp, ncores, update_freq
     return sampler
 
 
-def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncores=None, nwalkers=100, ntemp=4, maxfev=None, use_bruite=0, pmdm_method=None, sampler=None, update_freq=None, verbose=False):
+def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncores=None, nwalkers=100, ntemp=4, maxfev=None, pmdm_method=None, sampler=None, update_freq=None, verbose=False):
 
     import pathos
     import scipy.stats as ss
@@ -107,7 +107,7 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
 
     # dry run before the fun beginns
     self.create_filter(N=N, linear=linear)
-    self.get_ll(verbose=verbose, use_bruite=use_bruite)
+    self.get_ll(verbose=verbose)
 
     print()
     print('[bayesian_estimation:]'.ljust(30, ' ') +
@@ -181,7 +181,7 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
 
                 self.create_filter(N=N, linear=linear)
 
-                ll = self.get_ll(verbose=verbose, use_bruite=use_bruite)
+                ll = self.get_ll(verbose=verbose)
 
                 if verbose == 2:
                     print('[bayesian_estimation -> llike:]'.ljust(45, ' ') +
