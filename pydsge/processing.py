@@ -235,12 +235,13 @@ def epstract(self, be_res=None, N=None, nr_samples=100, save=None, ncores=None, 
         smethod = files['method']
         if 'is_reduced' in files:
             if reduce_sys is not files['is_reduced']:
-                print('[epstract:]'.ljust(15, ' ') +
-                      "Epstract overwrites 'reduce_sys'.")
+                mess1   = ", epstract overwrites 'reduce_sys'"
+            else:
+                mess1   = ''
 
             reduce_sys = files['is_reduced']
         if 'presmoothing' in files:
-            presmoothing = files['presmoothing']
+            presmoothing = files['presmoothing'].item()
 
         EPS = files['EPS']
         COV = files['COV']
@@ -248,12 +249,13 @@ def epstract(self, be_res=None, N=None, nr_samples=100, save=None, ncores=None, 
         PAR = files['PAR']
 
         if EPS.shape[0] >= nr_samples:
-            if presmoothing is None:
-                print('[epstract:]'.ljust(15, ' ') +
-                      'Epstract already exists (reduced: %s)' % reduce_sys)
+            if presmoothing is not None:
+                mess2  = 'presmoothing: %s,' %presmoothing
             else:
-                print('[epstract:]'.ljust(15, ' ') +
-                      'Epstract already exists (presmoothing: %s, reduced: %s)' % (presmoothing, reduce_sys))
+                mess2  = ''
+
+            print('[epstract:]'.ljust(15, ' ') +
+                  'Epstract already exists (%sreduced: %s%s)' % (mess2, reduce_sys, mess1))
 
             self.epstracted = XX, COV, EPS, PAR, self.obs_cov, method
 
