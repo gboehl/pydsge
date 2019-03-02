@@ -159,11 +159,10 @@ def bruite_wrapper(b, x_bar, v, mat, term):
                     continue
             if b @ LL_jit(l, k, k+l, v, mat, term) - x_bar < 0:
                 continue
-            if k:
-                if b @ LL_jit(l, k, l, v, mat, term) - x_bar > 0:
-                    continue
-                if b @ LL_jit(l, k, k+l-1, v, mat, term) - x_bar > 0:
-                    continue
+            if b @ LL_jit(l, k, l, v, mat, term) - x_bar > 0:
+                continue
+            if b @ LL_jit(l, k, k+l-1, v, mat, term) - x_bar > 0:
+                continue
             return l, k
 
     return 999, 999
