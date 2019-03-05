@@ -116,7 +116,7 @@ def run_filter(self, use_rts=True, rcond=1e-14, verbose=False):
     return X1, cov
 
 
-def extract(self, pmean=None, cov=None, method=None, converged_only=10, return_flag=False, itype=(0, 1), presmoothing=None, min_options=None, show_warnings=True, verbose=True):
+def extract(self, pmean=None, cov=None, method=None, penalty=10, return_flag=False, itype=(0, 1), presmoothing=None, min_options=None, show_warnings=True, verbose=True):
 
     self.enkf.fx = lambda x, noise: self.t_func(x, noise)
 
@@ -131,7 +131,7 @@ def extract(self, pmean=None, cov=None, method=None, converged_only=10, return_f
     T3 = self.hx[1]
     mod_objs = (T1, T2, T3), self.SIG
 
-    means, cov, res, flag = self.enkf.ipas(pmean, cov, method, converged_only, show_warnings=show_warnings,
+    means, cov, res, flag = self.enkf.ipas(pmean, cov, method, penalty, show_warnings=show_warnings,
                                            itype=itype, presmoothing=presmoothing, objects=mod_objs, min_options=min_options, return_flag=True, verbose=verbose)
 
     self.res = res

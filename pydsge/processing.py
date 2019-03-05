@@ -215,7 +215,7 @@ def posterior_sample(self, be_res=None, seed=0):
     return list(randpar)
 
 
-def epstract(self, be_res=None, N=None, nr_samples=100, save=None, ncores=None, method=None, itype=(0, 1), converged_only=True, max_attempts=3, presmoothing=None, min_options=None, reduce_sys=False, force=False, verbose=False):
+def epstract(self, be_res=None, N=None, nr_samples=100, save=None, ncores=None, method=None, itype=(0, 1), penalty=10, max_attempts=3, presmoothing=None, min_options=None, reduce_sys=False, force=False, verbose=False):
 
     XX = []
     COV = []
@@ -235,9 +235,9 @@ def epstract(self, be_res=None, N=None, nr_samples=100, save=None, ncores=None, 
         smethod = files['method']
         if 'is_reduced' in files:
             if reduce_sys is not files['is_reduced']:
-                mess1   = ", epstract overwrites 'reduce_sys'"
+                mess1 = ", epstract overwrites 'reduce_sys'"
             else:
-                mess1   = ''
+                mess1 = ''
 
             reduce_sys = files['is_reduced']
         if 'presmoothing' in files:
@@ -250,9 +250,9 @@ def epstract(self, be_res=None, N=None, nr_samples=100, save=None, ncores=None, 
 
         if EPS.shape[0] >= nr_samples:
             if presmoothing is not None:
-                mess2  = 'presmoothing: %s,' %presmoothing
+                mess2 = 'presmoothing: %s,' % presmoothing
             else:
-                mess2  = ''
+                mess2 = ''
 
             print('[epstract:]'.ljust(15, ' ') +
                   'Epstract already exists (%sreduced: %s%s)' % (mess2, reduce_sys, mess1))
@@ -294,7 +294,7 @@ def epstract(self, be_res=None, N=None, nr_samples=100, save=None, ncores=None, 
 
             self.create_filter(N=N)
             SX, scov = self.run_filter()
-            IX, icov, eps, flag = self.extract(method=method, verbose=verbose, converged_only=converged_only,
+            IX, icov, eps, flag = self.extract(method=method, verbose=verbose, penalty=penalty,
                                                itype=itype, presmoothing=presmoothing, min_options=min_options, return_flag=True)
 
             if not flag:
