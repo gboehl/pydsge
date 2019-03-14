@@ -233,11 +233,12 @@ def epstract(self, be_res=None, N=None, nr_samples=100, save=None, ncores=None, 
         files = np.load(save)
         OBS_COV = files['OBS_COV']
         smethod = files['method']
+        mess1 = ''
+        mess2 = ''
+
         if 'is_reduced' in files:
             if reduce_sys is not files['is_reduced']:
                 mess1 = ", epstract overwrites 'reduce_sys'"
-            else:
-                mess1 = ''
 
             reduce_sys = files['is_reduced']
         if 'presmoothing' in files:
@@ -251,8 +252,6 @@ def epstract(self, be_res=None, N=None, nr_samples=100, save=None, ncores=None, 
         if EPS.shape[0] >= nr_samples:
             if presmoothing is not None:
                 mess2 = 'presmoothing: %s,' % presmoothing
-            else:
-                mess2 = ''
 
             print('[epstract:]'.ljust(15, ' ') +
                   'Epstract already exists (%sreduced: %s%s)' % (mess2, reduce_sys, mess1))
@@ -351,6 +350,7 @@ def sampled_sim(self, epstracted=None, mask=None, reduce_sys=None, forecast=Fals
 
     if reduce_sys is None:
         reduce_sys = self.is_reduced
+        print(reduce_sys)
 
     XX, COV, EPS, PAR = epstracted
 
