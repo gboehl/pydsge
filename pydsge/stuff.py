@@ -150,7 +150,6 @@ def get_sys(self, par=None, reduce_sys=True, verbose=False):
     J2 = J[:, ~out_msk]
 
     self.SIG = (BB.T @ D)[~s_out_msk]
-    print(self.SIG.shape)
 
     self.sys = N2, A2, J2, cx[~out_msk], b2[~out_msk], x_bar
 
