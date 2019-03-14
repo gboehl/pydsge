@@ -350,7 +350,6 @@ def sampled_sim(self, epstracted=None, mask=None, reduce_sys=None, forecast=Fals
 
     if reduce_sys is None:
         reduce_sys = self.is_reduced
-        print(reduce_sys)
 
     XX, COV, EPS, PAR = epstracted
 
