@@ -5,9 +5,11 @@ import pandas as pd
 import warnings
 import os
 
+
 def mc_error(x):
-    means   = np.mean(x,0)
+    means = np.mean(x, 0)
     return np.std(means) / np.sqrt(x.shape[0])
+
 
 def calc_min_interval(x, alpha):
     """Internal method to determine the minimum interval of
@@ -42,16 +44,17 @@ def _hpd_df(x, alpha):
     cnames = ['hpd_{0:g}'.format(100 * alpha / 2),
               'hpd_{0:g}'.format(100 * (1 - alpha / 2))]
 
-    sx          = np.sort(x.flatten())
-    hpd_vals    = np.array(calc_min_interval(sx, alpha)).reshape(1,-1)
+    sx = np.sort(x.flatten())
+    hpd_vals = np.array(calc_min_interval(sx, alpha)).reshape(1, -1)
 
     return pd.DataFrame(hpd_vals, columns=cnames)
 
-def summary(trace, varnames, priors = None, alpha=0.05):
-    ## in parts stolen from pymc3 because it looks really nice
+
+def summary(trace, varnames, priors=None, alpha=0.05):
+    # in parts stolen from pymc3 because it looks really nice
 
     with os.popen('stty size', 'r') as rows_cols:
-        cols            = rows_cols.read().split()[1]
+        cols = rows_cols.read().split()[1]
 
     if priors is None:
         priors = varnames
@@ -67,16 +70,16 @@ def summary(trace, varnames, priors = None, alpha=0.05):
 
     var_dfs = []
     for i, var in enumerate(varnames):
-        lst     = []
-        vals    = trace[:,:,i]
+        lst = []
+        vals = trace[:, :, i]
 
         if priors is not None and int(cols) > 90:
-            prior   = priors[var]
-            [lst.append(f(prior[j])) for j,f in enumerate(f_prs)]
-            
+            prior = priors[var]
+            [lst.append(f(prior[j])) for j, f in enumerate(f_prs)]
+
         [lst.append(f(vals)) for f in funcs]
-        var_df  = pd.concat(lst, axis=1)
-        var_df.index    = [var]
+        var_df = pd.concat(lst, axis=1)
+        var_df.index = [var]
         var_dfs.append(var_df)
 
     dforg = pd.concat(var_dfs, axis=0)
@@ -85,18 +88,19 @@ def summary(trace, varnames, priors = None, alpha=0.05):
 
 
 def mc_mean(trace, varnames):
-    ## in most parts just stolen from pymc3 because it looks really nice
+    # in most parts just stolen from pymc3 because it looks really nice
 
-    p_means     = []
+    p_means = []
 
     for i, var in enumerate(varnames):
-        vals = trace[:,:,i]
+        vals = trace[:, :, i]
         p_means.append(np.mean(vals))
 
     return p_means
 
+
 class InvGamma(object):
-    
+
     name = 'inv_gamma'
 
     def __init__(self, a, b):
@@ -110,12 +114,12 @@ class InvGamma(object):
 
         a = self.a
         b = self.b
-        
-        lpdf    = np.copy(x)
 
-        lpdf[x < 0]     = -np.inf
+        lpdf = np.copy(x)
 
-        lpdf[x >= 0]    = (np.log(2) - gammaln(b/2) + b/2*np.log(b*a**2/2)
-                -(b+1)/2*np.log(x[ x>=0 ]**2) - b*a**2/(2*x**2))
+        lpdf[x < 0] = -np.inf
+
+        lpdf[x >= 0] = (np.log(2) - gammaln(b/2) + b/2*np.log(b*a**2/2)
+                        - (b+1)/2*np.log(x[x >= 0]**2) - b*a**2/(2*x**2))
 
         return lpdf

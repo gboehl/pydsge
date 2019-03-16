@@ -7,12 +7,13 @@ from sympy.core.cache import clear_cache
 clear_cache()
 
 
-StrPrinter._print_TSymbol = lambda self,x: x.__str__()
+StrPrinter._print_TSymbol = lambda self, x: x.__str__()
+
 
 class Parameter(sympy.Symbol):
 
     def __init__(self, name, exp_date=0):
-        super(Parameter,self).__init__()
+        super(Parameter, self).__init__()
         self.name = name
     # def __new__(self, name, exp_date=0):
     #     super(Parameter,self).__new__( name)
@@ -24,13 +25,12 @@ class Parameter(sympy.Symbol):
         self.prior = prior
 
 
-
 class TSymbol(sympy.Symbol):
 
     #__xnew_cached_ = staticmethod(sympy.Symbol.__new_stage2__)
 
     def __init__(self, name, **args):
-        super(TSymbol,self).__init__()
+        super(TSymbol, self).__init__()
 
         if 'date' not in args:
             self._assumptions['date'] = 0
@@ -50,13 +50,12 @@ class TSymbol(sympy.Symbol):
 
         return None
 
-
-    def __call__(self,lead):
+    def __call__(self, lead):
         newdate = int(self.date) + int(lead)
         newname = str(self.name)
         # print 'creating', newname, newdate
         clear_cache()
-        return self.__class__(newname,date=newdate)
+        return self.__class__(newname, date=newdate)
 
     @property
     def date(self):
@@ -66,18 +65,17 @@ class TSymbol(sympy.Symbol):
     def exp_date(self):
         return self.assumptions0['exp_date']
 
-
     def _hashable_content(self):
-        return (self.name,str(self.date),str(self.exp_date))
+        return (self.name, str(self.date), str(self.exp_date))
 
     def __getstate__(self):
-       return {
-           'date': self.date,
-           'name': self.name,
-           'exp_date': self.exp_date,
-           'is_commutative': self.is_commutative,
-           '_mhash': self._mhash
-       }
+        return {
+            'date': self.date,
+            'name': self.name,
+            'exp_date': self.exp_date,
+            'is_commutative': self.is_commutative,
+            '_mhash': self._mhash
+        }
 
     def class_key(self):
         return (2, 0, self.name, self.date)
@@ -85,7 +83,6 @@ class TSymbol(sympy.Symbol):
     @property
     def lag(self):
         return self.date
-
 
     def __str__(self):
         if self.lag == 0:
@@ -110,7 +107,6 @@ class TSymbol(sympy.Symbol):
     #     return self.__str__()
 
 
-
 class Variable(TSymbol):
 
     @property
@@ -124,7 +120,8 @@ class Variable(TSymbol):
         if self.exp_date == 0:
             result = super(Variable, self).__str__()
         else:
-            result = 'E[' + str(self.exp_date) + ']' + super(Variable, self).__str__()
+            result = 'E[' + str(self.exp_date) + ']' + \
+                super(Variable, self).__str__()
 
         return result
 
@@ -133,12 +130,12 @@ class Variable(TSymbol):
 
     __sstr__ = __str__
 
+
 class LaggedExpectation(Variable):
 
     def __init__(self, name, date=0, exp_date=0):
         Variable.__init__(self, name, date)
-        self.exp_date = exp_date;
-
+        self.exp_date = exp_date
 
     def __getstate_(self):
         return {
@@ -151,7 +148,6 @@ class LaggedExpectation(Variable):
     def _hashable_content(self):
         return (self.name, self.date, self.lag)
 
-
     def __str__(self):
         """
         """
@@ -159,8 +155,6 @@ class LaggedExpectation(Variable):
             result = "E_{t-j}[self.name]"
         else:
             pass
-
-
 
 
 class Shock(TSymbol):
@@ -173,12 +167,9 @@ class Shock(TSymbol):
             return('e_E'+self.name)
 
 
-
-
-
 class Equation(sympy.Equality):
 
-    #def __init__(self, lhs, rhs, name=None):
+    # def __init__(self, lhs, rhs, name=None):
     #    super(sympy.Equality, self).__init__(lhs, rhs)
     def __new__(cls, lhs, rhs, name=None):
         return super(sympy.Equality, cls).__new__(cls, lhs, rhs)

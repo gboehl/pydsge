@@ -41,9 +41,9 @@ def mcmc(p0, nwalkers, ndim, ndraws, priors, sampler, ntemp, ncores, update_freq
     if not verbose:
         np.warnings.filterwarnings('ignore')
         pbar = tqdm.tqdm(total=ndraws, unit='sample(s)', dynamic_ncols=True)
-        report  = pbar.write
+        report = pbar.write
     else:
-        report  = print
+        report = print
 
     cnt = 0
     for result in sampler.sample(p0, iterations=ndraws):
@@ -51,17 +51,17 @@ def mcmc(p0, nwalkers, ndim, ndraws, priors, sampler, ntemp, ncores, update_freq
             report('')
             if description is not None:
                 report('[bayesian_estimation -> mcmc:]'.ljust(45, ' ') +
-                           ' Summary from last %s of %s iterations (%s):' % (update_freq, cnt, str(description)))
+                       ' Summary from last %s of %s iterations (%s):' % (update_freq, cnt, str(description)))
             else:
                 report('[bayesian_estimation -> mcmc:]'.ljust(45, ' ') +
-                           ' Summary from last %s of %s iterations:' % (update_freq, cnt))
+                       ' Summary from last %s of %s iterations:' % (update_freq, cnt))
             report(str(summary(sampler.chain.reshape(-1, ndraws, ndim)
-                                   [:, cnt-update_freq:cnt, :], priors).round(3)))
+                               [:, cnt-update_freq:cnt, :], priors).round(3)))
             report("Mean acceptance fraction: {0:.3f}".format(
                 np.mean(sampler.acceptance_fraction)))
         if not verbose:
             pbar.update(1)
-        cnt     += 1
+        cnt += 1
 
     loc_pool.close()
     loc_pool.join()
@@ -101,7 +101,7 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
         maxfev = ndraws
 
     if not linear:
-        self.preprocess(verbose=verbose>1)
+        self.preprocess(verbose=verbose > 1)
     else:
         self.preprocess(l_max=1, k_max=0, verbose=False)
 
@@ -171,11 +171,11 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
                 par_active_lst = list(par_fix)
 
                 self.get_sys(par=par_active_lst,
-                             reduce_sys=True, verbose=verbose>1)
+                             reduce_sys=True, verbose=verbose > 1)
 
                 # these max vals should be sufficient given we're only dealing with stochastic linearization
                 if not linear:
-                    self.preprocess(l_max=3, k_max=16, verbose=verbose>1)
+                    self.preprocess(l_max=3, k_max=16, verbose=verbose > 1)
                 else:
                     self.preprocess(l_max=1, k_max=0, verbose=False)
 
@@ -268,9 +268,9 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
                 self.timer = 0
 
             if not verbose:
-                report  = self.pbar.write
+                report = self.pbar.write
             else:
-                report  = print
+                report = print
 
             # prints information snapshots
             if update_freq and not self.n % update_freq:

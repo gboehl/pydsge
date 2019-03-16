@@ -293,8 +293,8 @@ def epstract(self, be_res=None, N=None, nr_samples=100, save=None, ncores=None, 
 
             self.create_filter(N=N)
             SX, scov = self.run_filter()
-            IX, icov, eps, flag = self.extract(method=method, verbose=verbose, penalty=penalty,
-                                               itype=itype, presmoothing=presmoothing, min_options=min_options, return_flag=True)
+            IX, icov, eps, flag = self.extract(method=method, penalty=penalty, return_flag=True, itype=itype,
+                                               presmoothing=presmoothing, min_options=min_options, show_warnings=False, verbose=verbose)
 
             if not flag:
                 return IX, icov, eps, par
