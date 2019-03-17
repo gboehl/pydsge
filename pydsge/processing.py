@@ -131,7 +131,7 @@ def mask(self, verbose=False):
     return np.full((self.Z.shape[0]-1, self.Z.shape[1]), np.nan)
 
 
-def save_res(self, filename, description=None):
+def save_res(self, filename, save_tune=True, description=None):
 
     if not hasattr(self, 'description'):
 
@@ -145,6 +145,13 @@ def save_res(self, filename, description=None):
     else:
         init_cov = self.enkf.P
 
+    if save_tune:
+        chain   = self.sampler.chain
+        tune    = self.sampler.tune
+    else:
+        chain   = self.sampler.chain[:,self.sampler.tune:]
+        tune    = 0
+
     np.savez_compressed(filename,
                         Z=self.Z,
                         vv=self.vv,
@@ -154,13 +161,13 @@ def save_res(self, filename, description=None):
                         init_cov=init_cov,
                         par_fix=self.par_fix,
                         ndraws=self.ndraws,
-                        chain=self.sampler.chain,
+                        chain=chain,
                         acc_frac=self.sampler.acceptance_fraction,
                         prior_dist=self.sampler.prior_dist,
                         prior_names=self.sampler.prior_names,
                         prior_arg=self.prior_arg,
                         priors=self['__data__']['estimation']['prior'],
-                        tune=self.sampler.tune,
+                        tune=tune,
                         modelpath=self['filename'],
                         means=self.sampler.par_means)
     print('[save_res:]'.ljust(15, ' ')+'Results saved in ', filename)

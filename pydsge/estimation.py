@@ -29,6 +29,9 @@ def mcmc(p0, nwalkers, ndim, ndraws, priors, sampler, ntemp, ncores, update_freq
     def lprior_local(par):
         return lprior_global(par)
 
+    # all that should be reproducible
+    np.random.seed(0)
+
     loc_pool = pathos.pools.ProcessPool(ncores)
 
     if sampler is 'ptes':
@@ -306,7 +309,7 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
                 f_val = -np.inf
                 self.x = self.init_par
 
-                res = so.minimize(self, self.x, method=self.method, tol=1e-2)
+                res = so.minimize(self, self.x, method=self.method, tol=1e-3)
 
                 if not verbose:
                     self.pbar.close()
@@ -354,7 +357,6 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
             # Nelder-Mead is fast and reliable, but doesn't max out the likelihood completely
             # Powell provides the highes likelihood but is slow and sometimes ends up in strange corners of the parameter space
             # CG and BFGS are hit and go but *can* perform well
-            # CG and BFGS are hit and go but *can* perform well
             # SLSQP is fast but not very precise
             pmdm_method = methodl[pmdm_method]
             print('[bayesian_estimation -> pmdm:]'.ljust(45, ' ') +
@@ -382,7 +384,6 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
     if ndraws:
         print()
         if sampler == 'ptes':
-            # pos             = [init_par*(1+1e-3*np.random.randn(ntemp, ndim)) for i in range(nwalkers)]
             pos = init_par*(1+1e-3*np.random.randn(ntemp, nwalkers, ndim))
         else:
             pos = [init_par*(1+1e-3*np.random.randn(ndim))
@@ -397,9 +398,9 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
 
         sampler.summary = lambda: summary(self.chain[:, tune:, :], priors)
         sampler.traceplot = lambda **args: traceplot(
-            self.chain, varnames=priors, tune=tune, priors=priors_lst, **args)
+            self.chain, varnames=prior_names, tune=tune, priors=priors_lst, **args)
         sampler.posteriorplot = lambda **args: posteriorplot(
-            self.chain, varnames=priors, tune=tune, **args)
+            self.chain, varnames=prior_names, tune=tune, **args)
 
         par_mean = par_fix
         par_mean[prior_arg] = mc_mean(self.chain[:, tune:], varnames=priors)
