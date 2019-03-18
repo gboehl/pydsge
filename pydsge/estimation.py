@@ -325,7 +325,7 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
                 f_val = -np.inf
                 self.x = self.init_par
 
-                res = so.minimize(self, self.x, method=self.method, tol=pmdm_tol)
+                res = so.minimize(self, self.x, method=self.method, tol=pmdm_tol, options=opt_dict)
 
                 if not verbose:
                     self.pbar.close()
@@ -359,24 +359,34 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
     if maxfev:
 
         print()
-        if not verbose:
-            np.warnings.filterwarnings('ignore')
-            print('[bayesian_estimation -> pmdm:]'.ljust(45, ' ') +
-                  ' Maximizing posterior mode density (meanwhile warnings are disabled)')
-        else:
-            print('[bayesian_estimation -> pmdm:]'.ljust(45, ' ') +
-                  ' Maximizing posterior mode density:')
+        opt_dict    = {}
         if pmdm_method is None:
             pmdm_method = 'Nelder-Mead'
         elif isinstance(pmdm_method, int):
-            methodl = ["Nelder-Mead", "Powell", "CG", "BFGS", "SLSQP"]
-            # Nelder-Mead is fast and reliable, but doesn't max out the likelihood completely
-            # Powell provides the highes likelihood but is slow and sometimes ends up in strange corners of the parameter space
-            # CG and BFGS are hit and go but *can* perform well
-            # SLSQP is fast but not very precise
+            methodl = ["Nelder-Mead", "Powell", "BFGS", "CG", "L-BFGS-G", "SLSQP", "trust-constr", "COBYLA", "TNC"]
+
+            # Nelder-Mead: fast and reliable, but doesn't max out the likelihood completely (not that fast if far away from max)
+            # Powell: provides the highes likelihood but is slow and sometimes ends up in strange corners of the parameter space (sorting effects)
+            # BFGS: hit and go but *can* outperform Nelder-Mead without sorting effects
+            # CG: *can* perform well but can also get lost in a bad region with low LL
+            # L-BFGS-G: leaves values untouched
+            # SLSQP: fast but not very precise (or just wrong)
+            # trust-constr: very fast but terminates too early
+            # COBYLA: very fast but hangs up for no good reason and is effectively unusable
+            # TNC: gets stuck around the initial values
+
             pmdm_method = methodl[pmdm_method]
             print('[bayesian_estimation -> pmdm:]'.ljust(45, ' ') +
-                  ' Using %s for optimization. Available methods are %s.' % (pmdm_method, ', '.join(methodl)))
+                  ' Available methods are %s.' % ', '.join(methodl))
+        if pmdm_method == 'trust-constr':
+            opt_dict    = {'maxiter': np.inf}
+        if not verbose:
+            np.warnings.filterwarnings('ignore')
+            print('[bayesian_estimation -> pmdm:]'.ljust(45, ' ') +
+                  " Maximizing posterior mode density using '%s' (meanwhile warnings are disabled)." %pmdm_method)
+        else:
+            print('[bayesian_estimation -> pmdm:]'.ljust(45, ' ') +
+                  ' Maximizing posterior mode density using %s.' %pmdm_method)
         print()
 
         result = pmdm(init_par, pmdm_method).go()
