@@ -146,6 +146,21 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
             priors_lst.append(ss.uniform(loc=pmean, scale=pstdd-pmean))
         elif str(dist[0]) == 'inv_gamma':
             priors_lst.append(InvGamma(a=pmean, b=pstdd))
+        elif str(dist[0]) == 'inv_gamma2':
+
+            def targf(x):
+                y0 = ss.invgamma(x[0], loc=x[1]).std() - pstdd
+                y1 = ss.invgamma(x[0], loc=x[1]).mean() - pmean
+                return np.array([y0, y1])
+
+            ig_res = so.root(targf, np.array([4, pmean]))
+
+            if ig_res['success']:
+                a = ig_res['x']
+                priors_lst.append(ss.invgamma(a[0], loc=a[1]))
+            else:
+                raise ValueError(
+                    'Can not find inverse gamma distribution with mean %s and std %s' % (pmean, pstdd))
         elif str(dist[0]) == 'normal':
             priors_lst.append(ss.norm(loc=pmean, scale=pstdd))
         elif str(dist[0]) == 'gamma':
@@ -157,7 +172,8 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
             b = a*(1/pmean - 1)
             priors_lst.append(ss.beta(a=a, b=b))
         else:
-            raise ValueError(' Distribution *not* implemented: ', str(dist[0]))
+            raise NotImplementedError(
+                ' Distribution *not* implemented: ', str(dist[0]))
         print('     parameter %s as %s with mean/alpha %s and std/beta %s...' %
               (pp, dist[0], pmean, pstdd))
 
