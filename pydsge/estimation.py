@@ -132,8 +132,8 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
 
     ndim = len(priors.keys())
 
-    print('[bayesian_estimation:]'.ljust(30, ' ') +
-          ' Adding parameters to the prior distribution:')
+    print('[bayesian_estimation:]'.ljust(30, ' ') + 
+          ' %s priors detected. Adding parameters to the prior distribution.' %ndim)
 
     priors_lst = []
     for pp in priors:
