@@ -78,7 +78,7 @@ def mcmc(p0, nwalkers, ndim, ndraws, priors, sampler, ntemp, ncores, update_freq
     return sampler
 
 
-def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncores=None, nwalkers=100, ntemp=4, maxfev=None, pmdm_method=None, sampler=None, update_freq=None, verbose=False):
+def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncores=None, nwalkers=100, ntemp=4, maxfev=None, pmdm_method=None, pmdm_tol=1e-2, sampler=None, update_freq=None, verbose=False):
 
     import pathos
     import scipy.stats as ss
@@ -325,7 +325,7 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
                 f_val = -np.inf
                 self.x = self.init_par
 
-                res = so.minimize(self, self.x, method=self.method, tol=1e-2)
+                res = so.minimize(self, self.x, method=self.method, tol=pmdm_tol)
 
                 if not verbose:
                     self.pbar.close()
