@@ -382,6 +382,11 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
                   ' Available methods are %s.' % ', '.join(methodl))
         if pmdm_method == 'trust-constr':
             opt_dict    = {'maxiter': np.inf}
+        if pmdm_method == 'Nelder-Mead':
+            opt_dict    = {
+                'maxiter': np.inf,
+                'maxfev': np.inf
+            }
         if not verbose:
             np.warnings.filterwarnings('ignore')
             print('[bayesian_estimation -> pmdm:]'.ljust(45, ' ') +
