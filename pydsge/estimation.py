@@ -8,7 +8,7 @@ import emcee
 from .stats import InvGamma, summary, mc_mean
 
 
-def mcmc(p0, nwalkers, ndim, ndraws, priors, sampler, ntemp, ncores, update_freq, description, verbose):
+def mcmc(p0, linear_mcmc, nwalkers, ndim, ndraws, priors, sampler, ntemp, ncores, update_freq, description, verbose):
     # very very dirty hack
 
     import tqdm
@@ -21,10 +21,10 @@ def mcmc(p0, nwalkers, ndim, ndraws, priors, sampler, ntemp, ncores, update_freq
 
     # import the global function and hack it to pretend it is defined on the top level
     def lprob_local(par):
-        return lprob_global(par)
+        return lprob_global(par, linear_mcmc)
 
     def llike_local(par):
-        return llike_global(par)
+        return llike_global(par, linear_mcmc)
 
     def lprior_local(par):
         return lprior_global(par)
@@ -78,7 +78,7 @@ def mcmc(p0, nwalkers, ndim, ndraws, priors, sampler, ntemp, ncores, update_freq
     return sampler
 
 
-def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncores=None, nwalkers=100, ntemp=4, maxfev=None, pmdm_method=None, pmdm_tol=1e-2, sampler=None, update_freq=None, verbose=False):
+def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncores=None, nwalkers=100, ntemp=4, maxfev=None, linear_pre_pmdm=False, pmdm_method=None, pmdm_tol=1e-2, sampler=None, update_freq=None, verbose=False):
 
     import pathos
     import scipy.stats as ss
@@ -103,13 +103,10 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
     if maxfev is None:
         maxfev = ndraws
 
-    if not linear:
-        self.preprocess(verbose=verbose > 1)
-    else:
-        self.preprocess(l_max=1, k_max=0, verbose=False)
+    self.preprocess(verbose=verbose > 1)
 
     # dry run before the fun beginns
-    self.create_filter(N=N, linear=linear)
+    self.create_filter(N=N, linear=linear_pre_pmdm or linear)
     self.get_ll(verbose=verbose)
 
     print()
@@ -177,7 +174,7 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
         print('     parameter %s as %s with mean/alpha %s and std/beta %s...' %
               (pp, dist[0], pmean, pstdd))
 
-    def llike(parameters):
+    def llike(parameters, linear_llike):
 
         if verbose == 2:
             st = time.time()
@@ -193,12 +190,12 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
                              reduce_sys=True, verbose=verbose > 1)
 
                 # these max vals should be sufficient given we're only dealing with stochastic linearization
-                if not linear:
+                if not linear_llike:
                     self.preprocess(l_max=3, k_max=16, verbose=verbose > 1)
                 else:
                     self.preprocess(l_max=1, k_max=0, verbose=False)
 
-                self.create_filter(N=N, linear=linear)
+                self.create_filter(N=N, linear=linear_llike)
 
                 ll = self.get_ll(verbose=verbose)
 
@@ -226,8 +223,8 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
 
         return prior
 
-    def lprob(pars):
-        return lprior(pars) + llike(pars)
+    def lprob(pars, linear_lprob):
+        return lprior(pars) + llike(pars, linear_lprob)
 
     global lprob_global
     global llike_global
@@ -243,7 +240,7 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
 
         name = 'pmdm'
 
-        def __init__(self, init_par, method):
+        def __init__(self, init_par, method, linear_pmdm):
 
             self.n = 0
             self.maxfev = maxfev
@@ -255,10 +252,15 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
             self.timer = 0
             self.res_max = np.inf
             self.method = method
+            self.linear = linear_pmdm
+            if linear_pmdm:
+                self.desc_str = 'linear_'
+            else:
+                self.desc_str = ''
 
         def __call__(self, pars):
 
-            self.res = -lprob(pars)
+            self.res = -lprob(pars, self.linear)
             self.x = pars
 
             # better ensure we're not just running with the wolfs when maxfev is hit
@@ -297,10 +299,10 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
                 with os.popen('stty size', 'r') as rows_cols:
                     cols = rows_cols.read().split()[1]
                 if description is not None:
-                    report('[bayesian_estimation -> pmdm:]'.ljust(
+                    report('[bayesian_estimation -> '+self.desc_str+'pmdm:]'.ljust(
                         45, ' ')+' Current best guess @ iteration %s and ll of %s (%s):' % (self.n, self.res_max.round(5), str(description)))
                 else:
-                    report('[bayesian_estimation -> pmdm:]'.ljust(
+                    report('[bayesian_estimation -> '+self.desc_str+'pmdm:]'.ljust(
                         45, ' ')+' Current best guess @ iteration %s and ll of %s):' % (self.n, self.res_max.round(5)))
                 # split the info such that it is readable
                 lnum = (len(priors)*8)//(int(cols)-8) + 1
@@ -331,10 +333,10 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
                     self.pbar.close()
                 print('')
                 if self.res_max < res['fun']:
-                    print('[bayesian_estimation -> pmdm:]'.ljust(45, ' ')+str(res['message']) +
+                    print('[bayesian_estimation -> '+self.desc_str+'pmdm:]'.ljust(45, ' ')+str(res['message']) +
                           ' Maximization returned value lower than actual (known) optimum ('+str(-self.res_max)+' > '+str(-self.res)+').')
                 else:
-                    print('[bayesian_estimation -> pmdm:]'.ljust(45, ' ')+str(res['message']
+                    print('[bayesian_estimation -> '+self.desc_str+'pmdm:]'.ljust(45, ' ')+str(res['message']
                                                                               )+' Log-likelihood is '+str(np.round(-res['fun'], 5))+'.')
                 print('')
 
@@ -342,7 +344,7 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
                 if not verbose:
                     self.pbar.close()
                 print('')
-                print('[bayesian_estimation -> pmdm:]'.ljust(45, ' ') +
+                print('[bayesian_estimation -> '+self.desc_str+'pmdm:]'.ljust(45, ' ') +
                       ' Maximum number of function calls exceeded, exiting. Log-likelihood is '+str(np.round(-self.res_max, 5))+'...')
                 print('')
 
@@ -350,7 +352,7 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
                 if not verbose:
                     self.pbar.close()
                 print('')
-                print('[bayesian_estimation -> pmdm:]'.ljust(45, ' ') +
+                print('[bayesian_estimation -> '+self.desc_str+'pmdm:]'.ljust(45, ' ') +
                       ' Iteration interrupted manually. Log-likelihood is '+str(np.round(-self.res_max, 5))+'...')
                 print('')
 
@@ -389,7 +391,13 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
                   ' Maximizing posterior mode density using %s.' %pmdm_method)
         print()
 
-        result = pmdm(init_par, pmdm_method).go()
+        if linear_pre_pmdm:
+            print('[bayesian_estimation -> pmdm:]'.ljust(45, ' ') +
+                  ' Starting pre-maximization of linear function.')
+            init_par = pmdm(init_par, pmdm_method, linear_pmdm=True).go()
+            print('[bayesian_estimation -> pmdm:]'.ljust(45, ' ') +
+                  ' Pre-maximization of linear function done, starting actual maximization.')
+        result = pmdm(init_par, pmdm_method, linear_pmdm=linear).go()
         np.warnings.filterwarnings('default')
         init_par = result
 
@@ -414,7 +422,7 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
         else:
             pos = [init_par*(1+1e-3*np.random.randn(ndim))
                    for i in range(nwalkers)]
-        sampler = mcmc(pos, nwalkers, ndim, ndraws, priors, sampler,
+        sampler = mcmc(pos, linear, nwalkers, ndim, ndraws, priors, sampler,
                        ntemp, ncores, update_freq, description, verbose)
 
         print("Mean acceptance fraction: {0:.3f}"
