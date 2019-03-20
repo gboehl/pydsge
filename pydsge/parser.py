@@ -501,7 +501,8 @@ class DSGE(dict):
                 var_l = Variable(v.name + "_LAG" + str(i-1))
 
                 if i == 2:
-                    var_l_1 = Variable(v.name, date=-1)
+                    # var_l_1 = Variable(v.name, date=-1)
+                    var_l_1 = v(-1)
                 else:
                     var_l_1 = Variable(v.name + "_LAG" + str(i-2), date=-1)
 
@@ -512,6 +513,7 @@ class DSGE(dict):
             # still need to do leads
 
         equations = [eq.subs(subs_dict) for eq in equations]
+        for eq in equations: print(eq)
 
         cov = cal['covariances']
 
