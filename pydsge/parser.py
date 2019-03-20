@@ -455,6 +455,14 @@ class DSGE(dict):
         # ------------------------------------------------------------
         it = itertools.chain.from_iterable
 
+        all_shocks_pre = [list(eq.atoms(Shock)) for eq in equations]
+
+        for s in shk_ordering:
+            max_lag = min([i.date for i in it(all_shocks_pre) if i.name == s.name])
+            for t in np.arange(max_lag,1):
+                subs_dict = {s(t): s(t-1)}
+                equations = [eq.subs(subs_dict) for eq in equations]
+
         max_lead_exo = dict.fromkeys(shk_ordering)
         max_lag_exo = dict.fromkeys(shk_ordering)
 
@@ -513,7 +521,6 @@ class DSGE(dict):
             # still need to do leads
 
         equations = [eq.subs(subs_dict) for eq in equations]
-        for eq in equations: print(eq)
 
         cov = cal['covariances']
 
