@@ -5,7 +5,12 @@ import warnings
 import os
 import time
 import emcee
-from .stats import InvGamma, summary, mc_mean
+from .stats import InvGammaDynare, summary, mc_mean, inv_gamma_spec
+import pathos
+import scipy.stats as ss
+import scipy.optimize as so
+import tqdm
+from .plots import traceplot, posteriorplot
 
 
 def mcmc(p0, linear_mcmc, nwalkers, ndim, ndraws, priors, sampler, ntemp, ncores, update_freq, description, verbose):
@@ -80,12 +85,6 @@ def mcmc(p0, linear_mcmc, nwalkers, ndim, ndraws, priors, sampler, ntemp, ncores
 
 def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncores=None, nwalkers=100, ntemp=4, maxfev=None, linear_pre_pmdm=False, pmdm_method=None, pmdm_tol=1e-2, sampler=None, update_freq=None, verbose=False):
 
-    import pathos
-    import scipy.stats as ss
-    import scipy.optimize as so
-    import tqdm
-    from .plots import traceplot, posteriorplot
-
     if ncores is None:
         ncores = pathos.multiprocessing.cpu_count()
 
@@ -129,35 +128,18 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
 
     ndim = len(priors.keys())
 
-    print('[bayesian_estimation:]'.ljust(30, ' ') + 
-          ' %s priors detected. Adding parameters to the prior distribution.' %ndim)
+    print('[bayesian_estimation:]'.ljust(30, ' ') +
+          ' %s priors detected. Adding parameters to the prior distribution.' % ndim)
 
     priors_lst = []
     for pp in priors:
         dist = priors[str(pp)]
         pmean = dist[1]
         pstdd = dist[2]
-
         # simply make use of frozen distributions
         if str(dist[0]) == 'uniform':
             priors_lst.append(ss.uniform(loc=pmean, scale=pstdd-pmean))
-        elif str(dist[0]) == 'inv_gamma':
-            priors_lst.append(InvGamma(a=pmean, b=pstdd))
-        elif str(dist[0]) == 'inv_gamma2':
 
-            def targf(x):
-                y0 = ss.invgamma(x[0], loc=x[1]).std() - pstdd
-                y1 = ss.invgamma(x[0], loc=x[1]).mean() - pmean
-                return np.array([y0, y1])
-
-            ig_res = so.root(targf, np.array([4, pmean]))
-
-            if ig_res['success']:
-                a = ig_res['x']
-                priors_lst.append(ss.invgamma(a[0], loc=a[1]))
-            else:
-                raise ValueError(
-                    'Can not find inverse gamma distribution with mean %s and std %s' % (pmean, pstdd))
         elif str(dist[0]) == 'normal':
             priors_lst.append(ss.norm(loc=pmean, scale=pstdd))
         elif str(dist[0]) == 'gamma':
@@ -168,10 +150,30 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
             a = (1-pmean)*pmean**2/pstdd**2 - pmean
             b = a*(1/pmean - 1)
             priors_lst.append(ss.beta(a=a, b=b))
+        elif str(dist[0]) == 'inv_gamma':
+
+            def targf(x):
+                y0 = ss.invgamma(x[0], loc=x[1]).std() - pstdd
+                y1 = ss.invgamma(x[0], loc=x[1]).mean() - pmean
+                return np.array([y0, y1])
+
+            ig_res = so.root(targf, np.array([4, pmean]))
+            if ig_res['success']:
+                a = ig_res['x']
+                priors_lst.append(ss.invgamma(a[0], loc=a[1]))
+            else:
+                raise ValueError(
+                    'Can not find inverse gamma distribution with mean %s and std %s' % (pmean, pstdd))
+        elif str(dist[0]) == 'inv_gamma_dynare':
+            s, nu = inv_gamma_spec(pmean, pstdd)
+            ig = InvGammaDynare()
+            ig.pars(nu, s)
+            priors_lst.append(ig)
+
         else:
             raise NotImplementedError(
                 ' Distribution *not* implemented: ', str(dist[0]))
-        print('     parameter %s as %s with mean/alpha %s and std/beta %s...' %
+        print('     parameter %s as %s with mean %s and std/df %s...' %
               (pp, dist[0], pmean, pstdd))
 
     def llike(parameters, linear_llike):
@@ -327,7 +329,8 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
                 f_val = -np.inf
                 self.x = self.init_par
 
-                res = so.minimize(self, self.x, method=self.method, tol=pmdm_tol, options=opt_dict)
+                res = so.minimize(self, self.x, method=self.method,
+                                  tol=pmdm_tol, options=opt_dict)
 
                 if not verbose:
                     self.pbar.close()
@@ -337,7 +340,7 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
                           ' Maximization returned value lower than actual (known) optimum ('+str(-self.res_max)+' > '+str(-self.res)+').')
                 else:
                     print('[bayesian_estimation -> '+self.desc_str+'pmdm:]'.ljust(45, ' ')+str(res['message']
-                                                                              )+' Log-likelihood is '+str(np.round(-res['fun'], 5))+'.')
+                                                                                               )+' Log-likelihood is '+str(np.round(-res['fun'], 5))+'.')
                 print('')
 
             except StopIteration:
@@ -361,11 +364,12 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
     if maxfev:
 
         print()
-        opt_dict    = {}
+        opt_dict = {}
         if pmdm_method is None:
             pmdm_method = 'Nelder-Mead'
         elif isinstance(pmdm_method, int):
-            methodl = ["Nelder-Mead", "Powell", "BFGS", "CG", "L-BFGS-G", "SLSQP", "trust-constr", "COBYLA", "TNC"]
+            methodl = ["Nelder-Mead", "Powell", "BFGS", "CG",
+                       "L-BFGS-G", "SLSQP", "trust-constr", "COBYLA", "TNC"]
 
             # Nelder-Mead: fast and reliable, but doesn't max out the likelihood completely (not that fast if far away from max)
             # Powell: provides the highes likelihood but is slow and sometimes ends up in strange corners of the parameter space (sorting effects)
@@ -381,19 +385,19 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
             print('[bayesian_estimation -> pmdm:]'.ljust(45, ' ') +
                   ' Available methods are %s.' % ', '.join(methodl))
         if pmdm_method == 'trust-constr':
-            opt_dict    = {'maxiter': np.inf}
+            opt_dict = {'maxiter': np.inf}
         if pmdm_method == 'Nelder-Mead':
-            opt_dict    = {
+            opt_dict = {
                 'maxiter': np.inf,
                 'maxfev': np.inf
             }
         if not verbose:
             np.warnings.filterwarnings('ignore')
             print('[bayesian_estimation -> pmdm:]'.ljust(45, ' ') +
-                  " Maximizing posterior mode density using '%s' (meanwhile warnings are disabled)." %pmdm_method)
+                  " Maximizing posterior mode density using '%s' (meanwhile warnings are disabled)." % pmdm_method)
         else:
             print('[bayesian_estimation -> pmdm:]'.ljust(45, ' ') +
-                  ' Maximizing posterior mode density using %s.' %pmdm_method)
+                  ' Maximizing posterior mode density using %s.' % pmdm_method)
         print()
 
         if linear_pre_pmdm:

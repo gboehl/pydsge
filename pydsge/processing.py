@@ -8,7 +8,6 @@ import os.path
 import numpy as np
 import multiprocessing as mp
 from tqdm import tqdm
-from .stats import InvGamma
 from .parser import DSGE as dsge
 
 
@@ -16,7 +15,7 @@ class modloader(object):
 
     name = 'modloader'
 
-    def __init__(self, filename):
+    def __init__(self, filename, old_style=False):
 
         self.filename = filename
         self.files = np.load(filename)
@@ -37,7 +36,7 @@ class modloader(object):
         self.par_fix = self.files['par_fix']
         self.modelpath = str(self.files['modelpath'])
 
-        self.mod = dsge.read(self.modelpath)
+        self.mod = dsge.read(self.modelpath, old_style)
         self.mod.obs_cov = self.obs_cov
         self.mod.P = self.init_cov
         self.mod.years = list(self.years)
@@ -146,11 +145,11 @@ def save_res(self, filename, save_tune=True, description=None):
         init_cov = self.enkf.P
 
     if save_tune:
-        chain   = self.sampler.chain
-        tune    = self.sampler.tune
+        chain = self.sampler.chain
+        tune = self.sampler.tune
     else:
-        chain   = self.sampler.chain[:,self.sampler.tune:]
-        tune    = 0
+        chain = self.sampler.chain[:, self.sampler.tune:]
+        tune = 0
 
     np.savez_compressed(filename,
                         Z=self.Z,

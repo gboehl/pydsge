@@ -4,6 +4,10 @@ import numpy as np
 import pandas as pd
 import warnings
 import os
+import scipy.stats as ss
+import scipy.optimize as so
+from scipy.special import gammaln
+from scipy.special import gamma
 
 
 def mc_error(x):
@@ -99,27 +103,49 @@ def mc_mean(trace, varnames):
     return p_means
 
 
-class InvGamma(object):
+class InvGammaDynare(ss.rv_continuous):
 
-    name = 'inv_gamma'
+    name = 'inv_gamma_dynare'
 
-    def __init__(self, a, b):
+    def pars(self, nu, s):
+        self.nu = nu
+        self.s = s
 
-        self.a = a
-        self.b = b
+    def _logpdf(self, x):
 
-    def logpdf(self, x):
+        if x < 0:
+            return -np.inf
 
-        from scipy.special import gammaln
+        else:
 
-        a = self.a
-        b = self.b
+            lpdf = np.log(2) - gammaln(self.nu/2) - self.nu/2*(np.log(2) -
+                                                               np.log(self.s)) - (self.nu+1)*np.log(x) - .5*self.s/x**2
 
-        lpdf = np.copy(x)
+            return lpdf
 
-        lpdf[x < 0] = -np.inf
+    def _pdf(self, x):
 
-        lpdf[x >= 0] = (np.log(2) - gammaln(b/2) + b/2*np.log(b*a**2/2)
-                        - (b+1)/2*np.log(x[x >= 0]**2) - b*a**2/(2*x**2))
+        return np.exp(self._logpdf(x))
 
-        return lpdf
+
+def inv_gamma_spec(mu, sigma):
+
+    # directly stolen and translated from dynare/matlab. It is unclear to me what the sigma parameter stands for, as it does not appear to be the standard deviation. This is provided vor compatibility reasons, I strongly suggest to use the inv_gamma distribution that simply takes mean / stdd as parameters.
+
+    def ig1fun(nu): return np.log(2*mu**2) - np.log((sigma**2+mu**2)
+                                                    * (nu-2)) + 2*(gammaln(nu/2)-gammaln((nu-1)/2))
+
+    nu = np.sqrt(2*(2+mu**2/sigma**2))
+    res = so.root(ig1fun, nu)
+
+    if res['success']:
+        nu = res['x'][0]
+        s = (sigma**2 + mu**2)*(nu - 2)
+
+    if abs(np.log(mu)-np.log(np.sqrt(s/2))-gammaln((nu-1)/2)+gammaln(nu/2)) > 1e-7:
+        raise ValueError('Failed in solving for the hyperparameters!')
+
+    if abs(sigma-np.sqrt(s/(nu-2)-mu*mu)) > 1e-7:
+        raise ValueError('Failed in solving for the hyperparameters!')
+
+    return s, nu
