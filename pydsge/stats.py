@@ -7,7 +7,6 @@ import os
 import scipy.stats as ss
 import scipy.optimize as so
 from scipy.special import gammaln
-from scipy.special import gamma
 
 
 def mc_error(x):
@@ -101,6 +100,31 @@ def mc_mean(trace, varnames):
         p_means.append(np.mean(vals))
 
     return p_means
+
+
+class InvGamma(object):
+
+    name = 'inv_gamma_dynare'
+
+    def __init__(self, a, b):
+
+        self.a = a
+        self.b = b
+
+    def logpdf(self, x):
+
+        if x < 0:
+            return -np.inf
+
+        else:
+
+            a = self.a
+            b = self.b
+
+            lpdf = (np.log(2) - gammaln(b/2) + b/2*np.log(b*a**2/2) -
+                    (b+1)/2*np.log(x**2) - b*a**2/(2*x**2))
+
+            return lpdf
 
 
 class InvGammaDynare(ss.rv_continuous):
