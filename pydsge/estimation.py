@@ -13,7 +13,7 @@ import tqdm
 from .plots import traceplot, posteriorplot
 
 
-def mcmc(p0, linear_mcmc, nwalkers, ndim, ndraws, priors, sampler, ntemp, ncores, update_freq, description, verbose):
+def mcmc(p0, linear_mcmc, nwalkers, ndim, ndraws, priors, ntemp, ncores, update_freq, description, verbose):
     # very very dirty hack
 
     import tqdm
@@ -39,7 +39,7 @@ def mcmc(p0, linear_mcmc, nwalkers, ndim, ndraws, priors, sampler, ntemp, ncores
 
     loc_pool = pathos.pools.ProcessPool(ncores)
 
-    if sampler is 'ptes':
+    if ntemp:
         sampler = emcee.PTSampler(ntemps=ntemp, nwalkers=nwalkers,
                                   dim=ndim, logp=lprior_local, logl=llike_local, pool=loc_pool)
     else:
@@ -82,8 +82,176 @@ def mcmc(p0, linear_mcmc, nwalkers, ndim, ndraws, priors, sampler, ntemp, ncores
 
     return sampler
 
+class pmdm(object):
+    # thats a wrapper to have a progress par in the posterior maximization
 
-def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncores=None, nwalkers=100, ntemp=4, maxfev=None, linear_pre_pmdm=False, pmdm_method=None, pmdm_tol=1e-2, sampler=None, update_freq=None, verbose=False):
+    name = 'pmdm'
+
+    def __init__(self, lprob, init_par, maxfev, tol, method, priors, description, linear, update_freq, verbose):
+
+        self.lprob = lprob
+        self.init_par = init_par
+        self.maxfev = maxfev
+        self.tol = tol
+        self.priors = priors
+        self.description = description
+        self.linear = linear
+        self.update_freq = update_freq
+        self.verbose = verbose
+
+        self.n = 0
+        self.st = 0
+        self.update_ival = 1
+        self.timer = 0
+        self.res_max = np.inf
+        
+        if not verbose:
+            self.pbar = tqdm.tqdm(total=maxfev, dynamic_ncols=True)
+
+        if linear:
+            self.desc_str = 'linear_'
+        else:
+            self.desc_str = ''
+
+        print()
+        self.opt_dict = {}
+        if method is None:
+            method = 'Nelder-Mead'
+        elif isinstance(method, int):
+            methodl = ["Nelder-Mead", "Powell", "BFGS", "CG",
+                       "L-BFGS-G", "SLSQP", "trust-constr", "COBYLA", "TNC"]
+
+            # Nelder-Mead: fast and reliable, but doesn't max out the likelihood completely (not that fast if far away from max)
+            # Powell: provides the highes likelihood but is slow and sometimes ends up in strange corners of the parameter space (sorting effects)
+            # BFGS: hit and go but *can* outperform Nelder-Mead without sorting effects
+            # CG: *can* perform well but can also get lost in a bad region with low LL
+            # L-BFGS-G: leaves values untouched
+            # SLSQP: fast but not very precise (or just wrong)
+            # trust-constr: very fast but terminates too early
+            # COBYLA: very fast but hangs up for no good reason and is effectively unusable
+            # TNC: gets stuck around the initial values
+
+            self.method = methodl[method]
+            print('[bayesian_estimation -> pmdm:]'.ljust(30, ' ') +
+                  ' Available methods are %s.' % ', '.join(methodl))
+        if self.method == 'trust-constr':
+            self.opt_dict = {'maxiter': np.inf}
+        if self.method == 'Nelder-Mead':
+            self.opt_dict = {
+                'maxiter': np.inf,
+                'maxfev': np.inf
+            }
+        if not verbose:
+            np.warnings.filterwarnings('ignore')
+            print('[bayesian_estimation -> pmdm:]'.ljust(30, ' ') +
+                  " Maximizing posterior mode density using '%s' (meanwhile warnings are disabled)." % self.method)
+        else:
+            print('[bayesian_estimation -> pmdm:]'.ljust(30, ' ') +
+                  ' Maximizing posterior mode density using %s.' % self.method)
+        print()
+
+    def __call__(self, pars):
+
+        self.res = -self.lprob(pars, self.linear)
+        self.x = pars
+
+        # better ensure we're not just running with the wolfs when maxfev is hit
+        if self.res < self.res_max:
+            self.res_max = self.res
+            self.x_max = self.x
+
+        self.n += 1
+        self.timer += 1
+
+        if not self.verbose and self.timer == self.update_ival:
+
+            # ensure displayed number is correct
+            self.pbar.n = self.n
+            self.pbar.update(0)
+
+            difft = time.time() - self.st
+            if difft < 1:
+                self.update_ival *= 2
+            if difft > 2 and self.update_ival > 1:
+                self.update_ival /= 2
+
+            self.pbar.set_description(
+                'll: '+str(-self.res.round(5)).rjust(12, ' ')+' ['+str(-self.res_max.round(5))+']')
+            self.st = time.time()
+            self.timer = 0
+
+        if not self.verbose:
+            report = self.pbar.write
+        else:
+            report = print
+
+        # prints information snapshots
+        if self.update_freq and not self.n % self.update_freq:
+            # getting the number of colums isn't that easy
+            with os.popen('stty size', 'r') as rows_cols:
+                cols = rows_cols.read().split()[1]
+            if self.description is not None:
+                report('[bayesian_estimation -> '+self.desc_str+'pmdm:]'.ljust(45, ' ')+' Current best guess @ iteration %s and ll of %s (%s):' % (self.n, self.res_max.round(5), str(self.description)))
+            else:
+                report('[bayesian_estimation -> '+self.desc_str+'pmdm:]'.ljust(45, ' ')+' Current best guess @ iteration %s and ll of %s):' % (self.n, self.res_max.round(5)))
+            # split the info such that it is readable
+            lnum = (len(self.priors)*8)//(int(cols)-8) + 1
+            prior_names = [pp for pp in self.priors.keys()]
+            priors_chunks = np.array_split(np.array(prior_names), lnum)
+            vals_chunks = np.array_split(
+                [round(m_val, 3) for m_val in self.x_max], lnum)
+            for pchunk, vchunk in zip(priors_chunks, vals_chunks):
+                row_format = "{:>8}" * (len(pchunk) + 1)
+                report(row_format.format("", *pchunk))
+                report(row_format.format("", *vchunk))
+                report('')
+            report('')
+
+        if self.n >= self.maxfev:
+            raise StopIteration
+
+        return self.res
+
+    def go(self):
+
+        try:
+            f_val = -np.inf
+            self.x = self.init_par
+
+            res = so.minimize(self, self.x, method=self.method,
+                              tol=self.tol, options=self.opt_dict)
+
+            if not self.verbose:
+                self.pbar.close()
+            print('')
+            if self.res_max < res['fun']:
+                print('[bayesian_estimation -> '+self.desc_str+'pmdm:]'.ljust(45, ' ')+str(res['message']) +
+                      ' Maximization returned value lower than actual (known) optimum ('+str(-self.res_max)+' > '+str(-self.res)+').')
+            else:
+                print('[bayesian_estimation -> '+self.desc_str+'pmdm:]'.ljust(45, ' ')+str(res['message']
+                                                                                           )+' Log-likelihood is '+str(np.round(-res['fun'], 5))+'.')
+            print('')
+
+        except StopIteration:
+            if not self.verbose:
+                self.pbar.close()
+            print('')
+            print('[bayesian_estimation -> '+self.desc_str+'pmdm:]'.ljust(45, ' ') +
+                  ' Maximum number of function calls exceeded, exiting. Log-likelihood is '+str(np.round(-self.res_max, 5))+'...')
+            print('')
+
+        except KeyboardInterrupt:
+            if not self.verbose:
+                self.pbar.close()
+            print('')
+            print('[bayesian_estimation -> '+self.desc_str+'pmdm:]'.ljust(45, ' ') +
+                  ' Iteration interrupted manually. Log-likelihood is '+str(np.round(-self.res_max, 5))+'...')
+            print('')
+
+        return self.x_max
+
+
+def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncores=None, nwalkers=100, ntemp=0, pmdm_maxfev=None, linear_pre_pmdm=False, pmdm_method=None, pmdm_tol=1e-2, update_freq=None, verbose=False):
 
     if ncores is None:
         ncores = pathos.multiprocessing.cpu_count()
@@ -98,9 +266,6 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
         description = self.description
     else:
         description = None
-
-    if maxfev is None:
-        maxfev = ndraws
 
     self.preprocess(verbose=verbose > 1)
 
@@ -220,8 +385,8 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
     def lprior(pars):
 
         prior = 0
-        for i in range(len(priors_lst)):
-            prior += priors_lst[i].logpdf(pars[i])
+        for i, pl in enumerate(priors_lst):
+            prior += pl.logpdf(pars[i])
 
         return prior
 
@@ -237,202 +402,78 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
     lprior_global = lprior
     prior_names = [pp for pp in priors.keys()]
 
-    class pmdm(object):
-        # thats a wrapper to have a progress par in the posterior maximization
+    pmdm_bool = isinstance(pmdm_method, bool) and not pmdm_method
 
-        name = 'pmdm'
+    if pmdm_maxfev and not pmdm_bool:
 
-        def __init__(self, init_par, method, linear_pmdm):
-
-            self.n = 0
-            self.maxfev = maxfev
-            if not verbose:
-                self.pbar = tqdm.tqdm(total=maxfev, dynamic_ncols=True)
-            self.init_par = init_par
-            self.st = 0
-            self.update_ival = 1
-            self.timer = 0
-            self.res_max = np.inf
-            self.method = method
-            self.linear = linear_pmdm
-            if linear_pmdm:
-                self.desc_str = 'linear_'
-            else:
-                self.desc_str = ''
-
-        def __call__(self, pars):
-
-            self.res = -lprob(pars, self.linear)
-            self.x = pars
-
-            # better ensure we're not just running with the wolfs when maxfev is hit
-            if self.res < self.res_max:
-                self.res_max = self.res
-                self.x_max = self.x
-
-            self.n += 1
-            self.timer += 1
-
-            if not verbose and self.timer == self.update_ival:
-
-                # ensure displayed number is correct
-                self.pbar.n = self.n
-                self.pbar.update(0)
-
-                difft = time.time() - self.st
-                if difft < 1:
-                    self.update_ival *= 2
-                if difft > 2 and self.update_ival > 1:
-                    self.update_ival /= 2
-
-                self.pbar.set_description(
-                    'll: '+str(-self.res.round(5)).rjust(12, ' ')+' ['+str(-self.res_max.round(5))+']')
-                self.st = time.time()
-                self.timer = 0
-
-            if not verbose:
-                report = self.pbar.write
-            else:
-                report = print
-
-            # prints information snapshots
-            if update_freq and not self.n % update_freq:
-                # getting the number of colums isn't that easy
-                with os.popen('stty size', 'r') as rows_cols:
-                    cols = rows_cols.read().split()[1]
-                if description is not None:
-                    report('[bayesian_estimation -> '+self.desc_str+'pmdm:]'.ljust(
-                        45, ' ')+' Current best guess @ iteration %s and ll of %s (%s):' % (self.n, self.res_max.round(5), str(description)))
-                else:
-                    report('[bayesian_estimation -> '+self.desc_str+'pmdm:]'.ljust(
-                        45, ' ')+' Current best guess @ iteration %s and ll of %s):' % (self.n, self.res_max.round(5)))
-                # split the info such that it is readable
-                lnum = (len(priors)*8)//(int(cols)-8) + 1
-                priors_chunks = np.array_split(np.array(prior_names), lnum)
-                vals_chunks = np.array_split(
-                    [round(m_val, 3) for m_val in self.x_max], lnum)
-                for pchunk, vchunk in zip(priors_chunks, vals_chunks):
-                    row_format = "{:>8}" * (len(pchunk) + 1)
-                    report(row_format.format("", *pchunk))
-                    report(row_format.format("", *vchunk))
-                    report('')
-                report('')
-
-            if self.n >= maxfev:
-                raise StopIteration
-
-            return self.res
-
-        def go(self):
-
-            try:
-                f_val = -np.inf
-                self.x = self.init_par
-
-                res = so.minimize(self, self.x, method=self.method,
-                                  tol=pmdm_tol, options=opt_dict)
-
-                if not verbose:
-                    self.pbar.close()
-                print('')
-                if self.res_max < res['fun']:
-                    print('[bayesian_estimation -> '+self.desc_str+'pmdm:]'.ljust(45, ' ')+str(res['message']) +
-                          ' Maximization returned value lower than actual (known) optimum ('+str(-self.res_max)+' > '+str(-self.res)+').')
-                else:
-                    print('[bayesian_estimation -> '+self.desc_str+'pmdm:]'.ljust(45, ' ')+str(res['message']
-                                                                                               )+' Log-likelihood is '+str(np.round(-res['fun'], 5))+'.')
-                print('')
-
-            except StopIteration:
-                if not verbose:
-                    self.pbar.close()
-                print('')
-                print('[bayesian_estimation -> '+self.desc_str+'pmdm:]'.ljust(45, ' ') +
-                      ' Maximum number of function calls exceeded, exiting. Log-likelihood is '+str(np.round(-self.res_max, 5))+'...')
-                print('')
-
-            except KeyboardInterrupt:
-                if not verbose:
-                    self.pbar.close()
-                print('')
-                print('[bayesian_estimation -> '+self.desc_str+'pmdm:]'.ljust(45, ' ') +
-                      ' Iteration interrupted manually. Log-likelihood is '+str(np.round(-self.res_max, 5))+'...')
-                print('')
-
-            return self.x_max
-
-    if maxfev:
-
-        print()
-        opt_dict = {}
-        if pmdm_method is None:
-            pmdm_method = 'Nelder-Mead'
-        elif isinstance(pmdm_method, int):
-            methodl = ["Nelder-Mead", "Powell", "BFGS", "CG",
-                       "L-BFGS-G", "SLSQP", "trust-constr", "COBYLA", "TNC"]
-
-            # Nelder-Mead: fast and reliable, but doesn't max out the likelihood completely (not that fast if far away from max)
-            # Powell: provides the highes likelihood but is slow and sometimes ends up in strange corners of the parameter space (sorting effects)
-            # BFGS: hit and go but *can* outperform Nelder-Mead without sorting effects
-            # CG: *can* perform well but can also get lost in a bad region with low LL
-            # L-BFGS-G: leaves values untouched
-            # SLSQP: fast but not very precise (or just wrong)
-            # trust-constr: very fast but terminates too early
-            # COBYLA: very fast but hangs up for no good reason and is effectively unusable
-            # TNC: gets stuck around the initial values
-
-            pmdm_method = methodl[pmdm_method]
-            print('[bayesian_estimation -> pmdm:]'.ljust(45, ' ') +
-                  ' Available methods are %s.' % ', '.join(methodl))
-        if pmdm_method == 'trust-constr':
-            opt_dict = {'maxiter': np.inf}
-        if pmdm_method == 'Nelder-Mead':
-            opt_dict = {
-                'maxiter': np.inf,
-                'maxfev': np.inf
-            }
-        if not verbose:
-            np.warnings.filterwarnings('ignore')
-            print('[bayesian_estimation -> pmdm:]'.ljust(45, ' ') +
-                  " Maximizing posterior mode density using '%s' (meanwhile warnings are disabled)." % pmdm_method)
-        else:
-            print('[bayesian_estimation -> pmdm:]'.ljust(45, ' ') +
-                  ' Maximizing posterior mode density using %s.' % pmdm_method)
-        print()
+        if pmdm_maxfev is None:
+            pmdm_maxfev = ndraws
 
         if linear_pre_pmdm:
             print('[bayesian_estimation -> pmdm:]'.ljust(45, ' ') +
                   ' Starting pre-maximization of linear function.')
-            init_par = pmdm(init_par, pmdm_method, linear_pmdm=True).go()
+            init_par = pmdm(lprob, init_par, pmdm_maxfev, pmdm_tol, pmdm_method, priors, description, True, update_freq, verbose=verbose).go()
             print('[bayesian_estimation -> pmdm:]'.ljust(45, ' ') +
                   ' Pre-maximization of linear function done, starting actual maximization.')
-        result = pmdm(init_par, pmdm_method, linear_pmdm=linear).go()
+
+        result = pmdm(lprob, init_par, pmdm_maxfev, pmdm_tol, pmdm_method, priors, description, linear, update_freq, verbose=verbose).go()
         np.warnings.filterwarnings('default')
         init_par = result
 
-    print()
-    print('[bayesian_estimation:]'.ljust(30, ' ')+' Inital values for MCMC:')
-    with os.popen('stty size', 'r') as rows_cols:
-        cols = rows_cols.read().split()[1]
-        lnum = (len(priors)*8)//(int(cols)-8) + 1
-        priors_chunks = np.array_split(np.array(prior_names), lnum)
-        vals_chunks = np.array_split([round(m_val, 3)
-                                      for m_val in init_par], lnum)
-        for pchunk, vchunk in zip(priors_chunks, vals_chunks):
-            row_format = "{:>8}" * (len(pchunk) + 1)
-            print(row_format.format("", *pchunk))
-            print(row_format.format("", *vchunk))
+    if ndraws:
+
+        pholder = ntemp
+
+        if not ntemp:
+            pholder = 1
+
+        if pmdm_bool:
+
+            print()
+            print('[bayesian_estimation:]'.ljust(30, ' ')+' Finding initial values for MCMC (distributed over priors):')
+            pos = np.empty((pholder, nwalkers, ndim))
+            pbar = tqdm.tqdm(total=pholder*nwalkers, unit='init.val(s)', dynamic_ncols=True)
+
+            cnt         = 0
+            for t in range(pholder):
+                for w in range(nwalkers):
+                    draw_prob   = -np.inf
+                    while np.isinf(draw_prob):
+                        pdraw   = [ pl.rvs(random_state=t*w+w+cnt) for pl in priors_lst ]
+                        draw_prob = lprob(pdraw, linear)
+                        cnt += 1
+                    pos[t,w,:]  = np.array(pdraw)
+                    pbar.update(1)
+
+            pbar.close()
             print()
 
-    if ndraws:
-        print()
-        if sampler == 'ptes':
-            pos = init_par*(1+1e-3*np.random.randn(ntemp, nwalkers, ndim))
         else:
-            pos = [init_par*(1+1e-3*np.random.randn(ndim))
-                   for i in range(nwalkers)]
-        sampler = mcmc(pos, linear, nwalkers, ndim, ndraws, priors, sampler,
-                       ntemp, ncores, update_freq, description, verbose)
+            print()
+            print('[bayesian_estimation:]'.ljust(30, ' ')+' Inital values for MCMC:')
+            with os.popen('stty size', 'r') as rows_cols:
+                cols = rows_cols.read().split()[1]
+                lnum = (len(priors)*8)//(int(cols)-8) + 1
+                priors_chunks = np.array_split(np.array(prior_names), lnum)
+                vals_chunks = np.array_split([round(m_val, 3)
+                                              for m_val in init_par], lnum)
+                for pchunk, vchunk in zip(priors_chunks, vals_chunks):
+                    row_format = "{:>8}" * (len(pchunk) + 1)
+                    print(row_format.format("", *pchunk))
+                    print(row_format.format("", *vchunk))
+                    print()
+
+            print()
+
+            pos = init_par*(1+1e-3*np.random.randn(pholder, nwalkers, ndim))
+
+        if ntemp:
+            print('[bayesian_estimation:]'.ljust(30, ' ')+' Initial values found, starting MCMC. Using PTES sampler with %s temperatures.' %ntemp)
+        else:
+            print('[bayesian_estimation:]'.ljust(30, ' ')+' Initial values found, starting MCMC.')
+            pos = pos.squeeze()
+
+        sampler = mcmc(pos, linear, nwalkers, ndim, ndraws, priors, ntemp, ncores, update_freq, description, verbose)
 
         print("Mean acceptance fraction: {0:.3f}"
               .format(np.mean(sampler.acceptance_fraction)))
