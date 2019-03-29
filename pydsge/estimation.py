@@ -82,6 +82,7 @@ def mcmc(p0, linear_mcmc, nwalkers, ndim, ndraws, priors, ntemp, ncores, update_
 
     return sampler
 
+
 class pmdm(object):
     # thats a wrapper to have a progress par in the posterior maximization
 
@@ -104,7 +105,7 @@ class pmdm(object):
         self.update_ival = 1
         self.timer = 0
         self.res_max = np.inf
-        
+
         if not verbose:
             self.pbar = tqdm.tqdm(total=maxfev, dynamic_ncols=True)
 
@@ -191,9 +192,11 @@ class pmdm(object):
             with os.popen('stty size', 'r') as rows_cols:
                 cols = rows_cols.read().split()[1]
             if self.description is not None:
-                report('[bayesian_estimation -> '+self.desc_str+'pmdm:]'.ljust(45, ' ')+' Current best guess @ iteration %s and ll of %s (%s):' % (self.n, self.res_max.round(5), str(self.description)))
+                report('[bayesian_estimation -> '+self.desc_str+'pmdm:]'.ljust(45, ' ') +
+                       ' Current best guess @ iteration %s and ll of %s (%s):' % (self.n, self.res_max.round(5), str(self.description)))
             else:
-                report('[bayesian_estimation -> '+self.desc_str+'pmdm:]'.ljust(45, ' ')+' Current best guess @ iteration %s and ll of %s):' % (self.n, self.res_max.round(5)))
+                report('[bayesian_estimation -> '+self.desc_str+'pmdm:]'.ljust(45, ' ') +
+                       ' Current best guess @ iteration %s and ll of %s):' % (self.n, self.res_max.round(5)))
             # split the info such that it is readable
             lnum = (len(self.priors)*8)//(int(cols)-8) + 1
             prior_names = [pp for pp in self.priors.keys()]
@@ -332,8 +335,7 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
                     'Can not find inverse gamma distribution with mean %s and std %s' % (pmean, pstdd))
         elif str(dist[0]) == 'inv_gamma_dynare':
             s, nu = inv_gamma_spec(pmean, pstdd)
-            ig = InvGammaDynare()
-            ig.pars(nu, s)
+            ig = InvGammaDynare()(s, nu)
             priors_lst.append(ig)
 
         else:
@@ -363,9 +365,10 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
                 else:
                     self.preprocess(l_max=1, k_max=0, verbose=False)
 
-                rs  = np.random.get_state()
+                rs = np.random.get_state()
 
-                self.create_filter(N=N, linear=linear_pre_pmdm or linear, random_seed=0)
+                self.create_filter(
+                    N=N, linear=linear_pre_pmdm or linear, random_seed=0)
 
                 ll = self.get_ll(verbose=verbose)
 
@@ -384,7 +387,7 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
                 if verbose == 2:
                     print('[bayesian_estimation -> llike:]'.ljust(45, ' ') +
                           ' Sample took '+str(np.round(time.time() - st, 3))+'s. (failure)')
-                
+
                 return -np.inf
 
     def lprior(pars):
@@ -417,11 +420,13 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
         if linear_pre_pmdm:
             print('[bayesian_estimation -> pmdm:]'.ljust(45, ' ') +
                   ' Starting pre-maximization of linear function.')
-            init_par = pmdm(lprob, init_par, pmdm_maxfev, pmdm_tol, pmdm_method, priors, description, True, update_freq, verbose=verbose).go()
+            init_par = pmdm(lprob, init_par, pmdm_maxfev, pmdm_tol, pmdm_method,
+                            priors, description, True, update_freq, verbose=verbose).go()
             print('[bayesian_estimation -> pmdm:]'.ljust(45, ' ') +
                   ' Pre-maximization of linear function done, starting actual maximization.')
 
-        result = pmdm(lprob, init_par, pmdm_maxfev, pmdm_tol, pmdm_method, priors, description, linear, update_freq, verbose=verbose).go()
+        result = pmdm(lprob, init_par, pmdm_maxfev, pmdm_tol, pmdm_method,
+                      priors, description, linear, update_freq, verbose=verbose).go()
         np.warnings.filterwarnings('default')
         init_par = result
 
@@ -435,23 +440,24 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
         if pmdm_bool:
 
             print()
-            print('[bayesian_estimation:]'.ljust(30, ' ')+' Finding initial values for MCMC (distributed over priors):')
+            print('[bayesian_estimation:]'.ljust(30, ' ') +
+                  ' Finding initial values for MCMC (distributed over priors):')
             pos = np.empty((pholder, nwalkers, ndim))
-            pbar = tqdm.tqdm(total=pholder*nwalkers, unit='init.val(s)', dynamic_ncols=True)
+            pbar = tqdm.tqdm(total=pholder*nwalkers,
+                             unit='init.val(s)', dynamic_ncols=True)
 
-            cnt         = 0
             for t in range(pholder):
                 for w in range(nwalkers):
-                    draw_prob   = -np.inf
+                    draw_prob = -np.inf
 
                     while np.isinf(draw_prob):
-                        nprr    = np.random.randint
+                        nprr = np.random.randint
                         # alternatively on could use enumerate() on priors_lst and include the itarator in the random_state
-                        pdraw   = [ pl.rvs(random_state=nprr(2**32-1)) for pl in priors_lst ]
+                        pdraw = [pl.rvs(random_state=nprr(2**32-1))
+                                 for pl in priors_lst]
                         draw_prob = lprob(pdraw, linear)
-                        cnt += 1
 
-                    pos[t,w,:]  = np.array(pdraw)
+                    pos[t, w, :] = np.array(pdraw)
                     pbar.update(1)
 
             pbar.close()
@@ -459,7 +465,8 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
 
         else:
             print()
-            print('[bayesian_estimation:]'.ljust(30, ' ')+' Inital values for MCMC:')
+            print('[bayesian_estimation:]'.ljust(
+                30, ' ')+' Inital values for MCMC:')
             with os.popen('stty size', 'r') as rows_cols:
                 cols = rows_cols.read().split()[1]
                 lnum = (len(priors)*8)//(int(cols)-8) + 1
@@ -477,20 +484,26 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
             pos = init_par*(1+1e-3*np.random.randn(pholder, nwalkers, ndim))
 
         if ntemp:
-            print('[bayesian_estimation:]'.ljust(30, ' ')+' Initial values found, starting MCMC. Using PTES sampler with %s temperatures.' %ntemp)
+            print('[bayesian_estimation:]'.ljust(
+                30, ' ')+' Initial values found, starting MCMC. Using PTES sampler with %s temperatures.' % ntemp)
         else:
-            print('[bayesian_estimation:]'.ljust(30, ' ')+' Initial values found, starting MCMC.')
+            print('[bayesian_estimation:]'.ljust(30, ' ') +
+                  ' Initial values found, starting MCMC.')
             pos = pos.squeeze()
 
-        sampler = mcmc(pos, linear, nwalkers, ndim, ndraws, priors, ntemp, ncores, update_freq, description, verbose)
+        sampler = mcmc(pos, linear, nwalkers, ndim, ndraws, priors,
+                       ntemp, ncores, update_freq, description, verbose)
 
-        print("Mean acceptance fraction: {0:.3f}".format(np.mean(sampler.acceptance_fraction)))
+        print("Mean acceptance fraction: {0:.3f}".format(
+            np.mean(sampler.acceptance_fraction)))
 
         self.chain = sampler.chain.reshape(-1, ndraws, ndim)
 
         sampler.summary = lambda: summary(self.chain[:, tune:, :], priors)
-        sampler.traceplot = lambda **args: traceplot( self.chain, varnames=prior_names, tune=tune, priors=priors_lst, **args)
-        sampler.posteriorplot = lambda **args: posteriorplot( self.chain, varnames=prior_names, tune=tune, **args)
+        sampler.traceplot = lambda **args: traceplot(
+            self.chain, varnames=prior_names, tune=tune, priors=priors_lst, **args)
+        sampler.posteriorplot = lambda **args: posteriorplot(
+            self.chain, varnames=prior_names, tune=tune, **args)
 
         par_mean = par_fix
         par_mean[prior_arg] = mc_mean(self.chain[:, tune:], varnames=priors)

@@ -131,25 +131,21 @@ class InvGammaDynare(ss.rv_continuous):
 
     name = 'inv_gamma_dynare'
 
-    def pars(self, nu, s):
-        self.nu = nu
-        self.s = s
+    def _logpdf(self, x, s, nu):
 
-    def _logpdf(self, x):
+        xa = np.array(x)
 
-        if x < 0:
-            return -np.inf
+        lpdf = np.copy(xa)
 
-        else:
+        lpdf[xa < 0] = -np.inf
 
-            lpdf = np.log(2) - gammaln(self.nu/2) - self.nu/2*(np.log(2) -
-                                                               np.log(self.s)) - (self.nu+1)*np.log(x) - .5*self.s/x**2
+        lpdf[xa >= 0] = np.log(2) - gammaln(nu/2) - nu/2*(np.log(2) -
+                                                          np.log(s)) - (nu+1)*np.log(xa[xa >= 0]) - .5*s/xa[xa >= 0]**2
 
-            return lpdf
+        return lpdf
 
-    def _pdf(self, x):
-
-        return np.exp(self._logpdf(x))
+    def _pdf(self, x, s, nu):
+        return np.exp(self._logpdf(x, s, nu))
 
 
 def inv_gamma_spec(mu, sigma):
