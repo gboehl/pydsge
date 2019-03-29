@@ -145,7 +145,7 @@ class InvGammaDynare(ss.rv_continuous):
         lpdf = -np.inf
 
         lpdf = np.log(2) - gammaln(nu/2) - nu/2*(np.log(2) -
-                                                          np.log(s)) - (nu+1)*np.log(x) - .5*s/x**2
+                                                 np.log(s)) - (nu+1)*np.log(x) - .5*s/x**2
 
         return lpdf
 
