@@ -133,14 +133,19 @@ class InvGammaDynare(ss.rv_continuous):
 
     def _logpdf(self, x, s, nu):
 
-        xa = np.array(x)
+        # xa = np.array(x)
 
-        lpdf = np.copy(xa)
+        # lpdf = np.copy(xa)
 
-        lpdf[xa < 0] = -np.inf
+        # lpdf[xa < 0] = -np.inf
 
-        lpdf[xa >= 0] = np.log(2) - gammaln(nu/2) - nu/2*(np.log(2) -
-                                                          np.log(s)) - (nu+1)*np.log(xa[xa >= 0]) - .5*s/xa[xa >= 0]**2
+        # lpdf[xa >= 0] = np.log(2) - gammaln(nu/2) - nu/2*(np.log(2) -
+                                                          # np.log(s)) - (nu+1)*np.log(xa[xa >= 0]) - .5*s/xa[xa >= 0]**2
+
+        lpdf = -np.inf
+
+        lpdf = np.log(2) - gammaln(nu/2) - nu/2*(np.log(2) -
+                                                          np.log(s)) - (nu+1)*np.log(x) - .5*s/x**2
 
         return lpdf
 
