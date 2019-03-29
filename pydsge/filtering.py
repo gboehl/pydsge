@@ -19,15 +19,16 @@ def create_obs_cov(self, scale_obs=0.1):
         self.obs_cov = np.diagflat(sig_obs)
 
 
-def create_filter(self, P=None, R=None, N=None, linear=False):
+def create_filter(self, P=None, R=None, N=None, linear=False, random_seed=None):
 
     if N is None:
         N = 500
 
-    np.random.seed(0)
-
     if not hasattr(self, 'Z'):
         warnings.warn('No time series of observables provided')
+
+    if random_seed is not None:
+        np.random.seed(random_seed)
 
     if linear:
         xkf = KalmanFilter(dim_x=len(self.vv), dim_z=self.ny)

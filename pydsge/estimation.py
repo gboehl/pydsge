@@ -270,7 +270,8 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
     self.preprocess(verbose=verbose > 1)
 
     # dry run before the fun beginns
-    self.create_filter(N=N, linear=linear_pre_pmdm or linear)
+    # self.create_filter(N=N, linear=linear_pre_pmdm or linear)
+    self.create_filter(N=N, linear=linear_pre_pmdm or linear, random_seed=0)
     self.get_ll(verbose=verbose)
 
     print()
@@ -318,14 +319,14 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
         elif str(dist[0]) == 'inv_gamma':
 
             def targf(x):
-                y0 = ss.invgamma(x[0], loc=x[1]).std() - pstdd
-                y1 = ss.invgamma(x[0], loc=x[1]).mean() - pmean
+                y0 = ss.invgamma(x[0], scale=x[1]).std() - pstdd
+                y1 = ss.invgamma(x[0], scale=x[1]).mean() - pmean
                 return np.array([y0, y1])
 
-            ig_res = so.root(targf, np.array([4, pmean]))
+            ig_res = so.root(targf, np.array([4, 4]))
             if ig_res['success']:
                 a = ig_res['x']
-                priors_lst.append(ss.invgamma(a[0], loc=a[1]))
+                priors_lst.append(ss.invgamma(a[0], scale=a[1]))
             else:
                 raise ValueError(
                     'Can not find inverse gamma distribution with mean %s and std %s' % (pmean, pstdd))
@@ -362,9 +363,13 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
                 else:
                     self.preprocess(l_max=1, k_max=0, verbose=False)
 
-                self.create_filter(N=N, linear=linear_llike)
+                rs  = np.random.get_state()
+
+                self.create_filter(N=N, linear=linear_pre_pmdm or linear, random_seed=0)
 
                 ll = self.get_ll(verbose=verbose)
+
+                np.random.set_state(rs)
 
                 if verbose == 2:
                     print('[bayesian_estimation -> llike:]'.ljust(45, ' ') +
@@ -379,7 +384,7 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
                 if verbose == 2:
                     print('[bayesian_estimation -> llike:]'.ljust(45, ' ') +
                           ' Sample took '+str(np.round(time.time() - st, 3))+'s. (failure)')
-
+                
                 return -np.inf
 
     def lprior(pars):
@@ -438,10 +443,14 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
             for t in range(pholder):
                 for w in range(nwalkers):
                     draw_prob   = -np.inf
+
                     while np.isinf(draw_prob):
-                        pdraw   = [ pl.rvs(random_state=t*w+w+cnt) for pl in priors_lst ]
+                        nprr    = np.random.randint
+                        # alternatively on could use enumerate() on priors_lst and include the itarator in the random_state
+                        pdraw   = [ pl.rvs(random_state=nprr(2**32-1)) for pl in priors_lst ]
                         draw_prob = lprob(pdraw, linear)
                         cnt += 1
+
                     pos[t,w,:]  = np.array(pdraw)
                     pbar.update(1)
 
@@ -475,16 +484,13 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
 
         sampler = mcmc(pos, linear, nwalkers, ndim, ndraws, priors, ntemp, ncores, update_freq, description, verbose)
 
-        print("Mean acceptance fraction: {0:.3f}"
-              .format(np.mean(sampler.acceptance_fraction)))
+        print("Mean acceptance fraction: {0:.3f}".format(np.mean(sampler.acceptance_fraction)))
 
         self.chain = sampler.chain.reshape(-1, ndraws, ndim)
 
         sampler.summary = lambda: summary(self.chain[:, tune:, :], priors)
-        sampler.traceplot = lambda **args: traceplot(
-            self.chain, varnames=prior_names, tune=tune, priors=priors_lst, **args)
-        sampler.posteriorplot = lambda **args: posteriorplot(
-            self.chain, varnames=prior_names, tune=tune, **args)
+        sampler.traceplot = lambda **args: traceplot( self.chain, varnames=prior_names, tune=tune, priors=priors_lst, **args)
+        sampler.posteriorplot = lambda **args: posteriorplot( self.chain, varnames=prior_names, tune=tune, **args)
 
         par_mean = par_fix
         par_mean[prior_arg] = mc_mean(self.chain[:, tune:], varnames=priors)
