@@ -13,7 +13,7 @@ import tqdm
 from .plots import traceplot, posteriorplot
 
 
-def mcmc(p0, linear_mcmc, nwalkers, ndim, ndraws, priors, ntemp, ncores, update_freq, description, verbose):
+def mcmc(p0, linear_mcmc, nwalkers, ndim, ndraws, priors, ntemp, ncores, update_freq, description, verbose, debug=False):
     # very very dirty hack
 
     import tqdm
@@ -39,7 +39,9 @@ def mcmc(p0, linear_mcmc, nwalkers, ndim, ndraws, priors, ntemp, ncores, update_
 
     loc_pool = pathos.pools.ProcessPool(ncores)
 
-    if ntemp:
+    if debug:
+        sampler = emcee.EnsembleSampler(nwalkers=nwalkers, dim=ndim, lnpostfn=lprob_local, threads=1)
+    elif ntemp:
         sampler = emcee.PTSampler(ntemps=ntemp, nwalkers=nwalkers,
                                   dim=ndim, logp=lprior_local, logl=llike_local, pool=loc_pool)
     else:

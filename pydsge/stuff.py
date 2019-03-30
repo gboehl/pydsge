@@ -5,10 +5,10 @@ import numpy as np
 import numpy.linalg as nl
 import scipy.linalg as sl
 import warnings
-from numba import njit
 import time
 from grgrlib import *
 from .engine import boehlgorithm
+from decimal import Decimal
 
 
 def get_sys(self, par=None, reduce_sys=True, verbose=False):
@@ -338,13 +338,19 @@ def linear_representation(self, l=0, k=0):
     return mat[1, 0, 1][dim_x:]
 
 
-def t_func(self, state, noise=None, return_flag=True, return_k=False, linear=False):
+def t_func(self, state, noise=None, return_flag=True, return_k=False, linear=False, verbose=False):
+
+    if verbose:
+        st = time.time()
 
     newstate = state.copy()
 
     if noise is not None:
         newstate += self.SIG @ noise
     newstate, (l, k), flag = boehlgorithm(self, newstate, linear=linear)
+
+    if verbose:
+        print('[t_func:]'.ljust(15, ' ')+' Transition function took %.2Es.' %Decimal(time.time() - st))
 
     if return_k:
         return newstate, (l, k), flag
