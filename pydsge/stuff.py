@@ -350,7 +350,8 @@ def t_func(self, state, noise=None, return_flag=True, return_k=False, linear=Fal
     newstate, (l, k), flag = boehlgorithm(self, newstate, linear=linear)
 
     if verbose:
-        print('[t_func:]'.ljust(15, ' ')+' Transition function took %.2Es.' %Decimal(time.time() - st))
+        print('[t_func:]'.ljust(15, ' ') +
+              ' Transition function took %.2Es.' % Decimal(time.time() - st))
 
     if return_k:
         return newstate, (l, k), flag

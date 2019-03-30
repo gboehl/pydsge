@@ -40,7 +40,8 @@ def mcmc(p0, linear_mcmc, nwalkers, ndim, ndraws, priors, ntemp, ncores, update_
     loc_pool = pathos.pools.ProcessPool(ncores)
 
     if debug:
-        sampler = emcee.EnsembleSampler(nwalkers=nwalkers, dim=ndim, lnpostfn=lprob_local, threads=1)
+        sampler = emcee.EnsembleSampler(
+            nwalkers=nwalkers, dim=ndim, lnpostfn=lprob_local, threads=1)
     elif ntemp:
         sampler = emcee.PTSampler(ntemps=ntemp, nwalkers=nwalkers,
                                   dim=ndim, logp=lprior_local, logl=llike_local, pool=loc_pool)
