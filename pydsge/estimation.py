@@ -34,9 +34,6 @@ def mcmc(p0, linear_mcmc, nwalkers, ndim, ndraws, priors, ntemp, ncores, update_
     def lprior_local(par):
         return lprior_global(par)
 
-    # all that should be reproducible
-    np.random.seed(0)
-
     loc_pool = pathos.pools.ProcessPool(ncores)
 
     if debug:
@@ -66,10 +63,11 @@ def mcmc(p0, linear_mcmc, nwalkers, ndim, ndraws, priors, ntemp, ncores, update_
             else:
                 report('[bayesian_estimation -> mcmc:]'.ljust(45, ' ') +
                        ' Summary from last %s of %s iterations:' % (update_freq, cnt))
-            report(str(summary(sampler.chain.reshape(-1, ndraws, ndim)
-                               [:, cnt-update_freq:cnt, :], priors).round(3)))
-            report("Mean acceptance fraction: {0:.3f}".format(
-                np.mean(sampler.acceptance_fraction)))
+            sample = sampler.chain.reshape(-1, ndraws,
+                                           ndim)[:, cnt-update_freq:cnt, :]
+            report(str(summary(sample, priors).round(3)))
+            report("Mean likelihood is %s, mean acceptance fraction is %s." % (lprob_local(
+                sample.mean(axis=(0, 1))).round(3), np.mean(sampler.acceptance_fraction).round(2)))
         if not verbose:
             pbar.update(1)
         cnt += 1
@@ -257,7 +255,7 @@ class pmdm(object):
         return self.x_max
 
 
-def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncores=None, nwalkers=100, ntemp=0, pmdm_maxfev=None, linear_pre_pmdm=False, pmdm_method=None, pmdm_tol=1e-2, update_freq=None, verbose=False):
+def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncores=None, nwalkers=100, ntemp=0, pmdm_maxfev=None, linear_pre_pmdm=False, pmdm_method=None, pmdm_tol=1e-2, seed=0, update_freq=None, verbose=False):
 
     if ncores is None:
         ncores = pathos.multiprocessing.cpu_count()
@@ -273,11 +271,14 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
     else:
         description = None
 
+    # all that should be reproducible
+    np.random.seed(seed)
+
     self.preprocess(verbose=verbose > 1)
 
     # dry run before the fun beginns
     # self.create_filter(N=N, linear=linear_pre_pmdm or linear)
-    self.create_filter(N=N, linear=linear_pre_pmdm or linear, random_seed=0)
+    self.create_filter(N=N, linear=linear_pre_pmdm or linear, random_seed=seed)
     self.get_ll(verbose=verbose)
 
     print()
@@ -386,10 +387,10 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
             except KeyboardInterrupt:
                 raise
 
-            except:
+            except Exception as err:
                 if verbose == 2:
                     print('[bayesian_estimation -> llike:]'.ljust(45, ' ') +
-                          ' Sample took '+str(np.round(time.time() - st, 3))+'s. (failure)')
+                          ' Sample took '+str(np.round(time.time() - st, 3))+'s. (failure, error msg: %s)' % err)
 
                 return -np.inf
 
