@@ -167,18 +167,23 @@ def traceplot(trace, varnames, tune, figsize=None,
             if draw_lines:
                 if d.ndim > 2:
                     temp_iter = d.shape[0]
+                    colors = cm.gist_heat(np.linspace(0, 1, temp_iter))
+                    sfactor = 1
                 else:
                     temp_iter = 1
+                    colors = 'maroon',
+                    sfactor = 3
+                    # make it a tuple so that d[0] results the series
+                    d   = d, 
 
                 for temp in reversed(range(temp_iter)):
 
                     d_stream_line = d[temp].swapaxes(0, 1)
-                    colors = cm.gist_heat(np.linspace(0, 1, temp_iter))
 
                     ax[i, 1].plot(
-                        range(0, tune+1), d_stream_line[:tune+1], c=colors[temp], alpha=0.01)
+                        range(0, tune+1), d_stream_line[:tune+1], c=colors[temp], alpha=0.01*sfactor)
                     ax[i, 1].plot(
-                        range(tune, width), d_stream_line[tune:], c=colors[temp], alpha=0.015)
+                        range(tune, width), d_stream_line[tune:], c=colors[temp], alpha=0.015*sfactor)
                     ax[i, 1].plot([tune, tune], [np.mean(d_stream, 1)[tune] - np.std(d_stream, 1)[tune]*3,
                                                  np.mean(d_stream, 1)[tune] + np.std(d_stream, 1)[tune]*3],
                                   '--', alpha=.4, color='k')
