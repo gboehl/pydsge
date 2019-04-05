@@ -159,20 +159,18 @@ def inv_gamma_spec(mu, sigma):
 
     # directly stolen and translated from dynare/matlab. It is unclear to me what the sigma parameter stands for, as it does not appear to be the standard deviation. This is provided vor compatibility reasons, I strongly suggest to use the inv_gamma distribution that simply takes mean / stdd as parameters.
 
-    def ig1fun(nu): return np.log(2*mu**2) - np.log((sigma**2+mu**2)
-                                                    * (nu-2)) + 2*(gammaln(nu/2)-gammaln((nu-1)/2))
+    ig1fun = lambda nu: np.log(2*mu**2) - np.log((sigma**2+mu**2) * (nu-2)) + 2*(gammaln(nu/2)-gammaln((nu-1)/2))
 
-    nu = np.sqrt(2*(2+mu**2/sigma**2))
-    res = so.root(ig1fun, nu)
+    nu0 = np.sqrt(2*(2+mu**2/sigma**2))
+    res = so.root(ig1fun, nu0)
 
-    if res['success']:
-        nu = res['x'][0]
-        s = (sigma**2 + mu**2)*(nu - 2)
+    nu = res['x'][0]
+    s = (sigma**2 + mu**2)*(nu - 2)
 
-    if abs(np.log(mu)-np.log(np.sqrt(s/2))-gammaln((nu-1)/2)+gammaln(nu/2)) > 1e-7:
-        raise ValueError('Failed in solving for the hyperparameters!')
+    check0 = abs(sigma-np.sqrt(s/(nu-2)-mu*mu)) > 1e-7
+    check1 = abs(np.log(mu)-np.log(np.sqrt(s/2))-gammaln((nu-1)/2)+gammaln(nu/2)) > 1e-7
 
-    if abs(sigma-np.sqrt(s/(nu-2)-mu*mu)) > 1e-7:
+    if res['success'] or check0 or check1:
         raise ValueError('Failed in solving for the hyperparameters!')
 
     return s, nu

@@ -77,9 +77,14 @@ def kdeplot_op(ax, data, bw, prior=None, prior_alpha=1, prior_style='--'):
     density, l, u = fast_kde(data, bw)
     x = np.linspace(l, u, len(density))
     if prior is not None:
-        p = prior.logpdf(x)
-        pls.append(ax.plot(x, np.exp(p),
-                           alpha=prior_alpha, ls=prior_style))
+
+        try:
+            p = prior.logpdf(x)
+        except ValueError:
+            p = x.copy()
+            for xi, pi in zip(x, p):
+                pi = prior.logpdf(xi)
+        pls.append(ax.plot(x, np.exp(p), alpha=prior_alpha, ls=prior_style))
 
     ls.append(ax.plot(x, density))
 

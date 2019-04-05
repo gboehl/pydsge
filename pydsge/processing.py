@@ -196,7 +196,7 @@ def runner_pooled(nr_samples, ncores, mask, use_pbar):
     return res
 
 
-def posterior_sample(self, be_res=None, seed=0):
+def posterior_sample(self, be_res=None, seed=0, verbose=False):
 
     import random
 
@@ -205,18 +205,31 @@ def posterior_sample(self, be_res=None, seed=0):
         tune = self.sampler.tune
         par_fix = self.par_fix
         prior_arg = self.prior_arg,
+        prior_names = self.prior_names
 
     else:
         chain = be_res.chain
         tune = be_res.tune
         par_fix = be_res.par_fix
         prior_arg = be_res.prior_arg
+        prior_names = be_res.prior_names
 
     all_pars = chain[..., tune:, :].reshape(-1, chain.shape[-1])
 
     random.seed(seed)
     randpar = par_fix
-    randpar[prior_arg] = random.choice(all_pars)
+    psample = random.choice(all_pars)
+    randpar[prior_arg] = psample
+
+    if verbose:
+        pstr    = ''
+        for pv, pn in zip(psample, prior_names):
+            if pstr:
+                pstr += ', '
+            pstr += pn + ': ' + str(pv.round(3))
+
+        print('[epstract:]'.ljust(15, ' ') + 'Parameters drawn from posterior:')
+        print(''.ljust(15, ' ') + pstr)
 
     return list(randpar)
 
