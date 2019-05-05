@@ -24,6 +24,11 @@ def create_filter(self, P=None, R=None, N=None, linear=False, random_seed=None):
     if N is None:
         N = 500
 
+    if linear:
+        self.linear_filter = True
+    else:
+        self.linear_filter = False
+
     if not hasattr(self, 'Z'):
         warnings.warn('No time series of observables provided')
 
@@ -44,6 +49,7 @@ def create_filter(self, P=None, R=None, N=None, linear=False, random_seed=None):
         xkf.P = self.P
     else:
         xkf.P *= 1e1
+    xkf.init_P = xkf.P
 
     if R is not None:
         xkf.R = R
@@ -67,13 +73,11 @@ def get_ll(self, verbose=False):
     if verbose:
         st = time.time()
 
-    if hasattr(self, 'enkf'):
-        # set approximation to get ll
-        self.enkf.fx = lambda x: self.t_func(x)
-
-        ll = self.enkf.batch_filter(self.Z, calc_ll=True, verbose=verbose)
-    else:
+    if self.linear_filter:
         ll = self.kf.batch_filter(self.Z)[2]
+    else:
+        # self.enkf.fx = lambda x: self.t_func(x)
+        ll = self.enkf.batch_filter(self.Z, calc_ll=True, verbose=verbose)
 
     if np.isnan(ll):
         ll = -np.inf

@@ -18,7 +18,7 @@ class modloader(object):
     def __init__(self, filename, old_style=False):
 
         self.filename = filename
-        self.files = np.load(filename)
+        self.files = np.load(filename, allow_pickle=True)
         self.Z = self.files['Z']
         self.obs_cov = self.files['obs_cov']
         self.init_cov = self.files['init_cov']
