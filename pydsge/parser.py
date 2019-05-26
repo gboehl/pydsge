@@ -396,9 +396,11 @@ class DSGE(dict):
                 lhs = eval(lhs, context)
                 rhs = eval(rhs, context)
             except TypeError as e:
-                print('While parsing %s, got this error: %s' %
-                      (raw_const, repr(e)))
-                return
+                raise SyntaxError(
+                    'While parsing %s, got this error: %s' % (raw_const, repr(e)))
+                # print('While parsing %s, got this error: %s' %
+                # (raw_const, repr(e)))
+                # return
 
             const_eq = Equation(lhs, rhs)
         else:
@@ -445,8 +447,10 @@ class DSGE(dict):
                 lhs = eval(lhs, context)
                 rhs = eval(rhs, context)
             except TypeError as e:
-                print('While parsing %s, got this error: %s' % (eq, repr(e)))
-                return
+                raise SyntaxError(
+                    'While parsing %s, got this error: %s' % (eq, repr(e)))
+                # print('While parsing %s, got this error: %s' % (eq, repr(e)))
+                # return
 
             equations.append(Equation(lhs, rhs))
 
@@ -460,8 +464,9 @@ class DSGE(dict):
             all_shocks_pre = [list(eq.atoms(Shock)) for eq in equations]
 
             for s in shk_ordering:
-                max_lag = min([i.date for i in it(all_shocks_pre) if i.name == s.name])
-                for t in np.arange(max_lag,1):
+                max_lag = min(
+                    [i.date for i in it(all_shocks_pre) if i.name == s.name])
+                for t in np.arange(max_lag, 1):
                     subs_dict = {s(t): s(t-1)}
                     equations = [eq.subs(subs_dict) for eq in equations]
 

@@ -161,7 +161,7 @@ def get_sys(self, par=None, reduce_sys=True, verbose=False):
               % np.round(time.time() - st, 3))
 
 
-def irfs(self, shocklist, wannasee=None, show_warnings=True, verbose=False):
+def irfs(self, shocklist, wannasee=None, linear=False, show_warnings=True, verbose=False):
 
     # returns time series of impule responses
     # shocklist: takes list of tuples of (shock, size, timing)
@@ -210,7 +210,8 @@ def irfs(self, shocklist, wannasee=None, show_warnings=True, verbose=False):
                 for shk in shk_process:
                     args_sts += list(shk)
 
-        st_vec, (l, k), flag = self.t_func(st_vec, shk_vec, return_k=True)
+        st_vec, (l, k), flag = self.t_func(
+            st_vec, shk_vec, linear=linear, return_k=True)
 
         if flag:
             superflag = True
@@ -251,7 +252,7 @@ def irfs(self, shocklist, wannasee=None, show_warnings=True, verbose=False):
 
     if verbose:
         print('[irfs:]'.ljust(15, ' ')+'Simulation took ',
-              time.time() - st, ' seconds.')
+              np.round((time.time() - st), 5), ' seconds.')
 
     labels = []
     for l in llabels:
