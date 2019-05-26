@@ -128,7 +128,7 @@ def get_sys(self, par=None, reduce_sys=True, verbose=False):
     if hasattr(self, 'P'):
         if self.P.shape[0] < sum(~s_out_msk):
             P_new = np.zeros((len(self.out_msk), len(self.out_msk)))
-            if P_new[~self.out_msk][:, ~self.out_msk].shape is not self.P.shape:
+            if P_new[~self.out_msk][:, ~self.out_msk].shape != self.P.shape:
                 print('[get_sys:]'.ljust(
                     15, ' ')+' Shape missmatch of P-matrix, number of states seems to differ!')
             P_new[~self.out_msk][:, ~self.out_msk] = self.P

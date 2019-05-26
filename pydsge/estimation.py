@@ -514,6 +514,7 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
 
         sampler.prior_dist = priors_lst
         sampler.prior_names = prior_names
+        self.prior_names = prior_names
         sampler.tune = tune
         sampler.par_means = list(par_mean)
 
