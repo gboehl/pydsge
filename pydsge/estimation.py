@@ -118,7 +118,7 @@ class pmdm(object):
         print()
         self.opt_dict = {}
         if method is None:
-            method = 'Nelder-Mead'
+            self.method = 'Nelder-Mead'
         elif isinstance(method, int):
             methodl = ["Nelder-Mead", "Powell", "BFGS", "CG",
                        "L-BFGS-G", "SLSQP", "trust-constr", "COBYLA", "TNC"]
@@ -416,10 +416,10 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
 
     pmdm_bool = isinstance(pmdm_method, bool) and not pmdm_method
 
-    if pmdm_maxfev and not pmdm_bool:
+    if pmdm_maxfev is None:
+        pmdm_maxfev = ndraws
 
-        if pmdm_maxfev is None:
-            pmdm_maxfev = ndraws
+    if pmdm_maxfev and not pmdm_bool:
 
         if linear_pre_pmdm:
             print('[bayesian_estimation -> pmdm:]'.ljust(45, ' ') +
