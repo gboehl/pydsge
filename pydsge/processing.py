@@ -249,7 +249,7 @@ def epstract(self, be_res=None, N=None, nr_samples=100, save=None, ncores=None, 
 
     if not force and save is not None and os.path.isfile(save):
 
-        files = np.load(save)
+        files = np.load(save, allow_pickle=True)
         OBS_COV = files['OBS_COV']
         smethod = files['method']
         mess1 = ''
