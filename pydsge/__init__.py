@@ -16,6 +16,7 @@ dsge.o_func = o_func
 dsge.get_sys = get_sys
 dsge.irfs = irfs
 dsge.simulate = simulate
+dsge.simulate_series = simulate_series
 dsge.create_filter = create_filter
 dsge.run_filter = run_filter
 dsge.get_ll = get_ll

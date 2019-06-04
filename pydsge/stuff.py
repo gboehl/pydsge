@@ -4,6 +4,7 @@
 import numpy as np
 import numpy.linalg as nl
 import scipy.linalg as sl
+import scipy.stats as ss
 import warnings
 import time
 from grgrlib import *
@@ -322,6 +323,26 @@ def simulate(self, eps=None, mask=None, initial_state=None, linear=False, verbos
         return X, np.expand_dims(K, 2), superflag
 
     return X, np.expand_dims(K, 2)
+
+
+def simulate_series(self, T=1e3, cov=None, verbose=False, show_warnings=True):
+
+    if cov is None:
+        cov = self.QQ(self.par)
+
+    st_vec = np.zeros(len(self.vv))
+
+    states, Ks = [], []
+    for i in range(int(T)):
+        shk_vec = ss.multivariate_normal.rvs(cov=cov)
+        st_vec, ks, flag = self.t_func(st_vec, shk_vec, return_k=True, verbose=verbose)
+        states.append(st_vec)
+        Ks.append(ks)
+        
+        if show_warnings and flag:
+            print('[irfs:]'.ljust(15, ' ') + ' No rational expectations solution found.')
+
+    return np.array(states), np.array(Ks)
 
 
 def linear_representation(self, l=0, k=0):
