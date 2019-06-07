@@ -46,7 +46,8 @@ class modloader(object):
             self.mod.years = list(self.years)
             self.mod.Z = self.Z
         except:
-            print('[modloader:]'.ljust(15, ' ')+' Failed to load %s. You have to set some attributes yourself...' % modelpath)
+            print('[modloader:]'.ljust(
+                15, ' ')+' Failed to load %s. You have to set some attributes yourself...' % modelpath)
 
         if 'vv' in self.files:
             self.vv = self.files['vv']
@@ -228,13 +229,14 @@ def posterior_sample(self, be_res=None, seed=0, verbose=False):
     randpar[prior_arg] = psample
 
     if verbose:
-        pstr    = ''
+        pstr = ''
         for pv, pn in zip(psample, prior_names):
             if pstr:
                 pstr += ', '
             pstr += pn + ': ' + str(pv.round(3))
 
-        print('[epstract:]'.ljust(15, ' ') + 'Parameters drawn from posterior:')
+        print('[epstract:]'.ljust(15, ' ') +
+              'Parameters drawn from posterior:')
         print(''.ljust(15, ' ') + pstr)
 
     return list(randpar)
