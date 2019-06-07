@@ -37,7 +37,7 @@ class modloader(object):
         if modelpath is None:
             self.modelpath = str(self.files['modelpath'])
         else:
-            modelpath = self.modelpath
+            self.modelpath = modelpath
 
         try:
             self.mod = dsge.read(self.modelpath, old_style)
@@ -45,9 +45,9 @@ class modloader(object):
             self.mod.P = self.init_cov
             self.mod.years = list(self.years)
             self.mod.Z = self.Z
-        except:
+        except AttributeError as e:
             print('[modloader:]'.ljust(
-                15, ' ')+' Failed to load %s. You have to set some attributes yourself...' % modelpath)
+                15, ' ')+' Failed to load %s. You have to set some attributes yourself... Error message was: %s' % (modelpath, e))
 
         if 'vv' in self.files:
             self.vv = self.files['vv']
