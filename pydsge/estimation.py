@@ -279,7 +279,9 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
     # dry run before the fun beginns
     # self.create_filter(N=N, linear=linear_pre_pmdm or linear)
     self.create_filter(N=N, linear=linear_pre_pmdm or linear, random_seed=seed)
-    self.get_ll(verbose=verbose)
+    if np.isinf(self.get_ll(verbose=verbose)):
+        raise ValueError('[bayesian_estimation:]'.ljust(
+            30, ' ') + ' likelihood of initial values is zero.')
 
     print()
     print('[bayesian_estimation:]'.ljust(30, ' ') +
