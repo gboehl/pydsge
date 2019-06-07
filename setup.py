@@ -10,7 +10,6 @@ setup(
         install_requires=[
             'econsieve',
             'emcee',
-            'multiprocessing',
             'numba',
             'numpy',
             'pandas',
@@ -18,6 +17,6 @@ setup(
             'scipy',
             'sympy',
             'tqdm',
-            'yaml',
+            'pyyaml',
          ],
    )

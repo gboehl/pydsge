@@ -1,11 +1,6 @@
 #!/bin/python2
 # -*- coding: utf-8 -*-
 
-# directory = '/home/gboehl/repos/'
-# import os, sys, importlib, time
-# for i in os.listdir(directory):
-# sys.path.append(directory+i)
-
 import numpy as np
 import numpy.linalg as nl
 import time

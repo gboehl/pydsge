@@ -6,7 +6,6 @@ import emcee
 import pathos
 import os.path
 import numpy as np
-import multiprocessing as mp
 from tqdm import tqdm
 from .parser import DSGE as dsge
 
