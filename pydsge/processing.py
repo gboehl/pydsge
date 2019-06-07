@@ -15,7 +15,7 @@ class modloader(object):
 
     name = 'modloader'
 
-    def __init__(self, filename, old_style=False):
+    def __init__(self, filename, modelpath=None, old_style=False):
 
         self.filename = filename
         self.files = np.load(filename, allow_pickle=True)
@@ -34,13 +34,19 @@ class modloader(object):
         self.tune = self.files['tune']
         self.ndraws = self.files['ndraws']
         self.par_fix = self.files['par_fix']
-        self.modelpath = str(self.files['modelpath'])
+        if modelpath is None:
+            self.modelpath = str(self.files['modelpath'])
+        else:
+            modelpath = self.modelpath
 
-        self.mod = dsge.read(self.modelpath, old_style)
-        self.mod.obs_cov = self.obs_cov
-        self.mod.P = self.init_cov
-        self.mod.years = list(self.years)
-        self.mod.Z = self.Z
+        try:
+            self.mod = dsge.read(self.modelpath, old_style)
+            self.mod.obs_cov = self.obs_cov
+            self.mod.P = self.init_cov
+            self.mod.years = list(self.years)
+            self.mod.Z = self.Z
+        except:
+            print('[modloader:]'.ljust(15, ' ')+' Failed to load %s. You have to set some attributes yourself...' % modelpath)
 
         if 'vv' in self.files:
             self.vv = self.files['vv']
