@@ -351,7 +351,7 @@ class DSGE(dict):
         txt = txt.replace('^', '**')
         txt = txt.replace(';', '')
         txt = re.sub(r"@ ?\n", " ", txt)
-        model_yaml = yaml.load(txt)
+        model_yaml = yaml.safe_load(txt)
 
         dec = model_yaml['declarations']
         cal = model_yaml['calibration']
@@ -371,7 +371,6 @@ class DSGE(dict):
                    par_ordering + shk_ordering + other_para]
         context = dict(context)
 
-        # if 'observables' in dec:
         if 'observables' in dec:
             observables = [Variable(v) for v in dec['observables']]
         else:
