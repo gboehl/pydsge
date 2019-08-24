@@ -255,7 +255,7 @@ class pmdm(object):
         return self.x_max
 
 
-def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncores=None, nwalkers=100, ntemp=0, pmdm_maxfev=None, linear_pre_pmdm=False, pmdm_method=None, pmdm_tol=1e-2, seed=0, update_freq=None, verbose=False):
+def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncores=None, nwalkers=100, ntemp=0, prior_weight=1, pmdm_maxfev=None, linear_pre_pmdm=False, pmdm_method=None, pmdm_tol=1e-2, seed=0, update_freq=None, verbose=False):
 
     if ncores is None:
         ncores = pathos.multiprocessing.cpu_count()
@@ -405,7 +405,7 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
         return prior
 
     def lprob(pars, linear_lprob):
-        return lprior(pars) + llike(pars, linear_lprob)
+        return prior_weight*lprior(pars) + llike(pars, linear_lprob)
 
     global lprob_global
     global llike_global

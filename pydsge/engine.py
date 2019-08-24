@@ -1,4 +1,4 @@
-#!/bin/python2
+#!/bin/python
 # -*- coding: utf-8 -*-
 
 import numpy as np
@@ -6,6 +6,8 @@ import numpy.linalg as nl
 import time
 from .parser import DSGE as dsge
 from numba import njit
+
+aca = np.ascontiguousarray
 
 
 @njit(nogil=True, cache=True)
@@ -50,7 +52,8 @@ def preprocess_jit(vals, l_max, k_max):
 
             core = -nl.inv(JN[:, :dim_x])
 
-            SS_mat, SS_term = core @ JN[:, dim_x:], core @ sterm
+            SS_mat = core @ aca(JN[:, dim_x:])
+            SS_term = core @ sterm
 
             for s in range(s_max):
 
@@ -75,9 +78,8 @@ def preprocess_jit(vals, l_max, k_max):
                     matrices = core_mat[l0, k0]
                     oterm = core_term[k0]
 
-                    fin_mat = matrices[:, :dim_x] @ SS_mat + \
-                        matrices[:, dim_x:]
-                    fin_term = matrices[:, :dim_x] @ SS_term + oterm
+                    fin_mat = aca(matrices[:, :dim_x]) @ SS_mat + aca(matrices[:, dim_x:])
+                    fin_term = aca(matrices[:, :dim_x]) @ SS_term + oterm
 
                     mat[l, k, s], term[l, k, s] = core_mat[s0,
                                                            0] @ fin_mat, core_mat[s0, 0] @ fin_term
