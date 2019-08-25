@@ -151,10 +151,10 @@ def save_res(self, filename, save_tune=True, description=None):
         init_cov = self.enkf.P
 
     if save_tune:
-        chain = self.sampler.chain
+        chain = self.sampler.get_chain()
         tune = self.sampler.tune
     else:
-        chain = self.sampler.chain[:, self.sampler.tune:]
+        chain = self.sampler.get_chain()[:, self.sampler.tune:]
         tune = 0
 
     np.savez_compressed(filename,
@@ -207,7 +207,7 @@ def posterior_sample(self, be_res=None, seed=0, verbose=False):
     import random
 
     if be_res is None:
-        chain = self.sampler.chain
+        chain = self.sampler.get_chain()
         tune = self.sampler.tune
         par_fix = self.par_fix
         prior_arg = self.prior_arg,

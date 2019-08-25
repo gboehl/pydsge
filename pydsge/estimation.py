@@ -1,5 +1,6 @@
-#!/bin/python2
+#!/bin/python
 # -*- coding: utf-8 -*-
+
 import numpy as np
 import warnings
 import os
@@ -63,7 +64,7 @@ def mcmc(p0, linear_mcmc, nwalkers, ndim, ndraws, priors, ntemp, ncores, update_
             else:
                 report('[bayesian_estimation -> mcmc:]'.ljust(45, ' ') +
                        ' Summary from last %s of %s iterations:' % (update_freq, cnt))
-            sample = sampler.chain.reshape(-1, ndraws,
+            sample = sampler.get_chain().reshape(-1, ndraws,
                                            ndim)[:, cnt-update_freq:cnt, :]
             report(str(summary(sample, priors).round(3)))
             report("Mean likelihood is %s, mean acceptance fraction is %s." % (lprob_local(
@@ -490,6 +491,7 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
             pos = init_par*(1+1e-3*np.random.randn(pholder, nwalkers, ndim))
 
         if ntemp:
+            print('[bayesian_estimation:]'.ljust(30, ' ')+' INFO: The PTES sampler was removed from emcee and the new implementation has not yet been added to `pydsge`.')
             print('[bayesian_estimation:]'.ljust(
                 30, ' ')+' Initial values found, starting MCMC. Using PTES sampler with %s temperatures.' % ntemp)
         else:
@@ -503,7 +505,7 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
         print("Mean acceptance fraction: {0:.3f}".format(
             np.mean(sampler.acceptance_fraction)))
 
-        self.chain = sampler.chain.reshape(-1, ndraws, ndim)
+        self.chain = sampler.get_chain().reshape(-1, ndraws, ndim)
 
         sampler.summary = lambda: summary(self.chain[:, tune:, :], priors)
         sampler.traceplot = lambda **args: traceplot(
