@@ -4,8 +4,7 @@
 import numpy as np
 from .stuff import *
 import pydsge
-from econsieve import EnKF
-from econsieve import KalmanFilter
+from econsieve import TEnKF, KalmanFilter, ipas
 from econsieve.stats import logpdf
 
 
@@ -40,7 +39,7 @@ def create_filter(self, P=None, R=None, N=None, linear=False, random_seed=None):
         xkf.F = self.linear_representation()
         xkf.H = self.hx
     else:
-        xkf = EnKF(N=N, dim_x=len(self.vv), dim_z=self.ny,
+        xkf = TEnKF(N=N, dim_x=len(self.vv), dim_z=self.ny,
                    fx=self.t_func, hx=self.o_func, model_obj=self)
 
     if P is not None:
@@ -136,7 +135,8 @@ def extract(self, pmean=None, cov=None, method=None, penalty=50, return_flag=Fal
     T3 = self.hx[1]
     mod_objs = (T1, T2, T3), self.SIG
 
-    means, cov, res, flag = self.enkf.ipas(pmean, cov, method, penalty, show_warnings=show_warnings,
+    # means, cov, res, flag = self.enkf.ipas(pmean, cov, method, penalty, show_warnings=show_warnings,
+    means, cov, res, flag = ipas(self.enkf, pmean, cov, method, penalty, show_warnings=show_warnings,
                                            itype=itype, presmoothing=presmoothing, objects=mod_objs, min_options=min_options, return_flag=True, verbose=verbose)
 
     self.res = res
