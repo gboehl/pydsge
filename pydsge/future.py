@@ -1,4 +1,4 @@
-#!/bin/python2
+#!/bin/python
 # -*- coding: utf-8 -*-
 
 # Bayesian Estimation using pymc3. Not operational for now (and probably never)

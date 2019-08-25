@@ -64,8 +64,8 @@ def mcmc(p0, linear_mcmc, nwalkers, ndim, ndraws, priors, ntemp, ncores, update_
             else:
                 report('[bayesian_estimation -> mcmc:]'.ljust(45, ' ') +
                        ' Summary from last %s of %s iterations:' % (update_freq, cnt))
-            sample = sampler.get_chain().reshape(-1, ndraws,
-                                           ndim)[:, cnt-update_freq:cnt, :]
+
+            sample = sampler.get_chain().reshape(-1, cnt+1, ndim)[:, cnt-update_freq:cnt+1, :]
             report(str(summary(sample, priors).round(3)))
             report("Mean likelihood is %s, mean acceptance fraction is %s." % (lprob_local(
                 sample.mean(axis=(0, 1))).round(3), np.mean(sampler.acceptance_fraction).round(2)))

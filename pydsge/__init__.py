@@ -1,4 +1,4 @@
-#!/bin/python2
+#!/bin/python
 # -*- coding: utf-8 -*-
 
 from .stuff import *
