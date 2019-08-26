@@ -65,15 +65,12 @@ class modloader(object):
     def means(self):
         x = self.par_fix
 
-        cshp = self.chain.shape
-        sum_chain = self.chain.reshape(-1, cshp[-2], cshp[-1])
-
-        x[self.prior_arg] = sum_chain[:, self.tune:].mean(axis=(0, 1))
+        x[self.prior_arg] = chain[self.tune:].mean(axis=(0, 1))
         return list(x)
 
     def medians(self):
         x = self.par_fix
-        x[self.prior_arg] = np.median(self.chain[:, self.tune:], axis=(0, 1))
+        x[self.prior_arg] = np.median(self.chain[self.tune:], axis=(0, 1))
         return list(x)
 
     def summary(self):
@@ -85,9 +82,7 @@ class modloader(object):
         else:
             self_priors = self.priors
 
-        chain = self.chain.reshape(-1, *self.chain.shape[-2:])
-
-        return summary(chain[:, self.tune:], self_priors)
+        return summary(self.chain[self.tune:], self_priors)
 
     def traceplot(self, chain=None, varnames=None, tune=None, priors_dist=None, draw_lines=None, **args):
 
@@ -154,7 +149,7 @@ def save_res(self, filename, save_tune=True, description=None):
         chain = self.sampler.get_chain()
         tune = self.sampler.tune
     else:
-        chain = self.sampler.get_chain()[:, self.sampler.tune:]
+        chain = self.sampler.get_chain()[self.sampler.tune:]
         tune = 0
 
     np.savez_compressed(filename,
@@ -205,6 +200,10 @@ def runner_pooled(nr_samples, ncores, mask, use_pbar):
 def posterior_sample(self, be_res=None, seed=0, verbose=False):
 
     import random
+    print(be_res)
+    print(seed)
+    print(verbose)
+    print(self)
 
     if be_res is None:
         chain = self.sampler.get_chain()
@@ -220,7 +219,7 @@ def posterior_sample(self, be_res=None, seed=0, verbose=False):
         prior_arg = be_res.prior_arg
         prior_names = be_res.prior_names
 
-    all_pars = chain[..., tune:, :].reshape(-1, chain.shape[-1])
+    all_pars = chain[tune:].reshape(-1, chain.shape[-1])
 
     random.seed(seed)
     randpar = par_fix
