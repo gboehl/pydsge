@@ -107,6 +107,9 @@ class modloader(object):
 
         return traceplot(trace_value, varnames=varnames, tune=tune, priors=priors_dist, draw_lines=draw_lines, **args)
 
+    def integrated_time(self, c=5, tol=50, quiet=False):
+        return emcee.autocorr.integrated_time(self.chain, c, tol, quiet)
+
     def posteriorplot(self, chain=None, varnames=None, tune=None, **args):
 
         from .plots import posteriorplot
@@ -200,10 +203,6 @@ def runner_pooled(nr_samples, ncores, mask, use_pbar):
 def posterior_sample(self, be_res=None, seed=0, verbose=False):
 
     import random
-    print(be_res)
-    print(seed)
-    print(verbose)
-    print(self)
 
     if be_res is None:
         chain = self.sampler.get_chain()

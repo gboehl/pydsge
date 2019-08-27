@@ -513,6 +513,11 @@ def bayesian_estimation(self, N=300, linear=False, ndraws=3000, tune=None, ncore
         sampler.posteriorplot = lambda **args: posteriorplot(
             self.chain, varnames=prior_names, tune=tune, **args)
 
+        def integrated_time(self, c=5, tol=50, quiet=False):
+            return emcee.autocorr.integrated_time(self.chain, c, tol, quiet)
+
+        sampler.integrated_time = integrated_time
+
         par_mean = par_fix
         par_mean[prior_arg] = mc_mean(self.chain[:, tune:], varnames=priors)
 

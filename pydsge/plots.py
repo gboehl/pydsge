@@ -1,5 +1,6 @@
 #!/bin/python
 # -*- coding: utf-8 -*-
+
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import numpy as np
@@ -150,9 +151,9 @@ def traceplot(trace, varnames, tune, figsize=None,
             d = trace_chunk[..., i]
 
             if d.ndim > 2:
-                d_stream = d.reshape(-1, d.shape[-1]).swapaxes(0, 1)
+                d_stream = d.reshape(-1, d.shape[-1])
             else:
-                d_stream = d.swapaxes(0, 1)
+                d_stream = d
 
             width = len(d_stream)
 
@@ -183,7 +184,7 @@ def traceplot(trace, varnames, tune, figsize=None,
 
                 for temp in reversed(range(temp_iter)):
 
-                    d_stream_line = d[temp].swapaxes(0, 1)
+                    d_stream_line = d[temp]
 
                     ax[i, 1].plot(
                         range(0, tune+1), d_stream_line[:tune+1], c=colors[temp], alpha=0.01*sfactor)
@@ -354,7 +355,7 @@ def posteriorplot(trace, varnames=None, tune=0, figsize=None, max_no=4, text_siz
     for ic in range(0, len(varnames), max_no):
 
         vnames_chunk = varnames[ic:ic + max_no]
-        trace_chunk = trace[:, :, ic:ic + max_no]
+        trace_chunk = trace[..., ic:ic + max_no]
 
         def create_axes_grid(figsize, traces):
             l_trace = len(traces)
@@ -390,7 +391,7 @@ def posteriorplot(trace, varnames=None, tune=0, figsize=None, max_no=4, text_siz
         if len(np.atleast_1d(ax).flatten()) != len(vnames_chunk):
             print('Given axis does not match number of plots')
         for idx, (a, v) in enumerate(zip(np.atleast_1d(ax), vnames_chunk)):
-            tr_values = trace_chunk[:, tune:, idx].flatten()
+            tr_values = trace_chunk[tune:,:, idx].flatten()
             plot_posterior_op(tr_values, ax=a, bw=bw, kde_plot=kde_plot,
                               point_estimate=point_estimate, round_to=round_to,
                               alpha_level=alpha_level, ref_val=ref_val[idx],
