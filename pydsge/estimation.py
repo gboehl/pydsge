@@ -55,20 +55,36 @@ def mcmc(p0, linear_mcmc, nwalkers, ndim, ndraws, priors, ntemp, ncores, update_
         report = print
 
     cnt = 0
-    for result in sampler.sample(p0, iterations=ndraws):
-        if update_freq and cnt and not cnt % update_freq:
-            report('')
-            if description is not None:
-                report('[bayesian_estimation -> mcmc:]'.ljust(45, ' ') +
-                       ' Summary from last %s of %s iterations (%s):' % (update_freq, cnt, str(description)))
-            else:
-                report('[bayesian_estimation -> mcmc:]'.ljust(45, ' ') +
-                       ' Summary from last %s of %s iterations:' % (update_freq, cnt))
+    update = update_freq
+    old_tau = np.inf
 
-            sample = sampler.get_chain().reshape(-1, cnt+1, ndim)[:, cnt-update_freq:cnt+1, :]
-            report(str(summary(sample, priors).round(3)))
-            report("Mean likelihood is %s, mean acceptance fraction is %s." % (lprob_local(
+    if not update_freq:
+        update_freq = int(ndraws/100)
+
+    for result in sampler.sample(p0, iterations=ndraws):
+        if update and cnt and not cnt % update_freq:
+            if update:
+                report('')
+                if description is not None:
+                    report('[bayesian_estimation -> mcmc:]'.ljust(45, ' ') +
+                           ' Summary from last %s of %s iterations (%s):' % (update_freq, cnt, str(description)))
+                else:
+                    report('[bayesian_estimation -> mcmc:]'.ljust(45, ' ') +
+                           ' Summary from last %s of %s iterations:' % (update_freq, cnt))
+
+                sample = sampler.get_chain().reshape(-1, cnt+1, ndim)[:, cnt-update_freq:cnt+1, :]
+                report(str(summary(sample, priors).round(3)))
+                report("Mean likelihood is %s, mean acceptance fraction is %s." % (lprob_local(
                 sample.mean(axis=(0, 1))).round(3), np.mean(sampler.acceptance_fraction).round(2)))
+
+            # Check convergence
+            tau = sampler.get_autocorr_time(tol=0)
+            converged = np.all(tau * conv_tol < sampler.iteration)
+            converged &= np.all(np.abs(old_tau - tau) / tau < 0.01)
+            if converged:
+                report("Chains have converged (chains are longer than %s times the integrated autocorrelation time for %s parameters)" %(tol, ndim))
+                break
+
         if not verbose:
             pbar.update(1)
         cnt += 1
