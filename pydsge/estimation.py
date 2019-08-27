@@ -14,7 +14,7 @@ import tqdm
 from .plots import traceplot, posteriorplot
 
 
-def mcmc(p0, linear_mcmc, nwalkers, ndim, ndraws, priors, ntemp, ncores, update_freq, description, verbose, debug=False):
+def mcmc(p0, linear_mcmc, nwalkers, ndim, ndraws, priors, ntemp, ncores, update_freq, description, verbose, conv_tol=50, conv_eps=0.01, debug=False):
     # very very dirty hack
 
     import tqdm
@@ -63,6 +63,11 @@ def mcmc(p0, linear_mcmc, nwalkers, ndim, ndraws, priors, ntemp, ncores, update_
 
     for result in sampler.sample(p0, iterations=ndraws):
         if update and cnt and not cnt % update_freq:
+
+            tau = sampler.get_autocorr_time(tol=0)
+            crit0 = np.max(np.abs(old_tau - tau) / tau)
+            crit1 = np.max(tau * conv_tol - sampler.iteration)
+
             if update:
                 report('')
                 if description is not None:
@@ -74,16 +79,14 @@ def mcmc(p0, linear_mcmc, nwalkers, ndim, ndraws, priors, ntemp, ncores, update_
 
                 sample = sampler.get_chain().reshape(-1, cnt+1, ndim)[:, cnt-update_freq:cnt+1, :]
                 report(str(summary(sample, priors).round(3)))
-                report("Mean likelihood is %s, mean acceptance fraction is %s." % (lprob_local(
-                sample.mean(axis=(0, 1))).round(3), np.mean(sampler.acceptance_fraction).round(2)))
+                report("Mean likelihood is %s, mean acceptance fraction is %s. Convergence: %s (<%s), %s (< 0)" 
+                       % (lprob_local(sample.mean(axis=(0, 1))).round(3), np.mean(sampler.acceptance_fraction).round(2), np.round(crit0,3), conv_eps, np.round(crit1,3)))
 
             # Check convergence
-            tau = sampler.get_autocorr_time(tol=0)
-            converged = np.all(tau * conv_tol < sampler.iteration)
-            converged &= np.all(np.abs(old_tau - tau) / tau < 0.01)
-            if converged:
-                report("Chains have converged (chains are longer than %s times the integrated autocorrelation time for %s parameters)" %(tol, ndim))
+            if crit0 < conv_eps & crit1 < 0:
+                report("Chains have converged (chains are longer than %s times the integrated autocorrelation time for %s parameters). Finalizing..." %(tol, ndim))
                 break
+            old_tau = tau
 
         if not verbose:
             pbar.update(1)
