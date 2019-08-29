@@ -219,3 +219,52 @@ def inv_gamma_spec(mu, sigma):
         raise ValueError('[inv_gamma_spec:] Failed in solving for the hyperparameters!')
 
     return s, nu
+
+def get_frozen_priors(priors):
+# priors_lst = get_frozen_priors
+## this should be a "get_frozen_priors" function
+    priors_lst = []
+    for pp in priors:
+        dist = priors[str(pp)]
+        pmean = dist[1]
+        pstdd = dist[2]
+        # simply make use of frozen distributions
+        if str(dist[0]) == 'uniform':
+            priors_lst.append(ss.uniform(loc=pmean, scale=pstdd-pmean))
+
+        elif str(dist[0]) == 'normal':
+            priors_lst.append(ss.norm(loc=pmean, scale=pstdd))
+        elif str(dist[0]) == 'gamma':
+            b = pstdd**2/pmean
+            a = pmean/b
+            priors_lst.append(ss.gamma(a, scale=b))
+        elif str(dist[0]) == 'beta':
+            a = (1-pmean)*pmean**2/pstdd**2 - pmean
+            b = a*(1/pmean - 1)
+            priors_lst.append(ss.beta(a=a, b=b))
+        elif str(dist[0]) == 'inv_gamma':
+
+            def targf(x):
+                y0 = ss.invgamma(x[0], scale=x[1]).std() - pstdd
+                y1 = ss.invgamma(x[0], scale=x[1]).mean() - pmean
+                return np.array([y0, y1])
+
+            ig_res = so.root(targf, np.array([4, 4]))
+            if ig_res['success']:
+                a = ig_res['x']
+                priors_lst.append(ss.invgamma(a[0], scale=a[1]))
+            else:
+                raise ValueError(
+                    'Can not find inverse gamma distribution with mean %s and std %s' % (pmean, pstdd))
+        elif str(dist[0]) == 'inv_gamma_dynare':
+            s, nu = inv_gamma_spec(pmean, pstdd)
+            ig = InvGammaDynare()(s, nu)
+            priors_lst.append(ig)
+
+        else:
+            raise NotImplementedError(
+                ' Distribution *not* implemented: ', str(dist[0]))
+        print('     parameter %s as %s with mean %s and std/df %s...' %
+              (pp, dist[0], pmean, pstdd))
+
+    return priors_lst

@@ -1,15 +1,17 @@
+#!/bin/python
+# -*- coding: utf-8 -*-
+
 import sympy
 import yaml
-from .symbols import Variable, Equation, Shock, Parameter, TSymbol
-
-import scipy.stats as stats
-from sympy.matrices import Matrix, zeros
-import re
-import numpy as np
-import itertools
-import pandas as p
-
 import warnings
+import re
+import os
+import itertools
+import scipy.stats as stats
+import numpy as np
+import pandas as p
+from .symbols import Variable, Equation, Shock, Parameter, TSymbol
+from sympy.matrices import Matrix, zeros
 
 
 class DSGE(dict):
@@ -115,8 +117,8 @@ class DSGE(dict):
         return self['shk_ordering']
 
     @property
-    def name(self):
-        return self['name']
+    def mod_name(self):
+        return self['mod_name']
 
     @property
     def neq(self):
@@ -339,19 +341,44 @@ class DSGE(dict):
         self.HH = add_para_func(HH)
 
     @classmethod
-    def read(cls, mfile, old_style=False):
-        """
-
-        """
+    def read(cls, mfile):
 
         f = open(mfile)
-        txt = f.read()
+        mtxt = f.read()
         f.close()
 
-        txt = txt.replace('^', '**')
-        txt = txt.replace(';', '')
-        txt = re.sub(r"@ ?\n", " ", txt)
-        model_yaml = yaml.safe_load(txt)
+        pmodel = cls.parse(mtxt)
+
+        pmodel.fdict = {}
+        pmodel.fdict['yaml_raw'] = mtxt
+        pmodel.path = os.path.dirname(mfile) + os.sep
+
+        return pmodel
+
+    @classmethod
+    def load(cls, dfile):
+
+        filedic = dict(np.load(dfile))
+
+        mtxt = str(filedic['yaml_raw'])
+
+        pmodel = cls.parse(mtxt)
+
+        pmodel.fdict = filedic
+        pmodel.fdict['dfile'] = dfile
+
+        return pmodel
+
+    @classmethod
+    def parse(cls, mtxt):
+        """
+
+        """
+
+        mtxt = mtxt.replace('^', '**')
+        mtxt = mtxt.replace(';', '')
+        mtxt = re.sub(r"@ ?\n", " ", mtxt)
+        model_yaml = yaml.safe_load(mtxt)
 
         dec = model_yaml['declarations']
         cal = model_yaml['calibration']
@@ -458,16 +485,14 @@ class DSGE(dict):
         # ------------------------------------------------------------
         it = itertools.chain.from_iterable
 
-        if not old_style:
+        all_shocks_pre = [list(eq.atoms(Shock)) for eq in equations]
 
-            all_shocks_pre = [list(eq.atoms(Shock)) for eq in equations]
-
-            for s in shk_ordering:
-                max_lag = min(
-                    [i.date for i in it(all_shocks_pre) if i.name == s.name])
-                for t in np.arange(max_lag, 1):
-                    subs_dict = {s(t): s(t-1)}
-                    equations = [eq.subs(subs_dict) for eq in equations]
+        for s in shk_ordering:
+            max_lag = min(
+                [i.date for i in it(all_shocks_pre) if i.name == s.name])
+            for t in np.arange(max_lag, 1):
+                subs_dict = {s(t): s(t-1)}
+                equations = [eq.subs(subs_dict) for eq in equations]
 
         max_lead_exo = dict.fromkeys(shk_ordering)
         max_lag_exo = dict.fromkeys(shk_ordering)
@@ -603,10 +628,10 @@ class DSGE(dict):
             'info': info,
             'make_log': make_log,
             '__data__': model_yaml,
-            'name': dec['name'],
+            'mod_name': dec['name'],
             'observables': observables,
             'obs_equations': obs_equations,
-            'filename': mfile
+            'file': mtxt
         }
 
         model = cls(**model_dict)
