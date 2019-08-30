@@ -119,6 +119,7 @@ def medians(self):
     x = self.par_fix
     x[self.prior_arg] = np.median(self.chain[self.tune:], axis=(0, 1))
     return list(x)
+
 """
 
 DSGE.t_func = t_func

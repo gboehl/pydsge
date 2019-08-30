@@ -422,7 +422,8 @@ def bay_estim(self, nsteps=3000, nwalks=None, tune=None, ncores=None, backend_fi
     if debug:
         sampler = emcee.EnsembleSampler(nwalks, self.ndim, lprob_local)
     else:
-        sampler = emcee.EnsembleSampler(nwalks, self.ndim, lprob_local, pool=loc_pool, backend=backend)
+        sampler = emcee.EnsembleSampler(
+            nwalks, self.ndim, lprob_local, pool=loc_pool, backend=backend)
 
     if not verbose:
         np.warnings.filterwarnings('ignore')
@@ -471,6 +472,3 @@ def bay_estim(self, nsteps=3000, nwalks=None, tune=None, ncores=None, backend_fi
         np.mean(sampler.acceptance_fraction)))
 
     self.sampler = sampler
-    self.par_mean = self.par_fix
-    self.par_mean[self.prior_arg] = mc_mean(
-        sampler.get_chain()[:, self.tune:], varnames=self.priors)
