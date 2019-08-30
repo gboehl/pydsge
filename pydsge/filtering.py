@@ -3,7 +3,6 @@
 
 import numpy as np
 from .stuff import *
-import pydsge
 from econsieve import TEnKF, KalmanFilter, ipas
 from econsieve.stats import logpdf
 
@@ -11,11 +10,13 @@ from econsieve.stats import logpdf
 def create_obs_cov(self, scale_obs=0.1):
 
     if not hasattr(self, 'Z'):
-        warnings.warn('No time series of observables provided')
+        raise LookupError('No time series of observables provided')
     else:
         sig_obs = np.var(self.Z, axis=0)*scale_obs**2
 
-        self.obs_cov = np.diagflat(sig_obs)
+        obs_cov = np.diagflat(sig_obs)
+
+    return obs_cov
 
 
 def create_filter(self, P=None, R=None, N=None, linear=False, random_seed=None):
@@ -35,36 +36,32 @@ def create_filter(self, P=None, R=None, N=None, linear=False, random_seed=None):
         np.random.seed(random_seed)
 
     if linear:
-        xkf = KalmanFilter(dim_x=len(self.vv), dim_z=self.ny)
-        xkf.F = self.linear_representation()
-        xkf.H = self.hx
+        f = KalmanFilter(dim_x=len(self.vv), dim_z=self.ny)
+        f.F = self.linear_representation()
+        f.H = self.hx
     else:
-        xkf = TEnKF(N=N, dim_x=len(self.vv), dim_z=self.ny,
-                   fx=self.t_func, hx=self.o_func, model_obj=self)
+        f = TEnKF(N=N, dim_x=len(self.vv), dim_z=self.ny, fx=self.t_func, hx=self.o_func, model_obj=self)
 
     if P is not None:
-        xkf.P = P
+        f.P = P
     elif hasattr(self, 'P'):
-        xkf.P = self.P
+        f.P = self.P
     else:
-        xkf.P *= 1e1
-    xkf.init_P = xkf.P
+        f.P *= 1e1
+    f.init_P = f.P
 
     if R is not None:
-        xkf.R = R
-    elif hasattr(self, 'obs_cov'):
-        xkf.R = self.obs_cov
+        f.R = R
 
-    xkf.eps_cov = self.QQ(self.par)
+    f.eps_cov = self.QQ(self.par)
 
-    CO = self.SIG @ xkf.eps_cov
+    CO = self.SIG @ f.eps_cov
 
-    xkf.Q = CO @ CO.T
+    f.Q = CO @ CO.T
 
-    if linear:
-        self.kf = xkf
-    else:
-        self.enkf = xkf
+    self.filter = f
+    
+    return f
 
 
 def get_ll(self, verbose=False):
@@ -73,10 +70,9 @@ def get_ll(self, verbose=False):
         st = time.time()
 
     if self.linear_filter:
-        ll = self.kf.batch_filter(self.Z)[2]
+        ll = self.filter.batch_filter(self.Z)[2]
     else:
-        # self.enkf.fx = lambda x: self.t_func(x)
-        ll = self.enkf.batch_filter(self.Z, calc_ll=True, verbose=verbose)
+        ll = self.filter.batch_filter(self.Z, calc_ll=True, verbose=verbose)
 
     if np.isnan(ll):
         ll = -np.inf

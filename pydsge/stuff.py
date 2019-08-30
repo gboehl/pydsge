@@ -3,11 +3,9 @@
 
 import numpy as np
 import numpy.linalg as nl
-import scipy.linalg as sl
-import scipy.stats as ss
 import warnings
 import time
-from grgrlib import *
+from grgrlib import fast0, eig, re_bc
 from .engine import boehlgorithm
 from decimal import Decimal
 
@@ -326,6 +324,8 @@ def simulate(self, eps=None, mask=None, initial_state=None, linear=False, verbos
 
 
 def simulate_series(self, T=1e3, cov=None, verbose=False, show_warnings=True):
+
+    import scipy.stats as ss
 
     if cov is None:
         cov = self.QQ(self.par)

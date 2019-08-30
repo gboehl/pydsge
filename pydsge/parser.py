@@ -358,7 +358,7 @@ class DSGE(dict):
     @classmethod
     def load(cls, dfile):
 
-        filedic = dict(np.load(dfile))
+        filedic = dict(np.load(dfile, allow_pickle=True))
 
         mtxt = str(filedic['yaml_raw'])
 
@@ -366,6 +366,7 @@ class DSGE(dict):
 
         pmodel.fdict = filedic
         pmodel.fdict['dfile'] = dfile
+        pmodel.path = os.path.dirname(dfile) + os.sep
 
         return pmodel
 
