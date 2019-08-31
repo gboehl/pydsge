@@ -64,8 +64,8 @@ def summary(trace, tune, varnames, priors=None, alpha=0.05):
         priors = varnames
 
     f_prs = [lambda x: pd.Series(x, name='distribution'),
-             lambda x: pd.Series(x, name='mean/alpha'),
-             lambda x: pd.Series(x, name='sd/beta')]
+             lambda x: pd.Series(x, name='mean'),
+             lambda x: pd.Series(x, name='sd/df')]
 
     funcs = [lambda x: pd.Series(np.mean(x), name='mean'),
              lambda x: pd.Series(np.std(x), name='sd'),

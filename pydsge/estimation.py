@@ -107,10 +107,10 @@ class PMDM(object):
                 cols = rows_cols.read().split()[1]
             if self.model.description is not None:
                 self.report('[bayesian_estimation -> '+self.desc_str+'pmdm:]'.ljust(45, ' ') +
-                            ' Current best guess @ iteration %s and ll of %s (%s):' % (self.n, self.res_max.round(5), str(self.model.description)))
+                            ' Current best guess @ iteration %s and ll of %s (%s):' % (self.n, -self.res_max.round(5), str(self.model.description)))
             else:
                 self.report('[bayesian_estimation -> '+self.desc_str+'pmdm:]'.ljust(45, ' ') +
-                            ' Current best guess @ iteration %s and ll of %s):' % (self.n, self.res_max.round(5)))
+                            ' Current best guess @ iteration %s and ll of %s):' % (self.n, -self.res_max.round(5)))
             # split the info such that it is readable
             lnum = (len(self.model.priors)*8)//(int(cols)-8) + 1
             priors_chunks = np.array_split(
@@ -454,11 +454,10 @@ def bay_estim(self, nsteps=3000, nwalks=None, tune=None, ncores=None, backend_fi
                     report('[bayesian_estimation -> mcmc:]'.ljust(45, ' ') +
                            ' Summary from last %s of %s iterations:' % (update_freq, cnt))
 
-                sample = sampler.get_chain().reshape(-1, cnt,
-                                                     self.ndim)[:, cnt-update_freq:cnt, :]
-                report(str(summary(sample, self.priors).round(3)))
+                sample = sampler.get_chain()
+                report(str(summary(sample, -update_freq, self.priors).round(3)))
                 report("Mean likelihood is %s, mean acceptance fraction is %s." % (lprob_local(
-                    sample.mean(axis=(0, 1))).round(3), np.mean(sampler.acceptance_fraction).round(2)))
+                    np.mean(sample, axis=(0, 1))).round(3), np.mean(sampler.acceptance_fraction).round(2)))
 
             if not verbose:
                 pbar.update(1)
