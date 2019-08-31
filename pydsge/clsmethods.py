@@ -3,13 +3,13 @@
 
 import numpy as np
 from .parser import DSGE
+from .stats import summary
+from .engine import preprocess
 from .stuff import *
 from .filtering import *
 from .estimation import *
 from .plots import *
 from .processing import *
-from .stats import summary
-from .engine import preprocess
 
 def write_yaml(self, filename):
 
@@ -40,17 +40,11 @@ def save_meta(self, filename=None):
     else:
         self.fdict['dfile'] = filename
 
-    if hasattr(self, 'description'):
-        self.fdict['description'] = self.description
+    objs = 'description', 'data', 'backend_file', 'tune', 'name'
 
-    if hasattr(self, 'data'):
-        self.fdict['data'] = self.data
-
-    if hasattr(self, 'backend_file'):
-        self.fdict['backend_file'] = self.backend_file
-
-    if hasattr(self, 'tune'):
-        self.fdict['tune'] = self.tune
+    for o in objs:
+        if hasattr(self, o):
+            exec('self.fdict[o] = self.'+str(o))
 
     if hasattr(self, 'filter'):
         self.fdict['filter_R'] = self.filter.R
@@ -84,7 +78,7 @@ def get_chain(self, backend_file=None):
             if hasattr(self, 'backend_file'):
                 backend_file = self.backend_file
             elif 'backend_file' in self.fdict.keys():
-                backend_file = self.fdict['backend_file']
+                backend_file = str(self.fdict['backend_file'])
             else:
                 raise NameError("Neither a backend nor a sampler could be found.")
 
@@ -92,14 +86,49 @@ def get_chain(self, backend_file=None):
 
     return reader.get_chain()
 
+
 def traceplot_m(self, **args):
-    return traceplot(self.get_chain(), varnames=self.fdict['prior_names'], tune=self.tune, priors=self.fdict['frozen_priors'], **args)
+
+    if hasattr(self, 'tune'):
+        tune = self.tune
+    else:
+        tune = self.fdict['tune']
+
+    return traceplot(self.get_chain(), varnames=self.fdict['prior_names'], tune=tune, priors=self.fdict['frozen_priors'], **args)
+
 
 def posteriorplot_m(self, **args):
-    return posteriorplot(self.get_chain(), varnames=self.fdict['prior_names'], tune=self.tune, **args)
+
+    if hasattr(self, 'tune'):
+        tune = self.tune
+    else:
+        tune = self.fdict['tune']
+
+    return posteriorplot(self.get_chain(), varnames=self.fdict['prior_names'], tune=tune, **args)
+
 
 def summary_m(self, **args):
-    return summary(self.get_chain()[:, self.tune:, :], self['__data__']['estimation']['prior'])
+
+    if hasattr(self, 'tune'):
+        tune = self.tune
+    else:
+        tune = self.fdict['tune']
+
+    return summary(self.get_chain(), tune, self['__data__']['estimation']['prior'])
+
+def info_m(self, **args):
+
+    if hasattr(self, 'tune'):
+        tune = self.tune
+    else:
+        tune = self.fdict['tune']
+
+    cshp = self.get_chain().shape
+
+    info_str = 'last %s of %s samples in %s chains with %s parameters.' %(cshp[0] - tune, cshp[0], cshp[1], cshp[2])
+
+    return info_str
+
 
 ## old stuff, left to be integrated
 """
@@ -150,3 +179,4 @@ DSGE.get_chain = get_chain
 DSGE.traceplot = traceplot_m
 DSGE.posteriorplot = posteriorplot_m
 DSGE.summary = summary_m
+DSGE.info = info_m
