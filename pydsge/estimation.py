@@ -305,8 +305,6 @@ def pmdm(self, linear=False, maxfev=None, linear_pre_pmdm=False, method=None, to
     if maxfev is None:
         maxfev = 1000
 
-    lprob = self.lprob
-
     if linear_pre_pmdm:
         print('[bayesian_estimation -> pmdm:]'.ljust(45, ' ') +
               ' starting pre-maximization of linear function.')
