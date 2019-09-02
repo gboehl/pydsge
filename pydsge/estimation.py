@@ -252,6 +252,8 @@ def prep_estim(self, N=300, linear=False, seed=0, obs_cov=None, init_with_pmeans
             try:
                 warnings.filterwarnings('error')
 
+                np.random.seed(seed)
+
                 par_fix[prior_arg] = parameters
                 par_active_lst = list(par_fix)
 
@@ -261,13 +263,12 @@ def prep_estim(self, N=300, linear=False, seed=0, obs_cov=None, init_with_pmeans
                 # these max vals should be sufficient given we're only dealing with stochastic linearization
                 if not linear:
                     self.preprocess(l_max=3, k_max=16, verbose=verbose > 1)
+                    self.filter.fx = self.t_func
+                    self.filter.hx = self.o_func
                 else:
                     self.preprocess(l_max=1, k_max=0, verbose=False)
-
-                np.random.seed(seed)
-
-                self.filter.fx = self.t_func
-                self.filter.hx = self.o_func
+                    self.filter.F = self.linear_representation()
+                    self.filter.H = self.hx
 
                 ll = self.get_ll(verbose=verbose)
 
