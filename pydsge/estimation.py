@@ -168,7 +168,7 @@ class PMDM(object):
         return self.x_max
 
 
-def prep_estim(self, N=300, linear=False, seed=0, obs_cov=None, verbose=False):
+def prep_estim(self, N=300, linear=False, seed=0, obs_cov=None, init_with_pmeans=False, verbose=False):
     """Initializes the tools necessary for estimation
 
     ...
@@ -224,13 +224,17 @@ def prep_estim(self, N=300, linear=False, seed=0, obs_cov=None, verbose=False):
     priors = self['__data__']['estimation']['prior']
     prior_arg = [p_names.index(pp) for pp in priors.keys()]
 
+
     # add to class so that it can be stored later
     self.fdict['prior_names'] = [pp for pp in priors.keys()]
     self.priors = priors
     self.par_fix = par_fix
     self.prior_arg = prior_arg
 
-    self.init_par = par_fix[prior_arg]
+    if init_with_pmeans:
+        self.init_par = [priors[pp][1] for pp in priors.keys()]
+    else:
+        self.init_par = par_fix[prior_arg]
     self.ndim = len(priors.keys())
 
     print('[bayesian_estimation:]'.ljust(30, ' ') +
@@ -298,6 +302,8 @@ def prep_estim(self, N=300, linear=False, seed=0, obs_cov=None, verbose=False):
 
     lprob_global = lprob
     self.lprob = lprob
+    self.lprior = lprior
+    self.llike = llike
 
 
 def pmdm(self, linear=False, maxfev=None, linear_pre_pmdm=False, method=None, tol=1e-2, update_freq=None, verbose=False):
