@@ -6,7 +6,7 @@ import warnings
 import os
 import time
 import emcee
-from .stats import get_frozen_priors, mc_mean, summary
+from .stats import get_priors, mc_mean, summary, pmdm_report
 import scipy.optimize as so
 import tqdm
 
@@ -102,27 +102,8 @@ class PMDM(object):
 
         # prints information snapshots
         if self.update_freq and not self.n % self.update_freq:
-            # getting the number of colums isn't that easy
-            with os.popen('stty size', 'r') as rows_cols:
-                cols = rows_cols.read().split()[1]
-            if self.model.description is not None:
-                self.report('[bayesian_estimation -> '+self.desc_str+'pmdm:]'.ljust(45, ' ') +
-                            ' Current best guess @ iteration %s and ll of %s (%s):' % (self.n, -self.res_max.round(5), str(self.model.description)))
-            else:
-                self.report('[bayesian_estimation -> '+self.desc_str+'pmdm:]'.ljust(45, ' ') +
-                            ' Current best guess @ iteration %s and ll of %s):' % (self.n, -self.res_max.round(5)))
-            # split the info such that it is readable
-            lnum = (len(self.model.priors)*8)//(int(cols)-8) + 1
-            priors_chunks = np.array_split(
-                np.array(self.model.fdict['prior_names']), lnum)
-            vals_chunks = np.array_split(
-                [round(m_val, 3) for m_val in self.x_max], lnum)
-            for pchunk, vchunk in zip(priors_chunks, vals_chunks):
-                row_format = "{:>8}" * (len(pchunk) + 1)
-                self.report(row_format.format("", *pchunk))
-                self.report(row_format.format("", *vchunk))
-                self.report('')
-            self.report('')
+
+            pmdm_report(self.model, self.x_max, self.res_max, self.n, self.report)
 
         if self.n >= self.maxfev:
             raise StopIteration
@@ -224,24 +205,31 @@ def prep_estim(self, N=300, linear=False, seed=0, obs_cov=None, init_with_pmeans
     priors = self['__data__']['estimation']['prior']
     prior_arg = [p_names.index(pp) for pp in priors.keys()]
 
-
     # add to class so that it can be stored later
     self.fdict['prior_names'] = [pp for pp in priors.keys()]
     self.priors = priors
     self.par_fix = par_fix
     self.prior_arg = prior_arg
 
-    if init_with_pmeans:
-        self.init_par = [priors[pp][1] for pp in priors.keys()]
-    else:
-        self.init_par = par_fix[prior_arg]
     self.ndim = len(priors.keys())
+
+    if 'frozen_priors' not in self.fdict.keys():
+        
+        pfrozen, pinitv, plb, pub = get_priors(priors)
+        self.fdict['frozen_priors'] = pfrozen
+        self.priors_lb = plb
+        self.priors_ub = pub
+
+        if init_with_pmeans:
+            self.init_par = [priors[pp][1] for pp in priors.keys()]
+        else:
+            self.init_par = pinitv
+            for i in range(self.ndim):
+                if pinitv[i] is None:
+                    self.init_par[i] = par_fix[prior_arg][i]
 
     print('[bayesian_estimation:]'.ljust(30, ' ') +
           ' %s priors detected. Adding parameters to the prior distribution.' % self.ndim)
-
-    if 'frozen_priors' not in self.fdict.keys():
-        self.fdict['frozen_priors'] = get_frozen_priors(priors)
 
     def llike(parameters, linear, verbose):
 
@@ -260,12 +248,16 @@ def prep_estim(self, N=300, linear=False, seed=0, obs_cov=None, init_with_pmeans
                 self.get_sys(par=par_active_lst, reduce_sys=True,
                              verbose=verbose > 1)
 
-                # these max vals should be sufficient given we're only dealing with stochastic linearization
                 if not linear:
+                    if self.linear_filter:
+                        self.create_filter(N=N, linear=False, random_seed=seed)
+                    # these max vals should be sufficient given we're only dealing with stochastic linearization
                     self.preprocess(l_max=3, k_max=16, verbose=verbose > 1)
                     self.filter.fx = self.t_func
                     self.filter.hx = self.o_func
                 else:
+                    if not self.linear_filter:
+                        self.create_filter(linear=True, random_seed=seed)
                     self.preprocess(l_max=1, k_max=0, verbose=False)
                     self.filter.F = self.linear_representation()
                     self.filter.H = self.hx
@@ -307,10 +299,13 @@ def prep_estim(self, N=300, linear=False, seed=0, obs_cov=None, init_with_pmeans
     self.llike = llike
 
 
-def pmdm(self, linear=False, maxfev=None, linear_pre_pmdm=False, method=None, tol=1e-2, update_freq=None, verbose=False):
+def pmdm(self, linear=None, maxfev=None, linear_pre_pmdm=False, method=None, tol=1e-2, update_freq=None, verbose=False):
 
     if maxfev is None:
         maxfev = 1000
+
+    if linear is None:
+        linear = self.linear_filter
 
     if linear_pre_pmdm:
         print('[bayesian_estimation -> pmdm:]'.ljust(45, ' ') +
@@ -348,7 +343,7 @@ def pmdm(self, linear=False, maxfev=None, linear_pre_pmdm=False, method=None, to
     return self.init_par
 
 
-def bay_estim(self, nsteps=3000, nwalks=None, tune=None, ncores=None, backend_file=None, linear=False, distr_init_chains=False, resume=False, update_freq=None, verbose=False, debug=False):
+def bay_estim(self, nsteps=3000, nwalks=None, tune=None, ncores=None, backend_file=None, linear=None, distr_init_chains=False, resume=False, update_freq=None, verbose=False, debug=False):
 
     import pathos
 
@@ -360,6 +355,9 @@ def bay_estim(self, nsteps=3000, nwalks=None, tune=None, ncores=None, backend_fi
 
     if ncores is None:
         ncores = pathos.multiprocessing.cpu_count()
+
+    if linear is None:
+        linear = self.linear_filter
 
     if backend_file is None:
         if 'backend_file' in self.fdict.keys():
@@ -385,16 +383,30 @@ def bay_estim(self, nsteps=3000, nwalks=None, tune=None, ncores=None, backend_fi
     if 'description' in self.fdict.keys():
         self.description = self.fdict['description']
 
+    # globals are *evil*
+    global lprob_global
+
+    # import the global function and pretend it is defined on top level
+    def lprob_local(par):
+        return lprob_global(par, linear, verbose)
+
+    loc_pool = pathos.pools.ProcessPool(ncores)
+    loc_pool.clear()
+
+    if debug:
+        sampler = emcee.EnsembleSampler(nwalks, self.ndim, lprob_local)
+    else:
+        sampler = emcee.EnsembleSampler(
+            nwalks, self.ndim, lprob_local, pool=loc_pool, backend=backend)
+
     if resume:
-        p0 = None
+        p0 = sampler.get_last_sample()
     elif distr_init_chains:
 
         print()
-        print('[bayesian_estimation:]'.ljust(30, ' ') +
-              ' finding initial values for mcmc (distributed over priors):')
+        print('[bayesian_estimation:]'.ljust(30, ' ') + ' finding initial values for mcmc (distributed over priors):')
         p0 = np.empty((nwalks, self.ndim))
-        pbar = tqdm.tqdm(total=nwalks,
-                         unit='init.val(s)', dynamic_ncols=true)
+        pbar = tqdm.tqdm(total=nwalks, unit='init.val(s)', dynamic_ncols=true)
 
         for w in range(nwalks):
             draw_prob = -np.inf
@@ -414,60 +426,40 @@ def bay_estim(self, nsteps=3000, nwalks=None, tune=None, ncores=None, backend_fi
     else:
         p0 = self.init_par*(1+1e-3*np.random.randn(nwalks, self.ndim))
 
-    # globals are *evil*
-    global lprob_global
-
-    # import the global function and pretend it is defined on top level
-    def lprob_local(par):
-        return lprob_global(par, linear, verbose)
-
-    loc_pool = pathos.pools.ProcessPool(ncores)
-    loc_pool.clear()
-
-    if debug:
-        sampler = emcee.EnsembleSampler(nwalks, self.ndim, lprob_local)
-    else:
-        sampler = emcee.EnsembleSampler(
-            nwalks, self.ndim, lprob_local, pool=loc_pool, backend=backend)
-
     if not verbose:
         np.warnings.filterwarnings('ignore')
 
-    if resume:
-        sampler.run_mcmc(p0, nsteps, progress=True)
-
+    if not verbose:
+        pbar = tqdm.tqdm(total=nsteps, unit='sample(s)',
+                         dynamic_ncols=True)
+        report = pbar.write
     else:
+        report = print
+
+    for result in sampler.sample(p0, iterations=nsteps):
+
+        cnt = sampler.iteration
+
+        if cnt and update_freq and not cnt % update_freq:
+
+            report('')
+            if self.description is not None:
+                report('[bayesian_estimation -> mcmc:]'.ljust(45, ' ') +
+                       ' Summary from last %s of %s iterations (%s):' % (update_freq, cnt, str(self.description)))
+
+            else:
+                report('[bayesian_estimation -> mcmc:]'.ljust(45, ' ') +
+                       ' Summary from last %s of %s iterations:' % (update_freq, cnt))
+
+            sample = sampler.get_chain()
+            report(str(summary(sample, -update_freq, self.priors).round(3)))
+            report("Mean likelihood is %s, mean acceptance fraction is %s." % (lprob_local(
+                np.mean(sample, axis=(0, 1))).round(3), np.mean(sampler.acceptance_fraction).round(2)))
+
         if not verbose:
-            pbar = tqdm.tqdm(total=nsteps, unit='sample(s)',
-                             dynamic_ncols=True)
-            report = pbar.write
-        else:
-            report = print
+            pbar.update(1)
 
-        for result in sampler.sample(p0, iterations=nsteps):
-
-            cnt = sampler.iteration
-
-            if cnt and update_freq and not cnt % update_freq:
-
-                report('')
-                if self.description is not None:
-                    report('[bayesian_estimation -> mcmc:]'.ljust(45, ' ') +
-                           ' Summary from last %s of %s iterations (%s):' % (update_freq, cnt, str(self.description)))
-
-                else:
-                    report('[bayesian_estimation -> mcmc:]'.ljust(45, ' ') +
-                           ' Summary from last %s of %s iterations:' % (update_freq, cnt))
-
-                sample = sampler.get_chain()
-                report(str(summary(sample, -update_freq, self.priors).round(3)))
-                report("Mean likelihood is %s, mean acceptance fraction is %s." % (lprob_local(
-                    np.mean(sample, axis=(0, 1))).round(3), np.mean(sampler.acceptance_fraction).round(2)))
-
-            if not verbose:
-                pbar.update(1)
-
-        pbar.close()
+    pbar.close()
 
     if not verbose:
         np.warnings.filterwarnings('default')

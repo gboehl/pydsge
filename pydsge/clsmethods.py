@@ -4,7 +4,7 @@
 import numpy as np
 import pandas as pd
 from .parser import DSGE
-from .stats import summary
+from .stats import summary, pmdm_report
 from .engine import preprocess
 from .stuff import *
 from .filtering import *
@@ -202,6 +202,7 @@ DSGE.posteriorplot = posteriorplot_m
 DSGE.summary = summary_m
 DSGE.info = info_m
 DSGE.get_data = get_data
+DSGE.pmdm_report = pmdm_report
 
 ## old stuff, left to be integrated
 """

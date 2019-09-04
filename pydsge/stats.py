@@ -166,34 +166,55 @@ def inv_gamma_spec(mu, sigma):
 
     return s, nu
 
-def get_frozen_priors(priors):
+def get_priors(priors):
 
     priors_lst = []
+    initv = []
+    lb = []
+    ub = []
 
     for pp in priors:
 
         dist = priors[str(pp)]
-        pmean = dist[1]
-        pstdd = dist[2]
+
+        if len(dist) == 3:
+            initv.append(None)
+            lb.append(None)
+            ub.append(None)
+            ptype = dist[0]
+            pmean = dist[1]
+            pstdd = dist[2]
+        elif len(dist) == 6:
+            if dist[0] == 'None':
+                initv.append(None)
+            else:
+                initv.append(dist[0])
+            lb.append(dist[1])
+            ub.append(dist[2])
+            ptype = dist[3]
+            pmean = dist[4]
+            pstdd = dist[5]
+        else:
+            raise NotImplementedError('Shape of prior specification is unclear (!=3 & !=6).')
 
         # simply make use of frozen distributions
-        if str(dist[0]) == 'uniform':
+        if str(ptype) == 'uniform':
             priors_lst.append(ss.uniform(loc=pmean, scale=pstdd-pmean))
 
-        elif str(dist[0]) == 'normal':
+        elif str(ptype) == 'normal':
             priors_lst.append(ss.norm(loc=pmean, scale=pstdd))
 
-        elif str(dist[0]) == 'gamma':
+        elif str(ptype) == 'gamma':
             b = pstdd**2/pmean
             a = pmean/b
             priors_lst.append(ss.gamma(a, scale=b))
 
-        elif str(dist[0]) == 'beta':
+        elif str(ptype) == 'beta':
             a = (1-pmean)*pmean**2/pstdd**2 - pmean
             b = a*(1/pmean - 1)
             priors_lst.append(ss.beta(a=a, b=b))
 
-        elif str(dist[0]) == 'inv_gamma':
+        elif str(ptype) == 'inv_gamma':
 
             def targf(x):
                 y0 = ss.invgamma(x[0], scale=x[1]).std() - pstdd
@@ -207,15 +228,44 @@ def get_frozen_priors(priors):
             else:
                 raise ValueError(
                     'Can not find inverse gamma distribution with mean %s and std %s' % (pmean, pstdd))
-        elif str(dist[0]) == 'inv_gamma_dynare':
+        elif str(ptype) == 'inv_gamma_dynare':
             s, nu = inv_gamma_spec(pmean, pstdd)
             ig = InvGammaDynare()(s, nu)
             priors_lst.append(ig)
 
         else:
             raise NotImplementedError(
-                ' Distribution *not* implemented: ', str(dist[0]))
-        print('     parameter %s as %s with mean %s and std/df %s...' %
-              (pp, dist[0], pmean, pstdd))
+                ' Distribution *not* implemented: ', str(ptype))
+        if len(dist) == 3:
+            print('     parameter %s as %s with mean %s and std/df %s...' % (pp, ptype, pmean, pstdd))
+        if len(dist) == 6:
+            print('     parameter %s as %s with mean %s and std/df %s. Initial value is %s with bounds of (%s, %s)...' % (pp, ptype, pmean, pstdd, dist[0], dist[1], dist[2]))
 
-    return priors_lst
+    return priors_lst, initv, lb, ub
+
+def pmdm_report(self, x_max, res_max, n=np.inf, printfunc=print):
+
+    # getting the number of colums isn't that easy
+    with os.popen('stty size', 'r') as rows_cols:
+        cols = rows_cols.read().split()[1]
+
+    if self.description is not None:
+        printfunc('[bayesian_estimation -> '+self.description+'pmdm:]'.ljust(45, ' ') + ' Current best guess @ iteration %s and ll of %s (%s):' % (n, -res_max.round(5), str(self.description)))
+    else:
+        printfunc('[bayesian_estimation -> '+self.description+'pmdm:]'.ljust(45, ' ') + ' Current best guess @ iteration %s and ll of %s):' % (n, -res_max.round(5)))
+
+    # split the info such that it is readable
+    lnum = (len(self.priors)*8)//(int(cols)-8) + 1
+    priors_chunks = np.array_split(np.array(self.fdict['prior_names']), lnum)
+    vals_chunks = np.array_split([round(m_val, 3) for m_val in x_max], lnum)
+
+    for pchunk, vchunk in zip(priors_chunks, vals_chunks):
+
+        row_format = "{:>8}" * (len(pchunk) + 1)
+        printfunc(row_format.format("", *pchunk))
+        printfunc(row_format.format("", *vchunk))
+        printfunc('')
+
+    printfunc('')
+
+    return
