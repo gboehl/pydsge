@@ -250,9 +250,9 @@ def pmdm_report(self, x_max, res_max, n=np.inf, printfunc=print):
         cols = rows_cols.read().split()[1]
 
     if self.description is not None:
-        printfunc('[bayesian_estimation -> '+self.description+'pmdm:]'.ljust(45, ' ') + ' Current best guess @ iteration %s and ll of %s (%s):' % (n, -res_max.round(5), str(self.description)))
+        printfunc('[bayesian_estimation -> pmdm ('+self.name+'):]'.ljust(45, ' ') + ' Current best guess @ %s and ll of %s (%s):' % (n, -res_max.round(5), str(self.description)))
     else:
-        printfunc('[bayesian_estimation -> '+self.description+'pmdm:]'.ljust(45, ' ') + ' Current best guess @ iteration %s and ll of %s):' % (n, -res_max.round(5)))
+        printfunc('[bayesian_estimation -> pmdm ('+self.name+'):]'.ljust(45, ' ') + ' Current best guess @ %s and ll of %s):' % (n, -res_max.round(5)))
 
     # split the info such that it is readable
     lnum = (len(self.priors)*8)//(int(cols)-8) + 1
