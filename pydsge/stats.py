@@ -54,14 +54,19 @@ def _hpd_df(x, alpha):
     return pd.DataFrame(hpd_vals, columns=cnames)
 
 
-def summary(trace, tune, varnames, priors=None, alpha=0.05):
+def summary(store, priors, alpha=0.05, top=None, show_priors=False):
     # in parts stolen from pymc3 because it looks really nice
 
     with os.popen('stty size', 'r') as rows_cols:
         cols = rows_cols.read().split()[1]
 
-    if priors is None:
-        priors = varnames
+    swarm_mode = False
+
+    if hasattr(store[0], 'sname'):
+        swarm_mode = True
+        fs = [s.pop.champion_f for s in store]
+        fs_args = np.array(fs)[:,0].argsort()
+        store = np.array(store)[fs_args]
 
     f_prs = [lambda x: pd.Series(x, name='distribution'),
              lambda x: pd.Series(x, name='mean'),
@@ -73,17 +78,31 @@ def summary(trace, tune, varnames, priors=None, alpha=0.05):
              lambda x: _hpd_df(x, alpha)]
 
     var_dfs = []
-    for i, var in enumerate(varnames):
+    for i, var in enumerate(priors):
         lst = []
-        vals = trace[tune:, :, i]
 
-        if priors is not None and int(cols) > 90:
+        if show_priors or int(cols) > 90:
             prior = priors[var]
+            if len(prior) > 3:
+                prior = prior[-3:]
             [lst.append(f(prior[j])) for j, f in enumerate(f_prs)]
 
-        [lst.append(f(vals)) for f in funcs]
+        if swarm_mode:
+            [lst.append(pd.Series(s.pop.champion_x[i], name=s.sname)) for s in store[:top]]
+        else:
+            vals = store[tune:, :, i]
+            [lst.append(f(vals)) for f in funcs]
         var_df = pd.concat(lst, axis=1)
         var_df.index = [var]
+        var_dfs.append(var_df)
+
+    if swarm_mode:
+        lst = []
+        if show_priors or len(cols) > 90:
+            [lst.append(f('')) for j, f in enumerate(f_prs)]
+        [lst.append(pd.Series(s.pop.champion_f, name=s.sname)) for s in store[:top]]
+        var_df = pd.concat(lst, axis=1)
+        var_df.index = ['loglike']
         var_dfs.append(var_df)
 
     dforg = pd.concat(var_dfs, axis=0)
@@ -111,7 +130,6 @@ class InvGammaDynare(ss.rv_continuous):
 
         if x < 0:
             lpdf = -np.inf
-
         else:
             lpdf = np.log(2) - gammaln(nu/2) - nu/2*(np.log(2) - np.log(s)) - (nu+1)*np.log(x) - .5*s/x**2
 
@@ -173,6 +191,7 @@ def get_priors(priors):
     lb = []
     ub = []
 
+    print('Adding parameters to the prior distribution...')
     for pp in priors:
 
         dist = priors[str(pp)]
@@ -237,9 +256,9 @@ def get_priors(priors):
             raise NotImplementedError(
                 ' Distribution *not* implemented: ', str(ptype))
         if len(dist) == 3:
-            print('     parameter %s as %s with mean %s and std/df %s...' % (pp, ptype, pmean, pstdd))
+            print('  parameter %s as %s with mean %s and std/df %s...' % (pp, ptype, pmean, pstdd))
         if len(dist) == 6:
-            print('     parameter %s as %s with mean %s and std/df %s. Initial value is %s with bounds of (%s, %s)...' % (pp, ptype, pmean, pstdd, dist[0], dist[1], dist[2]))
+            print('  parameter %s as %s (%s, %s). Init @ %s, with bounds (%s, %s)...' % (pp, ptype, pmean, pstdd, dist[0], dist[1], dist[2]))
 
     return priors_lst, initv, lb, ub
 
