@@ -335,12 +335,14 @@ def simulate_series(self, T=1e3, cov=None, verbose=False, show_warnings=True):
     states, Ks = [], []
     for i in range(int(T)):
         shk_vec = ss.multivariate_normal.rvs(cov=cov)
-        st_vec, ks, flag = self.t_func(st_vec, shk_vec, return_k=True, verbose=verbose)
+        st_vec, ks, flag = self.t_func(
+            st_vec, shk_vec, return_k=True, verbose=verbose)
         states.append(st_vec)
         Ks.append(ks)
-        
+
         if show_warnings and flag:
-            print('[irfs:]'.ljust(15, ' ') + ' No rational expectations solution found.')
+            print('[irfs:]'.ljust(15, ' ') +
+                  ' No rational expectations solution found.')
 
     return np.array(states), np.array(Ks)
 

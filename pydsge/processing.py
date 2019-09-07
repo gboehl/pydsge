@@ -10,11 +10,11 @@ from tqdm import tqdm
 from .parser import DSGE as dsge
 
 
-
 def mask(self, verbose=False):
     if verbose:
         print('[mask:]'.ljust(15, ' ') + 'Shocks:', self.shocks)
     return np.full((self.Z.shape[0]-1, self.Z.shape[1]), np.nan)
+
 
 def runner_pooled(nr_samples, ncores, mask, use_pbar):
 

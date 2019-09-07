@@ -54,19 +54,23 @@ def _hpd_df(x, alpha):
     return pd.DataFrame(hpd_vals, columns=cnames)
 
 
-def summary(store, priors, tune=None, alpha=0.05, top=None, show_priors=False, min_col=80):
+def summary(store, priors, tune=None, alpha=0.05, top=None, show_priors=False, min_col=80, swarm_mode=None):
     # in parts stolen from pymc3 because it looks really nice
 
     with os.popen('stty size', 'r') as rows_cols:
         cols = rows_cols.read().split()[1]
 
-    swarm_mode = False
+    if swarm_mode is None:
+        swarm_mode = False
 
-    if isinstance(store, tuple):
+    if swarm_mode or isinstance(store, tuple):
+        min_col += 20
         swarm_mode = True
         xs, fs, ns = store
         ns = ns.squeeze()
-        store = np.array(xs)[fs[:,0].argsort()]
+        fas = (-fs[:, 0]).argsort()
+        xs = xs[fas]
+        fs = fs.squeeze()[fas]
 
     f_prs = [lambda x: pd.Series(x, name='distribution'),
              lambda x: pd.Series(x, name='mean'),
@@ -88,7 +92,8 @@ def summary(store, priors, tune=None, alpha=0.05, top=None, show_priors=False, m
             [lst.append(f(prior[j])) for j, f in enumerate(f_prs)]
 
         if swarm_mode:
-            [lst.append(pd.Series(s[i], name=n)) for s,n in zip(store[:top], ns[:top]) ]
+            [lst.append(pd.Series(s[i], name=n))
+             for s, n in zip(xs[:top], ns[:top])]
         else:
             vals = store[tune:, :, i]
             [lst.append(f(vals)) for f in funcs]
@@ -99,11 +104,11 @@ def summary(store, priors, tune=None, alpha=0.05, top=None, show_priors=False, m
     if swarm_mode:
 
         lst = []
-        
+
         if show_priors or int(cols) > min_col:
             [lst.append(f('')) for j, f in enumerate(f_prs)]
 
-        [lst.append(pd.Series(s, name=n)) for s,n in zip(-np.sort(fs[:,0])[:top],ns[:top])]
+        [lst.append(pd.Series(s, name=n)) for s, n in zip(fs[:top], ns[:top])]
         var_df = pd.concat(lst, axis=1)
         var_df.index = ['loglike']
         var_dfs.append(var_df)
@@ -134,7 +139,8 @@ class InvGammaDynare(ss.rv_continuous):
         if x < 0:
             lpdf = -np.inf
         else:
-            lpdf = np.log(2) - gammaln(nu/2) - nu/2*(np.log(2) - np.log(s)) - (nu+1)*np.log(x) - .5*s/x**2
+            lpdf = np.log(2) - gammaln(nu/2) - nu/2*(np.log(2) -
+                                                     np.log(s)) - (nu+1)*np.log(x) - .5*s/x**2
 
         return lpdf
 
@@ -146,23 +152,25 @@ def inv_gamma_spec(mu, sigma):
 
     # directly stolen and translated from dynare/matlab. It is unclear to me what the sigma parameter stands for, as it does not appear to be the standard deviation. This is provided for compatibility reasons, I strongly suggest to use the inv_gamma distribution that simply takes mean / stdd as parameters.
 
-    ig1fun = lambda nu: np.log(2*mu**2) - np.log((sigma**2+mu**2) * (nu-2)) + 2*(gammaln(nu/2)-gammaln((nu-1)/2))
+    def ig1fun(nu): return np.log(2*mu**2) - np.log((sigma**2+mu**2)
+                                                    * (nu-2)) + 2*(gammaln(nu/2)-gammaln((nu-1)/2))
 
     nu = np.sqrt(2*(2+mu**2/sigma**2))
     nu2 = 2*nu
     nu1 = 2
-    err  = ig1fun(nu)
+    err = ig1fun(nu)
     err2 = ig1fun(nu2)
 
-    if err2 > 0: 
-        while nu2 < 1e12: # Shift the interval containing the root. 
-            nu1  = nu2
-            nu2  = nu2*2
+    if err2 > 0:
+        while nu2 < 1e12:  # Shift the interval containing the root.
+            nu1 = nu2
+            nu2 = nu2*2
             err2 = ig1fun(nu2)
-            if err2<0:
+            if err2 < 0:
                 break
-        if err2>0:
-            raise ValueError('[inv_gamma_spec:] Failed in finding an interval containing a sign change! You should check that the prior variance is not too small compared to the prior mean...')
+        if err2 > 0:
+            raise ValueError(
+                '[inv_gamma_spec:] Failed in finding an interval containing a sign change! You should check that the prior variance is not too small compared to the prior mean...')
 
     # Solve for nu using the secant method.
     while abs(nu2/nu1-1) > 1e-14:
@@ -175,17 +183,20 @@ def inv_gamma_spec(mu, sigma):
                 nu2 = nu
         else:
             nu2 = nu
-        nu =  (nu1+nu2)/2
+        nu = (nu1+nu2)/2
         err = ig1fun(nu)
 
     s = (sigma**2+mu**2)*(nu-2)
 
-    if abs(np.log(mu)-np.log(np.sqrt(s/2))-gammaln((nu-1)/2)+gammaln(nu/2))>1e-7:
-        raise ValueError('[inv_gamma_spec:] Failed in solving for the hyperparameters!')
-    if abs(sigma-np.sqrt(s/(nu-2)-mu*mu))>1e-7:
-        raise ValueError('[inv_gamma_spec:] Failed in solving for the hyperparameters!')
+    if abs(np.log(mu)-np.log(np.sqrt(s/2))-gammaln((nu-1)/2)+gammaln(nu/2)) > 1e-7:
+        raise ValueError(
+            '[inv_gamma_spec:] Failed in solving for the hyperparameters!')
+    if abs(sigma-np.sqrt(s/(nu-2)-mu*mu)) > 1e-7:
+        raise ValueError(
+            '[inv_gamma_spec:] Failed in solving for the hyperparameters!')
 
     return s, nu
+
 
 def get_priors(priors):
 
@@ -217,7 +228,8 @@ def get_priors(priors):
             pmean = dist[4]
             pstdd = dist[5]
         else:
-            raise NotImplementedError('Shape of prior specification is unclear (!=3 & !=6).')
+            raise NotImplementedError(
+                'Shape of prior specification is unclear (!=3 & !=6).')
 
         # simply make use of frozen distributions
         if str(ptype) == 'uniform':
@@ -259,11 +271,14 @@ def get_priors(priors):
             raise NotImplementedError(
                 ' Distribution *not* implemented: ', str(ptype))
         if len(dist) == 3:
-            print('  parameter %s as %s with mean %s and std/df %s...' % (pp, ptype, pmean, pstdd))
+            print('  parameter %s as %s with mean %s and std/df %s...' %
+                  (pp, ptype, pmean, pstdd))
         if len(dist) == 6:
-            print('  parameter %s as %s (%s, %s). Init @ %s, with bounds (%s, %s)...' % (pp, ptype, pmean, pstdd, dist[0], dist[1], dist[2]))
+            print('  parameter %s as %s (%s, %s). Init @ %s, with bounds (%s, %s)...' % (
+                pp, ptype, pmean, pstdd, dist[0], dist[1], dist[2]))
 
     return priors_lst, initv, (lb, ub)
+
 
 def pmdm_report(self, x_max, res_max, n=np.inf, printfunc=print):
 
@@ -272,9 +287,11 @@ def pmdm_report(self, x_max, res_max, n=np.inf, printfunc=print):
         cols = rows_cols.read().split()[1]
 
     if self.description is not None:
-        printfunc('[bayesian_estimation -> pmdm ('+self.name+'):]'.ljust(45, ' ') + ' Current best guess @ %s and ll of %s (%s):' % (n, -res_max.round(5), str(self.description)))
+        printfunc('[bayesian_estimation -> pmdm ('+self.name+'):]'.ljust(45, ' ') +
+                  ' Current best guess @ %s and ll of %s (%s):' % (n, -res_max.round(5), str(self.description)))
     else:
-        printfunc('[bayesian_estimation -> pmdm ('+self.name+'):]'.ljust(45, ' ') + ' Current best guess @ %s and ll of %s):' % (n, -res_max.round(5)))
+        printfunc('[bayesian_estimation -> pmdm ('+self.name+'):]'.ljust(45, ' ') +
+                  ' Current best guess @ %s and ll of %s):' % (n, -res_max.round(5)))
 
     # split the info such that it is readable
     lnum = (len(self.priors)*8)//(int(cols)-8) + 1

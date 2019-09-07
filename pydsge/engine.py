@@ -78,7 +78,8 @@ def preprocess_jit(vals, l_max, k_max):
                     matrices = core_mat[l0, k0]
                     oterm = core_term[k0]
 
-                    fin_mat = aca(matrices[:, :dim_x]) @ SS_mat + aca(matrices[:, dim_x:])
+                    fin_mat = aca(matrices[:, :dim_x]
+                                  ) @ SS_mat + aca(matrices[:, dim_x:])
                     fin_term = aca(matrices[:, :dim_x]) @ SS_term + oterm
 
                     mat[l, k, s], term[l, k, s] = core_mat[s0,

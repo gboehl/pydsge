@@ -12,6 +12,7 @@ from .estimation import *
 from .plots import *
 from .processing import *
 
+
 def write_yaml(self, filename):
 
     if filename[-5:] is not '.yaml':
@@ -22,13 +23,13 @@ def write_yaml(self, filename):
     f.write(self.raw_yaml)
     f.close()
 
-    print("Model written to '%s.'" %filename)
+    print("Model written to '%s.'" % filename)
 
-    return 
+    return
 
 
 def save_meta(self, filename=None):
-    
+
     if filename is None:
         if 'dfile' in self.fdict.keys():
             filename = self.fdict['dfile']
@@ -62,14 +63,14 @@ def set_path(self, path):
 
     if not path[-1] == os.sep:
         path = path + os.sep
-    
+
     self.path = path
 
     return
 
 
 def get_chain(self, backend_file=None):
-    
+
     if backend_file is None:
 
         if hasattr(self, 'sampler'):
@@ -81,7 +82,8 @@ def get_chain(self, backend_file=None):
             elif 'backend_file' in self.fdict.keys():
                 backend_file = str(self.fdict['backend_file'])
             else:
-                raise NameError("Neither a backend nor a sampler could be found.")
+                raise NameError(
+                    "Neither a backend nor a sampler could be found.")
 
     reader = emcee.backends.HDFBackend(backend_file)
 
@@ -120,7 +122,7 @@ def mcmc_summary(self, tune=None, **args):
 
 
 def swarm_summary(self, **args):
-    return summary(self.swarms, self['__data__']['estimation']['prior'], **args)
+    return summary(self.fdict['swarms'], self['__data__']['estimation']['prior'], swarm_mode=True, **args)
 
 
 def info_m(self, **args):
@@ -142,7 +144,8 @@ def info_m(self, **args):
 
     cshp = self.get_chain().shape
 
-    info_str = 'Title: %s (description: %s). Last %s of %s samples in %s chains with %s parameters.' %(name, description, cshp[0] - tune, cshp[0], cshp[1], cshp[2])
+    info_str = 'Title: %s (description: %s). Last %s of %s samples in %s chains with %s parameters.' % (
+        name, description, cshp[0] - tune, cshp[0], cshp[1], cshp[2])
 
     return info_str
 
@@ -156,9 +159,10 @@ def get_data(self, csv_file, sep=None, start=None, end=None):
 
     for o in self['observables']:
         if str(o) not in d0.keys():
-            raise KeyError('%s is not in the data!' %o)
+            raise KeyError('%s is not in the data!' % o)
 
-    dates = pd.date_range(str(int(d0['year'][0])), periods=d0.shape[0], freq='Q')
+    dates = pd.date_range(
+        str(int(d0['year'][0])), periods=d0.shape[0], freq='Q')
 
     d0.index = dates
 
@@ -178,6 +182,7 @@ def get_data(self, csv_file, sep=None, start=None, end=None):
     self.fdict['obs'] = self.obs
 
     return d2
+
 
 DSGE.t_func = t_func
 DSGE.set_path = set_path
@@ -213,7 +218,7 @@ DSGE.info = info_m
 DSGE.get_data = get_data
 DSGE.pmdm_report = pmdm_report
 
-## old stuff, left to be integrated
+# old stuff, left to be integrated
 """
 def chain_masker(self):
     iss = np.zeros(len(self.prior_names), dtype=bool)

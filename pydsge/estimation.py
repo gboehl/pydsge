@@ -103,7 +103,8 @@ class PMDM(object):
         # prints information snapshots
         if self.update_freq and not self.n % self.update_freq:
 
-            pmdm_report(self.model, self.x_max, self.res_max, self.n, self.report)
+            pmdm_report(self.model, self.x_max,
+                        self.res_max, self.n, self.report)
 
         if self.n >= self.maxfev:
             raise StopIteration
@@ -114,7 +115,7 @@ class PMDM(object):
 
         try:
             f_val = -np.inf
-            self.x = self.model.pmdm_init_par
+            self.x = self.model.par_cand
 
             res = so.minimize(self, self.x, method=self.method,
                               tol=self.tol, options=self.opt_dict)
@@ -148,6 +149,7 @@ class PMDM(object):
 
         return self.x_max
 
+
 class GPP:
     """Generic PYGMO problem
     """
@@ -164,6 +166,7 @@ class GPP:
 
     def get_bounds(self):
         return self.bounds
+
 
 def prep_estim(self, N=300, linear=False, seed=0, obs_cov=None, init_with_pmeans=False, verbose=False):
     """Initializes the tools necessary for estimation
@@ -230,10 +233,10 @@ def prep_estim(self, N=300, linear=False, seed=0, obs_cov=None, init_with_pmeans
     self.ndim = len(priors.keys())
 
     if 'frozen_priors' not in self.fdict.keys():
-        
+
         pfrozen, pinitv, bounds = get_priors(priors)
         self.fdict['frozen_priors'] = pfrozen
-        self.prior_bounds = bounds
+        self.fdict['prior_bounds'] = bounds
 
         if init_with_pmeans:
             self.init_par = [priors[pp][1] for pp in priors.keys()]
@@ -244,6 +247,7 @@ def prep_estim(self, N=300, linear=False, seed=0, obs_cov=None, init_with_pmeans
                     self.init_par[i] = par_fix[prior_arg][i]
 
         self.par_cand = self.init_par.copy()
+        self.fdict['init_par'] = self.init_par
 
     print('[bayesian_estimation:]'.ljust(30, ' ') +
           ' %s priors detected. Adding parameters to the prior distribution.' % self.ndim)
@@ -311,7 +315,7 @@ def prep_estim(self, N=300, linear=False, seed=0, obs_cov=None, init_with_pmeans
     global lprob_global
     lprob_global = lprob
 
-    ## also make functions accessible
+    # also make functions accessible
     self.lprob = lprob
     self.lprior = lprior
     self.llike = llike
@@ -325,19 +329,18 @@ def pmdm(self, linear=None, maxfev=None, linear_pre_pmdm=False, method=None, tol
     if linear is None:
         linear = self.linear_filter
 
-    self.pmdm_init_par = self.init_par
-
     if linear_pre_pmdm:
         print('[bayesian_estimation -> pmdm:]'.ljust(45, ' ') +
               ' starting pre-maximization of linear function.')
-        self.pmdm_init_par = PMDM(self, maxfev, tol, method,
+        self.par_cand = PMDM(self, maxfev, tol, method,
                              True, update_freq, verbose=verbose).go()
         print('[bayesian_estimation -> pmdm:]'.ljust(45, ' ') +
               ' pre-maximization of linear function done, starting actual maximization.')
 
     description = self.description
 
-    self.pmdm_par = PMDM(self, maxfev, tol, method, linear, update_freq, verbose=verbose).go()
+    self.pmdm_par = PMDM(self, maxfev, tol, method, linear,
+                         update_freq, verbose=verbose).go()
 
     self.fdict['pmdm_par'] = self.pmdm_par
 
@@ -363,6 +366,197 @@ def pmdm(self, linear=None, maxfev=None, linear_pre_pmdm=False, method=None, tol
     print()
 
     return self.pmdm_par
+
+
+def swarm_find(self, algos, linear=False, pop_size=100, ncalls=10, mig_share=.1, seed=0, use_ring=False, ncores=None, verbose=False):
+
+    import pygmo as pg
+    import dill
+    import pathos
+    import random
+
+    np.random.seed(seed)
+    random.seed(seed)
+
+    # globals are *evil*
+    global lprob_global
+
+    # import the global function and pretend it is defined on top level
+    def lprob_local(par):
+        return lprob_global(par, linear, verbose)
+
+    sfunc_inst = GPP(lprob_local, self.fdict['prior_bounds'])
+
+    class Swarm(object):
+
+        name = 'Swarm'
+        # NOTE: the swarm does NOT hold actual pygmo objects such as pygmo.population or pygmo.algorithm, but only the serialized versions thereof
+
+        def __init__(self, algo, pop, seed=None):
+
+            self.res = None
+            self.ncalls = 0
+            self.history = []
+
+            self.pop = pop
+            self.algo = algo
+            self.seed = seed
+
+            return
+
+        def extract(self):
+
+            self.algo, self.pop = self.res.get()
+
+            return
+
+        @property
+        def ready(self):
+
+            if self.res is None:
+                return True
+            else:
+                return self.res.ready()
+
+        @property
+        def sname(self):
+
+            algo = dill.loads(self.algo)
+            aname = algo.get_name()
+            sname = aname.split(':')[0]
+
+            return sname + '_' + str(self.seed)
+
+    def dump_pop(pop):
+
+        xs = pop.get_x()
+        fs = pop.get_f()
+        sd = pop.get_seed()
+
+        return (xs, fs, sd)
+
+    def load_pop(ser_pop):
+
+        xs, fs, sd = ser_pop
+        pop_size = len(fs)
+
+        prob = pg.problem(sfunc_inst)
+        pop = pg.population(prob, size=pop_size, seed=sd)
+
+        for i in range(pop_size):
+            pop.set_xf(i, xs[i], fs[i])
+
+        return pop
+
+    def gen_pop(seed, algos, pop_size):
+
+        random.seed(seed)
+        algo = random.sample(algos, 1)[0]
+        algo.set_seed(seed)
+        prob = pg.problem(sfunc_inst)
+        pop = pg.population(prob, size=pop_size, seed=seed)
+
+        ser_pop = dump_pop(pop)
+        ser_algo = dill.dumps(algo)
+
+        return ser_algo, ser_pop
+
+    def evolve(ser_algo, ser_pop):
+
+        algo = dill.loads(ser_algo)
+        pop = load_pop(ser_pop)
+
+        pop = algo.evolve(pop)
+
+        return dill.dumps(algo), dump_pop(pop),
+
+    print('[swarm_find:]'.ljust(30, ' ') +
+          ' Number of iterations per core is %sx the generation length.' % (ncalls*pop_size))
+
+    if ncores is None:
+        ncores = pathos.multiprocessing.cpu_count()
+
+    pool = pathos.pools.ProcessPool(ncores)
+
+    mig_abs = int(pop_size*mig_share)
+
+    print('[swarm_find:]'.ljust(30, ' ') +
+          ' Creating overlord of %s swarms...' % ncores, end="", flush=True)
+
+    rests = [pool.apipe(gen_pop, s, algos, pop_size) for s in range(ncores)]
+    overlord = [Swarm(*res.get(), s) for s, res in zip(range(ncores), rests)]
+
+    print('done.')
+    print('[swarm_find:]'.ljust(30, ' ') + ' Swarming out! Bzzzzz...')
+
+    done = False
+    best_x = None
+
+    pbar = tqdm.tqdm(total=ncalls*ncores, dynamic_ncols=True)
+
+    ll_max = -np.inf
+
+    while not done:
+        for s in overlord:
+            if not use_ring:
+                if not (s.ready and s.ncalls < ncalls):
+                    continue
+
+            if s.res is not None:
+                s.extract()
+
+            # migrate the worst
+            fs = s.pop[1]
+            fas = fs[:, 0].argsort()
+
+            if best_x is not None:
+                for no, x, f in zip(fas[-mig_abs:], best_x, best_f):
+                    s.pop[0][no] = x
+                    s.pop[1][no] = f
+
+            # save best for the next
+            xs = s.pop[0]
+            best_x = xs[fas][:mig_abs]
+            best_f = fs[fas][:mig_abs]
+
+            # record history
+            s.history.append(xs[fas][0])
+
+            s.res = pool.apipe(evolve, s.algo, s.pop)
+            s.ncalls += 1
+
+            # keep us informed
+            ll_max_swarm = -fs[fas][0][0]
+            ll_max = max(ll_max, ll_max_swarm)
+
+            pbar.update()
+            pbar.set_description(
+                'll: '+str(ll_max_swarm.round(5)).rjust(12, ' ')+' ['+str(ll_max.round(5))+']')
+
+        done = all([s.ncalls >= ncalls for s in overlord])
+
+    pbar.close()
+
+    xs = np.empty((ncores, self.ndim))
+    fs = np.empty((ncores, 1))
+    ns = np.empty((ncores, 1), dtype=object)
+    hs = np.empty((ncores, ncalls, self.ndim))
+
+    for i, s in enumerate(overlord):
+        fs[i, :] = -s.pop[1].min()
+        xs[i, :] = s.pop[0][s.pop[1].argmin()]
+        ns[i, :] = s.sname
+        hs[i, :] = np.array(s.history)
+
+    self.overlord = overlord
+    self.par_cand = xs
+    self.swarms = xs, fs, ns.reshape(1, -1)
+    self.swarm_history = hs
+
+    self.fdict['swarms'] = xs, fs, ns.reshape(1, -1)
+    self.fdict['swarm_history'] = hs
+
+    return
 
 
 def bay_estim(self, nsteps=3000, nwalks=None, tune=None, ncores=None, backend_file=None, linear=None, distr_init_chains=False, resume=False, update_freq=None, verbose=False, debug=False):
@@ -426,7 +620,8 @@ def bay_estim(self, nsteps=3000, nwalks=None, tune=None, ncores=None, backend_fi
     elif distr_init_chains:
 
         print()
-        print('[bayesian_estimation:]'.ljust(30, ' ') + ' finding initial values for mcmc (distributed over priors):')
+        print('[bayesian_estimation:]'.ljust(30, ' ') +
+              ' finding initial values for mcmc (distributed over priors):')
         p0 = np.empty((nwalks, self.ndim))
         pbar = tqdm.tqdm(total=nwalks, unit='init.val(s)', dynamic_ncols=true)
 
@@ -453,7 +648,7 @@ def bay_estim(self, nsteps=3000, nwalks=None, tune=None, ncores=None, backend_fi
 
             for i, w in enumerate(range(nwalks)):
                 par = self.par_cand[i % cand_dim]
-                p0[w,:] = par * (1+1e-3*np.random.randn())
+                p0[w, :] = par * (1+1e-3*np.random.randn())
 
         else:
             p0 = self.par_cand*(1+1e-3*np.random.randn(nwalks, self.ndim))
@@ -501,205 +696,4 @@ def bay_estim(self, nsteps=3000, nwalks=None, tune=None, ncores=None, backend_fi
 
     self.sampler = sampler
 
-
-def swarm_find(self, algos, linear=False, pop_size=100, ncalls=10, mig_share=.1, seed=0, use_ring=False, ncores=None, verbose=False):
-
-    import pygmo as pg
-    import dill
-    import pathos
-    import random
-
-    np.random.seed(seed)
-    random.seed(seed)
-
-    # globals are *evil*
-    global lprob_global
-
-    # import the global function and pretend it is defined on top level
-    def lprob_local(par):
-        return lprob_global(par, linear, verbose)
-
-    sfunc_inst = GPP(lprob_local, self.prior_bounds)
-
-    class Swarm(object):
-
-        name = 'Swarm'
-
-        def __init__(self, algo, pop, seed=None):
-
-            print('u')
-            self.res = None
-            self.ncalls = 0
-            self.history = []
-
-            if isinstance(pop, tuple):
-                self.pop = load_pop(pop)
-            else:
-                self.pop = pop
-            seed = self.pop.get_seed()
-            print('init: ', seed)
-
-            if isinstance(algo, bytes):
-                self.algo = dill.loads(algo)
-            else:
-                self.algo = algo
-
-            if seed is None:
-                self.seed = self.pop.get_seed()
-            else:
-                self.seed = seed
-            print('done: ', seed)
-            return 
-
-        def extract(self):
-
-            ser_algo, ser_pop = self.res.get()
-            self.algo = dill.loads(ser_algo)
-            self.pop = load_pop(ser_pop)
-            self.history.append(self.pop.champion_x)
-            return 
-
-        def dump(self):
-
-            ser_algo = dill.dumps(self.algo)
-            ser_pop = dump_pop(self.pop)
-
-            return ser_algo, ser_pop
-
-        @property
-        def ready(self):
-            if self.res is None:
-                return True
-            else:
-                return self.res.ready()
-
-        @property
-        def sname(self):
-            aname = self.algo.get_name()
-            sname = aname.split(':')[0]
-            return sname + '_' + str(self.seed)
-
-    def dump_pop(pop):
-
-        xs = pop.get_x()
-        fs = pop.get_f()
-        sd = pop.get_seed()
-
-        return (xs, fs, sd)
-
-    def load_pop(ser_pop):
-
-        xs, fs, sd = ser_pop
-        pop_size = len(fs)
-
-        prob = pg.problem(sfunc_inst)
-        pop = pg.population(prob, size=pop_size, seed=sd)
-
-        for i in range(pop_size):
-            pop.set_xf(i,xs[i], fs[i])
-
-        return pop
-
-    def gen_pop(seed, algos, pop_size):
-
-        random.seed(seed)
-        algo = random.sample(algos,1)[0]
-        algo.set_seed(seed)
-        prob = pg.problem(sfunc_inst)
-        pop = pg.population(prob, size=pop_size, seed=seed)
-
-        ser_pop = dump_pop(pop)
-        ser_algo = dill.dumps(algo)
-
-        return ser_algo, ser_pop
-
-    def evolve(dump):
-
-        ser_algo, ser_pop = dump
-        algo = dill.loads(ser_algo)
-        pop = load_pop(ser_pop)
-        seed = pop.get_seed()
-        print(seed)
-
-        pop = algo.evolve(pop)
-        ser_pop = dump_pop(pop)
-        ser_algo = dill.dumps(algo)
-
-        return ser_algo, ser_pop
-
-    print('[swarm_find:]'.ljust(30, ' ') + ' Number of iterations per core is %sx the generation length.' %(ncalls*pop_size))
-
-    if ncores is None:
-        ncores = pathos.multiprocessing.cpu_count()
-
-    pool = pathos.pools.ProcessPool(ncores)
-
-    mig_abs = int(pop_size*mig_share)
-
-    print('[swarm_find:]'.ljust(30, ' ') + ' Creating overlord of %s swarms...' %ncores, end="", flush=True)
-
-    rests = [pool.apipe(gen_pop, s, algos, pop_size) for s in range(ncores)]
-    print('initiating...', end="", flush=True)
-    overlord = [Swarm(*res.get()) for res in rests]
-    print('done!')
-
-    print('[swarm_find:]'.ljust(30, ' ') + ' Swarming out! Bzzzzz...')
-
-    done = False
-    best_x = None
-
-    pbar = tqdm.tqdm(total=ncalls*ncores, dynamic_ncols=True)
-
-    ll_max = -np.inf
-
-    while not done:
-        for s in overlord:
-            if not use_ring:
-                if not (s.ready and s.ncalls < ncalls):
-                    continue
-
-            # """
-            if s.res is not None:
-                s.extract()
-
-            fs = s.pop.get_f()
-            fas = fs[:,0].argsort()
-
-            if best_x is not None:
-                for no, x, f in zip(fas[-mig_abs:],best_x, best_f):
-                    s.pop.set_xf(int(no), x, f)
-
-            ## save these for the next
-            ord_x = s.pop.get_x()
-            best_x = ord_x[fas][:mig_abs]
-            best_f = fs[fas][:mig_abs]
-            # """
-
-            dump = s.dump()
-            s.res = pool.apipe(evolve, dump)
-            s.ncalls += 1
-
-            ll_max_swarm = -s.pop.champion_f[0]
-            ll_max = max(ll_max, ll_max_swarm)
-
-            pbar.update()
-            pbar.set_description('ll: '+str(ll_max_swarm.round(5)).rjust(12, ' ')+' ['+str(ll_max.round(5))+']')
-
-        done = all([s.ncalls >= ncalls for s in overlord])
-
-    pbar.close()
-
-    xs = np.array([s.pop.champion_x for s in overlord])
-    fs = np.array([s.pop.champion_f for s in overlord])
-    ns = np.array([s.sname for s in overlord])
-    histories = np.array([s.history for s in overlord])
-
-    self.overlord = overlord
-    self.par_cand = xs
-    self.swarms = xs, fs, ns.reshape(1,-1)
-    self.swarm_history = histories
-
-    self.fdict['swarms'] = xs, fs, ns.reshape(1,-1)
-    self.fdict['swarm_history'] = histories
-
-    return overlord
+    return

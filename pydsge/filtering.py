@@ -40,7 +40,8 @@ def create_filter(self, P=None, R=None, N=None, linear=False, random_seed=None):
         f.F = self.linear_representation()
         f.H = self.hx
     else:
-        f = TEnKF(N=N, dim_x=len(self.vv), dim_z=self.ny, fx=self.t_func, hx=self.o_func, model_obj=self)
+        f = TEnKF(N=N, dim_x=len(self.vv), dim_z=self.ny,
+                  fx=self.t_func, hx=self.o_func, model_obj=self)
 
     if P is not None:
         f.P = P
@@ -60,7 +61,7 @@ def create_filter(self, P=None, R=None, N=None, linear=False, random_seed=None):
     f.Q = CO @ CO.T
 
     self.filter = f
-    
+
     return f
 
 
@@ -133,7 +134,7 @@ def extract(self, pmean=None, cov=None, method=None, penalty=50, return_flag=Fal
 
     # means, cov, res, flag = self.enkf.ipas(pmean, cov, method, penalty, show_warnings=show_warnings,
     means, cov, res, flag = ipas(self.enkf, pmean, cov, method, penalty, show_warnings=show_warnings,
-                                           itype=itype, presmoothing=presmoothing, objects=mod_objs, min_options=min_options, return_flag=True, verbose=verbose)
+                                 itype=itype, presmoothing=presmoothing, objects=mod_objs, min_options=min_options, return_flag=True, verbose=verbose)
 
     self.res = res
 

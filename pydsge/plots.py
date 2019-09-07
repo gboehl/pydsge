@@ -180,7 +180,7 @@ def traceplot(trace, varnames, tune, figsize=None,
                     colors = 'maroon',
                     sfactor = 3
                     # make it a tuple so that d[0] results the series
-                    d   = d, 
+                    d = d,
 
                 for temp in reversed(range(temp_iter)):
 
@@ -391,7 +391,7 @@ def posteriorplot(trace, varnames=None, tune=0, figsize=None, max_no=4, text_siz
         if len(np.atleast_1d(ax).flatten()) != len(vnames_chunk):
             print('Given axis does not match number of plots')
         for idx, (a, v) in enumerate(zip(np.atleast_1d(ax), vnames_chunk)):
-            tr_values = trace_chunk[tune:,:, idx].flatten()
+            tr_values = trace_chunk[tune:, :, idx].flatten()
             plot_posterior_op(tr_values, ax=a, bw=bw, kde_plot=kde_plot,
                               point_estimate=point_estimate, round_to=round_to,
                               alpha_level=alpha_level, ref_val=ref_val[idx],
