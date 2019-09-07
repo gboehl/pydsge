@@ -65,7 +65,8 @@ def summary(store, priors, tune=None, alpha=0.05, top=None, show_priors=False, m
     if isinstance(store, tuple):
         swarm_mode = True
         xs, fs, ns = store
-        store = np.array(xs)[fs.argsort()]
+        ns = ns.squeeze()
+        store = np.array(xs)[fs[:,0].argsort()]
 
     f_prs = [lambda x: pd.Series(x, name='distribution'),
              lambda x: pd.Series(x, name='mean'),
@@ -102,7 +103,7 @@ def summary(store, priors, tune=None, alpha=0.05, top=None, show_priors=False, m
         if show_priors or int(cols) > min_col:
             [lst.append(f('')) for j, f in enumerate(f_prs)]
 
-        [lst.append(pd.Series(s, name=n)) for s,n in zip(-np.sort(fs)[:top],ns[:top])]
+        [lst.append(pd.Series(s, name=n)) for s,n in zip(-np.sort(fs[:,0])[:top],ns[:top])]
         var_df = pd.concat(lst, axis=1)
         var_df.index = ['loglike']
         var_dfs.append(var_df)

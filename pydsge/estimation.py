@@ -527,6 +527,7 @@ def swarm_find(self, algos, linear=False, pop_size=100, ncalls=10, mig_share=.1,
 
         def __init__(self, algo, pop, seed=None):
 
+            print('u')
             self.res = None
             self.ncalls = 0
             self.history = []
@@ -535,6 +536,8 @@ def swarm_find(self, algos, linear=False, pop_size=100, ncalls=10, mig_share=.1,
                 self.pop = load_pop(pop)
             else:
                 self.pop = pop
+            seed = self.pop.get_seed()
+            print('init: ', seed)
 
             if isinstance(algo, bytes):
                 self.algo = dill.loads(algo)
@@ -545,6 +548,7 @@ def swarm_find(self, algos, linear=False, pop_size=100, ncalls=10, mig_share=.1,
                 self.seed = self.pop.get_seed()
             else:
                 self.seed = seed
+            print('done: ', seed)
             return 
 
         def extract(self):
@@ -615,6 +619,7 @@ def swarm_find(self, algos, linear=False, pop_size=100, ncalls=10, mig_share=.1,
         algo = dill.loads(ser_algo)
         pop = load_pop(ser_pop)
         seed = pop.get_seed()
+        print(seed)
 
         pop = algo.evolve(pop)
         ser_pop = dump_pop(pop)
@@ -631,8 +636,14 @@ def swarm_find(self, algos, linear=False, pop_size=100, ncalls=10, mig_share=.1,
 
     mig_abs = int(pop_size*mig_share)
 
+    print('[swarm_find:]'.ljust(30, ' ') + ' Creating overlord of %s swarms...' %ncores, end="", flush=True)
+
     rests = [pool.apipe(gen_pop, s, algos, pop_size) for s in range(ncores)]
+    print('initiating...', end="", flush=True)
     overlord = [Swarm(*res.get()) for res in rests]
+    print('done!')
+
+    print('[swarm_find:]'.ljust(30, ' ') + ' Swarming out! Bzzzzz...')
 
     done = False
     best_x = None
@@ -647,6 +658,7 @@ def swarm_find(self, algos, linear=False, pop_size=100, ncalls=10, mig_share=.1,
                 if not (s.ready and s.ncalls < ncalls):
                     continue
 
+            # """
             if s.res is not None:
                 s.extract()
 
@@ -661,6 +673,7 @@ def swarm_find(self, algos, linear=False, pop_size=100, ncalls=10, mig_share=.1,
             ord_x = s.pop.get_x()
             best_x = ord_x[fas][:mig_abs]
             best_f = fs[fas][:mig_abs]
+            # """
 
             dump = s.dump()
             s.res = pool.apipe(evolve, dump)
@@ -677,16 +690,16 @@ def swarm_find(self, algos, linear=False, pop_size=100, ncalls=10, mig_share=.1,
     pbar.close()
 
     xs = np.array([s.pop.champion_x for s in overlord])
-    fs = np.array([s.pop.champion_f for s in overlord])[:,0]
+    fs = np.array([s.pop.champion_f for s in overlord])
     ns = np.array([s.sname for s in overlord])
     histories = np.array([s.history for s in overlord])
 
     self.overlord = overlord
     self.par_cand = xs
-    self.swarms = xs, fs, ns
+    self.swarms = xs, fs, ns.reshape(1,-1)
     self.swarm_history = histories
 
-    self.fdict['swarms'] = xs, fs, ns
+    self.fdict['swarms'] = xs, fs, ns.reshape(1,-1)
     self.fdict['swarm_history'] = histories
 
     return overlord
