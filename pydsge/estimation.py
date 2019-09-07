@@ -368,12 +368,15 @@ def pmdm(self, linear=None, maxfev=None, linear_pre_pmdm=False, method=None, tol
     return self.pmdm_par
 
 
-def swarm_find(self, algos, linear=False, pop_size=100, ncalls=10, mig_share=.1, seed=0, use_ring=False, ncores=None, verbose=False):
+def swarms(self, algos, linear=False, pop_size=100, ncalls=10, mig_share=.1, seed=None, use_ring=False, ncores=None, verbose=False):
 
     import pygmo as pg
     import dill
     import pathos
     import random
+
+    if seed is None:
+        seed = self.fdict['seed']
 
     np.random.seed(seed)
     random.seed(seed)
@@ -499,39 +502,46 @@ def swarm_find(self, algos, linear=False, pop_size=100, ncalls=10, mig_share=.1,
     while not done:
         for s in overlord:
             if not use_ring:
-                if not (s.ready and s.ncalls < ncalls):
+                if not s.ready:
+                    continue
+
+                if s.ncalls >= ncalls:
                     continue
 
             if s.res is not None:
+                # post-procssing
                 s.extract()
 
-            # migrate the worst
-            fs = s.pop[1]
-            fas = fs[:, 0].argsort()
+                xs = s.pop[0]
+                fs = s.pop[1]
+                fas = fs[:, 0].argsort()
 
-            if best_x is not None:
-                for no, x, f in zip(fas[-mig_abs:], best_x, best_f):
-                    s.pop[0][no] = x
-                    s.pop[1][no] = f
+                # record history
+                s.history.append(xs[fas][0])
 
-            # save best for the next
-            xs = s.pop[0]
-            best_x = xs[fas][:mig_abs]
-            best_f = fs[fas][:mig_abs]
+                s.ncalls += 1
 
-            # record history
-            s.history.append(xs[fas][0])
+                # keep us informed
+                ll_max_swarm = -fs[fas][0][0]
+                ll_max = max(ll_max, ll_max_swarm)
 
-            s.res = pool.apipe(evolve, s.algo, s.pop)
-            s.ncalls += 1
+                pbar.update()
+                pbar.set_description(
+                    'll: '+str(ll_max_swarm.round(5)).rjust(12, ' ')+' ['+str(ll_max.round(5))+']')
 
-            # keep us informed
-            ll_max_swarm = -fs[fas][0][0]
-            ll_max = max(ll_max, ll_max_swarm)
+                # migrate the worst
+                if best_x is not None and s.ncalls < ncalls:
+                    for no, x, f in zip(fas[-mig_abs:], best_x, best_f):
+                        s.pop[0][no] = x
+                        s.pop[1][no] = f
 
-            pbar.update()
-            pbar.set_description(
-                'll: '+str(ll_max_swarm.round(5)).rjust(12, ' ')+' ['+str(ll_max.round(5))+']')
+                # save best for the next
+                best_x = xs[fas][:mig_abs]
+                best_f = fs[fas][:mig_abs]
+
+            if s.ncalls < ncalls:
+
+                s.res = pool.apipe(evolve, s.algo, s.pop)
 
         done = all([s.ncalls >= ncalls for s in overlord])
 
@@ -559,9 +569,12 @@ def swarm_find(self, algos, linear=False, pop_size=100, ncalls=10, mig_share=.1,
     return
 
 
-def bay_estim(self, nsteps=3000, nwalks=None, tune=None, ncores=None, backend_file=None, linear=None, distr_init_chains=False, resume=False, update_freq=None, verbose=False, debug=False):
+def mcmc(self, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=None, backend_file=None, linear=None, distr_init_chains=False, resume=False, update_freq=None, verbose=False, debug=False):
 
     import pathos
+
+    if seed is None:
+        seed = self.fdict['seed']
 
     if tune is None:
         self.tune = int(nsteps*4/5.)
