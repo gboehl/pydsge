@@ -92,12 +92,13 @@ def get_chain(self, backend_file=None):
 
 def traceplot_m(self, **args):
 
-    if hasattr(self, 'tune'):
-        tune = self.tune
-    else:
-        tune = self.fdict['tune']
+    if not 'tune' in args:
+        if hasattr(self, 'tune'):
+            args['tune'] = self.tune
+        else:
+            args['tune'] = self.fdict['tune']
 
-    return traceplot(self.get_chain(), varnames=self.fdict['prior_names'], tune=tune, priors=self.fdict['frozen_priors'], **args)
+    return traceplot(self.get_chain(), varnames=self.fdict['prior_names'], priors=self.fdict['frozen_priors'], **args)
 
 
 def posteriorplot_m(self, **args):

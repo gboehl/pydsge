@@ -368,12 +368,15 @@ def pmdm(self, linear=None, maxfev=None, linear_pre_pmdm=False, method=None, tol
     return self.pmdm_par
 
 
-def swarms(self, algos, linear=False, pop_size=100, ncalls=10, mig_share=.1, seed=None, use_ring=False, ncores=None, verbose=False):
+def swarms(self, algos, linear=None, pop_size=100, ncalls=10, mig_share=.1, seed=None, use_ring=False, ncores=None, verbose=False):
 
     import pygmo as pg
     import dill
     import pathos
     import random
+
+    if linear is None:
+        linear = self.linear_filter
 
     if seed is None:
         seed = self.fdict['seed']
@@ -577,7 +580,9 @@ def mcmc(self, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=None, back
         seed = self.fdict['seed']
 
     if tune is None:
-        self.tune = int(nsteps*4/5.)
+        # self.tune = int(nsteps*4/5.)
+        ## 2/3 seems to be a better fit, given that we initialize at a good approximation of the posterior distribution
+        self.tune = int(nsteps*2/3.)
 
     if update_freq is None:
         update_freq = int(nsteps/10.)

@@ -17,6 +17,7 @@ setup(
             'scipy',
             'sympy',
             'tqdm',
-            'pyyaml',
+            'pyaml',
+            'pygmo',
          ],
    )
