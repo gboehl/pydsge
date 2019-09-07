@@ -114,7 +114,7 @@ class PMDM(object):
 
         try:
             f_val = -np.inf
-            self.x = self.model.init_par
+            self.x = self.model.pmdm_init_par
 
             res = so.minimize(self, self.x, method=self.method,
                               tol=self.tol, options=self.opt_dict)
@@ -148,6 +148,22 @@ class PMDM(object):
 
         return self.x_max
 
+class GPP:
+    """Generic PYGMO problem
+    """
+
+    name = 'GPP'
+
+    def __init__(self, func, bounds):
+
+        self.func = func
+        self.bounds = bounds
+
+    def fitness(self, x):
+        return [-self.func(x)]
+
+    def get_bounds(self):
+        return self.bounds
 
 def prep_estim(self, N=300, linear=False, seed=0, obs_cov=None, init_with_pmeans=False, verbose=False):
     """Initializes the tools necessary for estimation
@@ -215,10 +231,9 @@ def prep_estim(self, N=300, linear=False, seed=0, obs_cov=None, init_with_pmeans
 
     if 'frozen_priors' not in self.fdict.keys():
         
-        pfrozen, pinitv, plb, pub = get_priors(priors)
+        pfrozen, pinitv, bounds = get_priors(priors)
         self.fdict['frozen_priors'] = pfrozen
-        self.priors_lb = plb
-        self.priors_ub = pub
+        self.prior_bounds = bounds
 
         if init_with_pmeans:
             self.init_par = [priors[pp][1] for pp in priors.keys()]
@@ -227,6 +242,8 @@ def prep_estim(self, N=300, linear=False, seed=0, obs_cov=None, init_with_pmeans
             for i in range(self.ndim):
                 if pinitv[i] is None:
                     self.init_par[i] = par_fix[prior_arg][i]
+
+        self.par_cand = self.init_par.copy()
 
     print('[bayesian_estimation:]'.ljust(30, ' ') +
           ' %s priors detected. Adding parameters to the prior distribution.' % self.ndim)
@@ -292,8 +309,9 @@ def prep_estim(self, N=300, linear=False, seed=0, obs_cov=None, init_with_pmeans
         return lprior(pars) + llike(pars, linear, verbose)
 
     global lprob_global
-
     lprob_global = lprob
+
+    ## also make functions accessible
     self.lprob = lprob
     self.lprior = lprior
     self.llike = llike
@@ -307,21 +325,25 @@ def pmdm(self, linear=None, maxfev=None, linear_pre_pmdm=False, method=None, tol
     if linear is None:
         linear = self.linear_filter
 
+    self.pmdm_init_par = self.init_par
+
     if linear_pre_pmdm:
         print('[bayesian_estimation -> pmdm:]'.ljust(45, ' ') +
               ' starting pre-maximization of linear function.')
-        self.init_par = PMDM(self, maxfev, tol, method,
+        self.pmdm_init_par = PMDM(self, maxfev, tol, method,
                              True, update_freq, verbose=verbose).go()
         print('[bayesian_estimation -> pmdm:]'.ljust(45, ' ') +
               ' pre-maximization of linear function done, starting actual maximization.')
 
     description = self.description
 
-    result = PMDM(self, maxfev, tol, method, linear,
-                  update_freq, verbose=verbose).go()
+    self.pmdm_par = PMDM(self, maxfev, tol, method, linear, update_freq, verbose=verbose).go()
+
+    self.fdict['pmdm_par'] = self.pmdm_par
+
+    self.par_cand = self.pmdm_par.copy()
 
     np.warnings.filterwarnings('default')
-    self.init_par = result
 
     print()
     print('[bayesian_estimation:]'.ljust(30, ' ')+' posterior mode values:')
@@ -331,7 +353,7 @@ def pmdm(self, linear=None, maxfev=None, linear_pre_pmdm=False, method=None, tol
         priors_chunks = np.array_split(
             np.array(self.fdict['prior_names']), lnum)
         vals_chunks = np.array_split([round(m_val, 3)
-                                      for m_val in self.init_par], lnum)
+                                      for m_val in self.pmdm_par], lnum)
         for pchunk, vchunk in zip(priors_chunks, vals_chunks):
             row_format = "{:>8}" * (len(pchunk) + 1)
             print(row_format.format("", *pchunk))
@@ -340,7 +362,7 @@ def pmdm(self, linear=None, maxfev=None, linear_pre_pmdm=False, method=None, tol
 
     print()
 
-    return self.init_par
+    return self.pmdm_par
 
 
 def bay_estim(self, nsteps=3000, nwalks=None, tune=None, ncores=None, backend_file=None, linear=None, distr_init_chains=False, resume=False, update_freq=None, verbose=False, debug=False):
@@ -418,13 +440,23 @@ def bay_estim(self, nsteps=3000, nwalks=None, tune=None, ncores=None, backend_fi
                          for pl in self.fdict['frozen_priors']]
                 draw_prob = lprob(pdraw, linear, verbose)
 
-            p0[t, w, :] = np.array(pdraw)
+            p0[w, :] = np.array(pdraw)
             pbar.update(1)
 
         pbar.close()
 
     else:
-        p0 = self.init_par*(1+1e-3*np.random.randn(nwalks, self.ndim))
+        if np.ndim(self.par_cand) > 1:
+
+            p0 = np.empty((nwalks, self.ndim))
+            cand_dim = self.par_cand.shape[0]
+
+            for i, w in enumerate(range(nwalks)):
+                par = self.par_cand[i % cand_dim]
+                p0[w,:] = par * (1+1e-3*np.random.randn())
+
+        else:
+            p0 = self.par_cand*(1+1e-3*np.random.randn(nwalks, self.ndim))
 
     if not verbose:
         np.warnings.filterwarnings('ignore')
@@ -452,7 +484,7 @@ def bay_estim(self, nsteps=3000, nwalks=None, tune=None, ncores=None, backend_fi
                        ' Summary from last %s of %s iterations:' % (update_freq, cnt))
 
             sample = sampler.get_chain()
-            report(str(summary(sample, -update_freq, self.priors).round(3)))
+            report(str(summary(sample, self.priors, tune=-update_freq).round(3)))
             report("Mean likelihood is %s, mean acceptance fraction is %s." % (lprob_local(
                 np.mean(sample, axis=(0, 1))).round(3), np.mean(sampler.acceptance_fraction).round(2)))
 
@@ -468,3 +500,193 @@ def bay_estim(self, nsteps=3000, nwalks=None, tune=None, ncores=None, backend_fi
         np.mean(sampler.acceptance_fraction)))
 
     self.sampler = sampler
+
+
+def swarm_find(self, algos, linear=False, pop_size=100, ncalls=10, mig_share=.1, seed=0, use_ring=False, ncores=None, verbose=False):
+
+    import pygmo as pg
+    import dill
+    import pathos
+    import random
+
+    np.random.seed(seed)
+    random.seed(seed)
+
+    # globals are *evil*
+    global lprob_global
+
+    # import the global function and pretend it is defined on top level
+    def lprob_local(par):
+        return lprob_global(par, linear, verbose)
+
+    sfunc_inst = GPP(lprob_local, self.prior_bounds)
+
+    class Swarm(object):
+
+        name = 'Swarm'
+
+        def __init__(self, algo, pop, seed=None):
+
+            self.res = None
+            self.ncalls = 0
+            self.history = []
+
+            if isinstance(pop, tuple):
+                self.pop = load_pop(pop)
+            else:
+                self.pop = pop
+
+            if isinstance(algo, bytes):
+                self.algo = dill.loads(algo)
+            else:
+                self.algo = algo
+
+            if seed is None:
+                self.seed = self.pop.get_seed()
+            else:
+                self.seed = seed
+            return 
+
+        def extract(self):
+
+            ser_algo, ser_pop = self.res.get()
+            self.algo = dill.loads(ser_algo)
+            self.pop = load_pop(ser_pop)
+            self.history.append(self.pop.champion_x)
+            return 
+
+        def dump(self):
+
+            ser_algo = dill.dumps(self.algo)
+            ser_pop = dump_pop(self.pop)
+
+            return ser_algo, ser_pop
+
+        @property
+        def ready(self):
+            if self.res is None:
+                return True
+            else:
+                return self.res.ready()
+
+        @property
+        def sname(self):
+            aname = self.algo.get_name()
+            sname = aname.split(':')[0]
+            return sname + '_' + str(self.seed)
+
+    def dump_pop(pop):
+
+        xs = pop.get_x()
+        fs = pop.get_f()
+        sd = pop.get_seed()
+
+        return (xs, fs, sd)
+
+    def load_pop(ser_pop):
+
+        xs, fs, sd = ser_pop
+        pop_size = len(fs)
+
+        prob = pg.problem(sfunc_inst)
+        pop = pg.population(prob, size=pop_size, seed=sd)
+
+        for i in range(pop_size):
+            pop.set_xf(i,xs[i], fs[i])
+
+        return pop
+
+    def gen_pop(seed, algos, pop_size):
+
+        random.seed(seed)
+        algo = random.sample(algos,1)[0]
+        algo.set_seed(seed)
+        prob = pg.problem(sfunc_inst)
+        pop = pg.population(prob, size=pop_size, seed=seed)
+
+        ser_pop = dump_pop(pop)
+        ser_algo = dill.dumps(algo)
+
+        return ser_algo, ser_pop
+
+    def evolve(dump):
+
+        ser_algo, ser_pop = dump
+        algo = dill.loads(ser_algo)
+        pop = load_pop(ser_pop)
+        seed = pop.get_seed()
+
+        pop = algo.evolve(pop)
+        ser_pop = dump_pop(pop)
+        ser_algo = dill.dumps(algo)
+
+        return ser_algo, ser_pop
+
+    print('[swarm_find:]'.ljust(30, ' ') + ' Number of iterations per core is %sx the generation length.' %(ncalls*pop_size))
+
+    if ncores is None:
+        ncores = pathos.multiprocessing.cpu_count()
+
+    pool = pathos.pools.ProcessPool(ncores)
+
+    mig_abs = int(pop_size*mig_share)
+
+    rests = [pool.apipe(gen_pop, s, algos, pop_size) for s in range(ncores)]
+    overlord = [Swarm(*res.get()) for res in rests]
+
+    done = False
+    best_x = None
+
+    pbar = tqdm.tqdm(total=ncalls*ncores, dynamic_ncols=True)
+
+    ll_max = -np.inf
+
+    while not done:
+        for s in overlord:
+            if not use_ring:
+                if not (s.ready and s.ncalls < ncalls):
+                    continue
+
+            if s.res is not None:
+                s.extract()
+
+            fs = s.pop.get_f()
+            fas = fs[:,0].argsort()
+
+            if best_x is not None:
+                for no, x, f in zip(fas[-mig_abs:],best_x, best_f):
+                    s.pop.set_xf(int(no), x, f)
+
+            ## save these for the next
+            ord_x = s.pop.get_x()
+            best_x = ord_x[fas][:mig_abs]
+            best_f = fs[fas][:mig_abs]
+
+            dump = s.dump()
+            s.res = pool.apipe(evolve, dump)
+            s.ncalls += 1
+
+            ll_max_swarm = -s.pop.champion_f[0]
+            ll_max = max(ll_max, ll_max_swarm)
+
+            pbar.update()
+            pbar.set_description('ll: '+str(ll_max_swarm.round(5)).rjust(12, ' ')+' ['+str(ll_max.round(5))+']')
+
+        done = all([s.ncalls >= ncalls for s in overlord])
+
+    pbar.close()
+
+    xs = np.array([s.pop.champion_x for s in overlord])
+    fs = np.array([s.pop.champion_f for s in overlord])[:,0]
+    ns = np.array([s.sname for s in overlord])
+    histories = np.array([s.history for s in overlord])
+
+    self.overlord = overlord
+    self.par_cand = xs
+    self.swarms = xs, fs, ns
+    self.swarm_history = histories
+
+    self.fdict['swarms'] = xs, fs, ns
+    self.fdict['swarm_history'] = histories
+
+    return overlord

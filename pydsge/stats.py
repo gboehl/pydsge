@@ -54,7 +54,7 @@ def _hpd_df(x, alpha):
     return pd.DataFrame(hpd_vals, columns=cnames)
 
 
-def summary(store, priors, alpha=0.05, top=None, show_priors=False):
+def summary(store, priors, tune=None, alpha=0.05, top=None, show_priors=False, min_col=80):
     # in parts stolen from pymc3 because it looks really nice
 
     with os.popen('stty size', 'r') as rows_cols:
@@ -62,11 +62,10 @@ def summary(store, priors, alpha=0.05, top=None, show_priors=False):
 
     swarm_mode = False
 
-    if hasattr(store[0], 'sname'):
+    if isinstance(store, tuple):
         swarm_mode = True
-        fs = [s.pop.champion_f for s in store]
-        fs_args = np.array(fs)[:,0].argsort()
-        store = np.array(store)[fs_args]
+        xs, fs, ns = store
+        store = np.array(xs)[fs.argsort()]
 
     f_prs = [lambda x: pd.Series(x, name='distribution'),
              lambda x: pd.Series(x, name='mean'),
@@ -79,16 +78,16 @@ def summary(store, priors, alpha=0.05, top=None, show_priors=False):
 
     var_dfs = []
     for i, var in enumerate(priors):
-        lst = []
 
-        if show_priors or int(cols) > 90:
+        lst = []
+        if show_priors or int(cols) > min_col:
             prior = priors[var]
             if len(prior) > 3:
                 prior = prior[-3:]
             [lst.append(f(prior[j])) for j, f in enumerate(f_prs)]
 
         if swarm_mode:
-            [lst.append(pd.Series(s.pop.champion_x[i], name=s.sname)) for s in store[:top]]
+            [lst.append(pd.Series(s[i], name=n)) for s,n in zip(store[:top], ns[:top]) ]
         else:
             vals = store[tune:, :, i]
             [lst.append(f(vals)) for f in funcs]
@@ -97,10 +96,13 @@ def summary(store, priors, alpha=0.05, top=None, show_priors=False):
         var_dfs.append(var_df)
 
     if swarm_mode:
+
         lst = []
-        if show_priors or len(cols) > 90:
+        
+        if show_priors or int(cols) > min_col:
             [lst.append(f('')) for j, f in enumerate(f_prs)]
-        [lst.append(pd.Series(s.pop.champion_f, name=s.sname)) for s in store[:top]]
+
+        [lst.append(pd.Series(s, name=n)) for s,n in zip(-np.sort(fs)[:top],ns[:top])]
         var_df = pd.concat(lst, axis=1)
         var_df.index = ['loglike']
         var_dfs.append(var_df)
@@ -260,7 +262,7 @@ def get_priors(priors):
         if len(dist) == 6:
             print('  parameter %s as %s (%s, %s). Init @ %s, with bounds (%s, %s)...' % (pp, ptype, pmean, pstdd, dist[0], dist[1], dist[2]))
 
-    return priors_lst, initv, lb, ub
+    return priors_lst, initv, (lb, ub)
 
 def pmdm_report(self, x_max, res_max, n=np.inf, printfunc=print):
 

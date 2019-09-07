@@ -108,14 +108,20 @@ def posteriorplot_m(self, **args):
     return posteriorplot(self.get_chain(), varnames=self.fdict['prior_names'], tune=tune, **args)
 
 
-def summary_m(self, **args):
+def mcmc_summary(self, tune=None, **args):
 
-    if hasattr(self, 'tune'):
-        tune = self.tune
-    else:
-        tune = self.fdict['tune']
+    if tune is None:
+        if hasattr(self, 'tune'):
+            tune = self.tune
+        else:
+            tune = self.fdict['tune']
 
-    return summary(self.get_chain(), tune, self['__data__']['estimation']['prior'])
+    return summary(self.get_chain(), self['__data__']['estimation']['prior'], tune=tune, **args)
+
+
+def swarm_summary(self, **args):
+    return summary(self.swarms, self['__data__']['estimation']['prior'], **args)
+
 
 def info_m(self, **args):
 
@@ -139,6 +145,7 @@ def info_m(self, **args):
     info_str = 'Title: %s (description: %s). Last %s of %s samples in %s chains with %s parameters.' %(name, description, cshp[0] - tune, cshp[0], cshp[1], cshp[2])
 
     return info_str
+
 
 def get_data(self, csv_file, sep=None, start=None, end=None):
 
@@ -187,6 +194,7 @@ DSGE.get_iv = get_iv
 DSGE.prep_estim = prep_estim
 DSGE.bay_estim = bay_estim
 DSGE.pmdm = pmdm
+DSGE.swarm_find = swarm_find
 DSGE.epstract = epstract
 DSGE.sampled_sim = sampled_sim
 DSGE.sampled_irfs = sampled_irfs
@@ -199,7 +207,8 @@ DSGE.save = save_meta
 DSGE.get_chain = get_chain
 DSGE.traceplot = traceplot_m
 DSGE.posteriorplot = posteriorplot_m
-DSGE.summary = summary_m
+DSGE.mcmc_summary = mcmc_summary
+DSGE.swarm_summary = swarm_summary
 DSGE.info = info_m
 DSGE.get_data = get_data
 DSGE.pmdm_report = pmdm_report
