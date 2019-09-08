@@ -131,6 +131,7 @@ def mc_mean(trace, varnames):
 
 
 class InvGammaDynare(ss.rv_continuous):
+    # probably not needed anymore
 
     name = 'inv_gamma_dynare'
 
@@ -264,7 +265,8 @@ def get_priors(priors):
                     'Can not find inverse gamma distribution with mean %s and std %s' % (pmean, pstdd))
         elif str(ptype) == 'inv_gamma_dynare':
             s, nu = inv_gamma_spec(pmean, pstdd)
-            ig = InvGammaDynare()(s, nu)
+            # ig = InvGammaDynare()(s, nu)
+            ig = ss.invgamma(nu/2, s/2)
             priors_lst.append(ig)
 
         else:

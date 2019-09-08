@@ -61,7 +61,7 @@ class PMDM(object):
             # TNC: gets stuck around the initial values
 
             self.method = methodl[method]
-            print('[bayesian_estimation -> pmdm:]'.ljust(30, ' ') +
+            print('[pmdm:]'.ljust(30, ' ') +
                   ' Available methods are %s.' % ', '.join(methodl))
         if self.method == 'trust-constr':
             self.opt_dict = {'maxiter': np.inf}
@@ -72,10 +72,10 @@ class PMDM(object):
             }
         if not verbose:
             np.warnings.filterwarnings('ignore')
-            print('[bayesian_estimation -> pmdm:]'.ljust(30, ' ') +
+            print('[pmdm:]'.ljust(30, ' ') +
                   " Maximizing posterior mode density using '%s' (meanwhile warnings are disabled)." % self.method)
         else:
-            print('[bayesian_estimation -> pmdm:]'.ljust(30, ' ') +
+            print('[pmdm:]'.ljust(30, ' ') +
                   ' Maximizing posterior mode density using %s.' % self.method)
         print()
 
@@ -124,10 +124,10 @@ class PMDM(object):
                 self.pbar.close()
             print('')
             if self.res_max < res['fun']:
-                print('[bayesian_estimation -> '+self.desc_str+'pmdm:]'.ljust(45, ' ')+str(res['message']) +
+                print('[pmdm ('+self.desc_str+'):]'.ljust(30, ' ')+str(res['message']) +
                       ' Maximization returned value lower than actual (known) optimum ('+str(-self.res_max)+' > '+str(-self.res)+').')
             else:
-                print('[bayesian_estimation -> '+self.desc_str+'pmdm:]'.ljust(45, ' ')+str(res['message']
+                print('[pmdm ('+self.desc_str+'):]'.ljust(30, ' ')+str(res['message']
                                                                                            )+' Log-likelihood is '+str(np.round(-res['fun'], 5))+'.')
             print('')
 
@@ -135,7 +135,7 @@ class PMDM(object):
             if not self.verbose:
                 self.pbar.close()
             print('')
-            print('[bayesian_estimation -> '+self.desc_str+'pmdm:]'.ljust(45, ' ') +
+            print('[pmdm ('+self.desc_str+'):]'.ljust(30, ' ') +
                   ' Maximum number of function calls exceeded, exiting. Log-likelihood is '+str(np.round(-self.res_max, 5))+'...')
             print('')
 
@@ -143,7 +143,7 @@ class PMDM(object):
             if not self.verbose:
                 self.pbar.close()
             print('')
-            print('[bayesian_estimation -> '+self.desc_str+'pmdm:]'.ljust(45, ' ') +
+            print('[pmdm ('+self.desc_str+'):]'.ljust(30, ' ') +
                   ' Iteration interrupted manually. Log-likelihood is '+str(np.round(-self.res_max, 5))+'...')
             print('')
 
@@ -210,11 +210,11 @@ def prep_estim(self, N=300, linear=False, seed=0, obs_cov=None, init_with_pmeans
 
     # dry run before the fun beginns
     if np.isinf(self.get_ll(verbose=verbose)):
-        raise ValueError('[bayesian_estimation:]'.ljust(
+        raise ValueError('[estimation:]'.ljust(
             30, ' ') + ' likelihood of initial values is zero.')
 
     print()
-    print('[bayesian_estimation:]'.ljust(30, ' ') +
+    print('[estimation:]'.ljust(30, ' ') +
           ' Model operational. %s states, %s observables.' % (len(self.vv), len(self.observables)))
     print()
 
@@ -249,7 +249,7 @@ def prep_estim(self, N=300, linear=False, seed=0, obs_cov=None, init_with_pmeans
         self.par_cand = self.init_par.copy()
         self.fdict['init_par'] = self.init_par
 
-    print('[bayesian_estimation:]'.ljust(30, ' ') +
+    print('[estimation:]'.ljust(30, ' ') +
           ' %s priors detected. Adding parameters to the prior distribution.' % self.ndim)
 
     def llike(parameters, linear, verbose):
@@ -286,7 +286,7 @@ def prep_estim(self, N=300, linear=False, seed=0, obs_cov=None, init_with_pmeans
                 ll = self.get_ll(verbose=verbose)
 
                 if verbose == 2:
-                    print('[bayesian_estimation -> llike:]'.ljust(45, ' ') +
+                    print('[llike:]'.ljust(30, ' ') +
                           ' Sample took '+str(np.round(time.time() - st, 3))+'s.')
 
                 return ll
@@ -296,7 +296,7 @@ def prep_estim(self, N=300, linear=False, seed=0, obs_cov=None, init_with_pmeans
 
             except Exception as err:
                 if verbose == 2:
-                    print('[bayesian_estimation -> llike:]'.ljust(45, ' ') +
+                    print('[llike:]'.ljust(30, ' ') +
                           ' Sample took '+str(np.round(time.time() - st, 3))+'s. (failure, error msg: %s)' % err)
 
                 return -np.inf
@@ -330,11 +330,11 @@ def pmdm(self, linear=None, maxfev=None, linear_pre_pmdm=False, method=None, tol
         linear = self.linear_filter
 
     if linear_pre_pmdm:
-        print('[bayesian_estimation -> pmdm:]'.ljust(45, ' ') +
+        print('[pmdm:]'.ljust(30, ' ') +
               ' starting pre-maximization of linear function.')
         self.par_cand = PMDM(self, maxfev, tol, method,
                              True, update_freq, verbose=verbose).go()
-        print('[bayesian_estimation -> pmdm:]'.ljust(45, ' ') +
+        print('[pmdm:]'.ljust(30, ' ') +
               ' pre-maximization of linear function done, starting actual maximization.')
 
     description = self.description
@@ -349,7 +349,7 @@ def pmdm(self, linear=None, maxfev=None, linear_pre_pmdm=False, method=None, tol
     np.warnings.filterwarnings('default')
 
     print()
-    print('[bayesian_estimation:]'.ljust(30, ' ')+' posterior mode values:')
+    print('[estimation:]'.ljust(30, ' ')+' posterior mode values:')
     with os.popen('stty size', 'r') as rows_cols:
         cols = rows_cols.read().split()[1]
         lnum = (len(self.priors)*8)//(int(cols)-8) + 1
@@ -476,7 +476,7 @@ def swarms(self, algos, linear=None, pop_size=100, ncalls=10, mig_share=.1, seed
 
         return dill.dumps(algo), dump_pop(pop),
 
-    print('[swarm_find:]'.ljust(30, ' ') +
+    print('[swarms:]'.ljust(30, ' ') +
           ' Number of iterations per core is %sx the generation length.' % (ncalls*pop_size))
 
     if ncores is None:
@@ -486,14 +486,14 @@ def swarms(self, algos, linear=None, pop_size=100, ncalls=10, mig_share=.1, seed
 
     mig_abs = int(pop_size*mig_share)
 
-    print('[swarm_find:]'.ljust(30, ' ') +
+    print('[swarms:]'.ljust(30, ' ') +
           ' Creating overlord of %s swarms...' % ncores, end="", flush=True)
 
     rests = [pool.apipe(gen_pop, s, algos, pop_size) for s in range(ncores)]
     overlord = [Swarm(*res.get(), s) for s, res in zip(range(ncores), rests)]
 
     print('done.')
-    print('[swarm_find:]'.ljust(30, ' ') + ' Swarming out! Bzzzzz...')
+    print('[swarms:]'.ljust(30, ' ') + ' Swarming out! Bzzzzz...')
 
     done = False
     best_x = None
@@ -638,7 +638,7 @@ def mcmc(self, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=None, back
     elif distr_init_chains:
 
         print()
-        print('[bayesian_estimation:]'.ljust(30, ' ') +
+        print('[estimation:]'.ljust(30, ' ') +
               ' finding initial values for mcmc (distributed over priors):')
         p0 = np.empty((nwalks, self.ndim))
         pbar = tqdm.tqdm(total=nwalks, unit='init.val(s)', dynamic_ncols=true)
@@ -689,11 +689,11 @@ def mcmc(self, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=None, back
 
             report('')
             if self.description is not None:
-                report('[bayesian_estimation -> mcmc:]'.ljust(45, ' ') +
+                report('[mcmc:]'.ljust(30, ' ') +
                        ' Summary from last %s of %s iterations (%s):' % (update_freq, cnt, str(self.description)))
 
             else:
-                report('[bayesian_estimation -> mcmc:]'.ljust(45, ' ') +
+                report('[mcmc:]'.ljust(30, ' ') +
                        ' Summary from last %s of %s iterations:' % (update_freq, cnt))
 
             sample = sampler.get_chain()
