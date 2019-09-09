@@ -660,12 +660,11 @@ def mcmc(self, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=None, back
 
     else:
 
-        ranking = (-self.fdict['swarms'][1]).argsort()
+        ranking = (-self.fdict['swarms'][1][:,0]).argsort()
         which = max(use_top*self.par_cand.shape[0], 1)
         par_cand = self.par_cand[ranking][:int(which)]
 
         if np.ndim(self.par_cand) > 1:
-
 
             p0 = np.empty((nwalks, self.ndim))
             cand_dim = par_cand.shape[0]
