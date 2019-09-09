@@ -309,7 +309,7 @@ def prep_estim(self, N=300, linear=False, seed=0, obs_cov=None, init_with_pmeans
 
         return prior
 
-    def lprob(pars, linear, verbose):
+    def lprob(pars, linear=linear, verbose=verbose):
         return lprior(pars) + llike(pars, linear, verbose)
 
     global lprob_global
@@ -572,7 +572,7 @@ def swarms(self, algos, linear=None, pop_size=100, ncalls=10, mig_share=.1, seed
     return
 
 
-def mcmc(self, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=None, backend_file=None, linear=None, distr_init_chains=False, resume=False, update_freq=None, verbose=False, debug=False):
+def mcmc(self, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=None, backend_file=None, linear=None, use_top=.5, distr_init_chains=False, resume=False, update_freq=None, verbose=False, debug=False):
 
     import pathos
 
@@ -659,13 +659,19 @@ def mcmc(self, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=None, back
         pbar.close()
 
     else:
+
+        ranking = (-self.fdict['swarms'][1]).argsort()
+        which = max(use_top*self.par_cand.shape[0], 1)
+        par_cand = self.par_cand[ranking][:int(which)]
+
         if np.ndim(self.par_cand) > 1:
 
+
             p0 = np.empty((nwalks, self.ndim))
-            cand_dim = self.par_cand.shape[0]
+            cand_dim = par_cand.shape[0]
 
             for i, w in enumerate(range(nwalks)):
-                par = self.par_cand[i % cand_dim]
+                par = par_cand[i % cand_dim]
                 p0[w, :] = par * (1+1e-3*np.random.randn())
 
         else:

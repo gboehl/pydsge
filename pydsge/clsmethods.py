@@ -13,6 +13,45 @@ from .plots import *
 from .processing import *
 
 
+@property
+def get_tune(self):
+
+    if hasattr(self, 'tune'):
+        return self.tune
+    else:
+        return self.fdict['tune']
+
+
+@property
+def par_mean(self, full=False):
+    
+    chain = self.get_chain()
+    x_est = chain[self.get_tune:].mean(axis=(0, 1))
+
+    if not full:
+        return x_est
+
+    x = self.par_fix
+    x[self.prior_arg] = x_est
+
+    return list(x)
+
+
+@property
+def par_median(self, full=False):
+
+    chain = self.get_chain()
+    x_est = np.median(chain[self.get_tune:], axis=(0, 1))
+
+    if not full:
+        return x_est
+
+    x = self.par_fix
+    x[self.prior_arg] = x_est
+
+    return list(x)
+
+
 def write_yaml(self, filename):
 
     if filename[-5:] is not '.yaml':
@@ -218,6 +257,9 @@ DSGE.swarm_summary = swarm_summary
 DSGE.info = info_m
 DSGE.get_data = get_data
 DSGE.pmdm_report = pmdm_report
+DSGE.get_tune = get_tune
+DSGE.par_mean = par_mean
+DSGE.par_median = par_median
 
 # old stuff, left to be integrated
 """
@@ -227,15 +269,5 @@ def chain_masker(self):
         iss = iss | (self.prior_names == v)
     return iss
 
-def means(self):
-    x = self.par_fix
-
-    x[self.prior_arg] = chain[self.tune:].mean(axis=(0, 1))
-    return list(x)
-
-def medians(self):
-    x = self.par_fix
-    x[self.prior_arg] = np.median(self.chain[self.tune:], axis=(0, 1))
-    return list(x)
 
 """
