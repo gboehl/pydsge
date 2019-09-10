@@ -352,9 +352,17 @@ def posteriorplot(trace, varnames=None, tune=0, figsize=None, max_no=4, text_siz
     axs = []
     figs = []
 
-    for ic in range(0, len(varnames), max_no):
+    if varnames is not None:
+        dim = len(varnames)
+    else:
+        dim = trace.shape[-1]
 
-        vnames_chunk = varnames[ic:ic + max_no]
+    for ic in range(0, dim, max_no):
+
+        if varnames is not None:
+            vnames_chunk = varnames[ic:ic + max_no]
+        else:
+            vnames_chunk = [None]*min(max_no, dim-ic)
         trace_chunk = trace[..., ic:ic + max_no]
 
         def create_axes_grid(figsize, traces):

@@ -572,9 +572,11 @@ def swarms(self, algos, linear=None, pop_size=100, ncalls=10, mig_share=.1, seed
     return
 
 
-def mcmc(self, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=None, backend_file=None, linear=None, use_top=.5, distr_init_chains=False, resume=False, update_freq=None, verbose=False, debug=False):
+def mcmc(self, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=None, backend_file=None, linear=None, use_top=1., distr_init_chains=False, resume=False, update_freq=None, verbose=False, debug=False):
 
     import pathos
+
+    self.fdict['use_top'] = use_top
 
     if seed is None:
         seed = self.fdict['seed']
@@ -585,7 +587,7 @@ def mcmc(self, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=None, back
         self.tune = int(nsteps*2/3.)
 
     if update_freq is None:
-        update_freq = int(nsteps/10.)
+        update_freq = int(nsteps/5.)
 
     if ncores is None:
         ncores = pathos.multiprocessing.cpu_count()
@@ -630,8 +632,7 @@ def mcmc(self, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=None, back
     if debug:
         sampler = emcee.EnsembleSampler(nwalks, self.ndim, lprob_local)
     else:
-        sampler = emcee.EnsembleSampler(
-            nwalks, self.ndim, lprob_local, pool=loc_pool, backend=backend)
+        sampler = emcee.EnsembleSampler(nwalks, self.ndim, lprob_local, pool=loc_pool, backend=backend)
 
     if resume:
         p0 = sampler.get_last_sample()
@@ -660,11 +661,16 @@ def mcmc(self, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=None, back
 
     else:
 
-        ranking = (-self.fdict['swarms'][1][:,0]).argsort()
-        which = max(use_top*self.par_cand.shape[0], 1)
-        par_cand = self.par_cand[ranking][:int(which)]
-
         if np.ndim(self.par_cand) > 1:
+
+            ranking = (-self.fdict['swarms'][1][:,0]).argsort()
+            which = max(use_top*self.par_cand.shape[0], 1)
+            par_cand = self.par_cand[ranking][:int(which)]
+
+        else:
+            par_cand = self.par_cand
+
+        if np.ndim(par_cand) > 1:
 
             p0 = np.empty((nwalks, self.ndim))
             cand_dim = par_cand.shape[0]
@@ -674,7 +680,7 @@ def mcmc(self, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=None, back
                 p0[w, :] = par * (1+1e-3*np.random.randn())
 
         else:
-            p0 = self.par_cand*(1+1e-3*np.random.randn(nwalks, self.ndim))
+            p0 = par_cand*(1+1e-3*np.random.randn(nwalks, self.ndim))
 
     if not verbose:
         np.warnings.filterwarnings('ignore')
@@ -685,6 +691,8 @@ def mcmc(self, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=None, back
         report = pbar.write
     else:
         report = print
+
+    old_tau = np.inf
 
     for result in sampler.sample(p0, iterations=nsteps):
 
@@ -702,9 +710,18 @@ def mcmc(self, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=None, back
                        ' Summary from last %s of %s iterations:' % (update_freq, cnt))
 
             sample = sampler.get_chain()
+
+            tau = emcee.autocorr.integrated_time(sample, tol=0)
+            max_tau = np.max(tau)
+            dev_tau = np.max(np.abs(old_tau - tau)/tau) 
+
+            tau_sign = '>' if max_tau > cnt/50 else '<'
+            dev_sign = '>' if dev_tau > .01 else '<'
+
             report(str(summary(sample, self.priors, tune=-update_freq).round(3)))
-            report("Mean likelihood is %s, mean acceptance fraction is %s." % (lprob_local(
-                np.mean(sample, axis=(0, 1))).round(3), np.mean(sampler.acceptance_fraction).round(2)))
+            report("Convergence stats: maxiumum tau is %s (%s%s) and change is %s (%s0.01)." %(max_tau.round(2), tau_sign, cnt/50, dev_tau.round(3), dev_sign))
+            report("Mean likelihood is %s, mean acceptance fraction is %s." % (lprob_local(np.mean(sample[-update_freq:], axis=(0, 1))).round(3), np.mean(sampler.acceptance_fraction[-update_freq:]).round(2)))
+            old_tau = tau
 
         if not verbose:
             pbar.update(1)
