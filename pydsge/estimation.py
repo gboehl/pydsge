@@ -5,7 +5,6 @@ import numpy as np
 import warnings
 import os
 import time
-import emcee
 from .stats import get_priors, mc_mean, summary, pmdm_report
 import scipy.optimize as so
 import tqdm
@@ -167,6 +166,56 @@ class GPP:
     def get_bounds(self):
         return self.bounds
 
+
+def get_init_par(self, nwalks, linear=False, use_top=1., distr_init_chains=False, verbose=False):
+
+    if distr_init_chains:
+
+        print()
+        print('[estimation:]'.ljust(30, ' ') +
+              ' finding initial values for mcmc (distributed over priors):')
+        p0 = np.empty((nwalks, self.ndim))
+        pbar = tqdm.tqdm(total=nwalks, unit='init.val(s)', dynamic_ncols=true)
+
+        for w in range(nwalks):
+            draw_prob = -np.inf
+
+            while np.isinf(draw_prob):
+                nprr = np.random.randint
+                # alternatively on could use enumerate() on frozen_priors and include the itarator in the random_state
+                pdraw = [pl.rvs(random_state=nprr(2**32-1))
+                         for pl in self.fdict['frozen_priors']]
+                draw_prob = lprob(pdraw, linear, verbose)
+
+            p0[w, :] = np.array(pdraw)
+            pbar.update(1)
+
+        pbar.close()
+
+    else:
+
+        if np.ndim(self.par_cand) > 1:
+
+            ranking = (-self.fdict['swarms'][1][:,0]).argsort()
+            which = max(use_top*self.par_cand.shape[0], 1)
+            par_cand = self.par_cand[ranking][:int(which)]
+
+        else:
+            par_cand = self.par_cand
+
+        if np.ndim(par_cand) > 1:
+
+            p0 = np.empty((nwalks, self.ndim))
+            cand_dim = par_cand.shape[0]
+
+            for i, w in enumerate(range(nwalks)):
+                par = par_cand[i % cand_dim]
+                p0[w, :] = par * (1+1e-3*np.random.randn())
+
+        else:
+            p0 = par_cand*(1+1e-3*np.random.randn(nwalks, self.ndim))
+
+    return p0
 
 def prep_estim(self, N=300, linear=False, seed=0, obs_cov=None, init_with_pmeans=False, verbose=False):
     """Initializes the tools necessary for estimation
@@ -575,8 +624,14 @@ def swarms(self, algos, linear=None, pop_size=100, ncalls=10, mig_share=.1, seed
 def mcmc(self, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=None, backend_file=None, linear=None, use_top=1., distr_init_chains=False, resume=False, update_freq=None, verbose=False, debug=False):
 
     import pathos
+    import emcee
 
     self.fdict['use_top'] = use_top
+
+    if not hasattr(self, 'ndim'):
+        # if it seems to be missing, lets do it. 
+        # but without guarantee...
+        self.prep_estim()
 
     if seed is None:
         seed = self.fdict['seed']
@@ -634,53 +689,12 @@ def mcmc(self, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=None, back
     else:
         sampler = emcee.EnsembleSampler(nwalks, self.ndim, lprob_local, pool=loc_pool, backend=backend)
 
+
+
     if resume:
         p0 = sampler.get_last_sample()
-    elif distr_init_chains:
-
-        print()
-        print('[estimation:]'.ljust(30, ' ') +
-              ' finding initial values for mcmc (distributed over priors):')
-        p0 = np.empty((nwalks, self.ndim))
-        pbar = tqdm.tqdm(total=nwalks, unit='init.val(s)', dynamic_ncols=true)
-
-        for w in range(nwalks):
-            draw_prob = -np.inf
-
-            while np.isinf(draw_prob):
-                nprr = np.random.randint
-                # alternatively on could use enumerate() on frozen_priors and include the itarator in the random_state
-                pdraw = [pl.rvs(random_state=nprr(2**32-1))
-                         for pl in self.fdict['frozen_priors']]
-                draw_prob = lprob(pdraw, linear, verbose)
-
-            p0[w, :] = np.array(pdraw)
-            pbar.update(1)
-
-        pbar.close()
-
     else:
-
-        if np.ndim(self.par_cand) > 1:
-
-            ranking = (-self.fdict['swarms'][1][:,0]).argsort()
-            which = max(use_top*self.par_cand.shape[0], 1)
-            par_cand = self.par_cand[ranking][:int(which)]
-
-        else:
-            par_cand = self.par_cand
-
-        if np.ndim(par_cand) > 1:
-
-            p0 = np.empty((nwalks, self.ndim))
-            cand_dim = par_cand.shape[0]
-
-            for i, w in enumerate(range(nwalks)):
-                par = par_cand[i % cand_dim]
-                p0[w, :] = par * (1+1e-3*np.random.randn())
-
-        else:
-            p0 = par_cand*(1+1e-3*np.random.randn(nwalks, self.ndim))
+        p0 = get_init_par(self, nwalks, linear, use_top, distr_init_chains, verbose)
 
     if not verbose:
         np.warnings.filterwarnings('ignore')
@@ -733,6 +747,89 @@ def mcmc(self, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=None, back
 
     print("mean acceptance fraction: {0:.3f}".format(
         np.mean(sampler.acceptance_fraction)))
+
+    self.sampler = sampler
+
+    return
+
+
+def kdes(self, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=None, linear=None, use_top=1., distr_init_chains=False, resume=False, verbose=False, debug=False):
+
+    import pathos
+    import kombine
+    from grgrlib.patches import kombine_run_mcmc
+
+    kombine.Sampler.run_mcmc = kombine_run_mcmc
+
+    self.fdict['use_top'] = use_top
+
+    if not hasattr(self, 'ndim'):
+        # if it seems to be missing, lets do it. 
+        # but without guarantee...
+        self.prep_estim()
+
+    if seed is None:
+        seed = self.fdict['seed']
+        np.random.seed(seed)
+
+    if tune is None:
+        self.tune = None
+
+    if ncores is None:
+        ncores = pathos.multiprocessing.cpu_count()
+
+    if linear is None:
+        linear = self.linear_filter
+
+    if nwalks is None:
+        nwalks = 120
+
+    if 'description' in self.fdict.keys():
+        self.description = self.fdict['description']
+
+    # globals are *evil*
+    global lprob_global
+
+    # import the global function and pretend it is defined on top level
+    def lprob_local(par):
+        return lprob_global(par, linear, verbose)
+
+    loc_pool = pathos.pools.ProcessPool(ncores)
+    loc_pool.clear()
+
+    if debug:
+        sampler = kombine.Sampler(nwalks, self.ndim, lprob_local)
+    else:
+        sampler = kombine.Sampler(nwalks, self.ndim, lprob_local, pool=loc_pool)
+
+    if resume:
+        # should work, but not tested
+        p0 = self.fdict['kdes_chain'][-1]
+    else:
+        p0 = get_init_par(self, nwalks, linear, use_top, distr_init_chains, verbose)
+
+    if not verbose:
+        np.warnings.filterwarnings('ignore')
+
+    if not verbose:
+        pbar = tqdm.tqdm(total=nsteps, unit='sample(s)', dynamic_ncols=True)
+
+    sampler.burnin(p0, max_steps=nsteps, pbar=pbar, verbose=verbose)
+
+    samples = sampler.get_samples()
+
+    kdes_chain = sampler.chain
+    kdes_sample = samples.reshape(1,-1,self.ndim)
+
+    self.kdes_chain = kdes_chain
+    self.kdes_sample = kdes_sample
+    self.fdict['kdes_chain'] = kdes_chain
+    self.fdict['kdes_sample'] = kdes_sample
+
+    pbar.close()
+
+    if not verbose:
+        np.warnings.filterwarnings('default')
 
     self.sampler = sampler
 

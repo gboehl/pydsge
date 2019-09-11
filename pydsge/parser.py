@@ -365,8 +365,13 @@ class DSGE(dict):
         pmodel = cls.parse(mtxt)
 
         pmodel.fdict = filedic
-        pmodel.fdict['dfile'] = dfile
+        pmodel.name = str(filedic['name'])
         pmodel.path = os.path.dirname(dfile) + os.sep
+        pmodel.fdict['dfile'] = dfile
+
+        for ob in pmodel.fdict.keys():
+            if str(pmodel.fdict[ob]) == 'None':
+                pmodel.fdict[ob] = None
 
         return pmodel
 

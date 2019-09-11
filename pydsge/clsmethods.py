@@ -8,8 +8,8 @@ from .stats import summary, pmdm_report
 from .engine import preprocess
 from .stuff import *
 from .filtering import *
-from .estimation import *
-from .plots import *
+from .estimation import prep_estim, pmdm, swarms, mcmc, kdes
+from .plots import posteriorplot, traceplot, get_iv
 from .processing import *
 
 
@@ -20,6 +20,32 @@ def get_tune(self):
         return self.tune
     else:
         return self.fdict['tune']
+
+
+def get_chain(self, mc_type=None, backend_file=None):
+
+    if backend_file is None:
+
+        if hasattr(self, 'kdes_sample') and mc_type != 'mcmc':
+            return self.kdes_sample
+
+        if hasattr(self, 'sampler'):
+            return self.sampler.get_chain()
+
+        if 'kdes_sample' in self.fdict.keys() and mc_type != 'mcmc':
+            return self.fdict['kdes_sample']
+
+        if hasattr(self, 'backend_file'):
+            backend_file = self.backend_file
+        elif 'backend_file' in self.fdict.keys():
+            backend_file = str(self.fdict['backend_file'])
+        else:
+            raise NameError(
+                "Neither a backend nor a sampler could be found.")
+
+    reader = emcee.backends.HDFBackend(backend_file)
+
+    return reader.get_chain()
 
 
 @property
@@ -93,6 +119,8 @@ def save_meta(self, filename=None):
 
     np.savez(filename, **self.fdict)
 
+    print('Metadata saved...')
+
     return
 
 
@@ -108,69 +136,43 @@ def set_path(self, path):
     return
 
 
-def get_chain(self, backend_file=None):
 
-    if backend_file is None:
 
-        if hasattr(self, 'sampler'):
-            return self.sampler.get_chain()
+def traceplot_m(self, chain=None, **args):
 
+    if chain is None:
+        if 'kdes_chain' in self.fdict.keys():
+            chain = self.fdict['kdes_chain']
+            args['tune'] = int(chain.shape[0]*4/5)
         else:
-            if hasattr(self, 'backend_file'):
-                backend_file = self.backend_file
-            elif 'backend_file' in self.fdict.keys():
-                backend_file = str(self.fdict['backend_file'])
-            else:
-                raise NameError(
-                    "Neither a backend nor a sampler could be found.")
+            chain = self.get_chain()
+            args['tune'] = self.get_tune
 
-    reader = emcee.backends.HDFBackend(backend_file)
-
-    return reader.get_chain()
-
-
-def traceplot_m(self, **args):
-
-    if not 'tune' in args:
-        if hasattr(self, 'tune'):
-            args['tune'] = self.tune
-        else:
-            args['tune'] = self.fdict['tune']
-
-    return traceplot(self.get_chain(), varnames=self.fdict['prior_names'], priors=self.fdict['frozen_priors'], **args)
+    return traceplot(chain, varnames=self.fdict['prior_names'], priors=self.fdict['frozen_priors'], **args)
 
 
 def posteriorplot_m(self, **args):
 
-    if hasattr(self, 'tune'):
-        tune = self.tune
-    else:
-        tune = self.fdict['tune']
+    tune = self.get_tune
 
     return posteriorplot(self.get_chain(), varnames=self.fdict['prior_names'], tune=tune, **args)
-
-
-def mcmc_summary(self, tune=None, **args):
-
-    if tune is None:
-        if hasattr(self, 'tune'):
-            tune = self.tune
-        else:
-            tune = self.fdict['tune']
-
-    return summary(self.get_chain(), self['__data__']['estimation']['prior'], tune=tune, **args)
 
 
 def swarm_summary(self, **args):
     return summary(self.fdict['swarms'], self['__data__']['estimation']['prior'], swarm_mode=True, **args)
 
 
+def mcmc_summary(self, mc_type=None, tune=None, **args):
+
+    if tune is None:
+        tune = self.get_tune
+
+    return summary(self.get_chain(mc_type), self['__data__']['estimation']['prior'], tune=tune, **args)
+
+
 def info_m(self, **args):
 
-    if hasattr(self, 'tune'):
-        tune = self.tune
-    else:
-        tune = self.fdict['tune']
+    tune = self.get_tune
 
     if hasattr(self, 'name'):
         name = self.name
@@ -237,9 +239,10 @@ DSGE.run_filter = run_filter
 DSGE.get_ll = get_ll
 DSGE.get_iv = get_iv
 DSGE.prep_estim = prep_estim
-DSGE.mcmc = mcmc
 DSGE.pmdm = pmdm
 DSGE.swarms = swarms
+DSGE.mcmc = mcmc
+DSGE.kdes = kdes
 DSGE.epstract = epstract
 DSGE.sampled_sim = sampled_sim
 DSGE.sampled_irfs = sampled_irfs
@@ -252,8 +255,8 @@ DSGE.save = save_meta
 DSGE.get_chain = get_chain
 DSGE.traceplot = traceplot_m
 DSGE.posteriorplot = posteriorplot_m
-DSGE.mcmc_summary = mcmc_summary
 DSGE.swarm_summary = swarm_summary
+DSGE.mcmc_summary = mcmc_summary
 DSGE.info = info_m
 DSGE.get_data = get_data
 DSGE.pmdm_report = pmdm_report

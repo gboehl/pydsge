@@ -95,6 +95,8 @@ def summary(store, priors, tune=None, alpha=0.05, top=None, show_priors=False, m
             [lst.append(pd.Series(s[i], name=n))
              for s, n in zip(xs[:top], ns[:top])]
         else:
+            print(i)
+            print(store[tune:,:,:])
             vals = store[tune:, :, i]
             [lst.append(f(vals)) for f in funcs]
         var_df = pd.concat(lst, axis=1)
