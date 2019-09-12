@@ -151,11 +151,11 @@ def traceplot_m(self, chain=None, **args):
     return traceplot(chain, varnames=self.fdict['prior_names'], priors=self.fdict['frozen_priors'], **args)
 
 
-def posteriorplot_m(self, **args):
+def posteriorplot_m(self, mc_type=None, **args):
 
     tune = self.get_tune
 
-    return posteriorplot(self.get_chain(), varnames=self.fdict['prior_names'], tune=tune, **args)
+    return posteriorplot(self.get_chain(mc_type=mc_type), varnames=self.fdict['prior_names'], tune=tune, **args)
 
 
 def swarm_summary(self, **args):
