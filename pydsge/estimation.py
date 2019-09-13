@@ -127,7 +127,7 @@ class PMDM(object):
                       ' Maximization returned value lower than actual (known) optimum ('+str(-self.res_max)+' > '+str(-self.res)+').')
             else:
                 print('[pmdm ('+self.desc_str+'):]'.ljust(30, ' ')+str(res['message']
-                                                                                           )+' Log-likelihood is '+str(np.round(-res['fun'], 5))+'.')
+                                                                       )+' Log-likelihood is '+str(np.round(-res['fun'], 5))+'.')
             print('')
 
         except StopIteration:
@@ -167,7 +167,10 @@ class GPP:
         return self.bounds
 
 
-def get_init_par(self, nwalks, linear=False, use_top=1., distr_init_chains=False, verbose=False):
+def get_init_par(self, nwalks, linear=False, use_top=None, distr_init_chains=False, verbose=False):
+
+    if use_top is None:
+        use_top = 0.
 
     if distr_init_chains:
 
@@ -196,7 +199,7 @@ def get_init_par(self, nwalks, linear=False, use_top=1., distr_init_chains=False
 
         if np.ndim(self.par_cand) > 1:
 
-            ranking = (-self.fdict['swarms'][1][:,0]).argsort()
+            ranking = (-self.fdict['swarms'][1][:, 0]).argsort()
             which = max(use_top*self.par_cand.shape[0], 1)
             par_cand = self.par_cand[ranking][:int(which)]
 
@@ -216,6 +219,7 @@ def get_init_par(self, nwalks, linear=False, use_top=1., distr_init_chains=False
             p0 = par_cand*(1+1e-3*np.random.randn(nwalks, self.ndim))
 
     return p0
+
 
 def prep_estim(self, N=300, linear=False, seed=0, obs_cov=None, init_with_pmeans=False, verbose=False):
     """Initializes the tools necessary for estimation
@@ -359,7 +363,12 @@ def prep_estim(self, N=300, linear=False, seed=0, obs_cov=None, init_with_pmeans
         return prior
 
     def lprob(pars, linear=linear, verbose=verbose):
-        return lprior(pars) + llike(pars, linear, verbose)
+
+        res = lprior(pars)
+        if not np.isinf(res):
+            res += llike(pars, linear, verbose)
+
+        return res
 
     global lprob_global
     lprob_global = lprob
@@ -417,7 +426,7 @@ def pmdm(self, linear=None, maxfev=None, linear_pre_pmdm=False, method=None, tol
     return self.pmdm_par
 
 
-def swarms(self, algos, linear=None, pop_size=100, ncalls=10, mig_share=.1, seed=None, use_ring=False, ncores=None, verbose=False):
+def swarms(self, algos, linear=None, pop_size=100, ncalls=10, mig_share=.1, seed=None, tol_calls=None, use_ring=False, ncores=None, verbose=False, debug=False):
 
     import pygmo as pg
     import dill
@@ -429,6 +438,9 @@ def swarms(self, algos, linear=None, pop_size=100, ncalls=10, mig_share=.1, seed
 
     if seed is None:
         seed = self.fdict['seed']
+
+    if tol_calls is None:
+        tol_calls = max(1, int(ncalls/10))
 
     np.random.seed(seed)
     random.seed(seed)
@@ -461,7 +473,10 @@ def swarms(self, algos, linear=None, pop_size=100, ncalls=10, mig_share=.1, seed
 
         def extract(self):
 
-            self.algo, self.pop = self.res.get()
+            if not debug:
+                self.algo, self.pop = self.res.get()
+            else:
+                self.algo, self.pop = self.res
 
             return
 
@@ -538,8 +553,13 @@ def swarms(self, algos, linear=None, pop_size=100, ncalls=10, mig_share=.1, seed
     print('[swarms:]'.ljust(30, ' ') +
           ' Creating overlord of %s swarms...' % ncores, end="", flush=True)
 
-    rests = [pool.apipe(gen_pop, s, algos, pop_size) for s in range(ncores)]
-    overlord = [Swarm(*res.get(), s) for s, res in zip(range(ncores), rests)]
+    if not debug:
+        rests = [pool.apipe(gen_pop, s, algos, pop_size) for s in range(ncores)]
+        overlord = [Swarm(*res.get(), s) for s, res in zip(range(ncores), rests)]
+    else:
+        rests = [gen_pop(s, algos, pop_size) for s in range(ncores)]
+        overlord = [Swarm(*res, s) for s, res in zip(range(ncores), rests)]
+
 
     print('done.')
     print('[swarms:]'.ljust(30, ' ') + ' Swarming out! Bzzzzz...')
@@ -575,11 +595,19 @@ def swarms(self, algos, linear=None, pop_size=100, ncalls=10, mig_share=.1, seed
 
                 # keep us informed
                 ll_max_swarm = -fs[fas][0][0]
-                ll_max = max(ll_max, ll_max_swarm)
+                if ll_max_swarm > ll_max:
+                    ll_max = ll_max_swarm
+                    ll_max_cnt = s.ncalls
+
+                if ll_max_cnt < s.ncalls - tol_calls and ll_max == ll_max_swarm:
+                        print('No improvement in the last %s periods, exiting...' %tol_calls)
+                        break
+
+                # ll_max = max(ll_max, ll_max_swarm)
 
                 pbar.update()
-                pbar.set_description(
-                    'll: '+str(ll_max_swarm.round(5)).rjust(12, ' ')+' ['+str(ll_max.round(5))+']')
+                pbar.set_description('ll: '+str(ll_max_swarm.round(5)).rjust(
+                    12, ' ')+' ['+str(ll_max.round(5))+'/'+str(ncores*ll_max_cnt)+']')
 
                 # migrate the worst
                 if best_x is not None and s.ncalls < ncalls:
@@ -593,7 +621,10 @@ def swarms(self, algos, linear=None, pop_size=100, ncalls=10, mig_share=.1, seed
 
             if s.ncalls < ncalls:
 
-                s.res = pool.apipe(evolve, s.algo, s.pop)
+                if not debug:
+                    s.res = pool.apipe(evolve, s.algo, s.pop)
+                else:
+                    s.res = evolve(s.algo, s.pop)
 
         done = all([s.ncalls >= ncalls for s in overlord])
 
@@ -621,7 +652,7 @@ def swarms(self, algos, linear=None, pop_size=100, ncalls=10, mig_share=.1, seed
     return
 
 
-def mcmc(self, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=None, backend_file=None, linear=None, use_top=1., distr_init_chains=False, resume=False, update_freq=None, verbose=False, debug=False):
+def mcmc(self, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=None, backend_file=None, linear=None, use_top=None, distr_init_chains=False, resume=False, update_freq=None, verbose=False, debug=False):
 
     import pathos
     import emcee
@@ -629,16 +660,19 @@ def mcmc(self, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=None, back
     self.fdict['use_top'] = use_top
 
     if not hasattr(self, 'ndim'):
-        # if it seems to be missing, lets do it. 
+        # if it seems to be missing, lets do it.
         # but without guarantee...
         self.prep_estim()
 
     if seed is None:
         seed = self.fdict['seed']
 
+    if use_top is None:
+        use_top = 0
+
     if tune is None:
         # self.tune = int(nsteps*4/5.)
-        ## 2/3 seems to be a better fit, given that we initialize at a good approximation of the posterior distribution
+        # 2/3 seems to be a better fit, given that we initialize at a good approximation of the posterior distribution
         self.tune = int(nsteps*2/3.)
 
     if update_freq is None:
@@ -687,14 +721,14 @@ def mcmc(self, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=None, back
     if debug:
         sampler = emcee.EnsembleSampler(nwalks, self.ndim, lprob_local)
     else:
-        sampler = emcee.EnsembleSampler(nwalks, self.ndim, lprob_local, pool=loc_pool, backend=backend)
-
-
+        sampler = emcee.EnsembleSampler(
+            nwalks, self.ndim, lprob_local, pool=loc_pool, backend=backend)
 
     if resume:
         p0 = sampler.get_last_sample()
     else:
-        p0 = get_init_par(self, nwalks, linear, use_top, distr_init_chains, verbose)
+        p0 = get_init_par(self, nwalks, linear, use_top,
+                          distr_init_chains, verbose)
 
     if not verbose:
         np.warnings.filterwarnings('ignore')
@@ -727,14 +761,16 @@ def mcmc(self, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=None, back
 
             tau = emcee.autocorr.integrated_time(sample, tol=0)
             max_tau = np.max(tau)
-            dev_tau = np.max(np.abs(old_tau - tau)/tau) 
+            dev_tau = np.max(np.abs(old_tau - tau)/tau)
 
             tau_sign = '>' if max_tau > cnt/50 else '<'
             dev_sign = '>' if dev_tau > .01 else '<'
 
             report(str(summary(sample, self.priors, tune=-update_freq).round(3)))
-            report("Convergence stats: maxiumum tau is %s (%s%s) and change is %s (%s0.01)." %(max_tau.round(2), tau_sign, cnt/50, dev_tau.round(3), dev_sign))
-            report("Mean likelihood is %s, mean acceptance fraction is %s." % (lprob_local(np.mean(sample[-update_freq:], axis=(0, 1))).round(3), np.mean(sampler.acceptance_fraction[-update_freq:]).round(2)))
+            report("Convergence stats: maxiumum tau is %s (%s%s) and change is %s (%s0.01)." % (
+                max_tau.round(2), tau_sign, cnt/50, dev_tau.round(3), dev_sign))
+            report("Mean likelihood is %s, mean acceptance fraction is %s." % (lprob_local(np.mean(
+                sample[-update_freq:], axis=(0, 1))).round(3), np.mean(sampler.acceptance_fraction[-update_freq:]).round(2)))
             old_tau = tau
 
         if not verbose:
@@ -753,7 +789,7 @@ def mcmc(self, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=None, back
     return
 
 
-def kdes(self, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=None, linear=None, use_top=1., distr_init_chains=False, resume=False, verbose=False, debug=False):
+def kdes(self, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=None, linear=None, use_top=None, distr_init_chains=False, resume=False, verbose=False, debug=False):
 
     import pathos
     import kombine
@@ -764,13 +800,17 @@ def kdes(self, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=None, line
     self.fdict['use_top'] = use_top
 
     if not hasattr(self, 'ndim'):
-        # if it seems to be missing, lets do it. 
+        # if it seems to be missing, lets do it.
         # but without guarantee...
         self.prep_estim()
 
     if seed is None:
         seed = self.fdict['seed']
-        np.random.seed(seed)
+
+    np.random.seed(seed)
+
+    if use_top is None:
+        use_top = 0
 
     if tune is None:
         self.tune = None
@@ -800,13 +840,15 @@ def kdes(self, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=None, line
     if debug:
         sampler = kombine.Sampler(nwalks, self.ndim, lprob_local)
     else:
-        sampler = kombine.Sampler(nwalks, self.ndim, lprob_local, pool=loc_pool)
+        sampler = kombine.Sampler(
+            nwalks, self.ndim, lprob_local, pool=loc_pool)
 
     if resume:
         # should work, but not tested
         p0 = self.fdict['kdes_chain'][-1]
     else:
-        p0 = get_init_par(self, nwalks, linear, use_top, distr_init_chains, verbose)
+        p0 = get_init_par(self, nwalks, linear, use_top,
+                          distr_init_chains, verbose)
 
     if not verbose:
         np.warnings.filterwarnings('ignore')
@@ -819,7 +861,7 @@ def kdes(self, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=None, line
     samples = sampler.get_samples()
 
     kdes_chain = sampler.chain
-    kdes_sample = samples.reshape(1,-1,self.ndim)
+    kdes_sample = samples.reshape(1, -1, self.ndim)
 
     self.kdes_chain = kdes_chain
     self.kdes_sample = kdes_sample
