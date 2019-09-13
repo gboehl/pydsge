@@ -597,7 +597,7 @@ def swarms(self, algos, linear=None, pop_size=100, ncalls=10, mig_share=.1, seed
                 ll_max_swarm = -fs[fas][0][0]
                 if ll_max_swarm > ll_max:
                     ll_max = ll_max_swarm
-                    ll_max_cnt = s.ncalls
+                    ll_max_cnt = ncores*(s.ncalls-1) + s.seed + 1
 
                 if ll_max_cnt < s.ncalls - tol_calls and ll_max == ll_max_swarm:
                         print('No improvement in the last %s periods, exiting...' %tol_calls)
@@ -607,7 +607,7 @@ def swarms(self, algos, linear=None, pop_size=100, ncalls=10, mig_share=.1, seed
 
                 pbar.update()
                 pbar.set_description('ll: '+str(ll_max_swarm.round(5)).rjust(
-                    12, ' ')+' ['+str(ll_max.round(5))+'/'+str(ncores*ll_max_cnt)+']')
+                    12, ' ')+' ['+str(ll_max.round(5))+'/'+str(ll_max_cnt)+']')
 
                 # migrate the worst
                 if best_x is not None and s.ncalls < ncalls:
