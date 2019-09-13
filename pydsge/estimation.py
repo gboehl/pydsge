@@ -599,7 +599,7 @@ def swarms(self, algos, linear=None, pop_size=100, ncalls=10, mig_share=.1, seed
                     ll_max = ll_max_swarm
                     ll_max_cnt = ncores*(s.ncalls-1) + s.seed + 1
 
-                if ll_max_cnt < s.ncalls - tol_calls and ll_max == ll_max_swarm:
+                if ll_max_cnt < ncores*(s.ncalls - tol_calls) and ll_max == ll_max_swarm:
                         print('No improvement in the last %s periods, exiting...' %tol_calls)
                         break
 
