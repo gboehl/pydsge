@@ -60,7 +60,7 @@ class PMDM(object):
             # TNC: gets stuck around the initial values
 
             self.method = methodl[method]
-            print('[pmdm:]'.ljust(30, ' ') +
+            print('[pmdm:]'.ljust(20, ' ') +
                   ' Available methods are %s.' % ', '.join(methodl))
         if self.method == 'trust-constr':
             self.opt_dict = {'maxiter': np.inf}
@@ -71,10 +71,10 @@ class PMDM(object):
             }
         if not verbose:
             np.warnings.filterwarnings('ignore')
-            print('[pmdm:]'.ljust(30, ' ') +
+            print('[pmdm:]'.ljust(20, ' ') +
                   " Maximizing posterior mode density using '%s' (meanwhile warnings are disabled)." % self.method)
         else:
-            print('[pmdm:]'.ljust(30, ' ') +
+            print('[pmdm:]'.ljust(20, ' ') +
                   ' Maximizing posterior mode density using %s.' % self.method)
         print()
 
@@ -123,10 +123,10 @@ class PMDM(object):
                 self.pbar.close()
             print('')
             if self.res_max < res['fun']:
-                print('[pmdm ('+self.desc_str+'):]'.ljust(30, ' ')+str(res['message']) +
+                print('[pmdm ('+self.desc_str+'):]'.ljust(20, ' ')+str(res['message']) +
                       ' Maximization returned value lower than actual (known) optimum ('+str(-self.res_max)+' > '+str(-self.res)+').')
             else:
-                print('[pmdm ('+self.desc_str+'):]'.ljust(30, ' ')+str(res['message']
+                print('[pmdm ('+self.desc_str+'):]'.ljust(20, ' ')+str(res['message']
                                                                        )+' Log-likelihood is '+str(np.round(-res['fun'], 5))+'.')
             print('')
 
@@ -134,7 +134,7 @@ class PMDM(object):
             if not self.verbose:
                 self.pbar.close()
             print('')
-            print('[pmdm ('+self.desc_str+'):]'.ljust(30, ' ') +
+            print('[pmdm ('+self.desc_str+'):]'.ljust(20, ' ') +
                   ' Maximum number of function calls exceeded, exiting. Log-likelihood is '+str(np.round(-self.res_max, 5))+'...')
             print('')
 
@@ -142,7 +142,7 @@ class PMDM(object):
             if not self.verbose:
                 self.pbar.close()
             print('')
-            print('[pmdm ('+self.desc_str+'):]'.ljust(30, ' ') +
+            print('[pmdm ('+self.desc_str+'):]'.ljust(20, ' ') +
                   ' Iteration interrupted manually. Log-likelihood is '+str(np.round(-self.res_max, 5))+'...')
             print('')
 
@@ -175,7 +175,7 @@ def get_init_par(self, nwalks, linear=False, use_top=None, distr_init_chains=Fal
     if distr_init_chains:
 
         print()
-        print('[estimation:]'.ljust(30, ' ') +
+        print('[estimation:]'.ljust(20, ' ') +
               ' finding initial values for mcmc (distributed over priors):')
         p0 = np.empty((nwalks, self.ndim))
         pbar = tqdm.tqdm(total=nwalks, unit='init.val(s)', dynamic_ncols=true)
@@ -364,11 +364,7 @@ def prep_estim(self, N=300, linear=False, seed=0, obs_cov=None, init_with_pmeans
 
     def lprob(pars, linear=linear, verbose=verbose):
 
-        res = lprior(pars)
-        if not np.isinf(res):
-            res += llike(pars, linear, verbose)
-
-        return res
+        return lprior(pars) + llike(pars, linear, verbose)
 
     global lprob_global
     lprob_global = lprob
@@ -426,12 +422,19 @@ def pmdm(self, linear=None, maxfev=None, linear_pre_pmdm=False, method=None, tol
     return self.pmdm_par
 
 
-def swarms(self, algos, linear=None, pop_size=100, ncalls=10, mig_share=.1, seed=None, tol_calls=None, use_ring=False, ncores=None, verbose=False, debug=False):
+def swarms(self, algos, linear=None, pop_size=100, maxgen=500, mig_share=.1, seed=None, tol_calls=None, use_ring=False, ncores=None, crit_mem=.85, update_freq=None, verbose=False, debug=False):
 
     import pygmo as pg
     import dill
     import pathos
     import random
+
+    if crit_mem is not None:
+
+        # TODO: one of the functions exposed by C++ leaks memory...
+        import psutil
+        if crit_mem < 1:
+            crit_mem *= 100
 
     if linear is None:
         linear = self.linear_filter
@@ -440,7 +443,10 @@ def swarms(self, algos, linear=None, pop_size=100, ncalls=10, mig_share=.1, seed
         seed = self.fdict['seed']
 
     if tol_calls is None:
-        tol_calls = max(1, int(ncalls/10))
+        tol_calls = maxgen
+
+    if update_freq is None:
+        update_freq = 0
 
     np.random.seed(seed)
     random.seed(seed)
@@ -541,12 +547,14 @@ def swarms(self, algos, linear=None, pop_size=100, ncalls=10, mig_share=.1, seed
         return dill.dumps(algo), dump_pop(pop),
 
     print('[swarms:]'.ljust(30, ' ') +
-          ' Number of iterations per core is %sx the generation length.' % (ncalls*pop_size))
+          ' Number of evaluations is %sx the generation length.' % (maxgen*pop_size))
 
     if ncores is None:
         ncores = pathos.multiprocessing.cpu_count()
 
-    pool = pathos.pools.ProcessPool(ncores)
+    if not debug:
+        pool = pathos.pools.ProcessPool(ncores)
+        pool.clear()
 
     mig_abs = int(pop_size*mig_share)
 
@@ -554,12 +562,16 @@ def swarms(self, algos, linear=None, pop_size=100, ncalls=10, mig_share=.1, seed
           ' Creating overlord of %s swarms...' % ncores, end="", flush=True)
 
     if not debug:
-        rests = [pool.apipe(gen_pop, s, algos, pop_size) for s in range(ncores)]
-        overlord = [Swarm(*res.get(), s) for s, res in zip(range(ncores), rests)]
+        rests = [pool.apipe(gen_pop, s, algos, pop_size)
+                            for s in range(ncores)]
+        overlord = [Swarm(*res.get(), s)
+                          for s, res in zip(range(ncores), rests)]
     else:
         rests = [gen_pop(s, algos, pop_size) for s in range(ncores)]
         overlord = [Swarm(*res, s) for s, res in zip(range(ncores), rests)]
 
+    # better clear here already
+    pool.clear()
 
     print('done.')
     print('[swarms:]'.ljust(30, ' ') + ' Swarming out! Bzzzzz...')
@@ -567,18 +579,24 @@ def swarms(self, algos, linear=None, pop_size=100, ncalls=10, mig_share=.1, seed
     done = False
     best_x = None
 
-    pbar = tqdm.tqdm(total=ncalls*ncores, dynamic_ncols=True)
+    xsw = np.empty((ncores, self.ndim))
+    fsw = np.empty((ncores, 1))
+    nsw = np.empty((ncores, 1), dtype=object)
+
+    pbar = tqdm.tqdm(total=maxgen, dynamic_ncols=True)
+    # pbar = tqdm.tqdm(total=ncalls*ncores, dynamic_ncols=True)
 
     ll_max = -np.inf
 
     while not done:
         for s in overlord:
             if not use_ring:
-                if not s.ready:
+                if not debug and not s.ready:
                     continue
 
-                if s.ncalls >= ncalls:
-                    continue
+                # if s.ncalls >= ncalls:
+                if pbar.n >= maxgen:
+                    break
 
             if s.res is not None:
                 # post-procssing
@@ -592,73 +610,96 @@ def swarms(self, algos, linear=None, pop_size=100, ncalls=10, mig_share=.1, seed
                 s.history.append(xs[fas][0])
 
                 s.ncalls += 1
+                pbar.update()
 
                 # keep us informed
                 ll_max_swarm = -fs[fas][0][0]
                 if ll_max_swarm > ll_max:
                     ll_max = ll_max_swarm
-                    ll_max_cnt = ncores*(s.ncalls-1) + s.seed + 1
+                    ll_max_cnt = pbar.n
 
-                if ll_max_cnt < ncores*(s.ncalls - tol_calls) and ll_max == ll_max_swarm:
-                    print('No improvement in the last %s periods, exiting...' %tol_calls)
-                    done = True
-                    break
-
-                # ll_max = max(ll_max, ll_max_swarm)
-
-                pbar.update()
                 pbar.set_description('ll: '+str(ll_max_swarm.round(5)).rjust(
                     12, ' ')+' ['+str(ll_max.round(5))+'/'+str(ll_max_cnt)+']')
 
+                # keep us up to date
+                if update_freq and pbar.n and not pbar.n % update_freq:
+
+                    for i, sw in enumerate(overlord):
+                        fsw[i, :] = -sw.pop[1].min()
+                        xsw[i, :] = sw.pop[0][s.pop[1].argmin()]
+                        nsw[i, :] = sw.sname
+
+                    swarms = xsw, fsw, nsw.reshape(1, -1)
+                    pbar.write(str(summary(
+                        swarms, self['__data__']['estimation']['prior'], swarm_mode=True, show_priors=False)))
+
+                if ll_max_cnt < pbar.n - ncores*tol_calls) and ll_max == ll_max_swarm:
+                    print('[swarms:]'.ljust(
+                        30, ' ') + ' No improvement in the last %s calls, exiting...' % tol_calls)
+                    done=True
+                    break
+
                 # migrate the worst
-                if best_x is not None and s.ncalls < ncalls:
+                # if best_x is not None and s.ncalls < ncalls:
+                if best_x is not None and pbar.n < maxgen:
                     for no, x, f in zip(fas[-mig_abs:], best_x, best_f):
-                        s.pop[0][no] = x
-                        s.pop[1][no] = f
+                        s.pop[0][no]=x
+                        s.pop[1][no]=f
 
                 # save best for the next
-                best_x = xs[fas][:mig_abs]
-                best_f = fs[fas][:mig_abs]
+                best_x=xs[fas][:mig_abs]
+                best_f=fs[fas][:mig_abs]
 
-            if s.ncalls < ncalls:
+            # if s.ncalls < ncalls:
+            if pbar.n < maxgen:
+
+                if crit_mem is not None:
+                    # check if mem usage is above threshold
+                    if psutil.virtual_memory()[2] > crit_mem:
+
+                        pool.close()
+                        print('[swarms:]'.ljust(20, ' ') + " Critical memory usage of "+str(
+                            crit_mem)+"% reached, closing pools for maintenance...", end = "", flush = True)
+                        pool.join()
+                        print('fixing...', end = "", flush = True)
+                        pool.restart()
+                        print('done.', end = "", flush = True)
 
                 if not debug:
-                    s.res = pool.apipe(evolve, s.algo, s.pop)
+                    s.res=pool.apipe(evolve, s.algo, s.pop)
                 else:
-                    s.res = evolve(s.algo, s.pop)
+                    s.res=evolve(s.algo, s.pop)
 
-        done = done or all([s.ncalls >= ncalls for s in overlord])
+        # done = done or all([s.ncalls >= ncalls for s in overlord])
+        done=done or pbar.n >= maxgen
 
     pbar.close()
 
-    xs = np.empty((ncores, self.ndim))
-    fs = np.empty((ncores, 1))
-    ns = np.empty((ncores, 1), dtype=object)
-    hs = np.empty((ncores, ncalls, self.ndim))
+    hs=[]
 
     for i, s in enumerate(overlord):
-        fs[i, :] = -s.pop[1].min()
-        xs[i, :] = s.pop[0][s.pop[1].argmin()]
-        ns[i, :] = s.sname
-        hs[i, :] = np.array(s.history)
+        fsw[i, :]=-s.pop[1].min()
+        xsw[i, :]=s.pop[0][s.pop[1].argmin()]
+        nsw[i, :]=s.sname
+        hs.append(np.array(s.history))
 
-    self.overlord = overlord
-    self.par_cand = xs
-    self.swarms = xs, fs, ns.reshape(1, -1)
-    self.swarm_history = hs
+    self.overlord=overlord
+    self.par_cand=xsw
+    self.swarms=xsw, fsw, nsw.reshape(1, -1)
+    self.swarm_history=hs
 
-    self.fdict['swarms'] = xs, fs, ns.reshape(1, -1)
-    self.fdict['swarm_history'] = hs
+    self.fdict['swarms']=xsw, fsw, nsw.reshape(1, -1)
+    self.fdict['swarm_history']=hs
 
     return
 
 
-def mcmc(self, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=None, backend_file=None, linear=None, use_top=None, distr_init_chains=False, resume=False, update_freq=None, verbose=False, debug=False):
+def mcmc(self, nsteps = 3000, nwalks = None, tune = None, seed = None, ncores = None, backend_file = None, linear = None, use_top = None, distr_init_chains = False, resume = False, update_freq = None, verbose = False, debug = False):
 
     import pathos
     import emcee
 
-    self.fdict['use_top'] = use_top
+    self.fdict['use_top']=use_top
 
     if not hasattr(self, 'ndim'):
         # if it seems to be missing, lets do it.
@@ -666,48 +707,48 @@ def mcmc(self, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=None, back
         self.prep_estim()
 
     if seed is None:
-        seed = self.fdict['seed']
+        seed=self.fdict['seed']
 
     if use_top is None:
-        use_top = 0
+        use_top=0
 
     if tune is None:
         # self.tune = int(nsteps*4/5.)
         # 2/3 seems to be a better fit, given that we initialize at a good approximation of the posterior distribution
-        self.tune = int(nsteps*2/3.)
+        self.tune=int(nsteps*2/3.)
 
     if update_freq is None:
-        update_freq = int(nsteps/5.)
+        update_freq=int(nsteps/5.)
 
     if ncores is None:
-        ncores = pathos.multiprocessing.cpu_count()
+        ncores=pathos.multiprocessing.cpu_count()
 
     if linear is None:
-        linear = self.linear_filter
+        linear=self.linear_filter
 
     if backend_file is None:
         if 'backend_file' in self.fdict.keys():
-            self.backend_file = str(self.fdict['backend_file'])
+            self.backend_file=str(self.fdict['backend_file'])
         elif hasattr(self, 'path') and hasattr(self, 'name'):
-            self.backend_file = self.path + self.name + '_sampler.h5'
+            self.backend_file=self.path + self.name + '_sampler.h5'
         else:
             print('Sampler will not be recorded.')
     else:
-        self.backend_file = backend_file
+        self.backend_file=backend_file
 
-    backend = emcee.backends.HDFBackend(self.backend_file)
+    backend=emcee.backends.HDFBackend(self.backend_file)
 
     if not resume:
         backend.reset(nwalks, self.ndim)
 
     if nwalks is None:
         if resume:
-            nwalks = backend.get_chain().shape[1]
+            nwalks=backend.get_chain().shape[1]
         else:
-            nwalks = 100
+            nwalks=100
 
     if 'description' in self.fdict.keys():
-        self.description = self.fdict['description']
+        self.description=self.fdict['description']
 
     # globals are *evil*
     global lprob_global
@@ -716,26 +757,26 @@ def mcmc(self, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=None, back
     def lprob_local(par):
         return lprob_global(par, linear, verbose)
 
-    loc_pool = pathos.pools.ProcessPool(ncores)
+    loc_pool=pathos.pools.ProcessPool(ncores)
     loc_pool.clear()
 
     if debug:
-        sampler = emcee.EnsembleSampler(nwalks, self.ndim, lprob_local)
+        sampler=emcee.EnsembleSampler(nwalks, self.ndim, lprob_local)
     else:
-        sampler = emcee.EnsembleSampler(
-            nwalks, self.ndim, lprob_local, pool=loc_pool, backend=backend)
+        sampler=emcee.EnsembleSampler(
+            nwalks, self.ndim, lprob_local, pool = loc_pool, backend = backend)
 
     if resume:
-        p0 = sampler.get_last_sample()
+        p0=sampler.get_last_sample()
     else:
-        p0 = get_init_par(self, nwalks, linear, use_top,
+        p0=get_init_par(self, nwalks, linear, use_top,
                           distr_init_chains, verbose)
 
     if not verbose:
         np.warnings.filterwarnings('ignore')
 
     if not verbose:
-        pbar = tqdm.tqdm(total=nsteps, unit='sample(s)',
+        pbar=tqdm.tqdm(total = nsteps, unit = 'sample(s)',
                          dynamic_ncols=True)
         report = pbar.write
     else:
@@ -751,11 +792,11 @@ def mcmc(self, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=None, back
 
             report('')
             if self.description is not None:
-                report('[mcmc:]'.ljust(30, ' ') +
+                report('[mcmc:]'.ljust(20, ' ') +
                        ' Summary from last %s of %s iterations (%s):' % (update_freq, cnt, str(self.description)))
 
             else:
-                report('[mcmc:]'.ljust(30, ' ') +
+                report('[mcmc:]'.ljust(20, ' ') +
                        ' Summary from last %s of %s iterations:' % (update_freq, cnt))
 
             sample = sampler.get_chain()
