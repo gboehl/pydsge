@@ -396,11 +396,11 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
 
         return dill.dumps(algo), dump_pop(pop),
 
-    print('[swarms:]'.ljust(30, ' ') +
-          ' Number of evaluations is %sx the generation length.' % (ngen*pop_size))
-
     if ncores is None:
         ncores = pathos.multiprocessing.cpu_count()
+
+    print('[swarms:]'.ljust(30, ' ') +
+          ' Number of evaluations is %sx the generation length per core.' % (ngen*pop_size/ncores))
 
     if not debug:
         pool = pathos.pools.ProcessPool(ncores)
