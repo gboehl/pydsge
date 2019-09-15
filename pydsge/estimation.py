@@ -367,8 +367,6 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
             algo = pg.algorithm(pg.nlopt(solver="bobyqa"))
             algo.extract(pg.nlopt).maxeval = pop_size
 
-            # algo.set_verbosity(1)
-
             pop = pg.population(prob, size=1, seed=seed)
         else:
             random.seed(seed)
@@ -386,21 +384,21 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
         algo = dill.loads(ser_algo)
         pop = load_pop(ser_pop)
 
-        if not ser_pop[2]:
-            try:
-                pop = algo.evolve(pop)
-            except:
-                pass
-        else:
+        try:
             pop = algo.evolve(pop)
+        except Exception as e:
+            if not ser_pop[2]:
+                pass
+            else:
+                raise e
 
         return dill.dumps(algo), dump_pop(pop),
 
-    print('[swarms:]'.ljust(30, ' ') +
-          ' Number of evaluations is %sx the generation length.' % (ngen*pop_size))
-
     if ncores is None:
         ncores = pathos.multiprocessing.cpu_count()
+
+    print('[swarms:]'.ljust(30, ' ') +
+          ' Number of evaluations per core is %sx the generation length.' % (ngen*pop_size/ncores))
 
     if not debug:
         pool = pathos.pools.ProcessPool(ncores)
@@ -490,7 +488,9 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
                 # migrate the worst
                 if best_x is not None and pbar.n < ngen:
                     for no, x, f in zip(fas[-mig_abs:], best_x, best_f):
-                        if not s.pop[2] and f < s.pop[1][no]:
+                        if not s.pop[2]: 
+                            if f < s.pop[1][no]:
+                                print('writin')
                                 s.pop[1][no] = f
                         else:
                             s.pop[0][no] = x
@@ -504,7 +504,7 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
                     best_x = xs[fas][:mig_abs]
                     best_f = fs[fas][:mig_abs]
 
-            if pbar.n < ngen:
+            if pbar.n <= ngen - max_gen:
 
                 if crit_mem is not None:
                     # check if mem usage is above threshold

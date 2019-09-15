@@ -83,8 +83,8 @@ def kdeplot_op(ax, data, bw, prior=None, prior_alpha=1, prior_style='--'):
             p = prior.logpdf(x)
         except ValueError:
             p = x.copy()
-            for xi, pi in zip(x, p):
-                pi = prior.logpdf(xi)
+            for i,xi in enumerate(x):
+                p[i] = prior.logpdf(xi)
         pls.append(ax.plot(x, np.exp(p), alpha=prior_alpha, ls=prior_style))
 
     ls.append(ax.plot(x, density))
