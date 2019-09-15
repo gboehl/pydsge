@@ -29,8 +29,10 @@ def create_filter(self, P=None, R=None, N=None, linear=False, random_seed=None):
     else:
         self.linear_filter = False
 
-    if not hasattr(self, 'Z'):
+    if not hasattr(self, 'data'):
         warnings.warn('No time series of observables provided')
+    else:
+        self.Z = np.array(self.data)
 
     if random_seed is not None:
         np.random.seed(random_seed)
@@ -92,20 +94,20 @@ def run_filter(self, use_rts=True, rcond=1e-14, verbose=False):
     if verbose:
         st = time.time()
 
-    if hasattr(self, 'enkf'):
-        # set approximation level
-        self.enkf.fx = lambda x: self.t_func(x)
-
-        X1, cov = self.enkf.batch_filter(
-            self.Z, store=use_rts, verbose=verbose)
+    if self.linear_filter:
+        X1, cov, ll = self.filter.batch_filter(self.Z)
 
         if use_rts:
-            X1, cov = self.enkf.rts_smoother(X1, cov, rcond=rcond)
+            X1, cov, _, _ = self.filter.rts_smoother(X1, cov)
+
     else:
-        X1, cov, ll = self.kf.batch_filter(self.Z)
+        # set approximation level
+        self.filter.fx = lambda x: self.t_func(x)
+
+        X1, cov = self.filter.batch_filter(self.Z, store=use_rts, verbose=verbose)
 
         if use_rts:
-            X1, cov, _, _ = self.kf.rts_smoother(X1, cov)
+            X1, cov = self.filter.rts_smoother(X1, cov, rcond=rcond)
 
     if verbose:
         print('[run_filter:]'.ljust(15, ' ')+'Filtering done in ' +
@@ -119,7 +121,7 @@ def run_filter(self, use_rts=True, rcond=1e-14, verbose=False):
 
 def extract(self, pmean=None, cov=None, method=None, penalty=50, return_flag=False, itype=(0, 1), presmoothing=None, min_options=None, show_warnings=True, verbose=True):
 
-    self.enkf.fx = lambda x, noise: self.t_func(x, noise)
+    self.filter.fx = lambda x, noise: self.t_func(x, noise)
 
     if pmean is None:
         pmean = self.filtered_X.copy()
@@ -132,8 +134,7 @@ def extract(self, pmean=None, cov=None, method=None, penalty=50, return_flag=Fal
     T3 = self.hx[1]
     mod_objs = (T1, T2, T3), self.SIG
 
-    # means, cov, res, flag = self.enkf.ipas(pmean, cov, method, penalty, show_warnings=show_warnings,
-    means, cov, res, flag = ipas(self.enkf, pmean, cov, method, penalty, show_warnings=show_warnings,
+    means, cov, res, flag = ipas(self.filter, pmean, cov, method, penalty, show_warnings=show_warnings,
                                  itype=itype, presmoothing=presmoothing, objects=mod_objs, min_options=min_options, return_flag=True, verbose=verbose)
 
     self.res = res

@@ -137,8 +137,6 @@ def set_path(self, path):
     return
 
 
-
-
 def traceplot_m(self, chain=None, **args):
 
     if chain is None:
@@ -265,7 +263,6 @@ DSGE.get_tune = get_tune
 DSGE.par_mean = par_mean
 DSGE.par_median = par_median
 
-# old stuff, left to be integrated
 """
 def chain_masker(self):
     iss = np.zeros(len(self.prior_names), dtype=bool)
