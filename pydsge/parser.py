@@ -506,10 +506,13 @@ class DSGE(dict):
         all_shocks = [list(eq.atoms(Shock)) for eq in equations]
 
         for s in shk_ordering:
-            max_lead_exo[s] = max(
-                [i.date for i in it(all_shocks) if i.name == s.name])
-            max_lag_exo[s] = min(
-                [i.date for i in it(all_shocks) if i.name == s.name])
+            try:
+                max_lead_exo[s] = max(
+                    [i.date for i in it(all_shocks) if i.name == s.name])
+                max_lag_exo[s] = min(
+                    [i.date for i in it(all_shocks) if i.name == s.name])
+            except Exception as ex:
+                raise SyntaxError("While parsing shock '%s': %s" %(s, ex))
 
         # arbitrary lags of exogenous shocks
         for s in shk_ordering:
@@ -529,10 +532,13 @@ class DSGE(dict):
         max_lag_endo = dict.fromkeys(var_ordering)
 
         for v in var_ordering:
-            max_lead_endo[v] = max(
-                [i.date for i in it(all_vars) if i.name == v.name])
-            max_lag_endo[v] = min(
-                [i.date for i in it(all_vars) if i.name == v.name])
+            try:
+                max_lead_endo[v] = max(
+                    [i.date for i in it(all_vars) if i.name == v.name])
+                max_lag_endo[v] = min(
+                    [i.date for i in it(all_vars) if i.name == v.name])
+            except Exception as ex:
+                raise SyntaxError("While parsing variable '%s': %s" %(v, ex))
 
         # ------------------------------------------------------------
         # arbitrary lags/leads of exogenous shocks

@@ -361,11 +361,20 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
 
     def gen_pop(seed, algos, pop_size):
 
-        random.seed(seed)
-        algo = random.sample(algos, 1)[0]
-        algo.set_seed(seed)
         prob = pg.problem(sfunc_inst)
-        pop = pg.population(prob, size=pop_size, seed=seed)
+
+        if not seed:
+            algo = pg.algorithm(pg.nlopt(solver="bobyqa"))
+            algo.extract(pg.nlopt).maxeval = pop_size
+
+            # algo.set_verbosity(1)
+
+            pop = pg.population(prob, size=1, seed=seed)
+        else:
+            random.seed(seed)
+            algo = random.sample(algos, 1)[0]
+            algo.set_seed(seed)
+            pop = pg.population(prob, size=pop_size, seed=seed)
 
         ser_pop = dump_pop(pop)
         ser_algo = dill.dumps(algo)
@@ -377,7 +386,13 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
         algo = dill.loads(ser_algo)
         pop = load_pop(ser_pop)
 
-        pop = algo.evolve(pop)
+        if not ser_pop[2]:
+            try:
+                pop = algo.evolve(pop)
+            except:
+                pass
+        else:
+            pop = algo.evolve(pop)
 
         return dill.dumps(algo), dump_pop(pop),
 
@@ -396,17 +411,17 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
     print('[swarms:]'.ljust(30, ' ') +
           ' Creating overlord of %s swarms...' % ncores, end="", flush=True)
 
-    if not debug:
+    if debug:
+        rests = [gen_pop(s, algos, pop_size) for s in range(ncores)]
+        overlord = [Swarm(*res, s) for s, res in zip(range(ncores), rests)]
+    else:
         rests = [pool.apipe(gen_pop, s, algos, pop_size)
                  for s in range(ncores)]
         overlord = [Swarm(*res.get(), s)
                     for s, res in zip(range(ncores), rests)]
-    else:
-        rests = [gen_pop(s, algos, pop_size) for s in range(ncores)]
-        overlord = [Swarm(*res, s) for s, res in zip(range(ncores), rests)]
 
-    # better clear here already
-    pool.clear()
+        # better clear pool here already
+        pool.clear()
 
     print('done.')
     print('[swarms:]'.ljust(30, ' ') + ' Swarming out! Bzzzzz...')
@@ -419,7 +434,6 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
     nsw = np.empty((ncores, 1), dtype=object)
 
     pbar = tqdm.tqdm(total=ngen, dynamic_ncols=True)
-    # pbar = tqdm.tqdm(total=ncalls*ncores, dynamic_ncols=True)
 
     ll_max = -np.inf
 
@@ -429,7 +443,6 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
                 if not debug and not s.ready:
                     continue
 
-                # if s.ncalls >= ncalls:
                 if pbar.n >= ngen:
                     break
 
@@ -475,17 +488,22 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
                     break
 
                 # migrate the worst
-                # if best_x is not None and s.ncalls < ncalls:
                 if best_x is not None and pbar.n < ngen:
                     for no, x, f in zip(fas[-mig_abs:], best_x, best_f):
-                        s.pop[0][no] = x
-                        s.pop[1][no] = f
+                        if not s.pop[2] and f < s.pop[1][no]:
+                                s.pop[1][no] = f
+                        else:
+                            s.pop[0][no] = x
+                            s.pop[1][no] = f
 
                 # save best for the next
-                best_x = xs[fas][:mig_abs]
-                best_f = fs[fas][:mig_abs]
+                if not s.pop[2]:
+                    best_x = xs[fas][0]
+                    best_f = fs[fas][0]
+                else:
+                    best_x = xs[fas][:mig_abs]
+                    best_f = fs[fas][:mig_abs]
 
-            # if s.ncalls < ncalls:
             if pbar.n < ngen:
 
                 if crit_mem is not None:
@@ -505,7 +523,6 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
                 else:
                     s.res = evolve(s.algo, s.pop)
 
-        # done = done or all([s.ncalls >= ncalls for s in overlord])
         done = done or pbar.n >= ngen
 
     pbar.close()
