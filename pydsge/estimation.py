@@ -82,7 +82,7 @@ def get_init_par(self, nwalks, linear=False, use_top=None, distr_init_chains=Fal
     return p0
 
 
-def prep_estim(self, N=300, linear=False, seed=0, obs_cov=None, init_with_pmeans=False, verbose=False):
+def prep_estim(self, N=None, linear=False, seed=None, obs_cov=None, init_with_pmeans=False, verbose=False):
     """Initializes the tools necessary for estimation
 
     ...
@@ -97,7 +97,21 @@ def prep_estim(self, N=300, linear=False, seed=0, obs_cov=None, init_with_pmeans
     # all that should be reproducible
     np.random.seed(seed)
 
-    self.fdict['seed'] = seed
+    if N is None:
+        if 'filter_n' in self.fdict.keys():
+            N = self.fdict['filter_n']
+        else:
+            N = 300
+    else:
+        self.fdict['filter_n'] = N
+
+    if seed is None:
+        if 'seed' in self.fdict.keys():
+            seed = self.fdict['seed']
+        else:
+            seed = 0
+    else:
+        self.fdict['seed'] = seed
 
     if hasattr(self, 'data'):
         self.fdict['data'] = self.data
@@ -107,10 +121,15 @@ def prep_estim(self, N=300, linear=False, seed=0, obs_cov=None, init_with_pmeans
     self.Z = np.array(self.data)
 
     if obs_cov is None:
-        obs_cov = 1e-1
+        if 'obs_cov' in self.fdict.keys():
+            obs_cov = self.fdict['obs_cov']
+        else:
+            obs_cov = 1e-1
 
     if isinstance(obs_cov, float):
         obs_cov = self.create_obs_cov(obs_cov)
+
+    self.fdict['obs_cov'] = obs_cov
 
     if not hasattr(self, 'sys'):
         self.get_sys(reduce_sys=True, verbose=verbose)
@@ -119,8 +138,10 @@ def prep_estim(self, N=300, linear=False, seed=0, obs_cov=None, init_with_pmeans
 
     self.create_filter(N=N, linear=linear, random_seed=seed)
 
-    self.filter.R = obs_cov
-    self.fdict['obs_cov'] = obs_cov
+    if 'filter_R' in self.fdict.keys():
+        self.filter.R = self.fdict['filter_R']
+    else:
+        self.filter.R = obs_cov
 
     # dry run before the fun beginns
     if np.isinf(self.get_ll(verbose=verbose)):
