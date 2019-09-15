@@ -8,7 +8,8 @@ from .stats import summary, pmdm_report
 from .engine import preprocess
 from .stuff import *
 from .filtering import *
-from .estimation import prep_estim, pmdm, swarms, mcmc, kdes
+from .estimation import prep_estim, swarms, mcmc, kdes
+from .modesearch import pmdm
 from .plots import posteriorplot, traceplot, get_iv
 from .processing import *
 
@@ -271,6 +272,4 @@ def chain_masker(self):
     for v in self.prior_names:
         iss = iss | (self.prior_names == v)
     return iss
-
-
 """
