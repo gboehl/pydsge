@@ -368,15 +368,13 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
         prob = pg.problem(sfunc_inst)
 
         if not seed:
-            algo = pg.algorithm(pg.nlopt(solver="bobyqa"))
+            algo = pg.algorithm(pg.nlopt(solver="neldermead"))
             algo.extract(pg.nlopt).maxeval = pop_size
-
-            pop = pg.population(prob, size=1, seed=seed)
         else:
             random.seed(seed)
             algo = random.sample(algos, 1)[0]
             algo.set_seed(seed)
-            pop = pg.population(prob, size=pop_size, seed=seed)
+        pop = pg.population(prob, size=pop_size, seed=seed)
 
         ser_pop = dump_pop(pop)
         ser_algo = dill.dumps(algo)
@@ -387,14 +385,7 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
 
         algo = dill.loads(ser_algo)
         pop = load_pop(ser_pop)
-
-        try:
-            pop = algo.evolve(pop)
-        except Exception as e:
-            if not ser_pop[2]:
-                pass
-            else:
-                raise e
+        pop = algo.evolve(pop)
 
         return dill.dumps(algo), dump_pop(pop),
 
@@ -483,7 +474,7 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
 
                     swarms = xsw, fsw, nsw.reshape(1, -1)
                     pbar.write(str(summary(
-                        swarms, self['__data__']['estimation']['prior'], swarm_mode=True, show_priors=False)))
+                        swarms, self['__data__']['estimation']['prior'], swarm_mode=True, show_priors=False).round(3)))
 
                 if f_max_cnt < pbar.n - max_gen and f_max == f_max_swarm:
                     print('[swarms:]'.ljust(30, ' ') + ' No improvement in the last %s generations, exiting...' % max_gen)
@@ -492,24 +483,19 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
 
                 # migrate the worst
                 if best_x is not None and pbar.n < ngen:
-                    if not s.pop[2]: 
-                        if f_max < s.pop[1][0]:
-                            s.pop[0][0] = x_max
-                            s.pop[1][0] = f_max
-                    else:
-                        for no, x, f in zip(fas[-mig_abs:], best_x, best_f):
-                            s.pop[0][no] = x
-                            s.pop[1][no] = f
+                    for no, x, f in zip(fas[-mig_abs:], best_x, best_f):
+                        s.pop[0][no] = x
+                        s.pop[1][no] = f
 
                 # save best for the next
                 if not s.pop[2]:
-                    best_x = xs[fas][0]
-                    best_f = fs[fas][0]
+                    best_x = xs[fas][:mig_abs]
+                    best_f = fs[fas][:mig_abs]
                 else:
                     best_x = xs[fas][:mig_abs]
                     best_f = fs[fas][:mig_abs]
 
-            if pbar.n <= ngen - max_gen:
+            if pbar.n <= ngen:
 
                 if crit_mem is not None:
                     # check if mem usage is above threshold
@@ -530,6 +516,7 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
 
         done = done or pbar.n >= ngen
 
+    pool.terminate()
     pbar.close()
 
     hs = []
