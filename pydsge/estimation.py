@@ -99,7 +99,7 @@ def prep_estim(self, N=None, linear=False, seed=None, obs_cov=None, init_with_pm
 
     if N is None:
         if 'filter_n' in self.fdict.keys():
-            N = self.fdict['filter_n']
+            N = int(self.fdict['filter_n'])
         else:
             N = 300
     else:
@@ -336,6 +336,10 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
             aname = algo.get_name()
             sname = aname.split(':')[0]
 
+            # if this is bobyqa or a friend
+            if sname[:5] == 'NLopt':
+                return sname.split(' ')[-1]
+
             return sname + '_' + str(self.seed)
 
     def dump_pop(pop):
@@ -433,10 +437,11 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
 
     pbar = tqdm.tqdm(total=ngen, dynamic_ncols=True)
 
-    ll_max = -np.inf
+    f_max = -np.inf
 
     while not done:
         for s in overlord:
+
             if not use_ring:
                 if not debug and not s.ready:
                     continue
@@ -459,13 +464,14 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
                 pbar.update()
 
                 # keep us informed
-                ll_max_swarm = -fs[fas][0][0]
-                if ll_max_swarm > ll_max:
-                    ll_max = ll_max_swarm
-                    ll_max_cnt = pbar.n
+                f_max_swarm = -fs[fas][0][0]
+                if f_max_swarm > f_max:
+                    f_max = f_max_swarm
+                    x_max = xs[fas][0]
+                    f_max_cnt = pbar.n
 
-                pbar.set_description('ll: '+str(ll_max_swarm.round(5)).rjust(
-                    12, ' ')+' ['+str(ll_max.round(5))+'/'+str(ll_max_cnt)+']')
+                pbar.set_description('ll: '+str(f_max_swarm.round(5)).rjust(
+                    12, ' ')+' ['+str(f_max.round(5))+'/'+str(f_max_cnt)+']')
 
                 # keep us up to date
                 if update_freq and pbar.n and not pbar.n % update_freq:
@@ -479,20 +485,19 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
                     pbar.write(str(summary(
                         swarms, self['__data__']['estimation']['prior'], swarm_mode=True, show_priors=False)))
 
-                if ll_max_cnt < pbar.n - ncores*max_gen and ll_max == ll_max_swarm:
-                    print('[swarms:]'.ljust(
-                        30, ' ') + ' No improvement in the last %s generations, exiting...' % max_gen)
+                if f_max_cnt < pbar.n - max_gen and f_max == f_max_swarm:
+                    print('[swarms:]'.ljust(30, ' ') + ' No improvement in the last %s generations, exiting...' % max_gen)
                     done = True
                     break
 
                 # migrate the worst
                 if best_x is not None and pbar.n < ngen:
-                    for no, x, f in zip(fas[-mig_abs:], best_x, best_f):
-                        if not s.pop[2]: 
-                            if f < s.pop[1][no]:
-                                print('writin')
-                                s.pop[1][no] = f
-                        else:
+                    if not s.pop[2]: 
+                        if f_max < s.pop[1][0]:
+                            s.pop[0][0] = x_max
+                            s.pop[1][0] = f_max
+                    else:
+                        for no, x, f in zip(fas[-mig_abs:], best_x, best_f):
                             s.pop[0][no] = x
                             s.pop[1][no] = f
 
