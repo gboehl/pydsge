@@ -257,7 +257,7 @@ def prep_estim(self, N=None, linear=False, seed=None, obs_cov=None, init_with_pm
     self.llike = llike
 
 
-def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=None, max_gen=None, use_ring=False, ncores=None, crit_mem=.85, update_freq=None, verbose=False, debug=False):
+def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=None, max_gen=None, use_ring=False, broadcasting=True, ncores=None, crit_mem=.85, update_freq=None, verbose=False, debug=False):
 
     import pygmo as pg
     import dill
@@ -462,7 +462,7 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
                     f_max_cnt = pbar.n
 
                 pbar.set_description('ll: '+str(f_max_swarm.round(5)).rjust(
-                    12, ' ')+' ['+str(f_max.round(5))+'/'+str(f_max_cnt)+']')
+                    12, ' ')+' ['+str(f_max.round(5))+'/'+s.sname+'/'+str(f_max_cnt)+']')
 
                 # keep us up to date
                 if update_freq and pbar.n and not pbar.n % update_freq:
@@ -488,12 +488,15 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
                         s.pop[1][no] = f
 
                 # save best for the next
-                if not s.pop[2]:
-                    best_x = xs[fas][:mig_abs]
-                    best_f = fs[fas][:mig_abs]
-                else:
-                    best_x = xs[fas][:mig_abs]
-                    best_f = fs[fas][:mig_abs]
+                if broadcasting:
+                    # this might include broadcasting the new candidates
+                    xs = s.pop[0]
+                    fs = s.pop[1]
+                    fas = fs[:, 0].argsort()
+
+                best_x = xs[fas][:mig_abs]
+                best_f = fs[fas][:mig_abs]
+
 
             if pbar.n <= ngen:
 
