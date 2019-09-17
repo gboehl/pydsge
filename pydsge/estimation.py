@@ -146,10 +146,10 @@ def prep_estim(self, N=None, linear=False, seed=None, obs_cov=None, init_with_pm
     # dry run before the fun beginns
     if np.isinf(self.get_ll(verbose=verbose)):
         raise ValueError('[estimation:]'.ljust(
-            30, ' ') + ' likelihood of initial values is zero.')
+            20, ' ') + ' likelihood of initial values is zero.')
 
     print()
-    print('[estimation:]'.ljust(30, ' ') +
+    print('[estimation:]'.ljust(20, ' ') +
           ' Model operational. %s states, %s observables.' % (len(self.vv), len(self.observables)))
     print()
 
@@ -184,7 +184,7 @@ def prep_estim(self, N=None, linear=False, seed=None, obs_cov=None, init_with_pm
         self.par_cand = self.init_par.copy()
         self.fdict['init_par'] = self.init_par
 
-    print('[estimation:]'.ljust(30, ' ') +
+    print('[estimation:]'.ljust(20, ' ') +
           ' %s priors detected. Adding parameters to the prior distribution.' % self.ndim)
 
     def llike(parameters, linear, verbose):
@@ -221,7 +221,7 @@ def prep_estim(self, N=None, linear=False, seed=None, obs_cov=None, init_with_pm
                 ll = self.get_ll(verbose=verbose)
 
                 if verbose == 2:
-                    print('[llike:]'.ljust(30, ' ') +
+                    print('[llike:]'.ljust(20, ' ') +
                           ' Sample took '+str(np.round(time.time() - st, 3))+'s.')
 
                 return ll
@@ -231,7 +231,7 @@ def prep_estim(self, N=None, linear=False, seed=None, obs_cov=None, init_with_pm
 
             except Exception as err:
                 if verbose == 2:
-                    print('[llike:]'.ljust(30, ' ') +
+                    print('[llike:]'.ljust(20, ' ') +
                           ' Sample took '+str(np.round(time.time() - st, 3))+'s. (failure, error msg: %s)' % err)
 
                 return -np.inf
@@ -368,14 +368,24 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
         prob = pg.problem(sfunc_inst)
 
         if not seed:
+            algo = pg.algorithm(pg.nlopt(solver="cobyla"))
+            print('[swarms:]'.ljust(20, ' ') + ' ' + str(seed)+': creating ' + algo.get_name())
+            algo.extract(pg.nlopt).maxeval = pop_size
+        elif ncore > 9 and seed == 1:
+            algo = pg.algorithm(pg.nlopt(solver="newuoa"))
+            print('[swarms:]'.ljust(20, ' ') + ' ' + str(seed)+': creating ' + algo.get_name())
+            algo.extract(pg.nlopt).maxeval = pop_size
+        elif ncore > 9 and seed == 2:
             algo = pg.algorithm(pg.nlopt(solver="neldermead"))
+            print('[swarms:]'.ljust(20, ' ') + ' ' + str(seed)+': creating ' + algo.get_name())
             algo.extract(pg.nlopt).maxeval = pop_size
         else:
             random.seed(seed)
             algo = random.sample(algos, 1)[0]
+            print('[swarms:]'.ljust(20, ' ') + ' ' + str(seed)+': creating ' + algo.get_name())
             algo.set_seed(seed)
-        pop = pg.population(prob, size=pop_size, seed=seed)
 
+        pop = pg.population(prob, size=pop_size, seed=seed)
         ser_pop = dump_pop(pop)
         ser_algo = dill.dumps(algo)
 
@@ -392,7 +402,7 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
     if ncores is None:
         ncores = pathos.multiprocessing.cpu_count()
 
-    print('[swarms:]'.ljust(30, ' ') +
+    print('[swarms:]'.ljust(20, ' ') +
           ' Number of evaluations per core is %sx the generation length.' % (ngen*pop_size/ncores))
 
     if not debug:
@@ -401,8 +411,8 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
 
     mig_abs = int(pop_size*mig_share)
 
-    print('[swarms:]'.ljust(30, ' ') +
-          ' Creating overlord of %s swarms...' % ncores, end="", flush=True)
+    # print('[swarms:]'.ljust(20, ' ') + ' Creating overlord of %s swarms...' % ncores, end="", flush=True)
+    print('[swarms:]'.ljust(20, ' ') + ' Creating overlord of %s swarms...' % ncores)
 
     if debug:
         rests = [gen_pop(s, algos, pop_size) for s in range(ncores)]
@@ -416,8 +426,9 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
         # better clear pool here already
         pool.clear()
 
-    print('done.')
-    print('[swarms:]'.ljust(30, ' ') + ' Swarming out! Bzzzzz...')
+    print('[swarms:]'.ljust(20, ' ') + ' Creating overlord of %s swarms...done.' % ncores)
+    # print('done.')
+    print('[swarms:]'.ljust(20, ' ') + ' Swarming out! Bzzzzz...')
 
     done = False
     best_x = None
@@ -429,6 +440,9 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
     pbar = tqdm.tqdm(total=ngen, dynamic_ncols=True)
 
     f_max = -np.inf
+
+    if not debug and not verbose:
+        np.warnings.filterwarnings('ignore')
 
     while not done:
         for s in overlord:
@@ -460,9 +474,10 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
                     f_max = f_max_swarm
                     x_max = xs[fas][0]
                     f_max_cnt = pbar.n
+                    n_max = s.sname
 
                 pbar.set_description('ll: '+str(f_max_swarm.round(5)).rjust(
-                    12, ' ')+' ['+str(f_max.round(5))+'/'+s.sname+'/'+str(f_max_cnt)+']')
+                    12, ' ') + ' [' + str(f_max.round(5)) + '/' + str(n_max).rjust(10, ' ') + '/'+str(f_max_cnt) + ']')
 
                 # keep us up to date
                 if update_freq and pbar.n and not pbar.n % update_freq:
@@ -477,7 +492,8 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
                         swarms, self['__data__']['estimation']['prior'], swarm_mode=True, show_priors=False).round(3)))
 
                 if f_max_cnt < pbar.n - max_gen and f_max == f_max_swarm:
-                    print('[swarms:]'.ljust(30, ' ') + ' No improvement in the last %s generations, exiting...' % max_gen)
+                    print('[swarms:]'.ljust(
+                        20, ' ') + ' No improvement in the last %s generations, exiting...' % max_gen)
                     done = True
                     break
 
@@ -496,7 +512,6 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
 
                 best_x = xs[fas][:mig_abs]
                 best_f = fs[fas][:mig_abs]
-
 
             if pbar.n <= ngen:
 
