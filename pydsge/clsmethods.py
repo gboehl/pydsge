@@ -207,8 +207,9 @@ def get_data(self, csv_file, sep=None, start=None, end=None):
 
     d0.index = dates
 
-    self.obs = [str(o) for o in self['observables']]
-    d1 = d0[self.obs]
+    if self is not None:
+        self.obs = [str(o) for o in self['observables']]
+        d1 = d0[self.obs]
 
     if start is not None:
         start = str(start)
@@ -218,9 +219,10 @@ def get_data(self, csv_file, sep=None, start=None, end=None):
 
     d2 = d1.loc[start:end]
 
-    self.data = d2
-    self.fdict['data'] = d2
-    self.fdict['obs'] = self.obs
+    if self is not None:
+        self.data = d2
+        self.fdict['data'] = d2
+        self.fdict['obs'] = self.obs
 
     return d2
 

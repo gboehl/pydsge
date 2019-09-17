@@ -510,7 +510,7 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
                         pool.join()
                         print('fixing...', end="", flush=True)
                         pool.restart()
-                        print('done.', end="", flush=True)
+                        print('done.')
 
                 if not debug:
                     s.res = pool.apipe(evolve, s.algo, s.pop)
