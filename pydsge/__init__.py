@@ -3,4 +3,4 @@
 
 from .stuff import *
 from .plots import *
-from .clsmethods import DSGE
+from .clsmethods import DSGE, get_data

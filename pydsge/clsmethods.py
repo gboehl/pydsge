@@ -191,25 +191,26 @@ def info_m(self, **args):
     return info_str
 
 
-def get_data(self, csv_file, sep=None, start=None, end=None):
+def get_data(self=None, csv=None, sep=None, start=None, end=None):
 
-    if csv_file[-4:] != '.csv':
+    if csv[-4:] != '.csv' or csv is None:
         raise TypeError('data format must be `.csv`.')
 
-    d0 = pd.read_csv(csv_file, sep=sep).dropna()
+    d = pd.read_csv(csv, sep=sep).dropna()
 
-    for o in self['observables']:
-        if str(o) not in d0.keys():
-            raise KeyError('%s is not in the data!' % o)
+    if self is not None:
+        for o in self['observables']:
+            if str(o) not in d.keys():
+                raise KeyError('%s is not in the data!' % o)
 
     dates = pd.date_range(
-        str(int(d0['year'][0])), periods=d0.shape[0], freq='Q')
+        str(int(d['year'][0])), periods=d.shape[0], freq='Q')
 
-    d0.index = dates
+    d.index = dates
 
     if self is not None:
         self.obs = [str(o) for o in self['observables']]
-        d1 = d0[self.obs]
+        d = d[self.obs]
 
     if start is not None:
         start = str(start)
@@ -217,14 +218,14 @@ def get_data(self, csv_file, sep=None, start=None, end=None):
     if end is not None:
         end = str(end)
 
-    d2 = d1.loc[start:end]
+    d = d.loc[start:end]
 
     if self is not None:
-        self.data = d2
-        self.fdict['data'] = d2
+        self.data = d
+        self.fdict['data'] = d
         self.fdict['obs'] = self.obs
 
-    return d2
+    return d
 
 
 DSGE.t_func = t_func
