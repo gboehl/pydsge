@@ -214,273 +214,43 @@ def pmdm(self, linear=None, maxfev=None, linear_pre_pmdm=False, method=None, tol
     return self.pmdm_par
 
 
-def swarms(self, algos, linear=None, pop_size=100, maxgen=500, mig_share=.1, seed=None, tol_calls=None, use_ring=False, ncores=None, crit_mem=.85, update_freq=None, verbose=False, debug=False):
+def nlopt(self, p0=None, linear=None, maxfev=None, method=None, tol=1e-2, update_freq=None, verbose=False):
 
+    from pydsge.estimation import GPP, get_init_par
     import pygmo as pg
-    import dill
-    import pathos
-    import random
-
-    if crit_mem is not None:
-
-        # TODO: one of the functions exposed by C++ leaks memory...
-        import psutil
-        if crit_mem < 1:
-            crit_mem *= 100
 
     if linear is None:
         linear = self.linear_filter
 
-    if seed is None:
-        seed = self.fdict['seed']
+    lprob = lambda x: self.lprob(x, linear=linear, verbose=verbose)
 
-    if tol_calls is None:
-        tol_calls = maxgen
+    sfunc_inst = GPP(lprob, self.fdict['prior_bounds'])
+
+    if p0 is None:
+        p0 = get_init_par(self, 1, linear, 0, False, verbose)
+
+    if method is None:
+        method = 'cobyla'
+
+    algo = pg.algorithm(pg.nlopt(solver=method))
 
     if update_freq is None:
-        update_freq = 0
+        update_freq = 1
 
-    np.random.seed(seed)
-    random.seed(seed)
+    if update_freq:
+        algo.set_verbosity(update_freq)
 
-    # globals are *evil*
-    global lprob_global
+    if maxfev is not None:
+        algo.extract(pg.nlopt).maxeval = maxfev
 
-    # import the global function and pretend it is defined on top level
-    def lprob_local(par):
-        return lprob_global(par, linear, verbose)
+    prob = pg.problem(sfunc_inst)
+    pop = pg.population(prob, 1)
+    pop.set_x(0, np.squeeze(p0))
+    pop = algo.evolve(pop)
 
-    sfunc_inst = GPP(lprob_local, self.fdict['prior_bounds'])
+    self.pmdm_par = pop.champion_x
+    self.par_cand = pop.champion_x
+    self.fdict['nlopt_champ'] = pop.champion_x
 
-    class Swarm(object):
+    return  pop.champion_x
 
-        name = 'Swarm'
-        # NOTE: the swarm does NOT hold actual pygmo objects such as pygmo.population or pygmo.algorithm, but only the serialized versions thereof
-
-        def __init__(self, algo, pop, seed=None):
-
-            self.res = None
-            self.ncalls = 0
-            self.history = []
-
-            self.pop = pop
-            self.algo = algo
-            self.seed = seed
-
-            return
-
-        def extract(self):
-
-            if not debug:
-                self.algo, self.pop = self.res.get()
-            else:
-                self.algo, self.pop = self.res
-
-            return
-
-        @property
-        def ready(self):
-
-            if self.res is None:
-                return True
-            else:
-                return self.res.ready()
-
-        @property
-        def sname(self):
-
-            algo = dill.loads(self.algo)
-            aname = algo.get_name()
-            sname = aname.split(':')[0]
-
-            return sname + '_' + str(self.seed)
-
-    def dump_pop(pop):
-
-        xs = pop.get_x()
-        fs = pop.get_f()
-        sd = pop.get_seed()
-
-        return (xs, fs, sd)
-
-    def load_pop(ser_pop):
-
-        xs, fs, sd = ser_pop
-        pop_size = len(fs)
-
-        prob = pg.problem(sfunc_inst)
-        pop = pg.population(prob, size=pop_size, seed=sd)
-
-        for i in range(pop_size):
-            pop.set_xf(i, xs[i], fs[i])
-
-        return pop
-
-    def gen_pop(seed, algos, pop_size):
-
-        random.seed(seed)
-        algo = random.sample(algos, 1)[0]
-        algo.set_seed(seed)
-        prob = pg.problem(sfunc_inst)
-        pop = pg.population(prob, size=pop_size, seed=seed)
-
-        ser_pop = dump_pop(pop)
-        ser_algo = dill.dumps(algo)
-
-        return ser_algo, ser_pop
-
-    def evolve(ser_algo, ser_pop):
-
-        algo = dill.loads(ser_algo)
-        pop = load_pop(ser_pop)
-
-        pop = algo.evolve(pop)
-
-        return dill.dumps(algo), dump_pop(pop),
-
-    print('[swarms:]'.ljust(30, ' ') +
-          ' Number of evaluations is %sx the generation length.' % (maxgen*pop_size))
-
-    if ncores is None:
-        ncores = pathos.multiprocessing.cpu_count()
-
-    if not debug:
-        pool = pathos.pools.ProcessPool(ncores)
-        pool.clear()
-
-    mig_abs = int(pop_size*mig_share)
-
-    print('[swarms:]'.ljust(30, ' ') +
-          ' Creating overlord of %s swarms...' % ncores, end="", flush=True)
-
-    if not debug:
-        rests = [pool.apipe(gen_pop, s, algos, pop_size)
-                            for s in range(ncores)]
-        overlord = [Swarm(*res.get(), s)
-                          for s, res in zip(range(ncores), rests)]
-    else:
-        rests = [gen_pop(s, algos, pop_size) for s in range(ncores)]
-        overlord = [Swarm(*res, s) for s, res in zip(range(ncores), rests)]
-
-    # better clear here already
-    pool.clear()
-
-    print('done.')
-    print('[swarms:]'.ljust(30, ' ') + ' Swarming out! Bzzzzz...')
-
-    done = False
-    best_x = None
-
-    xsw = np.empty((ncores, self.ndim))
-    fsw = np.empty((ncores, 1))
-    nsw = np.empty((ncores, 1), dtype=object)
-
-    pbar = tqdm.tqdm(total=maxgen, dynamic_ncols=True)
-    # pbar = tqdm.tqdm(total=ncalls*ncores, dynamic_ncols=True)
-
-    ll_max = -np.inf
-
-    while not done:
-        for s in overlord:
-            if not use_ring:
-                if not debug and not s.ready:
-                    continue
-
-                # if s.ncalls >= ncalls:
-                if pbar.n >= maxgen:
-                    break
-
-            if s.res is not None:
-                # post-procssing
-                s.extract()
-
-                xs = s.pop[0]
-                fs = s.pop[1]
-                fas = fs[:, 0].argsort()
-
-                # record history
-                s.history.append(xs[fas][0])
-
-                s.ncalls += 1
-                pbar.update()
-
-                # keep us informed
-                ll_max_swarm = -fs[fas][0][0]
-                if ll_max_swarm > ll_max:
-                    ll_max = ll_max_swarm
-                    ll_max_cnt = pbar.n
-
-                pbar.set_description('ll: '+str(ll_max_swarm.round(5)).rjust(
-                    12, ' ')+' ['+str(ll_max.round(5))+'/'+str(ll_max_cnt)+']')
-
-                # keep us up to date
-                if update_freq and pbar.n and not pbar.n % update_freq:
-
-                    for i, sw in enumerate(overlord):
-                        fsw[i, :] = -sw.pop[1].min()
-                        xsw[i, :] = sw.pop[0][s.pop[1].argmin()]
-                        nsw[i, :] = sw.sname
-
-                    swarms = xsw, fsw, nsw.reshape(1, -1)
-                    pbar.write(str(summary(
-                        swarms, self['__data__']['estimation']['prior'], swarm_mode=True, show_priors=False)))
-
-                if ll_max_cnt < pbar.n - ncores*tol_calls and ll_max == ll_max_swarm:
-                    print('[swarms:]'.ljust(
-                        30, ' ') + ' No improvement in the last %s calls, exiting...' % tol_calls)
-                    done=True
-                    break
-
-                # migrate the worst
-                # if best_x is not None and s.ncalls < ncalls:
-                if best_x is not None and pbar.n < maxgen:
-                    for no, x, f in zip(fas[-mig_abs:], best_x, best_f):
-                        s.pop[0][no]=x
-                        s.pop[1][no]=f
-
-                # save best for the next
-                best_x=xs[fas][:mig_abs]
-                best_f=fs[fas][:mig_abs]
-
-            # if s.ncalls < ncalls:
-            if pbar.n < maxgen:
-
-                if crit_mem is not None:
-                    # check if mem usage is above threshold
-                    if psutil.virtual_memory()[2] > crit_mem:
-
-                        pool.close()
-                        print('[swarms:]'.ljust(20, ' ') + " Critical memory usage of "+str(
-                            crit_mem)+"% reached, closing pools for maintenance...", end = "", flush = True)
-                        pool.join()
-                        print('fixing...', end = "", flush = True)
-                        pool.restart()
-                        print('done.', end = "", flush = True)
-
-                if not debug:
-                    s.res=pool.apipe(evolve, s.algo, s.pop)
-                else:
-                    s.res=evolve(s.algo, s.pop)
-
-        # done = done or all([s.ncalls >= ncalls for s in overlord])
-        done=done or pbar.n >= maxgen
-
-    pbar.close()
-
-    hs=[]
-
-    for i, s in enumerate(overlord):
-        fsw[i, :]=-s.pop[1].min()
-        xsw[i, :]=s.pop[0][s.pop[1].argmin()]
-        nsw[i, :]=s.sname
-        hs.append(np.array(s.history))
-
-    self.overlord=overlord
-    self.par_cand=xsw
-    self.swarms=xsw, fsw, nsw.reshape(1, -1)
-    self.swarm_history=hs
-
-    self.fdict['swarms']=xsw, fsw, nsw.reshape(1, -1)
-    self.fdict['swarm_history']=hs
-
-    return

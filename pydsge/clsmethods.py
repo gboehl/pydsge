@@ -8,8 +8,8 @@ from .stats import summary, pmdm_report
 from .engine import preprocess
 from .stuff import *
 from .filtering import *
-from .estimation import prep_estim, swarms, mcmc, kdes
-from .modesearch import pmdm
+from .estimation import prep_estim, swarms, mcmc, kdes, get_init_par
+from .modesearch import pmdm, nlopt
 from .plots import posteriorplot, traceplot, get_iv
 from .processing import *
 
@@ -232,19 +232,25 @@ DSGE.t_func = t_func
 DSGE.set_path = set_path
 DSGE.linear_representation = linear_representation
 DSGE.o_func = o_func
-DSGE.get_sys = get_sys
 DSGE.irfs = irfs
 DSGE.simulate = simulate
 DSGE.simulate_series = simulate_series
 DSGE.create_filter = create_filter
 DSGE.run_filter = run_filter
+DSGE.get_sys = get_sys
 DSGE.get_ll = get_ll
 DSGE.get_iv = get_iv
+DSGE.get_chain = get_chain
+DSGE.get_data = get_data
+DSGE.get_tune = get_tune
+DSGE.get_init_par = get_init_par
 DSGE.prep_estim = prep_estim
 DSGE.pmdm = pmdm
+DSGE.nlopt = nlopt
 DSGE.swarms = swarms
 DSGE.mcmc = mcmc
 DSGE.kdes = kdes
+DSGE.kombine = kdes
 DSGE.epstract = epstract
 DSGE.sampled_sim = sampled_sim
 DSGE.sampled_irfs = sampled_irfs
@@ -254,15 +260,12 @@ DSGE.posterior_sample = posterior_sample
 DSGE.preprocess = preprocess
 DSGE.mask = mask
 DSGE.save = save_meta
-DSGE.get_chain = get_chain
 DSGE.traceplot = traceplot_m
 DSGE.posteriorplot = posteriorplot_m
 DSGE.swarm_summary = swarm_summary
 DSGE.mcmc_summary = mcmc_summary
 DSGE.info = info_m
-DSGE.get_data = get_data
 DSGE.pmdm_report = pmdm_report
-DSGE.get_tune = get_tune
 DSGE.par_mean = par_mean
 DSGE.par_median = par_median
 

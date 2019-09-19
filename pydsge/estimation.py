@@ -28,60 +28,6 @@ class GPP:
         return self.bounds
 
 
-def get_init_par(self, nwalks, linear=False, use_top=None, distr_init_chains=False, verbose=False):
-
-    if use_top is None:
-        use_top = 0.
-
-    if distr_init_chains:
-
-        print()
-        print('[estimation:]'.ljust(20, ' ') +
-              ' finding initial values for mcmc (distributed over priors):')
-        p0 = np.empty((nwalks, self.ndim))
-        pbar = tqdm.tqdm(total=nwalks, unit='init.val(s)', dynamic_ncols=true)
-
-        for w in range(nwalks):
-            draw_prob = -np.inf
-
-            while np.isinf(draw_prob):
-                nprr = np.random.randint
-                # alternatively on could use enumerate() on frozen_priors and include the itarator in the random_state
-                pdraw = [pl.rvs(random_state=nprr(2**32-1))
-                         for pl in self.fdict['frozen_priors']]
-                draw_prob = lprob(pdraw, linear, verbose)
-
-            p0[w, :] = np.array(pdraw)
-            pbar.update(1)
-
-        pbar.close()
-
-    else:
-
-        if np.ndim(self.par_cand) > 1:
-
-            ranking = (-self.fdict['swarms'][1][:, 0]).argsort()
-            which = max(use_top*self.par_cand.shape[0], 1)
-            par_cand = self.par_cand[ranking][:int(which)]
-
-        else:
-            par_cand = self.par_cand
-
-        if np.ndim(par_cand) > 1:
-
-            p0 = np.empty((nwalks, self.ndim))
-            cand_dim = par_cand.shape[0]
-
-            for i, w in enumerate(range(nwalks)):
-                par = par_cand[i % cand_dim]
-                p0[w, :] = par * (1+1e-3*np.random.randn())
-
-        else:
-            p0 = par_cand*(1+1e-3*np.random.randn(nwalks, self.ndim))
-
-    return p0
-
-
 def prep_estim(self, N=None, linear=False, seed=None, obs_cov=None, init_with_pmeans=False, verbose=False):
     """Initializes the tools necessary for estimation
 
@@ -146,11 +92,11 @@ def prep_estim(self, N=None, linear=False, seed=None, obs_cov=None, init_with_pm
     # dry run before the fun beginns
     if np.isinf(self.get_ll(verbose=verbose)):
         raise ValueError('[estimation:]'.ljust(
-            20, ' ') + ' likelihood of initial values is zero.')
+            15, ' ') + 'likelihood of initial values is zero.')
 
     print()
-    print('[estimation:]'.ljust(20, ' ') +
-          ' Model operational. %s states, %s observables.' % (len(self.vv), len(self.observables)))
+    print('[estimation:]'.ljust(15, ' ') +
+          'Model operational. %s states, %s observables.' % (len(self.vv), len(self.observables)))
     print()
 
     par_fix = np.array(self.par).copy()
@@ -184,8 +130,8 @@ def prep_estim(self, N=None, linear=False, seed=None, obs_cov=None, init_with_pm
         self.par_cand = self.init_par.copy()
         self.fdict['init_par'] = self.init_par
 
-    print('[estimation:]'.ljust(20, ' ') +
-          ' %s priors detected. Adding parameters to the prior distribution.' % self.ndim)
+    print('[estimation:]'.ljust(15, ' ') +
+          '%s priors detected. Adding parameters to the prior distribution.' % self.ndim)
 
     def llike(parameters, linear, verbose):
 
@@ -221,8 +167,8 @@ def prep_estim(self, N=None, linear=False, seed=None, obs_cov=None, init_with_pm
                 ll = self.get_ll(verbose=verbose)
 
                 if verbose == 2:
-                    print('[llike:]'.ljust(20, ' ') +
-                          ' Sample took '+str(np.round(time.time() - st, 3))+'s.')
+                    print('[llike:]'.ljust(15, ' ') +
+                          'Sample took '+str(np.round(time.time() - st, 3))+'s.')
 
                 return ll
 
@@ -231,8 +177,8 @@ def prep_estim(self, N=None, linear=False, seed=None, obs_cov=None, init_with_pm
 
             except Exception as err:
                 if verbose == 2:
-                    print('[llike:]'.ljust(20, ' ') +
-                          ' Sample took '+str(np.round(time.time() - st, 3))+'s. (failure, error msg: %s)' % err)
+                    print('[llike:]'.ljust(15, ' ') +
+                          'Sample took '+str(np.round(time.time() - st, 3))+'s. (failure, error msg: %s)' % err)
 
                 return -np.inf
 
@@ -257,7 +203,79 @@ def prep_estim(self, N=None, linear=False, seed=None, obs_cov=None, init_with_pm
     self.llike = llike
 
 
-def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=None, max_gen=None, use_ring=False, broadcasting=True, ncores=None, crit_mem=.85, update_freq=None, verbose=False, debug=False):
+def get_init_par(self, nwalks, linear=False, use_top=None, distributed=False, ncores=None, verbose=False):
+
+    if use_top is None:
+        use_top = 0.
+
+    if linear is None:
+        linear = self.linear_filter
+
+    if distributed:
+
+        import pathos
+
+        print()
+        print('[estimation:]'.ljust(15, ' ') + 'finding initial values for mcmc (distributed over priors):')
+
+        # globals are *evil*
+        global lprob_global
+
+        frozen_priors = self.fdict['frozen_priors']
+
+        def runner(seed):
+
+            np.random.seed(seed)
+
+            draw_prob = -np.inf
+
+            while np.isinf(draw_prob):
+                nprr = np.random.randint
+                pdraw = [pl.rvs(random_state=nprr(2**32-1)) for pl in frozen_priors]
+                draw_prob = lprob_global(pdraw, linear, verbose)
+
+            return np.array(pdraw)
+
+
+        if ncores is None:
+            ncores = pathos.multiprocessing.cpu_count()
+
+        loc_pool = pathos.pools.ProcessPool(ncores)
+        loc_pool.clear()
+
+        pmap_sim = tqdm.tqdm(loc_pool.imap(runner, range(nwalks)), total=nwalks)
+
+        return np.array(list(pmap_sim))
+
+    else:
+
+        if np.ndim(self.par_cand) > 1:
+
+            ranking = (-self.fdict['swarms'][1][:, 0]).argsort()
+            which = max(use_top*self.par_cand.shape[0], 1)
+            par_cand = self.par_cand[ranking][:int(which)]
+
+        else:
+            par_cand = self.par_cand
+
+        if np.ndim(par_cand) > 1:
+
+            p0 = np.empty((nwalks, self.ndim))
+            cand_dim = par_cand.shape[0]
+
+            for i, w in enumerate(range(nwalks)):
+                par = par_cand[i % cand_dim]
+                p0[w, :] = par * (1+1e-3*np.random.randn())
+
+            return p0
+
+        elif nwalks > 1:
+            return par_cand*(1+1e-3*np.random.randn(nwalks, self.ndim))
+        else:
+            return par_cand
+
+
+def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=None, max_gen=None, use_ring=False, nlopt=True, broadcasting=True, ncores=None, crit_mem=.85, update_freq=None, verbose=False, debug=False):
 
     import pygmo as pg
     import dill
@@ -367,22 +385,18 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
 
         prob = pg.problem(sfunc_inst)
 
-        if not seed:
+        if nlopt and not seed:
             algo = pg.algorithm(pg.nlopt(solver="cobyla"))
-            print('[swarms:]'.ljust(20, ' ') + ' ' + str(seed)+': creating ' + algo.get_name())
+            print('[swarms:]'.ljust(15, ' ') + 'On seed ' + str(seed)+' creating ' + algo.get_name())
             algo.extract(pg.nlopt).maxeval = pop_size
-        elif ncore > 9 and seed == 1:
-            algo = pg.algorithm(pg.nlopt(solver="newuoa"))
-            print('[swarms:]'.ljust(20, ' ') + ' ' + str(seed)+': creating ' + algo.get_name())
-            algo.extract(pg.nlopt).maxeval = pop_size
-        elif ncore > 9 and seed == 2:
+        elif nlopt and seed == 1:
             algo = pg.algorithm(pg.nlopt(solver="neldermead"))
-            print('[swarms:]'.ljust(20, ' ') + ' ' + str(seed)+': creating ' + algo.get_name())
+            print('[swarms:]'.ljust(15, ' ') + 'On seed ' + str(seed)+' creating ' + algo.get_name())
             algo.extract(pg.nlopt).maxeval = pop_size
         else:
             random.seed(seed)
             algo = random.sample(algos, 1)[0]
-            print('[swarms:]'.ljust(20, ' ') + ' ' + str(seed)+': creating ' + algo.get_name())
+            print('[swarms:]'.ljust(15, ' ') + 'On seed ' + str(seed)+' creating ' + algo.get_name())
             algo.set_seed(seed)
 
         pop = pg.population(prob, size=pop_size, seed=seed)
@@ -402,8 +416,8 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
     if ncores is None:
         ncores = pathos.multiprocessing.cpu_count()
 
-    print('[swarms:]'.ljust(20, ' ') +
-          ' Number of evaluations per core is %sx the generation length.' % (ngen*pop_size/ncores))
+    print('[swarms:]'.ljust(15, ' ') +
+          'Number of evaluations per core is %sx the generation length.' % (ngen*pop_size/ncores))
 
     if not debug:
         pool = pathos.pools.ProcessPool(ncores)
@@ -411,8 +425,7 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
 
     mig_abs = int(pop_size*mig_share)
 
-    # print('[swarms:]'.ljust(20, ' ') + ' Creating overlord of %s swarms...' % ncores, end="", flush=True)
-    print('[swarms:]'.ljust(20, ' ') + ' Creating overlord of %s swarms...' % ncores)
+    print('[swarms:]'.ljust(15, ' ') + 'Creating overlord of %s swarms...' % ncores)
 
     if debug:
         rests = [gen_pop(s, algos, pop_size) for s in range(ncores)]
@@ -426,9 +439,9 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
         # better clear pool here already
         pool.clear()
 
-    print('[swarms:]'.ljust(20, ' ') + ' Creating overlord of %s swarms...done.' % ncores)
+    print('[swarms:]'.ljust(15, ' ') + 'Creating overlord of %s swarms...done.' % ncores)
     # print('done.')
-    print('[swarms:]'.ljust(20, ' ') + ' Swarming out! Bzzzzz...')
+    print('[swarms:]'.ljust(15, ' ') + 'Swarming out! Bzzzzz...')
 
     done = False
     best_x = None
@@ -475,9 +488,10 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
                     x_max = xs[fas][0]
                     f_max_cnt = pbar.n
                     n_max = s.sname
+                    if len(n_max) > 8:
+                        n_max = s.sname[:5]+'_'+s.sname[-2:]
 
-                pbar.set_description('ll: '+str(f_max_swarm.round(5)).rjust(
-                    12, ' ') + ' [' + str(f_max.round(5)) + '/' + str(n_max).rjust(10, ' ') + '/'+str(f_max_cnt) + ']')
+                pbar.set_description('ll: '+str(f_max_swarm.round(4)).rjust(12, ' ') + ('[%s/%s/%s]' %(f_max.round(4), n_max, f_max_cnt)).rjust(26, ' '))
 
                 # keep us up to date
                 if update_freq and pbar.n and not pbar.n % update_freq:
@@ -493,7 +507,7 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
 
                 if f_max_cnt < pbar.n - max_gen and f_max == f_max_swarm:
                     print('[swarms:]'.ljust(
-                        20, ' ') + ' No improvement in the last %s generations, exiting...' % max_gen)
+                        15, ' ') + 'No improvement in the last %s generations, exiting...' % max_gen)
                     done = True
                     break
 
@@ -520,7 +534,7 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
                     if psutil.virtual_memory()[2] > crit_mem:
 
                         pool.close()
-                        print('[swarms:]'.ljust(20, ' ') + " Critical memory usage of "+str(
+                        print('[swarms:]'.ljust(15, ' ') + " Critical memory usage of "+str(
                             crit_mem)+"% reached, closing pools for maintenance...", end="", flush=True)
                         pool.join()
                         print('fixing...', end="", flush=True)
@@ -552,10 +566,10 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
     self.fdict['swarms'] = xsw, fsw, nsw.reshape(1, -1)
     self.fdict['swarm_history'] = hs
 
-    return
+    return xsw
 
 
-def mcmc(self, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=None, backend_file=None, linear=None, use_top=None, distr_init_chains=False, resume=False, update_freq=None, verbose=False, debug=False):
+def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=None, backend_file=None, linear=None, use_top=None, distr_init_chains=False, resume=False, update_freq=None, verbose=False, debug=False):
 
     import pathos
     import emcee
@@ -627,7 +641,9 @@ def mcmc(self, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=None, back
         sampler = emcee.EnsembleSampler(
             nwalks, self.ndim, lprob_local, pool=loc_pool, backend=backend)
 
-    if resume:
+    if p0 is not None:
+        pass
+    elif resume:
         p0 = sampler.get_last_sample()
     else:
         p0 = get_init_par(self, nwalks, linear, use_top,
@@ -637,8 +653,7 @@ def mcmc(self, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=None, back
         np.warnings.filterwarnings('ignore')
 
     if not verbose:
-        pbar = tqdm.tqdm(total=nsteps, unit='sample(s)',
-                         dynamic_ncols=True)
+        pbar = tqdm.tqdm(total=nsteps, unit='sample(s)', dynamic_ncols=True)
         report = pbar.write
     else:
         report = print
@@ -653,12 +668,12 @@ def mcmc(self, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=None, back
 
             report('')
             if self.description is not None:
-                report('[mcmc:]'.ljust(20, ' ') +
-                       ' Summary from last %s of %s iterations (%s):' % (update_freq, cnt, str(self.description)))
+                report('[mcmc:]'.ljust(15, ' ') +
+                       'Summary from last %s of %s iterations (%s):' % (update_freq, cnt, str(self.description)))
 
             else:
-                report('[mcmc:]'.ljust(20, ' ') +
-                       ' Summary from last %s of %s iterations:' % (update_freq, cnt))
+                report('[mcmc:]'.ljust(15, ' ') +
+                       'Summary from last %s of %s iterations:' % (update_freq, cnt))
 
             sample = sampler.get_chain()
 
@@ -692,7 +707,7 @@ def mcmc(self, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=None, back
     return
 
 
-def kdes(self, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=None, linear=None, use_top=None, distr_init_chains=False, resume=False, verbose=False, debug=False):
+def kdes(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=None, linear=None, use_top=None, distr_init_chains=False, resume=False, verbose=False, debug=False):
 
     import pathos
     import kombine
@@ -746,7 +761,9 @@ def kdes(self, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=None, line
         sampler = kombine.Sampler(
             nwalks, self.ndim, lprob_local, pool=loc_pool)
 
-    if resume:
+    if p0 is not None:
+        pass
+    elif resume:
         # should work, but not tested
         p0 = self.fdict['kdes_chain'][-1]
     else:
@@ -759,9 +776,24 @@ def kdes(self, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=None, line
     if not verbose:
         pbar = tqdm.tqdm(total=nsteps, unit='sample(s)', dynamic_ncols=True)
 
-    sampler.burnin(p0, max_steps=nsteps, pbar=pbar, verbose=verbose)
+    if nsteps < 500:
+        nsteps_burnin = nsteps
+        nsteps_mcmc = 0
+    elif nsteps < 1000:
+        nsteps_burnin = 500
+        nsteps_mcmc = nsteps - nsteps_burnin
+    else:
+        nsteps_mcmc = 500
+        nsteps_burnin = nsteps - nsteps_mcmc
 
-    samples = sampler.get_samples()
+    p, post, q = sampler.burnin(p0, max_steps=nsteps_burnin, pbar=pbar, verbose=verbose)
+
+    p, post, q = sampler.run_mcmc(nsteps_mcmc, pbar=pbar)
+
+    acls = np.ceil(2/np.mean(sampler.acceptance[-tune:], axis=0) - 1).astype(int)
+    samples = np.concatenate([sampler.chain[-500::acl, c].reshape(-1, 2) for c, acl in enumerate(acls)])
+
+    # samples = sampler.get_samples()
 
     kdes_chain = sampler.chain
     kdes_sample = samples.reshape(1, -1, self.ndim)
@@ -779,3 +811,5 @@ def kdes(self, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=None, line
     self.sampler = sampler
 
     return
+
+
