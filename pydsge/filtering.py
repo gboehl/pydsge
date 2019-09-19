@@ -32,6 +32,7 @@ def create_filter(self, P=None, R=None, N=None, linear=False, random_seed=None):
     if not hasattr(self, 'data'):
         warnings.warn('No time series of observables provided')
     else:
+        ## this is not nice
         self.Z = np.array(self.data)
 
     if random_seed is not None:
@@ -67,10 +68,19 @@ def create_filter(self, P=None, R=None, N=None, linear=False, random_seed=None):
     return f
 
 
-def get_ll(self, verbose=False):
+def get_ll(self, verbose=False, constr_data=False):
 
     if verbose:
         st = time.time()
+
+    if constr_data:
+        # copy the data
+        wdata = self.data.copy()
+        # constaint const_obs
+        x_shift = self.get_parval('x_bar_shift')
+        wdata[str(self.const_obs)] = np.maximum(wdata[str(self.const_obs)], x_shift)
+        # send to filter
+        self.Z = np.array(wdata)
 
     if self.linear_filter:
         ll = self.filter.batch_filter(self.Z)[2]
@@ -89,10 +99,19 @@ def get_ll(self, verbose=False):
     return self.ll
 
 
-def run_filter(self, use_rts=True, rcond=1e-14, verbose=False):
+def run_filter(self, use_rts=True, rcond=1e-14, constr_data=False, verbose=False):
 
     if verbose:
         st = time.time()
+
+    if constr_data:
+        # copy the data
+        wdata = self.data.copy()
+        # constaint const_obs
+        x_shift = self.get_parval('x_bar_shift')
+        wdata[str(self.const_obs)] = np.maximum(wdata[str(self.const_obs)], x_shift)
+        # send to filter
+        self.Z = np.array(wdata)
 
     if self.linear_filter:
         X1, cov, ll = self.filter.batch_filter(self.Z)

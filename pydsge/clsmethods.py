@@ -228,29 +228,45 @@ def get_data(self=None, csv=None, sep=None, start=None, end=None):
     return d
 
 
-DSGE.t_func = t_func
-DSGE.set_path = set_path
-DSGE.linear_representation = linear_representation
-DSGE.o_func = o_func
-DSGE.irfs = irfs
-DSGE.simulate = simulate
-DSGE.simulate_series = simulate_series
-DSGE.create_filter = create_filter
-DSGE.run_filter = run_filter
-DSGE.get_sys = get_sys
-DSGE.get_ll = get_ll
-DSGE.get_iv = get_iv
-DSGE.get_chain = get_chain
+DSGE.save = save_meta
+DSGE.swarm_summary = swarm_summary
+DSGE.mcmc_summary = mcmc_summary
+DSGE.info = info_m
+DSGE.pmdm_report = pmdm_report
+DSGE.par_mean = par_mean
+DSGE.par_median = par_median
 DSGE.get_data = get_data
 DSGE.get_tune = get_tune
 DSGE.get_init_par = get_init_par
-DSGE.prep_estim = prep_estim
-DSGE.pmdm = pmdm
-DSGE.nlopt = nlopt
+# from stuff:
+DSGE.get_sys = get_sys
+DSGE.get_parval = get_parval
+DSGE.t_func = t_func
+DSGE.irfs = irfs
+DSGE.simulate = simulate
+DSGE.linear_representation = linear_representation
+DSGE.o_func = o_func
+DSGE.simulate_series = simulate_series
+# from estimation:
 DSGE.swarms = swarms
 DSGE.mcmc = mcmc
 DSGE.kdes = kdes
 DSGE.kombine = kdes
+DSGE.prep_estim = prep_estim
+# from modesearch:
+DSGE.pmdm = pmdm
+DSGE.nlopt = nlopt
+# from filter:
+DSGE.create_filter = create_filter
+DSGE.run_filter = run_filter
+DSGE.get_ll = get_ll
+# from plot:
+DSGE.traceplot = traceplot_m
+DSGE.posteriorplot = posteriorplot_m
+# from others:
+DSGE.set_path = set_path
+DSGE.get_iv = get_iv
+DSGE.get_chain = get_chain
 DSGE.epstract = epstract
 DSGE.sampled_sim = sampled_sim
 DSGE.sampled_irfs = sampled_irfs
@@ -259,15 +275,6 @@ DSGE.create_obs_cov = create_obs_cov
 DSGE.posterior_sample = posterior_sample
 DSGE.preprocess = preprocess
 DSGE.mask = mask
-DSGE.save = save_meta
-DSGE.traceplot = traceplot_m
-DSGE.posteriorplot = posteriorplot_m
-DSGE.swarm_summary = swarm_summary
-DSGE.mcmc_summary = mcmc_summary
-DSGE.info = info_m
-DSGE.pmdm_report = pmdm_report
-DSGE.par_mean = par_mean
-DSGE.par_median = par_median
 
 """
 def chain_masker(self):

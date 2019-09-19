@@ -245,13 +245,16 @@ class DSGE(dict):
         eq_i = 0
         for obs in self['observables']:
             eq = self['obs_equations'][str(obs)]
-
             DD[eq_i, 0] = eq.subs(subs_dict)
 
             curr_var = filter(lambda x: x.date >= 0, eq.atoms(Variable))
+
             for v in curr_var:
                 v_j = vlist.index(v)
                 ZZ[eq_i, v_j] = eq.diff(v).subs(subs_dict)
+
+                if self.const_var is v:
+                    self.const_obs = obs
 
             eq_i += 1
 

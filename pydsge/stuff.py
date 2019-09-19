@@ -393,3 +393,20 @@ def o_func(self, state):
     observation function
     """
     return self.hx[0] @ state + self.hx[1]
+
+def get_parval(self, parname=None):
+    
+    pfnames, pffunc = self.parafunc
+    pars_str = [str(p) for p in self.parameters]
+
+    if parname is None:
+        pdict = dict(zip(pars_str, self.par))
+        pfdict = dict(zip(pfnames, pffunc(self.par)))
+        
+        return pdict, pfdict
+
+    elif parname in pars_str:
+        return self.par[pars_str.index(parname)]
+
+    else: 
+        return pffunc(self.par)[pfnames.index(parname)]

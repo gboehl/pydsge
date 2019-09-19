@@ -28,7 +28,7 @@ class GPP:
         return self.bounds
 
 
-def prep_estim(self, N=None, linear=False, seed=None, obs_cov=None, init_with_pmeans=False, verbose=False):
+def prep_estim(self, N=None, linear=False, seed=None, obs_cov=None, constr_data=False, init_with_pmeans=False, verbose=False):
     """Initializes the tools necessary for estimation
 
     ...
@@ -90,7 +90,7 @@ def prep_estim(self, N=None, linear=False, seed=None, obs_cov=None, init_with_pm
         self.filter.R = obs_cov
 
     # dry run before the fun beginns
-    if np.isinf(self.get_ll(verbose=verbose)):
+    if np.isinf(self.get_ll(constr_data=const_data, verbose=verbose)):
         raise ValueError('[estimation:]'.ljust(
             15, ' ') + 'likelihood of initial values is zero.')
 
@@ -164,7 +164,7 @@ def prep_estim(self, N=None, linear=False, seed=None, obs_cov=None, init_with_pm
                     self.filter.F = self.linear_representation()
                     self.filter.H = self.hx
 
-                ll = self.get_ll(verbose=verbose)
+                ll = self.get_ll(const_data=const_data, verbose=verbose)
 
                 if verbose == 2:
                     print('[llike:]'.ljust(15, ' ') +
