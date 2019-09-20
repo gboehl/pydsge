@@ -105,12 +105,12 @@ def write_yaml(self, filename):
 def save_meta(self, filename=None):
 
     if filename is None:
-        if 'dfile' in self.fdict.keys():
-            filename = self.fdict['dfile']
-        elif hasattr(self, 'path') and hasattr(self, 'name'):
+        if hasattr(self, 'path') and hasattr(self, 'name'):
             filename = self.path + self.name + '_meta'
         elif hasattr(self, 'path') and hasattr(self, 'mod_name'):
             filename = self.path + self.mod_name + '_meta'
+        elif 'dfile' in self.fdict.keys():
+            filename = self.fdict['dfile']
         else:
             raise KeyError("'filename' must be given.")
     else:
@@ -128,7 +128,7 @@ def save_meta(self, filename=None):
 
     np.savez(filename, **self.fdict)
 
-    print('Metadata saved...')
+    print("'Metadata saved under '%s'" %filename)
 
     return
 
