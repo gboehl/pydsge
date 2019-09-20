@@ -64,6 +64,14 @@ def par_mean(self, full=False):
     return list(x)
 
 
+def mean_ll(self):
+    
+    meanll = self.lprob(self.par_mean)
+    medill = self.lprob(self.par_median)
+
+    return meanll, medill
+
+
 @property
 def par_median(self, full=False):
 
@@ -228,6 +236,12 @@ def get_data(self=None, csv=None, sep=None, start=None, end=None):
     return d
 
 
+def lprob(self, pars, linear=False, verbose=False):
+
+    self.prep_estim(linear=linear, verbose=verbose)
+
+    return self.lprob(pars, linear=linear, verbose=verbose)
+
 DSGE.save = save_meta
 DSGE.swarm_summary = swarm_summary
 DSGE.mcmc_summary = mcmc_summary
@@ -235,6 +249,7 @@ DSGE.info = info_m
 DSGE.pmdm_report = pmdm_report
 DSGE.par_mean = par_mean
 DSGE.par_median = par_median
+DSGE.mean_ll = mean_ll
 DSGE.get_data = get_data
 DSGE.get_tune = get_tune
 DSGE.get_init_par = get_init_par
@@ -253,6 +268,7 @@ DSGE.mcmc = mcmc
 DSGE.kdes = kdes
 DSGE.kombine = kdes
 DSGE.prep_estim = prep_estim
+DSGE.lprob = lprob
 # from modesearch:
 DSGE.pmdm = pmdm
 DSGE.nlopt = nlopt
