@@ -76,7 +76,7 @@ def summary(store, priors, tune=None, alpha=0.05, top=None, show_priors=True, mi
         fs = fs.squeeze()[fas]
 
     f_prs = [lambda x: pd.Series(x, name='distribution'),
-             lambda x: pd.Series(x, name='mean'),
+             lambda x: pd.Series(x, name='pst_mean'),
              lambda x: pd.Series(x, name='sd/df')]
 
     funcs = [lambda x: pd.Series(np.mean(x), name='mean'),

@@ -394,7 +394,7 @@ def o_func(self, state):
     """
     return self.hx[0] @ state + self.hx[1]
 
-def get_parval(self, parname=None):
+def get_parval(self, parname=None, setpar=None):
     
     pfnames, pffunc = self.parafunc
     pars_str = [str(p) for p in self.parameters]
@@ -406,7 +406,13 @@ def get_parval(self, parname=None):
         return pdict, pfdict
 
     elif parname in pars_str:
-        return self.par[pars_str.index(parname)]
+        if setpar is None:
+            return self.par[pars_str.index(parname)]
+        else:
+            self.par[pars_str.index(parname)] = setpar
+            return self.par[pars_str.index(parname)]
 
     else: 
+        if setpar is not None:
+            raise SyntaxError("Can not set parameter parname that is function of other parameters." %parname)
         return pffunc(self.par)[pfnames.index(parname)]
