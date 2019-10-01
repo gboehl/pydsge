@@ -128,7 +128,7 @@ def save_meta(self, filename=None):
 
     np.savez(filename, **self.fdict)
 
-    print("'Metadata saved under '%s'" %filename)
+    print("'Metadata saved as '%s'" %filename)
 
     return
 
