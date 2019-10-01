@@ -8,6 +8,7 @@ import time
 from grgrlib import fast0, eig, re_bc
 from .engine import boehlgorithm
 from decimal import Decimal
+from numpy.core._exceptions import UFuncTypeError
 
 
 def get_sys(self, par=None, reduce_sys=True, verbose=False):
@@ -105,7 +106,11 @@ def get_sys(self, par=None, reduce_sys=True, verbose=False):
     dim_x = len(vv_x3)
     OME = re_bc(A, dim_x)
     J = np.hstack((np.eye(dim_x), -OME))
-    cx = nl.inv(P2) @ c1*x_bar
+
+    try:
+        cx = nl.inv(P2) @ c1*x_bar
+    except UFuncTypeError:
+        raise SyntaxError("At least one parameter should rather be a function of parameters ('parafunc')...")
 
     # check condition:
     n1 = N[:dim_x, :dim_x]

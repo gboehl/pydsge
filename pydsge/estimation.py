@@ -28,7 +28,7 @@ class GPP:
         return self.bounds
 
 
-def prep_estim(self, N=None, linear=False, seed=None, obs_cov=None, constr_data=False, init_with_pmeans=False, verbose=False):
+def prep_estim(self, N=None, linear=None, seed=None, obs_cov=None, constr_data=False, init_with_pmeans=False, verbose=False):
     """Initializes the tools necessary for estimation
 
     ...
@@ -48,16 +48,23 @@ def prep_estim(self, N=None, linear=False, seed=None, obs_cov=None, constr_data=
             N = int(self.fdict['filter_n'])
         else:
             N = 300
-    else:
-        self.fdict['filter_n'] = N
+
+    if linear is None:
+        if 'filter_lin' in self.fdict.keys():
+            linear = self.fdict['filter_lin']
+        else:
+            linear = False
+
 
     if seed is None:
         if 'seed' in self.fdict.keys():
             seed = self.fdict['seed']
         else:
             seed = 0
-    else:
-        self.fdict['seed'] = seed
+
+    self.fdict['filter_n'] = N
+    self.fdict['filter_lin'] = linear
+    self.fdict['seed'] = seed
 
     if hasattr(self, 'data'):
         self.fdict['data'] = self.data
@@ -784,12 +791,15 @@ def kdes(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
         nsteps_mcmc = 500
         nsteps_burnin = nsteps - nsteps_mcmc
 
+    tune = max(500,nsteps_burnin)
+
     p, post, q = sampler.burnin(p0, max_steps=nsteps_burnin, pbar=pbar, verbose=verbose)
 
-    p, post, q = sampler.run_mcmc(nsteps_mcmc, pbar=pbar)
+    if nsteps_mcmc:
+        p, post, q = sampler.run_mcmc(nsteps_mcmc, pbar=pbar)
 
     acls = np.ceil(2/np.mean(sampler.acceptance[-tune:], axis=0) - 1).astype(int)
-    samples = np.concatenate([sampler.chain[-500::acl, c].reshape(-1, 2) for c, acl in enumerate(acls)])
+    samples = np.concatenate([sampler.chain[-tune::acl, c].reshape(-1, 2) for c, acl in enumerate(acls)])
 
     # samples = sampler.get_samples()
 
@@ -798,6 +808,7 @@ def kdes(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
 
     self.kdes_chain = kdes_chain
     self.kdes_sample = kdes_sample
+    self.fdict['tune'] = tune
     self.fdict['kdes_chain'] = kdes_chain
     self.fdict['kdes_sample'] = kdes_sample
 

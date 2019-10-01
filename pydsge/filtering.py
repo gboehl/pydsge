@@ -81,7 +81,7 @@ def run_filter(self, use_rts=True, get_ll=False, rcond=1e-14, constr_data=False,
         # copy the data
         wdata = self.data.copy()
         # constaint const_obs
-        x_shift = self.get_parval('x_bar_shift')
+        x_shift = self.get_parval(constr_data)
         wdata[str(self.const_obs)] = np.maximum(wdata[str(self.const_obs)], x_shift)
         # send to filter
         self.Z = np.array(wdata)
