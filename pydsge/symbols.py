@@ -1,5 +1,4 @@
 import sympy
-import copy
 from sympy.printing.str import StrPrinter
 
 from sympy.core.cache import clear_cache

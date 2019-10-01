@@ -68,38 +68,11 @@ def create_filter(self, P=None, R=None, N=None, linear=False, random_seed=None):
     return f
 
 
-def get_ll(self, verbose=False, constr_data=False):
-
-    if verbose:
-        st = time.time()
-
-    if constr_data:
-        # copy the data
-        wdata = self.data.copy()
-        # constaint const_obs
-        x_shift = self.get_parval('x_bar_shift')
-        wdata[str(self.const_obs)] = np.maximum(wdata[str(self.const_obs)], x_shift)
-        # send to filter
-        self.Z = np.array(wdata)
-
-    if self.linear_filter:
-        ll = self.filter.batch_filter(self.Z)[2]
-    else:
-        ll = self.filter.batch_filter(self.Z, calc_ll=True, verbose=verbose)
-
-    if np.isnan(ll):
-        ll = -np.inf
-
-    self.ll = ll
-
-    if verbose:
-        print('[get_ll:]'.ljust(15, ' ')+'Filtering done in %s seconds. Likelihood is %s.' %
-              (np.round(time.time()-st, 3), ll))
-
-    return self.ll
+def get_ll(self, **args):
+    return run_filter(self, use_rts=False, get_ll=True, **args)
 
 
-def run_filter(self, use_rts=True, rcond=1e-14, constr_data=False, verbose=False):
+def run_filter(self, use_rts=True, get_ll=False, rcond=1e-14, constr_data=False, verbose=False):
 
     if verbose:
         st = time.time()
@@ -123,7 +96,12 @@ def run_filter(self, use_rts=True, rcond=1e-14, constr_data=False, verbose=False
         # set approximation level
         self.filter.fx = lambda x: self.t_func(x)
 
-        X1, cov = self.filter.batch_filter(self.Z, store=use_rts, verbose=verbose)
+        res = self.filter.batch_filter(self.Z, calc_ll=get_ll, store=use_rts, verbose=verbose)
+
+        if get_ll:
+            ll = res
+        else:
+            X1, cov = res
 
         if use_rts:
             X1, cov = self.filter.rts_smoother(X1, cov, rcond=rcond)
@@ -131,6 +109,15 @@ def run_filter(self, use_rts=True, rcond=1e-14, constr_data=False, verbose=False
     if verbose:
         print('[run_filter:]'.ljust(15, ' ')+'Filtering done in ' +
               str(np.round(time.time()-st, 3))+'seconds.')
+
+    if get_ll:
+        if np.isnan(ll):
+            ll = -np.inf
+
+        self.ll = ll
+
+        return ll
+
 
     self.filtered_X = X1
     self.filtered_cov = cov

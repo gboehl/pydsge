@@ -95,10 +95,8 @@ def prep_estim(self, N=None, linear=False, seed=None, obs_cov=None, constr_data=
         raise ValueError('[estimation:]'.ljust(
             15, ' ') + 'likelihood of initial values is zero.')
 
-    print()
     print('[estimation:]'.ljust(15, ' ') +
           'Model operational. %s states, %s observables.' % (len(self.vv), len(self.observables)))
-    print()
 
     par_fix = np.array(self.par).copy()
 

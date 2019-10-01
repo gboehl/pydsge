@@ -1,15 +1,13 @@
 #!/bin/python
 # -*- coding: utf-8 -*-
 
-import sympy
-import yaml
-import warnings
-import re
 import os
+import re
+import yaml
 import itertools
-import scipy.stats as stats
+import sympy
+import time 
 import numpy as np
-import pandas as p
 from .symbols import Variable, Equation, Shock, Parameter, TSymbol
 from sympy.matrices import Matrix, zeros
 
@@ -344,7 +342,10 @@ class DSGE(dict):
         self.HH = add_para_func(HH)
 
     @classmethod
-    def read(cls, mfile):
+    def read(cls, mfile, verbose=False):
+
+        if verbose:
+            st = time.time()
 
         f = open(mfile)
         mtxt = f.read()
@@ -356,10 +357,16 @@ class DSGE(dict):
         pmodel.fdict['yaml_raw'] = mtxt
         pmodel.path = os.path.dirname(mfile) + os.sep
 
+        if verbose:
+            print('[DSGE.read:]'.ljust(15, ' ')+'Reading and parsing done in %ss.' %np.round(time.time()-st,5))
+
         return pmodel
 
     @classmethod
-    def load(cls, dfile):
+    def load(cls, dfile, verbose=False):
+
+        if verbose:
+            st = time.time()
 
         filedic = dict(np.load(dfile, allow_pickle=True))
 
@@ -375,6 +382,9 @@ class DSGE(dict):
         for ob in pmodel.fdict.keys():
             if str(pmodel.fdict[ob]) == 'None':
                 pmodel.fdict[ob] = None
+                
+        if verbose:
+            print('[DSGE.load:]'.ljust(15, ' ')+'Loading and parsing done in %ss.' %np.round(time.time()-st,5))
 
         return pmodel
 
@@ -433,9 +443,6 @@ class DSGE(dict):
             except TypeError as e:
                 raise SyntaxError(
                     'While parsing %s, got this error: %s' % (raw_const, repr(e)))
-                # print('While parsing %s, got this error: %s' %
-                # (raw_const, repr(e)))
-                # return
 
             const_eq = Equation(lhs, rhs)
         else:
@@ -455,14 +462,14 @@ class DSGE(dict):
         steady_state = [0]
         init_values = [0]
 
-        for f in [sympy.log, sympy.exp,
-                  sympy.sin, sympy.cos, sympy.tan,
-                  sympy.asin, sympy.acos, sympy.atan,
-                  sympy.sinh, sympy.cosh, sympy.tanh,
-                  sympy.pi, sympy.sign]:
-            context[str(f)] = f
+        # for f in [sympy.log, sympy.exp,
+                  # sympy.sin, sympy.cos, sympy.tan,
+                  # sympy.asin, sympy.acos, sympy.atan,
+                  # sympy.sinh, sympy.cosh, sympy.tanh,
+                  # sympy.pi, sympy.sign]:
+            # context[str(f)] = f
 
-        context['sqrt'] = sympy.sqrt
+        # context['sqrt'] = sympy.sqrt
         context['__builtins__'] = None
 
         equations = []
@@ -484,8 +491,6 @@ class DSGE(dict):
             except TypeError as e:
                 raise SyntaxError(
                     'While parsing %s, got this error: %s' % (eq, repr(e)))
-                # print('While parsing %s, got this error: %s' % (eq, repr(e)))
-                # return
 
             equations.append(Equation(lhs, rhs))
 
@@ -515,7 +520,7 @@ class DSGE(dict):
                 max_lag_exo[s] = min(
                     [i.date for i in it(all_shocks) if i.name == s.name])
             except Exception as ex:
-                raise SyntaxError("While parsing shock '%s': %s" %(s, ex))
+                raise SyntaxError("While parsing shock '%s': %s" % (s, ex))
 
         # arbitrary lags of exogenous shocks
         for s in shk_ordering:
@@ -541,7 +546,7 @@ class DSGE(dict):
                 max_lag_endo[v] = min(
                     [i.date for i in it(all_vars) if i.name == v.name])
             except Exception as ex:
-                raise SyntaxError("While parsing variable '%s': %s" %(v, ex))
+                raise SyntaxError("While parsing variable '%s': %s" % (v, ex))
 
         # ------------------------------------------------------------
         # arbitrary lags/leads of exogenous shocks
@@ -575,6 +580,7 @@ class DSGE(dict):
 
         info = {'nshock': nshock, 'npara': npara}
         QQ = sympy.zeros(nshock, nshock)
+
         for key, value in cov.items():
             shocks = key.split(",")
 
@@ -591,11 +597,9 @@ class DSGE(dict):
                 QQ[indi, indj] = eval(str(value), context)
                 QQ[indj, indi] = QQ[indi, indj]
 
-            else:
-                "fdfadsf"
-
         nobs = len(obs_equations)
-        HH = sympy.zeros(nobs, nobs)
+        # HH = sympy.zeros(nobs, nobs)
+        HH = zeros(nobs, nobs)
 
         if measurement_errors is not None:
             for key, value in cal['measurement_errors'].items():
