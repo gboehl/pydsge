@@ -76,6 +76,7 @@ def prep_estim(self, N=None, linear=False, seed=None, obs_cov=None, constr_data=
         obs_cov = self.create_obs_cov(obs_cov)
 
     self.fdict['obs_cov'] = obs_cov
+    self.fdict['constr_data'] = constr_data
 
     if not hasattr(self, 'sys'):
         self.get_sys(reduce_sys=True, verbose=verbose)
