@@ -54,7 +54,7 @@ def _hpd_df(x, alpha):
     return pd.DataFrame(hpd_vals, columns=cnames)
 
 
-def summary(store, priors, tune=None, alpha=0.05, top=None, show_priors=True, min_col=80, swarm_mode=None):
+def summary(store, priors, tune=None, alpha=0.05, top=None, show_priors=False, min_col=80, swarm_mode=None):
     # in parts stolen from pymc3 because it looks really nice
 
     try:

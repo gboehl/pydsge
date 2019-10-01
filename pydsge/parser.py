@@ -363,7 +363,7 @@ class DSGE(dict):
         return pmodel
 
     @classmethod
-    def load(cls, dfile):
+    def load(cls, dfile, verbose=False):
 
         if verbose:
             st = time.time()
