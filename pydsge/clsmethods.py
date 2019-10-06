@@ -5,12 +5,12 @@ import numpy as np
 import pandas as pd
 from .parser import DSGE
 from .stats import summary, pmdm_report
-from .engine import preprocess
+from .engine import preprocess, func_dispatch
 from .stuff import *
 from .filtering import *
 from .estimation import prep_estim, swarms, mcmc, kdes, get_init_par
 from .modesearch import pmdm, nlopt
-from .plots import posteriorplot, traceplot, get_iv
+from .plots import posteriorplot, traceplot
 from .processing import *
 
 
@@ -23,7 +23,23 @@ def get_tune(self):
         return self.fdict['tune']
 
 
-def get_chain(self, mc_type=None, backend_file=None):
+def calc_obs(self, states, covs=None):
+
+    if covs is None:
+        return states @ self.hx[0].T + self.hx[1]
+
+    var = np.diagonal(covs, axis1=1, axis2=2)
+    std = np.sqrt(var)
+    iv95 = np.stack((states - 1.96*std, states, states + 1.96*std))
+
+    obs = (self.hx[0] @ states.T).T + self.hx[1]
+    std_obs = (self.hx[0] @ std.T).T
+    iv95_obs = np.stack((obs - 1.96*std_obs, obs, obs + 1.96*std_obs))
+
+    return iv95_obs, iv95
+
+
+def get_chain(self, mc_type=None, backend_file=None, flat=None):
 
     if backend_file is None:
 
@@ -31,7 +47,7 @@ def get_chain(self, mc_type=None, backend_file=None):
             return self.kdes_sample
 
         if hasattr(self, 'sampler'):
-            return self.sampler.get_chain()
+            return self.sampler.get_chain(flat=flat)
 
         if 'kdes_sample' in self.fdict.keys() and mc_type != 'mcmc':
             return self.fdict['kdes_sample']
@@ -46,7 +62,24 @@ def get_chain(self, mc_type=None, backend_file=None):
 
     reader = emcee.backends.HDFBackend(backend_file)
 
-    return reader.get_chain()
+    return reader.get_chain(flat=flat)
+
+
+def get_log_prob(self, mc_type=None, backend_file=None, flat=None):
+
+    if backend_file is None:
+
+        if hasattr(self, 'sampler'):
+            return self.sampler.get_log_prob(flat=flat)
+
+        if 'backend_file' in self.fdict.keys():
+            backend_file = str(self.fdict['backend_file'])
+        else:
+            raise NameError("Neither a backend nor a sampler could be found.")
+
+    reader = emcee.backends.HDFBackend(backend_file)
+
+    return reader.get_log_prob(flat=flat)
 
 
 @property
@@ -236,24 +269,63 @@ def get_data(self=None, csv=None, sep=None, start=None, end=None):
     return d
 
 
-def lprob(self, pars, linear=False, verbose=False):
+def lprob(self, pars, linear=None, verbose=False):
 
-    self.prep_estim(linear=linear, verbose=verbose)
+    if not hasattr(self, 'ndim'):
+        self.prep_estim(linear=linear, verbose=verbose)
+        linear = self.filter.name == 'KalmanFilter'
 
     return self.lprob(pars, linear=linear, verbose=verbose)
+
+
+def mdd(self, mode_f=None, inv_hess=None, verbose=False):
+    """Approximate the marginal data density useing the LaPlace method.
+    `inv_hess` can be a matrix or the method string in ('hess', 'cov') telling me how to Approximate the inverse Hessian
+    """
+
+    if mode_f is None:
+        mode_f = self.fdict['mode_f']
+
+    if inv_hess == 'hess':
+
+        import numdifftools as nd
+
+        np.warnings.filterwarnings('ignore')
+        hh = nd.Hessian(func)(self.fdict['mode_x'])
+        np.warnings.filterwarnings('default')
+
+        if np.isnan(hh).any():
+            raise ValueError('[mdd:]'.ljust(15, ' ') + "Option `hess` is experimental and did not return a usable hessian matrix.")
+
+        inv_hess = np.linalg.inv(hh)
+
+    elif inv_hess is None:
+
+        chain = self.get_chain()[self.get_tune:]
+        chain = chain.reshape(-1,chain.shape[-1])
+        inv_hess = np.cov(chain.T)
+
+    ndim = len(self.fdict['prior_names'])
+    log_det_inv_hess = np.log(np.linalg.det(inv_hess))
+    mdd = .5*ndim*np.log(2*np.pi) + .5*log_det_inv_hess + mode_f
+
+    return mdd
 
 DSGE.save = save_meta
 DSGE.swarm_summary = swarm_summary
 DSGE.mcmc_summary = mcmc_summary
 DSGE.info = info_m
 DSGE.pmdm_report = pmdm_report
-DSGE.par_mean = par_mean
-DSGE.par_median = par_median
-DSGE.mean_ll = mean_ll
+# DSGE.par_mean = par_mean
+# DSGE.par_median = par_median
+# DSGE.mean_ll = mean_ll
+DSGE.mdd = mdd
 DSGE.get_data = get_data
 DSGE.get_tune = get_tune
 DSGE.get_init_par = get_init_par
+DSGE.calc_obs = calc_obs
 # from stuff:
+DSGE.func_dispatch = func_dispatch
 DSGE.get_sys = get_sys
 DSGE.get_parval = get_parval
 DSGE.t_func = t_func
@@ -281,8 +353,8 @@ DSGE.traceplot = traceplot_m
 DSGE.posteriorplot = posteriorplot_m
 # from others:
 DSGE.set_path = set_path
-DSGE.get_iv = get_iv
 DSGE.get_chain = get_chain
+DSGE.get_log_prob = get_log_prob
 DSGE.epstract = epstract
 DSGE.sampled_sim = sampled_sim
 DSGE.sampled_irfs = sampled_irfs

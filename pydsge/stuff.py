@@ -6,7 +6,7 @@ import numpy.linalg as nl
 import warnings
 import time
 from grgrlib import fast0, eig, re_bc
-from .engine import boehlgorithm
+from .engine import boehlgorithm, boehlgorithm_jit
 from decimal import Decimal
   
 try:
@@ -151,7 +151,7 @@ def get_sys(self, par=None, reduce_sys=True, verbose=False):
     self.dim_x = dim_x
     self.dim_v = len(self.vv)
 
-    self.observables = self['observables']
+    self.observables = [str(o) for o in self['observables']]
     self.par = par
 
     self.hx = self.ZZ(par)[:, ~s_out_msk], self.DD(par).squeeze()
@@ -176,8 +176,10 @@ def irfs(self, shocklist, wannasee=None, linear=False, show_warnings=True, verbo
     # shocklist: takes list of tuples of (shock, size, timing)
     # wannasee: list of strings of the variables to be plotted and stored
 
-    slabels = [v.replace('_', '') for v in self.vv]
-    olabels = [v.name.replace('_', '') for v in self.observables]
+    # slabels = [v.replace('_', '') for v in self.vv]
+    # olabels = [v.name.replace('_', '') for v in self.observables]
+    slabels = self.vv
+    olabels = self.observables
 
     args_sts = []
     args_obs = []
@@ -211,7 +213,8 @@ def irfs(self, shocklist, wannasee=None, linear=False, show_warnings=True, verbo
                 shock = vec[0]
                 shocksize = vec[1]
 
-                shock_arg = [v.name for v in self.shocks].index(shock)
+                # shock_arg = [v.name for v in self.shocks].index(shock)
+                shock_arg = self.shocks.index(shock)
                 shk_vec[shock_arg] = shocksize
 
                 shk_process = (self.SIG @ shk_vec).nonzero()
@@ -357,12 +360,10 @@ def simulate_series(self, T=1e3, cov=None, verbose=False, show_warnings=True):
     return np.array(states), np.array(Ks)
 
 
-def linear_representation(self, l=0, k=0):
+@property
+def linear_representation(self):
 
     N, A, J, cx, b, x_bar = self.sys
-
-    if not k:
-        l = 1
 
     if not hasattr(self, 'precalc_mat') or (hasattr(self, 'par_lr') and self.par_lr is not self.par):
         self.preprocess(l_max=1, k_max=0, verbose=False)

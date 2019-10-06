@@ -6,19 +6,6 @@ import matplotlib.cm as cm
 import numpy as np
 
 
-def get_iv(self, means, covs, get_obs=False):
-
-    var = np.diagonal(covs, axis1=1, axis2=2)
-    std = np.sqrt(var)
-    iv95 = np.stack((means - 1.96*std, means, means + 1.96*std))
-
-    obs = (self.hx[0] @ means.T).T + self.hx[1]
-    std_obs = (self.hx[0] @ std.T).T
-    iv95_obs = np.stack((obs - 1.96*std_obs, obs, obs + 1.96*std_obs))
-
-    return obs, iv95, iv95_obs
-
-
 def fast_kde(x, bw=4.5):
     """
     A fft-based Gaussian kernel density estimate (KDE)

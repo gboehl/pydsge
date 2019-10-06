@@ -188,3 +188,42 @@ def boehlgorithm(self, v, max_cnt=4e1, linear=False):
         dim_x = self.sys[2].shape[0]
 
         return LL_jit(1, 0, 1, v, *self.precalc_mat)[dim_x:], (0, 0), 0
+
+
+def func_dispatch(self, full=False, max_cnt=4e1):
+
+    if not hasattr(self, 'precalc_mat'):
+        self.preprocess(verbose=False)
+
+    # numba does not like tuples of numpy arrays
+    mat, term = self.precalc_mat
+    N, A, J, cx, b, x_bar = self.sys
+    x2eps = self.SIG
+    hx0 = self.hx[0].astype(float)
+    hx1 = self.hx[1]
+
+    @njit
+    def t_func_jit(state, noise=np.zeros(self.ny)):
+        if full:
+            state += x2eps @ noise
+        return boehlgorithm_jit(N, A, J, cx, b, x_bar, state, mat, term, max_cnt)
+
+    self.t_func_jit = t_func_jit
+
+    if full:
+        noise0 = np.zeros(self.ny)
+
+        @njit
+        def get_eps_jit(x, xp):
+            return (x - t_func_jit(xp, noise0)[0]) @ x2eps
+
+        @njit
+        def o_func_jit(state):
+            return state @ hx0.T + hx1
+
+        self.o_func_jit = o_func_jit
+        self.get_eps_jit = get_eps_jit
+
+        return t_func_jit, o_func_jit, get_eps_jit
+
+    return t_func_jit

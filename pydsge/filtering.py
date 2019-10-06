@@ -2,32 +2,25 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
-from .stuff import *
-from econsieve import TEnKF, KalmanFilter, ipas
+from .stuff import time
 from econsieve.stats import logpdf
 
 
 def create_obs_cov(self, scale_obs=0.1):
 
     if not hasattr(self, 'Z'):
-        raise LookupError('No time series of observables provided')
-    else:
-        sig_obs = np.var(self.Z, axis=0)*scale_obs**2
-
-        obs_cov = np.diagflat(sig_obs)
+        try:
+            self.Z = np.array(self.data)
+        except:
+            raise LookupError('No time series of observables provided')
+    
+    sig_obs = np.var(self.Z, axis=0)*scale_obs**2
+    obs_cov = np.diagflat(sig_obs)
 
     return obs_cov
 
 
-def create_filter(self, P=None, R=None, N=None, linear=False, random_seed=None):
-
-    if N is None:
-        N = 500
-
-    if linear:
-        self.linear_filter = True
-    else:
-        self.linear_filter = False
+def create_filter(self, P=None, R=None, N=None, ftype=None, random_seed=None):
 
     if not hasattr(self, 'data'):
         warnings.warn('No time series of observables provided')
@@ -38,13 +31,31 @@ def create_filter(self, P=None, R=None, N=None, linear=False, random_seed=None):
     if random_seed is not None:
         np.random.seed(random_seed)
 
-    if linear:
+    if ftype == 'KalmanFilter' or ftype == 'KF':
+
+        from econsieve import KalmanFilter
+
         f = KalmanFilter(dim_x=len(self.vv), dim_z=self.ny)
-        f.F = self.linear_representation()
+        f.F = self.linear_representation
         f.H = self.hx
+
+    elif ftype in ('PF', 'APF', 'ParticleFilter', 'AuxiliaryParticleFilter'):
+
+        from .partfilt import ParticleFilter
+
+        if N is None:
+            N = 10000
+
+        aux_bs = ftype in ('AuxiliaryParticleFilter', 'APF')
+        f = ParticleFilter(N=10000, dim_x=len(self.vv), dim_z=self.ny, auxiliary_bootstrap=aux_bs)
+
     else:
-        f = TEnKF(N=N, dim_x=len(self.vv), dim_z=self.ny,
-                  fx=self.t_func, hx=self.o_func, model_obj=self)
+
+        from econsieve import TEnKF
+
+        if N is None:
+            N = 500
+        f = TEnKF(N=N, dim_x=len(self.vv), dim_z=self.ny)
 
     if P is not None:
         f.P = P
@@ -57,11 +68,12 @@ def create_filter(self, P=None, R=None, N=None, linear=False, random_seed=None):
     if R is not None:
         f.R = R
 
-    f.eps_cov = self.QQ(self.par)
-
-    CO = self.SIG @ f.eps_cov
-
-    f.Q = CO @ CO.T
+    if ftype in ('AuxiliaryParticleFilter', 'APF', 'ParticleFilter', 'PF'):
+        f.Q = self.QQ(self.par) @ self.QQ(self.par)
+    else:
+        f.eps_cov = self.QQ(self.par)
+        CO = self.SIG @ f.eps_cov
+        f.Q = CO @ CO.T
 
     self.filter = f
 
@@ -69,13 +81,19 @@ def create_filter(self, P=None, R=None, N=None, linear=False, random_seed=None):
 
 
 def get_ll(self, **args):
-    return run_filter(self, use_rts=False, get_ll=True, **args)
+    return run_filter(self, smoother=False, get_ll=True, **args)
 
 
-def run_filter(self, use_rts=True, get_ll=False, rcond=1e-14, constr_data=False, verbose=False):
+def run_filter(self, smoother=True, get_ll=False, rcond=1e-14, constr_data=None, verbose=False):
 
     if verbose:
         st = time.time()
+
+    if constr_data is None:
+        if self.filter.name == 'ParticleFilter':
+            constr_data = 'elb_level' # wild guess
+        else: 
+            constr_data = False
 
     if constr_data:
         # copy the data
@@ -85,67 +103,68 @@ def run_filter(self, use_rts=True, get_ll=False, rcond=1e-14, constr_data=False,
         wdata[str(self.const_obs)] = np.maximum(wdata[str(self.const_obs)], x_shift)
         # send to filter
         self.Z = np.array(wdata)
-
-    if self.linear_filter:
-        X1, cov, ll = self.filter.batch_filter(self.Z)
-
-        if use_rts:
-            X1, cov, _, _ = self.filter.rts_smoother(X1, cov)
-
+    elif hasattr(self, 'data'):
+        self.Z = np.array(self.data)
     else:
-        # set approximation level
-        self.filter.fx = lambda x: self.t_func(x)
+        self.Z = self.fdict['data']
 
-        res = self.filter.batch_filter(self.Z, calc_ll=get_ll, store=use_rts, verbose=verbose)
+    if self.filter.name == 'KalmanFilter':
+
+        res, cov, ll = self.filter.batch_filter(self.Z)
 
         if get_ll:
-            ll = res
-        else:
-            X1, cov = res
+            res = ll
 
-        if use_rts:
-            X1, cov = self.filter.rts_smoother(X1, cov, rcond=rcond)
+        if smoother:
+            res, cov, _, _ = self.filter.rts_smoother(X1, cov)
+
+        self.cov = cov
+
+    elif self.filter.name == 'ParticleFilter':
+
+        t_func_jit, o_func_jit, get_eps_jit = self.func_dispatch(full=True) 
+
+        self.filter.t_func = t_func_jit
+        self.filter.o_func = o_func_jit
+        self.filter.get_eps = get_eps_jit 
+
+        res = self.filter.batch_filter(self.Z)
+
+        if verbose:
+            print('[run_filter:]'.ljust(15, ' ')+'Filtering done after %s seconds, starting smoothing...' %np.round(time.time()-st, 3))
+
+        if smoother:
+            if isinstance(smoother, bool):
+                smoother = 10
+            res = self.filter.smoother(smoother)
+
+    else:
+
+        self.filter.fx = self.t_func
+        self.filter.hx = self.o_func
+
+        res = self.filter.batch_filter(self.Z, calc_ll=get_ll, store=smoother, verbose=verbose)
+
+        if smoother:
+            res = self.filter.rts_smoother(res, rcond=rcond)
 
     if verbose:
         print('[run_filter:]'.ljust(15, ' ')+'Filtering done in ' +
               str(np.round(time.time()-st, 3))+'seconds.')
 
     if get_ll:
-        if np.isnan(ll):
-            ll = -np.inf
+        if np.isnan(res):
+            res = -np.inf
+        self.ll = res
+    else:
+        self.X = res
 
-        self.ll = ll
-
-        return ll
-
-
-    self.filtered_X = X1
-    self.filtered_cov = cov
-
-    return X1, cov
+    return res
 
 
-def extract(self, pmean=None, cov=None, method=None, penalty=50, return_flag=False, itype=(0, 1), presmoothing=None, min_options=None, show_warnings=True, verbose=True):
+def extract(self, verbose=True, **ipasargs):
 
-    self.filter.fx = lambda x, noise: self.t_func(x, noise)
-
-    if pmean is None:
-        pmean = self.filtered_X.copy()
-
-    if cov is None:
-        cov = self.filtered_cov.copy()
-
-    T1 = self.linear_representation()
-    T1, T2 = self.hx[0] @ T1, self.hx[0] @ T1 @ self.SIG
-    T3 = self.hx[1]
-    mod_objs = (T1, T2, T3), self.SIG
-
-    means, cov, res, flag = ipas(self.filter, pmean, cov, method, penalty, show_warnings=show_warnings,
-                                 itype=itype, presmoothing=presmoothing, objects=mod_objs, min_options=min_options, return_flag=True, verbose=verbose)
-
+    means, cov, res, flag = self.filter.ipas(**ipasargs)
     self.res = res
 
-    if return_flag:
-        return means, cov, res, flag
-
-    return means, cov, res
+    return means, cov, res, flag

@@ -233,7 +233,7 @@ def get_priors(priors):
             pstdd = dist[5]
         else:
             raise NotImplementedError(
-                'Shape of prior specification is unclear (!=3 & !=6).')
+                'Shape of prior specification of %s is unclear (!=3 & !=6).' %pp)
 
         # simply make use of frozen distributions
         if str(ptype) == 'uniform':
@@ -292,10 +292,10 @@ def pmdm_report(self, x_max, res_max, n=np.inf, printfunc=print):
         cols = rows_cols.read().split()[1]
 
     if self.description is not None:
-        printfunc('[bayesian_estimation -> pmdm ('+self.name+'):]'.ljust(45, ' ') +
+        printfunc('[estimation -> pmdm ('+self.name+'):]'.ljust(15, ' ') +
                   ' Current best guess @ %s and ll of %s (%s):' % (n, -res_max.round(5), str(self.description)))
     else:
-        printfunc('[bayesian_estimation -> pmdm ('+self.name+'):]'.ljust(45, ' ') +
+        printfunc('[estimation -> pmdm ('+self.name+'):]'.ljust(15, ' ') +
                   ' Current best guess @ %s and ll of %s):' % (n, -res_max.round(5)))
 
     # split the info such that it is readable

@@ -6,29 +6,12 @@ import warnings
 import os
 import time
 from .stats import get_priors, mc_mean, summary, pmdm_report
+from grgrlib.stuff import GPP
 import scipy.optimize as so
 import tqdm
 
 
-class GPP:
-    """Generic PYGMO problem
-    """
-
-    name = 'GPP'
-
-    def __init__(self, func, bounds):
-
-        self.func = func
-        self.bounds = bounds
-
-    def fitness(self, x):
-        return [-self.func(x)]
-
-    def get_bounds(self):
-        return self.bounds
-
-
-def prep_estim(self, N=None, linear=None, seed=None, obs_cov=None, constr_data=False, init_with_pmeans=False, verbose=False):
+def prep_estim(self, N=None, linear=None, seed=None, dispatch=False, obs_cov=None, constr_data=False, init_with_pmeans=False, verbose=True):
     """Initializes the tools necessary for estimation
 
     ...
@@ -55,7 +38,6 @@ def prep_estim(self, N=None, linear=None, seed=None, obs_cov=None, constr_data=F
         else:
             linear = False
 
-
     if seed is None:
         if 'seed' in self.fdict.keys():
             seed = self.fdict['seed']
@@ -74,36 +56,35 @@ def prep_estim(self, N=None, linear=None, seed=None, obs_cov=None, constr_data=F
     self.Z = np.array(self.data)
 
     if obs_cov is None:
-        if 'obs_cov' in self.fdict.keys():
-            obs_cov = self.fdict['obs_cov']
-        else:
+        if not 'filter_R' in self.fdict.keys():
             obs_cov = 1e-1
 
     if isinstance(obs_cov, float):
         obs_cov = self.create_obs_cov(obs_cov)
 
-    self.fdict['obs_cov'] = obs_cov
     self.fdict['constr_data'] = constr_data
 
     if not hasattr(self, 'sys'):
-        self.get_sys(reduce_sys=True, verbose=verbose)
+        self.get_sys(reduce_sys=True, verbose=verbose > 1)
 
     self.preprocess(verbose=verbose > 1)
 
     self.create_filter(N=N, linear=linear, random_seed=seed)
 
-    if 'filter_R' in self.fdict.keys():
+    if obs_cov is not None:
+        self.filter.R = obs_cov
+    elif 'filter_R' in self.fdict.keys():
         self.filter.R = self.fdict['filter_R']
     else:
-        self.filter.R = obs_cov
+        raise NameError('[estimation:]'.ljust(15, ' ') + 'observation covariance matrix not provided.')
 
     # dry run before the fun beginns
-    if np.isinf(self.get_ll(constr_data=constr_data, verbose=verbose)):
+    if np.isinf(self.get_ll(constr_data=constr_data, verbose=verbose > 1)):
         raise ValueError('[estimation:]'.ljust(
             15, ' ') + 'likelihood of initial values is zero.')
 
-    print('[estimation:]'.ljust(15, ' ') +
-          'Model operational. %s states, %s observables.' % (len(self.vv), len(self.observables)))
+    if verbose:
+        print('[estimation:]'.ljust(15, ' ') + 'Model operational. %s states, %s observables.' % (len(self.vv), len(self.observables)))
 
     par_fix = np.array(self.par).copy()
 
@@ -133,15 +114,14 @@ def prep_estim(self, N=None, linear=None, seed=None, obs_cov=None, constr_data=F
                 if pinitv[i] is None:
                     self.init_par[i] = par_fix[prior_arg][i]
 
-        self.par_cand = self.init_par.copy()
         self.fdict['init_par'] = self.init_par
 
-    print('[estimation:]'.ljust(15, ' ') +
-          '%s priors detected. Adding parameters to the prior distribution.' % self.ndim)
+    if verbose:
+        print('[estimation:]'.ljust(15, ' ') + '%s priors detected. Adding parameters to the prior distribution.' % self.ndim)
 
     def llike(parameters, linear, verbose):
 
-        if verbose == 2:
+        if verbose:
             st = time.time()
 
         with warnings.catch_warnings(record=True):
@@ -153,28 +133,33 @@ def prep_estim(self, N=None, linear=None, seed=None, obs_cov=None, constr_data=F
                 par_fix[prior_arg] = parameters
                 par_active_lst = list(par_fix)
 
-                self.get_sys(par=par_active_lst, reduce_sys=True,
-                             verbose=verbose > 1)
+                self.get_sys(par=par_active_lst, reduce_sys=True, verbose=verbose > 1)
 
                 if not linear:
-                    if self.linear_filter:
-                        self.create_filter(N=N, linear=False, random_seed=seed)
+                    if self.filter.name == 'KalmanFilter':
+                        raise AttributeError('[estimation:]'.ljust(15, ' ') + 'Missmatch between linearity choice (filter vs. lprob)')
                     # these max vals should be sufficient given we're only dealing with stochastic linearization
                     self.preprocess(l_max=3, k_max=16, verbose=verbose > 1)
-                    self.filter.fx = self.t_func
+                    if dispatch:
+                        t_func = self.func_dispatch()
+                        self.filter.fx = t_func
+                    else:
+                        self.filter.fx = self.t_func
                     self.filter.hx = self.o_func
                 else:
-                    if not self.linear_filter:
-                        self.create_filter(linear=True, random_seed=seed)
+                    if not self.filter.name == 'KalmanFilter':
+                        raise AttributeError('[estimation:]'.ljust(15, ' ') + 'Missmatch between linearity choice (filter vs. lprob)')
                     self.preprocess(l_max=1, k_max=0, verbose=False)
                     self.filter.F = self.linear_representation()
                     self.filter.H = self.hx
 
-                ll = self.get_ll(constr_data=constr_data, verbose=verbose)
+                CO = self.SIG @ self.QQ(self.par)
+                self.filter.Q = CO @ CO.T
 
-                if verbose == 2:
-                    print('[llike:]'.ljust(15, ' ') +
-                          'Sample took '+str(np.round(time.time() - st, 3))+'s.')
+                ll = self.get_ll(constr_data=constr_data, verbose=verbose > 1)
+
+                if verbose:
+                    print('[llike:]'.ljust(15, ' ') + "Sample took %ss, ll is %s." %(np.round(time.time() - st, 3), np.round(ll, 4)))
 
                 return ll
 
@@ -182,7 +167,7 @@ def prep_estim(self, N=None, linear=None, seed=None, obs_cov=None, constr_data=F
                 raise
 
             except Exception as err:
-                if verbose == 2:
+                if verbose:
                     print('[llike:]'.ljust(15, ' ') +
                           'Sample took '+str(np.round(time.time() - st, 3))+'s. (failure, error msg: %s)' % err)
 
@@ -215,7 +200,7 @@ def get_init_par(self, nwalks, linear=False, use_top=None, distributed=False, nc
         use_top = 0.
 
     if linear is None:
-        linear = self.linear_filter
+        linear = self.filter.name == 'KalmanFilter'
 
     if distributed:
 
@@ -254,15 +239,16 @@ def get_init_par(self, nwalks, linear=False, use_top=None, distributed=False, nc
         return np.array(list(pmap_sim))
 
     else:
+        if 'mode_x' in self.fdict.keys():
+            par_cand = self.fdict['mode_x']
+        else:
+            par_cand = self.fdict['init_par']
 
-        if np.ndim(self.par_cand) > 1:
+        if np.ndim(par_cand) > 1:
 
             ranking = (-self.fdict['swarms'][1][:, 0]).argsort()
-            which = max(use_top*self.par_cand.shape[0], 1)
-            par_cand = self.par_cand[ranking][:int(which)]
-
-        else:
-            par_cand = self.par_cand
+            which = max(use_top*par_cand.shape[0], 1)
+            par_cand = par_cand[ranking][:int(which)]
 
         if np.ndim(par_cand) > 1:
 
@@ -296,7 +282,7 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
             crit_mem *= 100
 
     if linear is None:
-        linear = self.linear_filter
+        linear = self.filter.name == 'KalmanFilter'
 
     if seed is None:
         seed = self.fdict['seed']
@@ -446,7 +432,6 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
         pool.clear()
 
     print('[swarms:]'.ljust(15, ' ') + 'Creating overlord of %s swarms...done.' % ncores)
-    # print('done.')
     print('[swarms:]'.ljust(15, ' ') + 'Swarming out! Bzzzzz...')
 
     done = False
@@ -566,21 +551,28 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
         hs.append(np.array(s.history))
 
     self.overlord = overlord
-    self.par_cand = xsw
 
     self.fdict['ngen'] = ngen
     self.fdict['swarms'] = xsw, fsw, nsw.reshape(1, -1)
     self.fdict['swarm_history'] = hs
 
+    fas = fsw[:, 0].argmax()
+
+    self.fdict['swarms_x'] = xsw[fas]
+    self.fdict['swarms_f'] = fsw[fas]
+    if 'mode_f' in self.fdict.keys() and fsw[fas] < self.fdict['mode_f']:
+        print('[swarms:]'.ljust(15, ' ') + " New mode of %s is below old mode of %s. Rejecting..." %(fsw[fas], self.fdict['mode_f']))
+    else:
+        self.fdict['mode_x'] = xsw[fas]
+        self.fdict['mode_f'] = fsw[fas]
+
     return xsw
 
 
-def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=None, backend_file=None, linear=None, use_top=None, distr_init_chains=False, resume=False, update_freq=None, verbose=False, debug=False):
+def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=None, backend_file=None, linear=None, distr_init_chains=False, resume=False, update_freq=None, verbose=False, debug=False):
 
     import pathos
     import emcee
-
-    self.fdict['use_top'] = use_top
 
     if not hasattr(self, 'ndim'):
         # if it seems to be missing, lets do it.
@@ -590,9 +582,7 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
     if seed is None:
         seed = self.fdict['seed']
 
-    if use_top is None:
-        use_top = 0
-
+    self.tune = tune
     if tune is None:
         # self.tune = int(nsteps*4/5.)
         # 2/3 seems to be a better fit, given that we initialize at a good approximation of the posterior distribution
@@ -605,7 +595,7 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
         ncores = pathos.multiprocessing.cpu_count()
 
     if linear is None:
-        linear = self.linear_filter
+        linear = self.filter.name == 'KalmanFilter'
 
     if backend_file is None:
         if 'backend_file' in self.fdict.keys():
@@ -652,8 +642,7 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
     elif resume:
         p0 = sampler.get_last_sample()
     else:
-        p0 = get_init_par(self, nwalks, linear, use_top,
-                          distr_init_chains, verbose)
+        p0 = get_init_par(self, nwalks, linear, 0, distr_init_chains, verbose)
 
     if not verbose:
         np.warnings.filterwarnings('ignore')
@@ -708,6 +697,23 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
     print("mean acceptance fraction: {0:.3f}".format(
         np.mean(sampler.acceptance_fraction)))
 
+    log_probs = sampler.get_log_prob()[self.tune:]
+    chain = sampler.get_chain()[self.tune:]
+    chain = chain.reshape(-1,chain.shape[-1])
+
+    arg_max = log_probs.argmax()
+    mode_f = log_probs.flat[arg_max]
+    mode_x = chain[arg_max]
+
+    self.fdict['mcmc_mode_x'] = mode_x
+    self.fdict['mcmc_mode_f'] = mode_f
+
+    if 'mode_f' in self.fdict.keys() and mode_f < self.fdict['mode_f']:
+        print('[mcmc:]'.ljust(15, ' ') + "New mode of %s is below old mode of %s. Rejecting..." %(mode_f, self.fdict['mode_f']))
+    else:
+        self.fdict['mode_x'] = mode_x
+        self.fdict['mode_f'] = mode_f
+
     self.sampler = sampler
 
     return
@@ -743,7 +749,7 @@ def kdes(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
         ncores = pathos.multiprocessing.cpu_count()
 
     if linear is None:
-        linear = self.linear_filter
+        linear = self.filter.name == 'KalmanFilter'
 
     if nwalks is None:
         nwalks = 120
@@ -817,6 +823,23 @@ def kdes(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
 
     if not verbose:
         np.warnings.filterwarnings('default')
+
+    log_probs = sampler.get_log_prob()[self.tune:]
+    chain = sampler.get_chain()[self.tune:]
+    chain = chain.reshape(-1,chain.shape[-1])
+
+    arg_max = log_probs.argmax()
+    mode_f = log_probs.flat[arg_max]
+    mode_x = chain[arg_max]
+
+    self.fdict['kombine_mode_x'] = mode_x
+    self.fdict['kombine_mode_f'] = mode_f
+
+    if 'mode_f' in self.fdict.keys() and mode_f < self.fdict['mode_f']:
+        print('[kombine:]'.ljust(15, ' ') + "New mode of %s is below old mode of %s. Rejecting..." %(mode_f, self.fdict['mode_f']))
+    else:
+        self.fdict['mode_x'] = mode_x
+        self.fdict['mode_f'] = mode_x
 
     self.sampler = sampler
 

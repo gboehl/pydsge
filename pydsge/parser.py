@@ -112,7 +112,7 @@ class DSGE(dict):
 
     @property
     def shocks(self):
-        return self['shk_ordering']
+        return [str(s) for s in self['shk_ordering']]
 
     @property
     def mod_name(self):
