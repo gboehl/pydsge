@@ -150,7 +150,7 @@ def run_filter(self, smoother=True, get_ll=False, rcond=1e-14, constr_data=None,
 
     if verbose:
         print('[run_filter:]'.ljust(15, ' ')+'Filtering done in ' +
-              str(np.round(time.time()-st, 3))+'seconds.')
+              str(np.round(time.time()-st, 3))+'s.')
 
     if get_ll:
         if np.isnan(res):

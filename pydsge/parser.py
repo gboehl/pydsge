@@ -344,6 +344,9 @@ class DSGE(dict):
     @classmethod
     def read(cls, mfile, verbose=False):
 
+        from copy import copy
+        global processed_raw_model
+
         if verbose:
             st = time.time()
 
@@ -351,14 +354,31 @@ class DSGE(dict):
         mtxt = f.read()
         f.close()
 
-        pmodel = cls.parse(mtxt)
+        use_cached = False
 
-        pmodel.fdict = {}
-        pmodel.fdict['yaml_raw'] = mtxt
-        pmodel.path = os.path.dirname(mfile) + os.sep
+        if 'processed_raw_model' in globals():
+            use_cached = processed_raw_model.fdict['yaml_raw'] == mtxt
+
+        if use_cached:
+            pmodel = copy(processed_raw_model)
+
+        else:
+
+            pmodel = cls.parse(mtxt)
+
+            pmodel.fdict = {}
+            pmodel.fdict['yaml_raw'] = mtxt
+            pmodel.path = os.path.dirname(mfile) + os.sep
+
+            processed_raw_model = copy(pmodel)
 
         if verbose:
-            print('[DSGE.read:]'.ljust(15, ' ')+'Reading and parsing done in %ss.' %np.round(time.time()-st,5))
+            duration = np.round(time.time()-st,3)
+            if duration < .01:
+                duration = 'the speed of light'
+            else:
+                str(duration) + 's'
+            print('[DSGE.read:]'.ljust(15, ' ')+'Reading and parsing done in %s.' %duration)
 
         return pmodel
 
