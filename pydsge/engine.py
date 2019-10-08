@@ -205,10 +205,9 @@ def func_dispatch(self, full=False, max_cnt=4e1):
     mat, term, bmat, bterm = self.precalc_mat
     N, A, J, cx, b, x_bar = self.sys
     x2eps = self.SIG
-    hx0 = self.hx[0].astype(float)
+    hx0 = np.ascontiguousarray(self.hx[0].astype(float).T)
     hx1 = self.hx[1]
 
-    @njit
     def t_func_jit(state, noise=np.zeros(self.ny)):
         if full:
             state += x2eps @ noise
@@ -225,7 +224,8 @@ def func_dispatch(self, full=False, max_cnt=4e1):
 
         @njit
         def o_func_jit(state):
-            return state @ hx0.T + hx1
+            s = np.ascontiguousarray(state)
+            return s @ hx0 + hx1
 
         self.o_func_jit = o_func_jit
         self.get_eps_jit = get_eps_jit
