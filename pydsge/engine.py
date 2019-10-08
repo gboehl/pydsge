@@ -26,6 +26,8 @@ def preprocess_jit(vals, l_max, k_max):
 
     mat = np.empty((l_max, k_max, s_max, dim_y, dim_y-dim_x))
     term = np.empty((l_max, k_max, s_max, dim_y))
+    bmat = np.empty((l_max, k_max, s_max, dim_y-dim_x))
+    bterm = np.empty((l_max, k_max, s_max))
     core_mat = np.empty((l_max, s_max, dim_y, dim_y))
     core_term = np.empty((s_max, dim_y))
 
@@ -78,14 +80,13 @@ def preprocess_jit(vals, l_max, k_max):
                     matrices = core_mat[l0, k0]
                     oterm = core_term[k0]
 
-                    fin_mat = aca(matrices[:, :dim_x]
-                                  ) @ SS_mat + aca(matrices[:, dim_x:])
+                    fin_mat = aca(matrices[:, :dim_x]) @ SS_mat + aca(matrices[:, dim_x:])
                     fin_term = aca(matrices[:, :dim_x]) @ SS_term + oterm
 
-                    mat[l, k, s], term[l, k, s] = core_mat[s0,
-                                                           0] @ fin_mat, core_mat[s0, 0] @ fin_term
+                    mat[l, k, s], term[l, k, s] = core_mat[s0,0] @ fin_mat, core_mat[s0, 0] @ fin_term
+                    bmat[l, k, s], bterm[l, k, s] = b @ mat[l, k, s], b @ term[l, k, s] 
 
-    return mat, term
+    return mat, term, bmat, bterm
 
 
 def preprocess(self, l_max=4, k_max=17, verbose=False):
@@ -101,9 +102,13 @@ def LL_jit(l, k, s, v, mat, term):
 
     return mat[l, k, s] @ v + term[l, k, s]
 
+@njit(nogil=True, cache=True)
+def bLL_jit(l, k, s, v, mat, term):
+
+    return mat[l, k, s] @ v + term[l, k, s]
 
 @njit(nogil=True, cache=True)
-def boehlgorithm_jit(N, A, J, cx, b, x_bar, v, mat, term, max_cnt):
+def boehlgorithm_jit(N, A, J, cx, b, x_bar, v, mat, term, bmat, bterm, max_cnt):
 
     l_max = mat.shape[0] - 1
     k_max = mat.shape[1] - 1
@@ -112,7 +117,7 @@ def boehlgorithm_jit(N, A, J, cx, b, x_bar, v, mat, term, max_cnt):
     l, k = 0, 0
 
     # check if (0,0) is a solution
-    while b @ LL_jit(l, 0, l, v, mat, term) - x_bar > 0:
+    while bLL_jit(l, 0, l, v, bmat, bterm) - x_bar > 0:
         if l == l_max:
             break
         l += 1
@@ -120,14 +125,14 @@ def boehlgorithm_jit(N, A, J, cx, b, x_bar, v, mat, term, max_cnt):
     # check if (0,0) is a solution
     if l < l_max:
         # needs to be wrapped so that both loops can be exited at once
-        l, k = bruite_wrapper(b, x_bar, v, mat, term)
+        l, k = bruite_wrapper(b, x_bar, v, bmat, bterm)
 
         # if still no solution, use approximation
         if l == 999:
             # set error flag 'no solution'
             flag = 1
             l, k = 0, 0
-            while b @ LL_jit(l, k, l+k, v, mat, term) - x_bar < 0:
+            while bLL_jit(l, k, l+k, v, bmat, bterm) - x_bar < 0:
                 if k == k_max:
                     # set error flag 'no solution + k_max reached'
                     flag = 3
@@ -137,7 +142,7 @@ def boehlgorithm_jit(N, A, J, cx, b, x_bar, v, mat, term, max_cnt):
     # either l or k must be > 0
     if not k:
         l = 1
-    v_new = LL_jit(l, k, 1, v, mat, term)[J.shape[0]:]
+    v_new = (mat[l, k, 1] @ v + term[l, k, 1])[J.shape[0]:]
 
     return v_new, (l, k), flag
 
@@ -151,16 +156,18 @@ def bruite_wrapper(b, x_bar, v, mat, term):
     for l in range(l_max):
         for k in range(1, k_max):
             if l:
-                if b @ LL_jit(l, k, 0, v, mat, term) - x_bar < 0:
+                if bLL_jit(l, k, 0, v, mat, term) - x_bar < 0:
                     continue
-                if b @ LL_jit(l, k, l-1, v, mat, term) - x_bar < 0:
+                if l > 1:
+                    if bLL_jit(l, k, l-1, v, mat, term) - x_bar < 0:
+                        continue
+            if bLL_jit(l, k, k+l, v, mat, term) - x_bar < 0:
+                continue
+            if bLL_jit(l, k, l, v, mat, term) - x_bar > 0:
+                continue
+            if k > 1:
+                if bLL_jit(l, k, k+l-1, v, mat, term) - x_bar > 0:
                     continue
-            if b @ LL_jit(l, k, k+l, v, mat, term) - x_bar < 0:
-                continue
-            if b @ LL_jit(l, k, l, v, mat, term) - x_bar > 0:
-                continue
-            if b @ LL_jit(l, k, k+l-1, v, mat, term) - x_bar > 0:
-                continue
             return l, k
 
     return 999, 999
@@ -174,20 +181,19 @@ def boehlgorithm(self, v, max_cnt=4e1, linear=False):
             self.preprocess(verbose=False)
 
         # numba does not like tuples of numpy arrays
-        mat, term = self.precalc_mat
+        mat, term, bmat, bterm = self.precalc_mat
         N, A, J, cx, b, x_bar = self.sys
 
-        return boehlgorithm_jit(N, A, J, cx, b, x_bar, v, mat, term, max_cnt)
+        return boehlgorithm_jit(N, A, J, cx, b, x_bar, v, mat, term, bmat, bterm, max_cnt)
 
     else:
 
         if not hasattr(self, 'precalc_mat'):
             self.preprocess(l_max=1, k_max=1, verbose=False)
 
-        mat, term = self.precalc_mat
         dim_x = self.sys[2].shape[0]
 
-        return LL_jit(1, 0, 1, v, *self.precalc_mat)[dim_x:], (0, 0), 0
+        return (self.precalc_mat[0][1, 0, 1] @ v)[dim_x:], (0, 0), 0
 
 
 def func_dispatch(self, full=False, max_cnt=4e1):
@@ -196,7 +202,7 @@ def func_dispatch(self, full=False, max_cnt=4e1):
         self.preprocess(verbose=False)
 
     # numba does not like tuples of numpy arrays
-    mat, term = self.precalc_mat
+    mat, term, bmat, bterm = self.precalc_mat
     N, A, J, cx, b, x_bar = self.sys
     x2eps = self.SIG
     hx0 = self.hx[0].astype(float)
@@ -206,7 +212,7 @@ def func_dispatch(self, full=False, max_cnt=4e1):
     def t_func_jit(state, noise=np.zeros(self.ny)):
         if full:
             state += x2eps @ noise
-        return boehlgorithm_jit(N, A, J, cx, b, x_bar, state, mat, term, max_cnt)
+        return boehlgorithm_jit(N, A, J, cx, b, x_bar, state, mat, term, bmat, bterm, max_cnt)
 
     self.t_func_jit = t_func_jit
 

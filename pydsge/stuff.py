@@ -369,7 +369,7 @@ def linear_representation(self):
         self.preprocess(l_max=1, k_max=0, verbose=False)
         self.par_lr = self.par
 
-    mat, term = self.precalc_mat
+    mat = self.precalc_mat[0]
 
     dim_x = J.shape[0]
 

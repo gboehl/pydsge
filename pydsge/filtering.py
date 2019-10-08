@@ -116,7 +116,7 @@ def run_filter(self, smoother=True, get_ll=False, rcond=1e-14, constr_data=None,
             res = ll
 
         if smoother:
-            res, cov, _, _ = self.filter.rts_smoother(X1, cov)
+            res, cov, _, _ = self.filter.rts_smoother(res, cov)
 
         self.cov = cov
 
