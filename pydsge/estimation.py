@@ -33,8 +33,8 @@ def prep_estim(self, N=None, linear=None, seed=None, dispatch=False, obs_cov=Non
             N = 300
 
     if linear is None:
-        if 'filter_lin' in self.fdict.keys():
-            linear = self.fdict['filter_lin']
+        if 'linear' in self.fdict.keys():
+            linear = self.fdict['linear']
         else:
             linear = False
 
@@ -45,7 +45,7 @@ def prep_estim(self, N=None, linear=None, seed=None, dispatch=False, obs_cov=Non
             seed = 0
 
     self.fdict['filter_n'] = N
-    self.fdict['filter_lin'] = linear
+    self.fdict['linear'] = linear
     self.fdict['seed'] = seed
 
     if hasattr(self, 'data'):
@@ -69,7 +69,11 @@ def prep_estim(self, N=None, linear=None, seed=None, dispatch=False, obs_cov=Non
 
     self.preprocess(verbose=verbose > 1)
 
-    self.create_filter(N=N, linear=linear, random_seed=seed)
+    if linear:
+        ftype = 'KalmanFilter'
+    else:
+        ftype = None
+    self.create_filter(N=N, ftype=ftype, random_seed=seed)
 
     if obs_cov is not None:
         self.filter.R = obs_cov
@@ -150,7 +154,7 @@ def prep_estim(self, N=None, linear=None, seed=None, dispatch=False, obs_cov=Non
                     if not self.filter.name == 'KalmanFilter':
                         raise AttributeError('[estimation:]'.ljust(15, ' ') + 'Missmatch between linearity choice (filter vs. lprob)')
                     self.preprocess(l_max=1, k_max=0, verbose=False)
-                    self.filter.F = self.linear_representation()
+                    self.filter.F = self.linear_representation
                     self.filter.H = self.hx
 
                 CO = self.SIG @ self.QQ(self.par)
@@ -276,7 +280,7 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
 
     if crit_mem is not None:
 
-        # TODO: one of the functions exposed by C++ leaks memory...
+        # TODO: one of the functions exposed by C++ leaks into memory...
         import psutil
         if crit_mem < 1:
             crit_mem *= 100

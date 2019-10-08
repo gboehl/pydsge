@@ -424,6 +424,8 @@ def get_parval(self, parname=None, setpar=None):
             return self.par[pars_str.index(parname)]
 
     else: 
+        if parname not in pfnames:
+            raise SyntaxError("Parameter '%s' does not exist." %parname)
         if setpar is not None:
-            raise SyntaxError("Can not set parameter parname that is function of other parameters." %parname)
+            raise SyntaxError("Can not set parameter '%s' that is function of other parameters." %parname)
         return pffunc(self.par)[pfnames.index(parname)]

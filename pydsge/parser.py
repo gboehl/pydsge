@@ -378,7 +378,7 @@ class DSGE(dict):
                 duration = 'the speed of light'
             else:
                 str(duration) + 's'
-            print('[DSGE.read:]'.ljust(15, ' ')+'Reading and parsing done in %s.' %duration)
+            print('[DSGE:]'.ljust(15, ' ')+'Reading and parsing done in %s.' %duration)
 
         return pmodel
 
@@ -404,7 +404,7 @@ class DSGE(dict):
                 pmodel.fdict[ob] = None
                 
         if verbose:
-            print('[DSGE.load:]'.ljust(15, ' ')+'Loading and parsing done in %ss.' %np.round(time.time()-st,5))
+            print('[DSGE:]'.ljust(15, ' ')+'Loading and parsing done in %ss.' %np.round(time.time()-st,5))
 
         return pmodel
 

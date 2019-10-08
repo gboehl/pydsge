@@ -47,7 +47,7 @@ def create_filter(self, P=None, R=None, N=None, ftype=None, random_seed=None):
             N = 10000
 
         aux_bs = ftype in ('AuxiliaryParticleFilter', 'APF')
-        f = ParticleFilter(N=10000, dim_x=len(self.vv), dim_z=self.ny, auxiliary_bootstrap=aux_bs)
+        f = ParticleFilter(N=N, dim_x=len(self.vv), dim_z=self.ny, auxiliary_bootstrap=aux_bs)
 
     else:
 
@@ -130,10 +130,11 @@ def run_filter(self, smoother=True, get_ll=False, rcond=1e-14, constr_data=None,
 
         res = self.filter.batch_filter(self.Z)
 
-        if verbose:
-            print('[run_filter:]'.ljust(15, ' ')+'Filtering done after %s seconds, starting smoothing...' %np.round(time.time()-st, 3))
-
         if smoother:
+
+            if verbose:
+                print('[run_filter:]'.ljust(15, ' ')+'Filtering done after %s seconds, starting smoothing...' %np.round(time.time()-st, 3))
+
             if isinstance(smoother, bool):
                 smoother = 10
             res = self.filter.smoother(smoother)
