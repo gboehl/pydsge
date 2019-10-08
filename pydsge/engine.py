@@ -208,6 +208,7 @@ def func_dispatch(self, full=False, max_cnt=4e1):
     hx0 = np.ascontiguousarray(self.hx[0].astype(float).T)
     hx1 = self.hx[1]
 
+    @njit
     def t_func_jit(state, noise=np.zeros(self.ny)):
         if full:
             state += x2eps @ noise
