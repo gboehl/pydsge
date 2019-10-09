@@ -210,9 +210,14 @@ def func_dispatch(self, full=False, max_cnt=4e1):
 
     @njit
     def t_func_jit(state, noise=np.zeros(self.ny)):
+
+        newstate = state.copy()
+
         if full:
-            state += x2eps @ noise
-        return boehlgorithm_jit(N, A, J, cx, b, x_bar, state, mat, term, bmat, bterm, max_cnt)
+            newstate += x2eps @ noise
+
+        res = boehlgorithm_jit(N, A, J, cx, b, x_bar, newstate, mat, term, bmat, bterm, max_cnt)
+        return res[0], res[2]
 
     self.t_func_jit = t_func_jit
 

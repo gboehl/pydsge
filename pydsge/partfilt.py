@@ -155,7 +155,7 @@ class ParticleFilter(object):
 
     def smoother(self, nback=False):
 
-        if nback:
+        if nback > 1:
             smooth_trajectories = self.pf.hist.backward_sampling(nback)
             self.S = np.array(smooth_trajectories).swapaxes(0, 1).reshape(nback, len(self.data), self._dim_x)
 

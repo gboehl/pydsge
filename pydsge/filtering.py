@@ -3,6 +3,7 @@
 
 import numpy as np
 from .stuff import time
+from grgrlib.stuff import timeprint
 from econsieve.stats import logpdf
 
 
@@ -155,16 +156,18 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=False, rcond=1e-14, c
         if smoother:
             res = self.filter.rts_smoother(res, rcond=rcond)
 
-    if verbose:
-        print('[run_filter:]'.ljust(15, ' ')+'Filtering done in ' +
-              str(np.round(time.time()-st, 3))+'s.')
-
     if get_ll:
         if np.isnan(res):
             res = -np.inf
         self.ll = res
+
+        if verbose:
+            print('[run_filter:]'.ljust(15, ' ')+'Filtering done in %s. Likelihood is %s.' %(timeprint(time.time()-st), res))
     else:
         self.X = res
+
+        if verbose:
+            print('[run_filter:]'.ljust(15, ' ')+'Filtering done in %s.' %timeprint(time.time()-st))
 
     return res
 

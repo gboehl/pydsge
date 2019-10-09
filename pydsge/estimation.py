@@ -497,8 +497,7 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
                         nsw[i, :] = sw.sname
 
                     swarms = xsw, fsw, nsw.reshape(1, -1)
-                    pbar.write(str(summary(
-                        swarms, self['__data__']['estimation']['prior'], swarm_mode=True, show_priors=False).round(3)))
+                    pbar.write(str(summary(swarms, self['__data__']['estimation']['prior'], swarm_mode=True).round(3)))
 
                 if f_max_cnt < pbar.n - max_gen and f_max == f_max_swarm:
                     print('[swarms:]'.ljust(
@@ -848,5 +847,3 @@ def kdes(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
     self.sampler = sampler
 
     return
-
-
