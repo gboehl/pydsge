@@ -280,7 +280,7 @@ def get_init_par(self, nwalks, linear=False, use_top=None, distributed=False, nc
             return par_cand
 
 
-def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=None, max_gen=None, use_ring=False, nlopt=True, broadcasting=True, ncores=None, crit_mem=.85, update_freq=None, verbose=False, debug=False):
+def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=None, max_gen=None, initialize_p0=True, use_ring=False, nlopt=True, broadcasting=True, ncores=None, crit_mem=.85, update_freq=None, verbose=False, debug=False):
 
     import pygmo as pg
     import dill
@@ -317,6 +317,10 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
         return lprob_global(par, linear, verbose)
 
     sfunc_inst = GPP(lprob_local, self.fdict['prior_bounds'])
+
+    if initialize_p0:
+        p0 = get_init_par(self, 1, verbose=verbose)
+        fp0 = [lprob_global(p0)]
 
     class Swarm(object):
 
@@ -407,7 +411,9 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
                   str(seed)+' creating ' + algo.get_name())
             algo.set_seed(seed)
 
-        pop = pg.population(prob, size=pop_size, seed=seed)
+        pop = pg.population(prob, size=pop_size-initialize_p0, seed=seed)
+        if initialize_p0:
+            pop.push_back(p0, fp0)
         ser_pop = dump_pop(pop)
         ser_algo = dill.dumps(algo)
 
