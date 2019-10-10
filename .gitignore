@@ -1,1 +1,9 @@
+_build
 __pycache__/
+*.html
+tests/*
+!tests/test.py
+!tests/NK_IR04_rep.mod
+build
+dist
+pynare.egg-info
