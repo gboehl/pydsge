@@ -329,10 +329,11 @@ DSGE.func_dispatch = func_dispatch
 DSGE.get_sys = get_sys
 DSGE.get_parval = get_parval
 DSGE.t_func = t_func
+DSGE.o_func = o_func
+DSGE.get_eps = get_eps
 DSGE.irfs = irfs
 DSGE.simulate = simulate
 DSGE.linear_representation = linear_representation
-DSGE.o_func = o_func
 DSGE.simulate_series = simulate_series
 # from estimation:
 DSGE.swarms = swarms

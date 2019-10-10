@@ -405,6 +405,11 @@ def o_func(self, state):
     """
     return self.hx[0] @ state + self.hx[1]
 
+
+def get_eps(self, x, xp):
+    return (x - self.t_func(xp)[0]) @ self.SIG
+
+
 def get_parval(self, parname=None, setpar=None):
     
     pfnames, pffunc = self.parafunc

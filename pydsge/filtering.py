@@ -146,10 +146,12 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=False, rcond=1e-14, c
             t_func_jit, o_func_jit, get_eps_jit = self.func_dispatch(full=True) 
             self.filter.fx = t_func_jit
             self.filter.hx = o_func_jit
+            self.filter.ge = get_eps_jit
 
         else:
             self.filter.fx = self.t_func
             self.filter.hx = self.o_func
+            self.filter.ge = self.get_eps
 
         res = self.filter.batch_filter(self.Z, calc_ll=get_ll, store=smoother, verbose=verbose)
 
@@ -162,19 +164,24 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=False, rcond=1e-14, c
         self.ll = res
 
         if verbose:
-            print('[run_filter:]'.ljust(15, ' ')+'Filtering done in %s. Likelihood is %s.' %(timeprint(time.time()-st), res))
+            print('[run_filter:]'.ljust(15, ' ')+'Filtering done in %s. Likelihood is %s.' %(timeprint(time.time()-st, 3), res))
     else:
         self.X = res
 
         if verbose:
-            print('[run_filter:]'.ljust(15, ' ')+'Filtering done in %s.' %timeprint(time.time()-st))
+            print('[run_filter:]'.ljust(15, ' ')+'Filtering done in %s.' %timeprint(time.time()-st, 3))
 
     return res
 
 
-def extract(self, verbose=True, **ipasargs):
+def extract(self, precalc=True, verbose=True, **ipasargs):
 
-    means, cov, res, flag = self.filter.ipas(**ipasargs)
+    if precalc:
+        get_eps = self.filter.ge
+    else:
+        get_eps = None
+
+    means, cov, res, flag = self.filter.ipas(**ipasargs, get_eps=get_eps)
     self.res = res
 
     return means, cov, res, flag
