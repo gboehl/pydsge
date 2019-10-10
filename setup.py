@@ -8,7 +8,6 @@ setup(
         description='Solve, filter and estimate DSGE models with occasionaly binding constraints',
         packages = find_packages(),
         install_requires=[
-            'econsieve',
             'emcee',
             'numba',
             'numpy',
