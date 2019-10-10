@@ -18,5 +18,6 @@ setup(
             'tqdm',
             'pyaml',
             'pygmo',
+            'grgrlib',
          ],
    )
