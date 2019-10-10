@@ -8,7 +8,7 @@ import time
 from grgrlib import fast0, eig, re_bc
 from .engine import boehlgorithm, boehlgorithm_jit
 from decimal import Decimal
-  
+
 try:
     from numpy.core._exceptions import UFuncTypeError as ParafuncError
 except ModuleNotFoundError:
@@ -111,11 +111,11 @@ def get_sys(self, par=None, reduce_sys=True, verbose=False):
     OME = re_bc(A, dim_x)
     J = np.hstack((np.eye(dim_x), -OME))
 
-
     try:
         cx = nl.inv(P2) @ c1*x_bar
     except ParafuncError:
-        raise SyntaxError("At least one parameter should rather be a function of parameters ('parafunc')...")
+        raise SyntaxError(
+            "At least one parameter should rather be a function of parameters ('parafunc')...")
 
     # check condition:
     n1 = N[:dim_x, :dim_x]
@@ -411,14 +411,14 @@ def get_eps(self, x, xp):
 
 
 def get_parval(self, parname=None, setpar=None):
-    
+
     pfnames, pffunc = self.parafunc
     pars_str = [str(p) for p in self.parameters]
 
     if parname is None:
         pdict = dict(zip(pars_str, self.par))
         pfdict = dict(zip(pfnames, pffunc(self.par)))
-        
+
         return pdict, pfdict
 
     elif parname in pars_str:
@@ -428,9 +428,10 @@ def get_parval(self, parname=None, setpar=None):
             self.par[pars_str.index(parname)] = setpar
             return self.par[pars_str.index(parname)]
 
-    else: 
+    else:
         if parname not in pfnames:
-            raise SyntaxError("Parameter '%s' does not exist." %parname)
+            raise SyntaxError("Parameter '%s' does not exist." % parname)
         if setpar is not None:
-            raise SyntaxError("Can not set parameter '%s' that is function of other parameters." %parname)
+            raise SyntaxError(
+                "Can not set parameter '%s' that is function of other parameters." % parname)
         return pffunc(self.par)[pfnames.index(parname)]

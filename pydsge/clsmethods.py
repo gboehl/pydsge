@@ -84,7 +84,7 @@ def get_log_prob(self, mc_type=None, backend_file=None, flat=None):
 
 @property
 def par_mean(self, full=False):
-    
+
     chain = self.get_chain()
     x_est = chain[self.get_tune:].mean(axis=(0, 1))
 
@@ -98,7 +98,7 @@ def par_mean(self, full=False):
 
 
 def mean_ll(self):
-    
+
     meanll = self.lprob(self.par_mean)
     medill = self.lprob(self.par_median)
 
@@ -161,7 +161,7 @@ def save_meta(self, filename=None):
 
     np.savez(filename, **self.fdict)
 
-    print("'Metadata saved as '%s'" %filename)
+    print("'Metadata saved as '%s'" % filename)
 
     return
 
@@ -295,14 +295,15 @@ def mdd(self, mode_f=None, inv_hess=None, verbose=False):
         np.warnings.filterwarnings('default')
 
         if np.isnan(hh).any():
-            raise ValueError('[mdd:]'.ljust(15, ' ') + "Option `hess` is experimental and did not return a usable hessian matrix.")
+            raise ValueError('[mdd:]'.ljust(
+                15, ' ') + "Option `hess` is experimental and did not return a usable hessian matrix.")
 
         inv_hess = np.linalg.inv(hh)
 
     elif inv_hess is None:
 
         chain = self.get_chain()[self.get_tune:]
-        chain = chain.reshape(-1,chain.shape[-1])
+        chain = chain.reshape(-1, chain.shape[-1])
         inv_hess = np.cov(chain.T)
 
     ndim = len(self.fdict['prior_names'])
@@ -310,6 +311,7 @@ def mdd(self, mode_f=None, inv_hess=None, verbose=False):
     mdd = .5*ndim*np.log(2*np.pi) + .5*log_det_inv_hess + mode_f
 
     return mdd
+
 
 DSGE.save = save_meta
 DSGE.swarm_summary = swarm_summary

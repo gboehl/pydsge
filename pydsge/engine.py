@@ -80,11 +80,14 @@ def preprocess_jit(vals, l_max, k_max):
                     matrices = core_mat[l0, k0]
                     oterm = core_term[k0]
 
-                    fin_mat = aca(matrices[:, :dim_x]) @ SS_mat + aca(matrices[:, dim_x:])
+                    fin_mat = aca(matrices[:, :dim_x]
+                                  ) @ SS_mat + aca(matrices[:, dim_x:])
                     fin_term = aca(matrices[:, :dim_x]) @ SS_term + oterm
 
-                    mat[l, k, s], term[l, k, s] = core_mat[s0,0] @ fin_mat, core_mat[s0, 0] @ fin_term
-                    bmat[l, k, s], bterm[l, k, s] = b @ mat[l, k, s], b @ term[l, k, s] 
+                    mat[l, k, s], term[l, k, s] = core_mat[s0,
+                                                           0] @ fin_mat, core_mat[s0, 0] @ fin_term
+                    bmat[l, k, s], bterm[l, k, s] = b @ mat[l,
+                                                            k, s], b @ term[l, k, s]
 
     return mat, term, bmat, bterm
 
@@ -102,10 +105,12 @@ def LL_jit(l, k, s, v, mat, term):
 
     return mat[l, k, s] @ v + term[l, k, s]
 
+
 @njit(nogil=True, cache=True)
 def bLL_jit(l, k, s, v, mat, term):
 
     return mat[l, k, s] @ v + term[l, k, s]
+
 
 @njit(nogil=True, cache=True)
 def boehlgorithm_jit(N, A, J, cx, b, x_bar, v, mat, term, bmat, bterm, max_cnt):
@@ -216,7 +221,8 @@ def func_dispatch(self, full=False, max_cnt=4e1):
         if full:
             newstate += x2eps @ noise
 
-        res = boehlgorithm_jit(N, A, J, cx, b, x_bar, newstate, mat, term, bmat, bterm, max_cnt)
+        res = boehlgorithm_jit(N, A, J, cx, b, x_bar,
+                               newstate, mat, term, bmat, bterm, max_cnt)
         return res[0], res[2]
 
     self.t_func_jit = t_func_jit

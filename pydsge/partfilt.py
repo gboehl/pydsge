@@ -7,11 +7,10 @@ import numpy as np
 from numba import njit, prange
 
 
-HALFLOG2PI = 0.5 * np.log(np.pi)
-
-
 @njit(parallel=True)
 def logpdf_jit(x, get_eps, locs, L, logdet, dim):
+
+    HALFLOG2PI = 0.5 * np.log(np.pi)
 
     res = np.empty(locs.shape[0])
 
@@ -157,7 +156,8 @@ class ParticleFilter(object):
 
         if nback > 1:
             smooth_trajectories = self.pf.hist.backward_sampling(nback)
-            self.S = np.array(smooth_trajectories).swapaxes(0, 1).reshape(nback, len(self.data), self._dim_x)
+            self.S = np.array(smooth_trajectories).swapaxes(
+                0, 1).reshape(nback, len(self.data), self._dim_x)
 
         else:
             smooth_trajectories = self.pf.hist.extract_one_trajectory()

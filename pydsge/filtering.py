@@ -14,7 +14,7 @@ def create_obs_cov(self, scale_obs=0.1):
             self.Z = np.array(self.data)
         except:
             raise LookupError('No time series of observables provided')
-    
+
     sig_obs = np.var(self.Z, axis=0)*scale_obs**2
     obs_cov = np.diagflat(sig_obs)
 
@@ -48,7 +48,8 @@ def create_filter(self, P=None, R=None, N=None, ftype=None, random_seed=None):
             N = 10000
 
         aux_bs = ftype in ('AuxiliaryParticleFilter', 'APF')
-        f = ParticleFilter(N=N, dim_x=len(self.vv), dim_z=self.ny, auxiliary_bootstrap=aux_bs)
+        f = ParticleFilter(N=N, dim_x=len(self.vv),
+                           dim_z=self.ny, auxiliary_bootstrap=aux_bs)
 
     else:
 
@@ -92,8 +93,8 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=False, rcond=1e-14, c
 
     if constr_data is None:
         if self.filter.name == 'ParticleFilter':
-            constr_data = 'elb_level' # wild guess
-        else: 
+            constr_data = 'elb_level'  # wild guess
+        else:
             constr_data = False
 
     if constr_data:
@@ -101,7 +102,8 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=False, rcond=1e-14, c
         wdata = self.data.copy()
         # constaint const_obs
         x_shift = self.get_parval(constr_data)
-        wdata[str(self.const_obs)] = np.maximum(wdata[str(self.const_obs)], x_shift)
+        wdata[str(self.const_obs)] = np.maximum(
+            wdata[str(self.const_obs)], x_shift)
         # send to filter
         self.Z = np.array(wdata)
     elif hasattr(self, 'data'):
@@ -123,18 +125,19 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=False, rcond=1e-14, c
 
     elif self.filter.name == 'ParticleFilter':
 
-        t_func_jit, o_func_jit, get_eps_jit = self.func_dispatch(full=True) 
+        t_func_jit, o_func_jit, get_eps_jit = self.func_dispatch(full=True)
 
         self.filter.t_func = t_func_jit
         self.filter.o_func = o_func_jit
-        self.filter.get_eps = get_eps_jit 
+        self.filter.get_eps = get_eps_jit
 
         res = self.filter.batch_filter(self.Z)
 
         if smoother:
 
             if verbose:
-                print('[run_filter:]'.ljust(15, ' ')+'Filtering done after %s seconds, starting smoothing...' %np.round(time.time()-st, 3))
+                print('[run_filter:]'.ljust(
+                    15, ' ')+'Filtering done after %s seconds, starting smoothing...' % np.round(time.time()-st, 3))
 
             if isinstance(smoother, bool):
                 smoother = 10
@@ -143,7 +146,7 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=False, rcond=1e-14, c
     else:
 
         if dispatch:
-            t_func_jit, o_func_jit, get_eps_jit = self.func_dispatch(full=True) 
+            t_func_jit, o_func_jit, get_eps_jit = self.func_dispatch(full=True)
             self.filter.fx = t_func_jit
             self.filter.hx = o_func_jit
             self.filter.ge = get_eps_jit
@@ -153,7 +156,8 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=False, rcond=1e-14, c
             self.filter.hx = self.o_func
             self.filter.ge = self.get_eps
 
-        res = self.filter.batch_filter(self.Z, calc_ll=get_ll, store=smoother, verbose=verbose)
+        res = self.filter.batch_filter(
+            self.Z, calc_ll=get_ll, store=smoother, verbose=verbose)
 
         if smoother:
             res = self.filter.rts_smoother(res, rcond=rcond)
@@ -164,12 +168,14 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=False, rcond=1e-14, c
         self.ll = res
 
         if verbose:
-            print('[run_filter:]'.ljust(15, ' ')+'Filtering done in %s. Likelihood is %s.' %(timeprint(time.time()-st, 3), res))
+            print('[run_filter:]'.ljust(15, ' ')+'Filtering done in %s. Likelihood is %s.' %
+                  (timeprint(time.time()-st, 3), res))
     else:
         self.X = res
 
         if verbose:
-            print('[run_filter:]'.ljust(15, ' ')+'Filtering done in %s.' %timeprint(time.time()-st, 3))
+            print('[run_filter:]'.ljust(15, ' ')+'Filtering done in %s.' %
+                  timeprint(time.time()-st, 3))
 
     return res
 

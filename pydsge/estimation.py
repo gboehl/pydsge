@@ -80,7 +80,8 @@ def prep_estim(self, N=None, linear=None, seed=None, dispatch=False, obs_cov=Non
     elif 'filter_R' in self.fdict.keys():
         self.filter.R = self.fdict['filter_R']
     else:
-        raise NameError('[estimation:]'.ljust(15, ' ') + 'observation covariance matrix not provided.')
+        raise NameError('[estimation:]'.ljust(15, ' ') +
+                        'observation covariance matrix not provided.')
 
     # dry run before the fun beginns
     if np.isinf(self.get_ll(constr_data=constr_data, verbose=verbose > 1)):
@@ -88,7 +89,8 @@ def prep_estim(self, N=None, linear=None, seed=None, dispatch=False, obs_cov=Non
             15, ' ') + 'likelihood of initial values is zero.')
 
     if verbose:
-        print('[estimation:]'.ljust(15, ' ') + 'Model operational. %s states, %s observables.' % (len(self.vv), len(self.observables)))
+        print('[estimation:]'.ljust(15, ' ') + 'Model operational. %s states, %s observables.' %
+              (len(self.vv), len(self.observables)))
 
     par_fix = np.array(self.par).copy()
 
@@ -121,7 +123,8 @@ def prep_estim(self, N=None, linear=None, seed=None, dispatch=False, obs_cov=Non
         self.fdict['init_par'] = self.init_par
 
     if verbose:
-        print('[estimation:]'.ljust(15, ' ') + '%s priors detected. Adding parameters to the prior distribution.' % self.ndim)
+        print('[estimation:]'.ljust(
+            15, ' ') + '%s priors detected. Adding parameters to the prior distribution.' % self.ndim)
 
     def llike(parameters, linear, verbose):
 
@@ -137,11 +140,13 @@ def prep_estim(self, N=None, linear=None, seed=None, dispatch=False, obs_cov=Non
                 par_fix[prior_arg] = parameters
                 par_active_lst = list(par_fix)
 
-                self.get_sys(par=par_active_lst, reduce_sys=True, verbose=verbose > 1)
+                self.get_sys(par=par_active_lst, reduce_sys=True,
+                             verbose=verbose > 1)
 
                 if not linear:
                     if self.filter.name == 'KalmanFilter':
-                        raise AttributeError('[estimation:]'.ljust(15, ' ') + 'Missmatch between linearity choice (filter vs. lprob)')
+                        raise AttributeError('[estimation:]'.ljust(
+                            15, ' ') + 'Missmatch between linearity choice (filter vs. lprob)')
                     # these max vals should be sufficient given we're only dealing with stochastic linearization
                     self.preprocess(l_max=3, k_max=16, verbose=verbose > 1)
                     if dispatch:
@@ -152,7 +157,8 @@ def prep_estim(self, N=None, linear=None, seed=None, dispatch=False, obs_cov=Non
                     self.filter.hx = self.o_func
                 else:
                     if not self.filter.name == 'KalmanFilter':
-                        raise AttributeError('[estimation:]'.ljust(15, ' ') + 'Missmatch between linearity choice (filter vs. lprob)')
+                        raise AttributeError('[estimation:]'.ljust(
+                            15, ' ') + 'Missmatch between linearity choice (filter vs. lprob)')
                     self.preprocess(l_max=1, k_max=0, verbose=False)
                     self.filter.F = self.linear_representation
                     self.filter.H = self.hx
@@ -163,7 +169,8 @@ def prep_estim(self, N=None, linear=None, seed=None, dispatch=False, obs_cov=Non
                 ll = self.get_ll(constr_data=constr_data, verbose=verbose > 1)
 
                 if verbose:
-                    print('[llike:]'.ljust(15, ' ') + "Sample took %ss, ll is %s." %(np.round(time.time() - st, 3), np.round(ll, 4)))
+                    print('[llike:]'.ljust(15, ' ') + "Sample took %ss, ll is %s." %
+                          (np.round(time.time() - st, 3), np.round(ll, 4)))
 
                 return ll
 
@@ -211,7 +218,8 @@ def get_init_par(self, nwalks, linear=False, use_top=None, distributed=False, nc
         import pathos
 
         print()
-        print('[estimation:]'.ljust(15, ' ') + 'finding initial values for mcmc (distributed over priors):')
+        print('[estimation:]'.ljust(15, ' ') +
+              'finding initial values for mcmc (distributed over priors):')
 
         # globals are *evil*
         global lprob_global
@@ -226,11 +234,11 @@ def get_init_par(self, nwalks, linear=False, use_top=None, distributed=False, nc
 
             while np.isinf(draw_prob):
                 nprr = np.random.randint
-                pdraw = [pl.rvs(random_state=nprr(2**32-1)) for pl in frozen_priors]
+                pdraw = [pl.rvs(random_state=nprr(2**32-1))
+                         for pl in frozen_priors]
                 draw_prob = lprob_global(pdraw, linear, verbose)
 
             return np.array(pdraw)
-
 
         if ncores is None:
             ncores = pathos.multiprocessing.cpu_count()
@@ -238,7 +246,8 @@ def get_init_par(self, nwalks, linear=False, use_top=None, distributed=False, nc
         loc_pool = pathos.pools.ProcessPool(ncores)
         loc_pool.clear()
 
-        pmap_sim = tqdm.tqdm(loc_pool.imap(runner, range(nwalks)), total=nwalks)
+        pmap_sim = tqdm.tqdm(loc_pool.imap(
+            runner, range(nwalks)), total=nwalks)
 
         return np.array(list(pmap_sim))
 
@@ -383,16 +392,19 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
 
         if nlopt and not seed:
             algo = pg.algorithm(pg.nlopt(solver="cobyla"))
-            print('[swarms:]'.ljust(15, ' ') + 'On seed ' + str(seed)+' creating ' + algo.get_name())
+            print('[swarms:]'.ljust(15, ' ') + 'On seed ' +
+                  str(seed)+' creating ' + algo.get_name())
             algo.extract(pg.nlopt).maxeval = pop_size
         elif nlopt and seed == 1:
             algo = pg.algorithm(pg.nlopt(solver="neldermead"))
-            print('[swarms:]'.ljust(15, ' ') + 'On seed ' + str(seed)+' creating ' + algo.get_name())
+            print('[swarms:]'.ljust(15, ' ') + 'On seed ' +
+                  str(seed)+' creating ' + algo.get_name())
             algo.extract(pg.nlopt).maxeval = pop_size
         else:
             random.seed(seed)
             algo = random.sample(algos, 1)[0]
-            print('[swarms:]'.ljust(15, ' ') + 'On seed ' + str(seed)+' creating ' + algo.get_name())
+            print('[swarms:]'.ljust(15, ' ') + 'On seed ' +
+                  str(seed)+' creating ' + algo.get_name())
             algo.set_seed(seed)
 
         pop = pg.population(prob, size=pop_size, seed=seed)
@@ -421,7 +433,8 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
 
     mig_abs = int(pop_size*mig_share)
 
-    print('[swarms:]'.ljust(15, ' ') + 'Creating overlord of %s swarms...' % ncores)
+    print('[swarms:]'.ljust(15, ' ') +
+          'Creating overlord of %s swarms...' % ncores)
 
     if debug:
         rests = [gen_pop(s, algos, pop_size) for s in range(ncores)]
@@ -435,7 +448,8 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
         # better clear pool here already
         pool.clear()
 
-    print('[swarms:]'.ljust(15, ' ') + 'Creating overlord of %s swarms...done.' % ncores)
+    print('[swarms:]'.ljust(15, ' ') +
+          'Creating overlord of %s swarms...done.' % ncores)
     print('[swarms:]'.ljust(15, ' ') + 'Swarming out! Bzzzzz...')
 
     done = False
@@ -486,7 +500,8 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
                     if len(n_max) > 8:
                         n_max = s.sname[:5]+'_'+s.sname[-2:]
 
-                pbar.set_description('ll: '+str(f_max_swarm.round(4)).rjust(12, ' ') + ('[%s/%s/%s]' %(f_max.round(4), n_max, f_max_cnt)).rjust(26, ' '))
+                pbar.set_description('ll: '+str(f_max_swarm.round(4)).rjust(12, ' ') + (
+                    '[%s/%s/%s]' % (f_max.round(4), n_max, f_max_cnt)).rjust(26, ' '))
 
                 # keep us up to date
                 if update_freq and pbar.n and not pbar.n % update_freq:
@@ -497,7 +512,8 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
                         nsw[i, :] = sw.sname
 
                     swarms = xsw, fsw, nsw.reshape(1, -1)
-                    pbar.write(str(summary(swarms, self['__data__']['estimation']['prior'], swarm_mode=True).round(3)))
+                    pbar.write(str(summary(
+                        swarms, self['__data__']['estimation']['prior'], swarm_mode=True).round(3)))
 
                 if f_max_cnt < pbar.n - max_gen and f_max == f_max_swarm:
                     print('[swarms:]'.ljust(
@@ -564,7 +580,8 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
     self.fdict['swarms_x'] = xsw[fas]
     self.fdict['swarms_f'] = fsw[fas]
     if 'mode_f' in self.fdict.keys() and fsw[fas] < self.fdict['mode_f']:
-        print('[swarms:]'.ljust(15, ' ') + " New mode of %s is below old mode of %s. Rejecting..." %(fsw[fas], self.fdict['mode_f']))
+        print('[swarms:]'.ljust(15, ' ') + " New mode of %s is below old mode of %s. Rejecting..." %
+              (fsw[fas], self.fdict['mode_f']))
     else:
         self.fdict['mode_x'] = xsw[fas]
         self.fdict['mode_f'] = fsw[fas]
@@ -702,7 +719,7 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
 
     log_probs = sampler.get_log_prob()[self.tune:]
     chain = sampler.get_chain()[self.tune:]
-    chain = chain.reshape(-1,chain.shape[-1])
+    chain = chain.reshape(-1, chain.shape[-1])
 
     arg_max = log_probs.argmax()
     mode_f = log_probs.flat[arg_max]
@@ -712,7 +729,8 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
     self.fdict['mcmc_mode_f'] = mode_f
 
     if 'mode_f' in self.fdict.keys() and mode_f < self.fdict['mode_f']:
-        print('[mcmc:]'.ljust(15, ' ') + "New mode of %s is below old mode of %s. Rejecting..." %(mode_f, self.fdict['mode_f']))
+        print('[mcmc:]'.ljust(15, ' ') + "New mode of %s is below old mode of %s. Rejecting..." %
+              (mode_f, self.fdict['mode_f']))
     else:
         self.fdict['mode_x'] = mode_x
         self.fdict['mode_f'] = mode_f
@@ -801,15 +819,18 @@ def kdes(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
         nsteps_mcmc = 500
         nsteps_burnin = nsteps - nsteps_mcmc
 
-    tune = max(500,nsteps_burnin)
+    tune = max(500, nsteps_burnin)
 
-    p, post, q = sampler.burnin(p0, max_steps=nsteps_burnin, pbar=pbar, verbose=verbose)
+    p, post, q = sampler.burnin(
+        p0, max_steps=nsteps_burnin, pbar=pbar, verbose=verbose)
 
     if nsteps_mcmc:
         p, post, q = sampler.run_mcmc(nsteps_mcmc, pbar=pbar)
 
-    acls = np.ceil(2/np.mean(sampler.acceptance[-tune:], axis=0) - 1).astype(int)
-    samples = np.concatenate([sampler.chain[-tune::acl, c].reshape(-1, 2) for c, acl in enumerate(acls)])
+    acls = np.ceil(
+        2/np.mean(sampler.acceptance[-tune:], axis=0) - 1).astype(int)
+    samples = np.concatenate(
+        [sampler.chain[-tune::acl, c].reshape(-1, 2) for c, acl in enumerate(acls)])
 
     # samples = sampler.get_samples()
 
@@ -829,7 +850,7 @@ def kdes(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
 
     log_probs = sampler.get_log_prob()[self.tune:]
     chain = sampler.get_chain()[self.tune:]
-    chain = chain.reshape(-1,chain.shape[-1])
+    chain = chain.reshape(-1, chain.shape[-1])
 
     arg_max = log_probs.argmax()
     mode_f = log_probs.flat[arg_max]
@@ -839,7 +860,8 @@ def kdes(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
     self.fdict['kombine_mode_f'] = mode_f
 
     if 'mode_f' in self.fdict.keys() and mode_f < self.fdict['mode_f']:
-        print('[kombine:]'.ljust(15, ' ') + "New mode of %s is below old mode of %s. Rejecting..." %(mode_f, self.fdict['mode_f']))
+        print('[kombine:]'.ljust(15, ' ') + "New mode of %s is below old mode of %s. Rejecting..." %
+              (mode_f, self.fdict['mode_f']))
     else:
         self.fdict['mode_x'] = mode_x
         self.fdict['mode_f'] = mode_x

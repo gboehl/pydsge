@@ -70,7 +70,7 @@ def kdeplot_op(ax, data, bw, prior=None, prior_alpha=1, prior_style='--'):
             p = prior.logpdf(x)
         except ValueError:
             p = x.copy()
-            for i,xi in enumerate(x):
+            for i, xi in enumerate(x):
                 p[i] = prior.logpdf(xi)
         pls.append(ax.plot(x, np.exp(p), alpha=prior_alpha, ls=prior_style))
 
@@ -158,9 +158,12 @@ def traceplot(trace, varnames, tune, figsize=None,
             ax[i, 1].set_title(str(v))
 
             if draw_lines:
-                ax[i, 1].plot(range(0, tune+1), d[:tune+1], c='maroon', alpha=0.03)
-                ax[i, 1].plot(range(tune, width), d[tune:], c='maroon', alpha=0.045)
-                ax[i, 1].plot([tune, tune], [np.mean(d_stream, 1)[tune] - np.std(d_stream, 1)[tune]*3, np.mean(d_stream, 1)[tune] + np.std(d_stream, 1)[tune]*3], '--', alpha=.4, color='k')
+                ax[i, 1].plot(range(0, tune+1), d[:tune+1],
+                              c='maroon', alpha=0.03)
+                ax[i, 1].plot(range(tune, width), d[tune:],
+                              c='maroon', alpha=0.045)
+                ax[i, 1].plot([tune, tune], [np.mean(d_stream, 1)[tune] - np.std(d_stream, 1)[tune]*3,
+                                             np.mean(d_stream, 1)[tune] + np.std(d_stream, 1)[tune]*3], '--', alpha=.4, color='k')
 
             else:
                 i95s = np.percentile(d_stream, [2.5, 97.5], axis=1)

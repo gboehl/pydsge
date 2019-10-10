@@ -182,20 +182,21 @@ def pmdm(self, linear=None, maxfev=None, linear_pre_pmdm=False, method=None, tol
         print('[pmdm:]'.ljust(30, ' ') +
               ' starting pre-maximization of linear function.')
         self.fdict['mode_x'] = PMDM(self, maxfev, tol, method,
-                             True, update_freq, verbose=verbose).go()
+                                    True, update_freq, verbose=verbose).go()
         print('[pmdm:]'.ljust(30, ' ') +
               ' pre-maximization of linear function done, starting actual maximization.')
 
     description = self.description
 
     self.pmdm_par, fmax = PMDM(self, maxfev, tol, method, linear,
-                         update_freq, verbose=verbose).go()
+                               update_freq, verbose=verbose).go()
 
     self.fdict['pmdm_x'] = self.pmdm_par
     self.fdict['pmdm_f'] = fmax
 
     if 'mode_f' in self.fdict.keys() and fmax < self.fdict['mode_f']:
-        print('[pmdm:]'.ljust(15, ' ') + " New mode of %s is below old mode of %s. Rejecting..." %(fmax, self.fdict['mode_f']))
+        print('[pmdm:]'.ljust(15, ' ') + " New mode of %s is below old mode of %s. Rejecting..." %
+              (fmax, self.fdict['mode_f']))
     else:
         self.fdict['mode_x'] = self.pmdm_par
         self.fdict['mode_f'] = fmax
@@ -230,7 +231,7 @@ def nlopt(self, p0=None, linear=None, maxfev=None, method=None, tol=1e-2, update
     if linear is None:
         linear = self.linear_filter
 
-    lprob = lambda x: self.lprob(x, linear=linear, verbose=verbose)
+    def lprob(x): return self.lprob(x, linear=linear, verbose=verbose)
 
     sfunc_inst = GPP(lprob, self.fdict['prior_bounds'])
 
@@ -261,10 +262,10 @@ def nlopt(self, p0=None, linear=None, maxfev=None, method=None, tol=1e-2, update
     self.fdict['nlopt_f'] = pop.champion_f
 
     if 'mode_f' in self.fdict.keys() and pop.champion_f < self.fdict['mode_f']:
-        print('[pmdm:]'.ljust(15, ' ') + " New mode of %s is below old mode of %s. Rejecting..." %(pop.champion_f, self.fdict['mode_f']))
+        print('[pmdm:]'.ljust(15, ' ') + " New mode of %s is below old mode of %s. Rejecting..." %
+              (pop.champion_f, self.fdict['mode_f']))
     else:
         self.fdict['mode_x'] = pop.champion_x
         self.fdict['mode_f'] = pop.champion_f
 
     return pop.champion_x
-

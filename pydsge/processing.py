@@ -23,7 +23,7 @@ def mask(self, verbose=False):
 
 
 def runner_pooled(nr_samples, ncores, mask, use_pbar):
-    ## rewrite!
+    # rewrite!
 
     import pathos
 
@@ -48,7 +48,7 @@ def runner_pooled(nr_samples, ncores, mask, use_pbar):
 
 
 def posterior_sample(self, be_res=None, seed=0, verbose=False):
-    ## rewrite!
+    # rewrite!
 
     import random
 
@@ -88,7 +88,7 @@ def posterior_sample(self, be_res=None, seed=0, verbose=False):
 
 
 def epstract(self, be_res=None, N=None, nr_samples=100, save=None, ncores=None, method=None, itype=(0, 1), penalty=10, max_attempts=3, presmoothing=None, min_options=None, reduce_sys=False, force=False, verbose=False):
-    ## rewrite!
+    # rewrite!
 
     XX = []
     COV = []
@@ -214,7 +214,7 @@ def epstract(self, be_res=None, N=None, nr_samples=100, save=None, ncores=None, 
 
 
 def sampled_sim(self, epstracted=None, mask=None, reduce_sys=None, forecast=False, linear=False, nr_samples=None, ncores=None, show_warnings=False, verbose=False):
-    ## rewrite!
+    # rewrite!
 
     if ncores is None:
         ncores = pathos.multiprocessing.cpu_count()
@@ -296,7 +296,7 @@ def sampled_sim(self, epstracted=None, mask=None, reduce_sys=None, forecast=Fals
 
 
 def sampled_irfs(self, be_res, shocklist, wannasee, reduce_sys=None, nr_samples=1000, ncores=None, show_warnings=False):
-    ## rewrite!
+    # rewrite!
 
     import pathos
 

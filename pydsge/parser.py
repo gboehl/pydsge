@@ -6,7 +6,7 @@ import re
 import yaml
 import itertools
 import sympy
-import time 
+import time
 import numpy as np
 from .symbols import Variable, Equation, Shock, Parameter, TSymbol
 from sympy.matrices import Matrix, zeros
@@ -373,12 +373,13 @@ class DSGE(dict):
             processed_raw_model = copy(pmodel)
 
         if verbose:
-            duration = np.round(time.time()-st,3)
+            duration = np.round(time.time()-st, 3)
             if duration < .01:
                 duration = 'the speed of light'
             else:
                 str(duration) + 's'
-            print('[DSGE:]'.ljust(15, ' ')+'Reading and parsing done in %s.' %duration)
+            print('[DSGE:]'.ljust(15, ' ') +
+                  'Reading and parsing done in %s.' % duration)
 
         return pmodel
 
@@ -402,9 +403,10 @@ class DSGE(dict):
         for ob in pmodel.fdict.keys():
             if str(pmodel.fdict[ob]) == 'None':
                 pmodel.fdict[ob] = None
-                
+
         if verbose:
-            print('[DSGE:]'.ljust(15, ' ')+'Loading and parsing done in %ss.' %np.round(time.time()-st,5))
+            print('[DSGE:]'.ljust(15, ' ')+'Loading and parsing done in %ss.' %
+                  np.round(time.time()-st, 5))
 
         return pmodel
 
@@ -483,11 +485,11 @@ class DSGE(dict):
         init_values = [0]
 
         # for f in [sympy.log, sympy.exp,
-                  # sympy.sin, sympy.cos, sympy.tan,
-                  # sympy.asin, sympy.acos, sympy.atan,
-                  # sympy.sinh, sympy.cosh, sympy.tanh,
-                  # sympy.pi, sympy.sign]:
-            # context[str(f)] = f
+        # sympy.sin, sympy.cos, sympy.tan,
+        # sympy.asin, sympy.acos, sympy.atan,
+        # sympy.sinh, sympy.cosh, sympy.tanh,
+        # sympy.pi, sympy.sign]:
+        # context[str(f)] = f
 
         # context['sqrt'] = sympy.sqrt
         context['__builtins__'] = None

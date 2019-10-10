@@ -233,7 +233,7 @@ def get_priors(priors):
             pstdd = dist[5]
         else:
             raise NotImplementedError(
-                'Shape of prior specification of %s is unclear (!=3 & !=6).' %pp)
+                'Shape of prior specification of %s is unclear (!=3 & !=6).' % pp)
 
         # simply make use of frozen distributions
         if str(ptype) == 'uniform':
