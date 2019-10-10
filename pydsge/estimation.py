@@ -11,7 +11,7 @@ import scipy.optimize as so
 import tqdm
 
 
-def prep_estim(self, N=None, linear=None, seed=None, dispatch=False, obs_cov=None, constr_data=False, init_with_pmeans=False, verbose=True):
+def prep_estim(self, N=None, linear=None, seed=None, dispatch=False, obs_cov=None, constr_data=False, dispatch=False, init_with_pmeans=False, verbose=True):
     """Initializes the tools necessary for estimation
 
     ...
@@ -84,7 +84,7 @@ def prep_estim(self, N=None, linear=None, seed=None, dispatch=False, obs_cov=Non
                         'observation covariance matrix not provided.')
 
     # dry run before the fun beginns
-    if np.isinf(self.get_ll(constr_data=constr_data, verbose=verbose > 1)):
+    if np.isinf(self.get_ll(constr_data=constr_data, verbose=verbose > 1, dispatch=dispatch)):
         raise ValueError('[estimation:]'.ljust(
             15, ' ') + 'likelihood of initial values is zero.')
 
@@ -166,7 +166,7 @@ def prep_estim(self, N=None, linear=None, seed=None, dispatch=False, obs_cov=Non
                 CO = self.SIG @ self.QQ(self.par)
                 self.filter.Q = CO @ CO.T
 
-                ll = self.get_ll(constr_data=constr_data, verbose=verbose > 1)
+                ll = self.get_ll(constr_data=constr_data, verbose=verbose > 1, dispatch=dispatch)
 
                 if verbose:
                     print('[llike:]'.ljust(15, ' ') + "Sample took %ss, ll is %s." %
