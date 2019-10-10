@@ -49,7 +49,7 @@ html_theme = 'alabaster'
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
-autodoc_mock_imports = ['grgrlib', 'grgrlib.stuff', 'econsieve', 'econsieve.stats', 'particles', 'numpy', 'pandas', 'emcee', 'kombine', 'pathos', 'yaml', 'sympy', 'scipy']
+autodoc_mock_imports = ['grgrlib', 'grgrlib.stuff', 'econsieve', 'econsieve.stats', 'particles', 'numpy', 'pandas', 'emcee', 'kombine', 'pathos', 'yaml', 'sympy', 'scipy', 'numba']
 
 def setup(app):
     app.add_stylesheet('css/custom.css')
