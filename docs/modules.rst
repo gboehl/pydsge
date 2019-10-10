@@ -24,49 +24,49 @@ Documentation
    :show-inheritance:
 
 ``pydsge.clsmethods``
-------------------
+---------------------
 .. automodule:: pydsge.clsmethods
    :members:
    :undoc-members:
    :show-inheritance:
 
 ``pydsge.filtering``
-------------------
+---------------------
 .. automodule:: pydsge.filtering
    :members:
    :undoc-members:
    :show-inheritance:
 
 ``pydsge.estimation``
-------------------
+---------------------
 .. automodule:: pydsge.estimation
    :members:
    :undoc-members:
    :show-inheritance:
 
 ``pydsge.modesearch``
-------------------
+---------------------
 .. automodule:: pydsge.modesearch
    :members:
    :undoc-members:
    :show-inheritance:
 
 ``pydsge.processing``
-------------------
+---------------------
 .. automodule:: pydsge.processing
    :members:
    :undoc-members:
    :show-inheritance:
 
 ``pydsge.plots``
-------------------
+----------------
 .. automodule:: pydsge.plots
    :members:
    :undoc-members:
    :show-inheritance:
 
 ``pydsge.partfilt``
-------------------
+-------------------
 .. automodule:: pydsge.partfilt
    :members:
    :undoc-members:
@@ -80,7 +80,7 @@ Documentation
    :show-inheritance:
 
 ``pydsge.future``
-------------------
+-----------------
 .. automodule:: pydsge.future
    :members:
    :undoc-members:
