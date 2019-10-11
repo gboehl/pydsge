@@ -199,7 +199,7 @@ def prep_estim(self, N=None, linear=None, seed=None, dispatch=False, obs_cov=Non
     self.llike = llike
 
 
-def get_init_par(self, nwalks, linear=False, use_top=None, distributed=False, ncores=None, verbose=False):
+def get_init_par(self, which=None, nwalks=1, linear=False, use_top=None, distributed=False, ncores=None, verbose=False):
 
     if use_top is None:
         use_top = 0.
@@ -245,36 +245,41 @@ def get_init_par(self, nwalks, linear=False, use_top=None, distributed=False, nc
 
         return np.array(list(pmap_sim))
 
+    if 'mode' in which:
+        return self.fdict['mode_x']
+    if 'calib' in which:
+        return self.p0()
+    if 'init' in which:
+        return self.fdict['init_par']
+
+    if 'mode_x' in self.fdict.keys():
+        par_cand = self.fdict['mode_x']
     else:
-        if 'mode_x' in self.fdict.keys():
-            par_cand = self.fdict['mode_x']
-        else:
-            par_cand = self.fdict['init_par']
+        par_cand = self.fdict['init_par']
 
-        if np.ndim(par_cand) > 1:
+    if np.ndim(par_cand) > 1:
 
-            ranking = (-self.fdict['swarms'][1][:, 0]).argsort()
-            which = max(use_top*par_cand.shape[0], 1)
-            par_cand = par_cand[ranking][:int(which)]
+        ranking = (-self.fdict['swarms'][1][:, 0]).argsort()
+        which = max(use_top*par_cand.shape[0], 1)
+        par_cand = par_cand[ranking][:int(which)]
 
-        if np.ndim(par_cand) > 1:
+    if np.ndim(par_cand) > 1:
 
-            p0 = np.empty((nwalks, self.ndim))
-            cand_dim = par_cand.shape[0]
+        p0 = np.empty((nwalks, self.ndim))
+        cand_dim = par_cand.shape[0]
 
-            for i, w in enumerate(range(nwalks)):
-                par = par_cand[i % cand_dim]
-                p0[w, :] = par * (1+1e-3*np.random.randn())
+        for i, w in enumerate(range(nwalks)):
+            par = par_cand[i % cand_dim]
+            p0[w, :] = par * (1+1e-3*np.random.randn())
 
-            return p0
+        return p0
 
-        elif nwalks > 1:
-            return par_cand*(1+1e-3*np.random.randn(nwalks, self.ndim))
-        else:
-            return par_cand
+    if nwalks > 1:
+        return par_cand*(1+1e-3*np.random.randn(nwalks, self.ndim))
+    return par_cand
 
 
-def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=None, max_gen=None, initialize_p0=True, use_ring=False, nlopt=True, broadcasting=True, ncores=None, crit_mem=.85, update_freq=None, verbose=False, debug=False):
+def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=None, max_gen=None, initialize_x0=True, use_ring=False, nlopt=True, broadcasting=True, ncores=None, crit_mem=.85, update_freq=None, verbose=False, debug=False):
 
     import pygmo as pg
     import dill
@@ -311,10 +316,6 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
         return lprob_global(par, linear, verbose)
 
     sfunc_inst = GPP(lprob_local, self.fdict['prior_bounds'])
-
-    if initialize_p0:
-        p0 = get_init_par(self, 1, verbose=verbose)
-        fp0 = [-lprob_global(p0)]
 
     class Swarm(object):
 
@@ -405,9 +406,7 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
                   str(seed)+' creating ' + algo.get_name())
             algo.set_seed(seed)
 
-        pop = pg.population(prob, size=pop_size-initialize_p0, seed=seed)
-        if initialize_p0:
-            pop.push_back(p0, fp0)
+        pop = pg.population(prob, size=pop_size, seed=seed)
         ser_pop = dump_pop(pop)
         ser_algo = dill.dumps(algo)
 
@@ -667,7 +666,7 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
     elif resume:
         p0 = sampler.get_last_sample()
     else:
-        p0 = get_init_par(self, nwalks, linear, 0, distr_init_chains, verbose)
+        p0 = get_init_par(self, which=None, nwalks=nwalks, linear=linear, use_top=0, distributed=distr_init_chains, verbose=verbose)
 
     if not verbose:
         np.warnings.filterwarnings('ignore')
@@ -805,8 +804,7 @@ def kdes(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
         # should work, but not tested
         p0 = self.fdict['kdes_chain'][-1]
     else:
-        p0 = get_init_par(self, nwalks, linear, use_top,
-                          distr_init_chains, verbose)
+        p0 = get_init_par(self, which=None, nwalks=nwalks, linear=linear, use_top=use_top, distributed=distr_init_chains, verbose=verbose)
 
     if not verbose:
         np.warnings.filterwarnings('ignore')
