@@ -314,7 +314,7 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
 
     if initialize_p0:
         p0 = get_init_par(self, 1, verbose=verbose)
-        fp0 = [lprob_global(p0)]
+        fp0 = [-lprob_global(p0)]
 
     class Swarm(object):
 
@@ -407,8 +407,12 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
 
         pop = pg.population(prob, size=pop_size-initialize_p0, seed=seed)
         if initialize_p0:
+            print('pop.push_back(p0, fp0)')
+            print(p0, fp0)
             pop.push_back(p0, fp0)
         ser_pop = dump_pop(pop)
+        print('ser_pop')
+        print(ser_pop)
         ser_algo = dill.dumps(algo)
 
         return ser_algo, ser_pop

@@ -13,6 +13,8 @@ from sympy.matrices import Matrix, zeros
 
 
 class DSGE(dict):
+    """Base class. Every model is an instance of the DSGE class and inherents its methods.
+    """
 
     max_lead = 1
     max_lag = 1

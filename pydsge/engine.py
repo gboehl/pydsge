@@ -201,7 +201,7 @@ def boehlgorithm(self, v, max_cnt=4e1, linear=False):
         return (self.precalc_mat[0][1, 0, 1] @ v)[dim_x:], (0, 0), 0
 
 
-def func_dispatch(self, full=False, max_cnt=4e1):
+def func_dispatch(self, full=False, max_cnt=4e1, njit_t_func=True):
 
     if not hasattr(self, 'precalc_mat'):
         self.preprocess(verbose=False)
@@ -213,7 +213,6 @@ def func_dispatch(self, full=False, max_cnt=4e1):
     hx0 = np.ascontiguousarray(self.hx[0].astype(float).T)
     hx1 = self.hx[1]
 
-    @njit
     def t_func_jit(state, noise=np.zeros(self.ny)):
 
         newstate = state.copy()
@@ -224,6 +223,9 @@ def func_dispatch(self, full=False, max_cnt=4e1):
         res = boehlgorithm_jit(N, A, J, cx, b, x_bar,
                                newstate, mat, term, bmat, bterm, max_cnt)
         return res[0], res[2]
+
+    if njit_t_func:
+        t_func_jit = njit(t_func_jit)
 
     self.t_func_jit = t_func_jit
 
