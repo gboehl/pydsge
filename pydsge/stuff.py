@@ -275,7 +275,7 @@ def irfs(self, shocklist, wannasee=None, linear=False, show_warnings=True, verbo
     return X, labels, (Y, K, L)
 
 
-def simulate(self, eps=None, mask=None, initial_state=None, linear=False, verbose=False, show_warnings=True, return_flag=False):
+def simulate(self, eps=None, mask=None, state=None, linear=False, verbose=False, show_warnings=True, return_flag=False):
     """
         eps: shock innovations of shape (T, n_eps)
     """
@@ -286,15 +286,13 @@ def simulate(self, eps=None, mask=None, initial_state=None, linear=False, verbos
     if mask is not None:
         eps = np.where(np.isnan(mask), eps, mask*eps)
 
-    if initial_state is None:
-        if hasattr(self, 'filtered_X'):
-            st_vec = self.filtered_X[0]
-        else:
-            st_vec = np.zeros(len(self.vv))
-    else:
-        st_vec = initial_state
+    if state is None:
+        try:
+            state = self.means[0]
+        except:
+            state = np.zeros(len(self.vv))
 
-    X = [st_vec]
+    X = [state]
     K = [0]
     L = [0]
     superflag = False
@@ -304,15 +302,12 @@ def simulate(self, eps=None, mask=None, initial_state=None, linear=False, verbos
 
     for eps_t in eps:
 
-        st_vec_new, (l, k), flag = self.t_func(
-            st_vec, noise=eps_t, return_k=True, linear=linear)
+        state, (l, k), flag = self.t_func(state, noise=eps_t, return_k=True, linear=linear)
 
         if flag:
             superflag = True
 
-        st_vec = st_vec_new
-
-        X.append(st_vec)
+        X.append(state)
         K.append(k)
         L.append(l)
 

@@ -188,6 +188,9 @@ def extract(self, precalc=True, verbose=True, **ipasargs):
         get_eps = None
 
     means, cov, res, flag = self.filter.ipas(**ipasargs, get_eps=get_eps)
+
+    self.means = means
+    self.cov = cov
     self.res = res
 
     return means, cov, res, flag
