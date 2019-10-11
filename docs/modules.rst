@@ -1,6 +1,8 @@
 Documentation
 ==================
 
+``pydsge.DSGE``
+------------------
 .. automodule:: pydsge.parser
    :members:
    :undoc-members:

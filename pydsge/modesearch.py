@@ -152,24 +152,6 @@ class PMDM(object):
         return self.x_max, self.res_max
 
 
-class GPP:
-    """Generic PYGMO problem
-    """
-
-    name = 'GPP'
-
-    def __init__(self, func, bounds):
-
-        self.func = func
-        self.bounds = bounds
-
-    def fitness(self, x):
-        return [-self.func(x)]
-
-    def get_bounds(self):
-        return self.bounds
-
-
 def pmdm(self, linear=None, maxfev=None, linear_pre_pmdm=False, method=None, tol=1e-2, update_freq=None, verbose=False):
 
     if maxfev is None:

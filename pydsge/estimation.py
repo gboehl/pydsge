@@ -407,12 +407,8 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
 
         pop = pg.population(prob, size=pop_size-initialize_p0, seed=seed)
         if initialize_p0:
-            print('pop.push_back(p0, fp0)')
-            print(p0, fp0)
             pop.push_back(p0, fp0)
         ser_pop = dump_pop(pop)
-        print('ser_pop')
-        print(ser_pop)
         ser_algo = dill.dumps(algo)
 
         return ser_algo, ser_pop
@@ -500,12 +496,17 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
                     f_max = f_max_swarm
                     x_max = xs[fas][0]
                     f_max_cnt = pbar.n
-                    n_max = s.sname
-                    if len(n_max) > 8:
-                        n_max = s.sname[:5]+'_'+s.sname[-2:]
+                    name_max = s.sname
 
-                pbar.set_description('ll: '+str(f_max_swarm.round(4)).rjust(12, ' ') + (
-                    '[%s/%s/%s]' % (f_max.round(4), n_max, f_max_cnt)).rjust(26, ' '))
+                name_len = 26 - 9 - len(str(int(f_max))) - len(str(f_max_cnt))
+
+                try: 
+                    name0, name1 = name_max.split('_')
+                    sname = name0[:name_len-len(name1)-1] + '_' + name1
+                except:
+                    sname = name_max[:name_len]
+
+                pbar.set_description('ll: '+str(f_max_swarm.round(4)).rjust(11, ' ') + ('[%s/%s/%s]' % (f_max.round(4), sname, f_max_cnt)).rjust(26, ' '))
 
                 # keep us up to date
                 if update_freq and pbar.n and not pbar.n % update_freq:
