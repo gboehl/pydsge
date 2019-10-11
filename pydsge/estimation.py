@@ -11,7 +11,7 @@ import scipy.optimize as so
 import tqdm
 
 
-def prep_estim(self, N=None, linear=None, seed=None, dispatch=False, obs_cov=None, constr_data=False, dispatch=False, init_with_pmeans=False, verbose=True):
+def prep_estim(self, N=None, linear=None, seed=None, dispatch=False, obs_cov=None, constr_data=False, init_with_pmeans=False, verbose=True):
     """Initializes the tools necessary for estimation
 
     ...
@@ -149,12 +149,6 @@ def prep_estim(self, N=None, linear=None, seed=None, dispatch=False, obs_cov=Non
                             15, ' ') + 'Missmatch between linearity choice (filter vs. lprob)')
                     # these max vals should be sufficient given we're only dealing with stochastic linearization
                     self.preprocess(l_max=3, k_max=16, verbose=verbose > 1)
-                    if dispatch:
-                        t_func = self.func_dispatch()
-                        self.filter.fx = t_func
-                    else:
-                        self.filter.fx = self.t_func
-                    self.filter.hx = self.o_func
                 else:
                     if not self.filter.name == 'KalmanFilter':
                         raise AttributeError('[estimation:]'.ljust(
