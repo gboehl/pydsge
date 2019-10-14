@@ -70,10 +70,10 @@ def create_filter(self, P=None, R=None, N=None, ftype=None, random_seed=None):
     if R is not None:
         f.R = R
 
-    if ftype in ('AuxiliaryParticleFilter', 'APF', 'ParticleFilter', 'PF'):
-        f.Q = self.QQ(self.par) @ self.QQ(self.par)
-    else:
-        f.eps_cov = self.QQ(self.par)
+    f.eps_cov = self.QQ(self.par)
+    f.Q = self.QQ(self.par) @ self.QQ(self.par)
+
+    if ftype in ('KalmanFilter', 'KF'):
         CO = self.SIG @ f.eps_cov
         f.Q = CO @ CO.T
 
@@ -86,7 +86,7 @@ def get_ll(self, **args):
     return run_filter(self, smoother=False, get_ll=True, **args)
 
 
-def run_filter(self, smoother=True, get_ll=False, dispatch=False, rcond=1e-14, constr_data=None, verbose=False):
+def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, constr_data=None, verbose=False):
 
     if verbose:
         st = time.time()
@@ -111,6 +111,20 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=False, rcond=1e-14, c
     else:
         self.Z = self.fdict['data']
 
+    if dispatch is None:
+        dispatch = self.filter.name == 'ParticleFilter'
+
+    if dispatch:
+        t_func_jit, o_func_jit, get_eps_jit = self.func_dispatch(full=True)
+        self.filter.t_func = t_func_jit
+        self.filter.o_func = o_func_jit
+        self.filter.get_eps = get_eps_jit
+
+    else:
+        self.filter.t_func = self.t_func
+        self.filter.o_func = self.o_func
+        self.filter.get_eps = self.get_eps
+
     if self.filter.name == 'KalmanFilter':
 
         res, cov, ll = self.filter.batch_filter(self.Z)
@@ -125,12 +139,6 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=False, rcond=1e-14, c
 
     elif self.filter.name == 'ParticleFilter':
 
-        t_func_jit, o_func_jit, get_eps_jit = self.func_dispatch(full=True)
-
-        self.filter.t_func = t_func_jit
-        self.filter.o_func = o_func_jit
-        self.filter.get_eps = get_eps_jit
-
         res = self.filter.batch_filter(self.Z)
 
         if smoother:
@@ -144,17 +152,6 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=False, rcond=1e-14, c
             res = self.filter.smoother(smoother)
 
     else:
-
-        if dispatch:
-            t_func_jit, o_func_jit, get_eps_jit = self.func_dispatch(full=True)
-            self.filter.fx = t_func_jit
-            self.filter.hx = o_func_jit
-            self.filter.ge = get_eps_jit
-
-        else:
-            self.filter.fx = self.t_func
-            self.filter.hx = self.o_func
-            self.filter.ge = self.get_eps
 
         res = self.filter.batch_filter(
             self.Z, calc_ll=get_ll, store=smoother, verbose=verbose)
@@ -183,7 +180,7 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=False, rcond=1e-14, c
 def extract(self, precalc=True, verbose=True, **ipasargs):
 
     if precalc:
-        get_eps = self.filter.ge
+        get_eps = self.filter.get_eps
     else:
         get_eps = None
 

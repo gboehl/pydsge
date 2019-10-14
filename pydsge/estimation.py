@@ -326,7 +326,6 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
 
             self.res = None
             self.ncalls = 0
-            self.history = []
 
             self.pop = pop
             self.algo = algo
@@ -461,6 +460,7 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
     pbar = tqdm.tqdm(total=ngen, dynamic_ncols=True)
 
     f_max = -np.inf
+    f_max_hist = []
 
     if not debug and not verbose:
         np.warnings.filterwarnings('ignore')
@@ -483,9 +483,6 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
                 fs = s.pop[1]
                 fas = fs[:, 0].argsort()
 
-                # record history
-                s.history.append(xs[fas][0])
-
                 s.ncalls += 1
                 pbar.update()
 
@@ -496,6 +493,8 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
                     x_max = xs[fas][0]
                     f_max_cnt = pbar.n
                     name_max = s.sname
+
+                f_max_hist.append(f_max)
 
                 name_len = 25 - 9 - len(str(int(f_max))) - len(str(f_max_cnt))
 
@@ -565,19 +564,16 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
     pool.terminate()
     pbar.close()
 
-    hs = []
-
     for i, s in enumerate(overlord):
         fsw[i, :] = -s.pop[1].min()
         xsw[i, :] = s.pop[0][s.pop[1].argmin()]
         nsw[i, :] = s.sname
-        hs.append(np.array(s.history))
 
     self.overlord = overlord
 
     self.fdict['ngen'] = ngen
     self.fdict['swarms'] = xsw, fsw, nsw.reshape(1, -1)
-    self.fdict['swarm_history'] = hs
+    self.fdict['swarm_history'] = f_max_hist
 
     fas = fsw[:, 0].argmax()
 

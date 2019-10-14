@@ -70,11 +70,13 @@ class StochTFunc(particles.distributions.ProbDist):
 
 class DSGESSM(ssm.StateSpaceModel):
 
-    def __init__(self, t_func, obs_func, get_eps, init_cov, t_cov, obs_cov):
+    def __init__(self, t_func, obs_func, get_eps, init_cov, t_cov, obs_cov, x=None):
 
         self.t_func = t_func
         self.obs_func = obs_func
         self.get_eps = get_eps
+
+        self.init_x = 0. if x is None else x
 
         self.init_cov = init_cov
         self.t_cov = t_cov
@@ -82,7 +84,7 @@ class DSGESSM(ssm.StateSpaceModel):
 
     def PX0(self):
         # Distribution of X_0
-        return particles.distributions.MvNormal(cov=self.init_cov)
+        return particles.distributions.MvNormal(loc=self.init_x, cov=self.init_cov)
 
     def PX(self, t, xp):
         # Distribution of X_t given X_{t-1}=xp (p=past)

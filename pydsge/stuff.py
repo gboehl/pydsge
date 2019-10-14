@@ -398,7 +398,7 @@ def o_func(self, state):
     """
     observation function
     """
-    return self.hx[0] @ state + self.hx[1]
+    return state @ self.hx[0].T + self.hx[1]
 
 
 def get_eps(self, x, xp):
