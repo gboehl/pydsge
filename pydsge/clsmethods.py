@@ -57,7 +57,7 @@ def get_chain(self, mc_type=None, backend_file=None, flat=None):
         elif 'backend_file' in self.fdict.keys():
             backend_file = str(self.fdict['backend_file'])
         else:
-            raise NameError(
+            raise AttributeError(
                 "Neither a backend nor a sampler could be found.")
 
     reader = emcee.backends.HDFBackend(backend_file)
@@ -75,7 +75,7 @@ def get_log_prob(self, mc_type=None, backend_file=None, flat=None):
         if 'backend_file' in self.fdict.keys():
             backend_file = str(self.fdict['backend_file'])
         else:
-            raise NameError("Neither a backend nor a sampler could be found.")
+            raise AttributeError("Neither a backend nor a sampler could be found.")
 
     reader = emcee.backends.HDFBackend(backend_file)
 
@@ -212,8 +212,6 @@ def mcmc_summary(self, mc_type=None, tune=None, **args):
 
 def info_m(self, **args):
 
-    tune = self.get_tune
-
     if hasattr(self, 'name'):
         name = self.name
     else:
@@ -224,12 +222,14 @@ def info_m(self, **args):
     else:
         description = self.fdict['description']
 
-    cshp = self.get_chain().shape
+    try: 
+        cshp = self.get_chain().shape
+        tune = self.get_tune
+    except AttributeError:
+        return 'Title: %s (description: %s)' % (name, description)
 
-    info_str = 'Title: %s (description: %s). Last %s of %s samples in %s chains with %s parameters.' % (
+    return 'Title: %s (description: %s). Last %s of %s samples in %s chains with %s parameters.' % (
         name, description, cshp[0] - tune, cshp[0], cshp[1], cshp[2])
-
-    return info_str
 
 
 def get_data(self=None, csv=None, sep=None, start=None, end=None):

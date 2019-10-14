@@ -245,11 +245,11 @@ def get_init_par(self, which=None, nwalks=1, linear=False, use_top=None, distrib
 
         return np.array(list(pmap_sim))
 
-    if 'mode' in which:
+    if which is 'mode':
         return self.fdict['mode_x']
-    if 'calib' in which:
+    if which is 'calib':
         return self.p0()
-    if 'init' in which:
+    if which is 'init':
         return self.fdict['init_par']
 
     if 'mode_x' in self.fdict.keys():
@@ -497,7 +497,7 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
                     f_max_cnt = pbar.n
                     name_max = s.sname
 
-                name_len = 26 - 9 - len(str(int(f_max))) - len(str(f_max_cnt))
+                name_len = 25 - 9 - len(str(int(f_max))) - len(str(f_max_cnt))
 
                 try: 
                     name0, name1 = name_max.split('_')
