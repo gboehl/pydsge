@@ -11,7 +11,7 @@ import scipy.optimize as so
 import tqdm
 
 
-def prep_estim(self, N=None, linear=None, seed=None, dispatch=False, obs_cov=None, constr_data=False, init_with_pmeans=False, verbose=True):
+def prep_estim(self, N=None, linear=None, seed=None, dispatch=False, obs_cov=None, constr_data=False, verbose=True):
     """Initializes the tools necessary for estimation
 
     ...
@@ -111,16 +111,7 @@ def prep_estim(self, N=None, linear=None, seed=None, dispatch=False, obs_cov=Non
         pfrozen, pinitv, bounds = get_priors(priors)
         self.fdict['frozen_priors'] = pfrozen
         self.fdict['prior_bounds'] = bounds
-
-        if init_with_pmeans:
-            self.init_par = [priors[pp][1] for pp in priors.keys()]
-        else:
-            self.init_par = pinitv
-            for i in range(self.ndim):
-                if pinitv[i] is None:
-                    self.init_par[i] = par_fix[prior_arg][i]
-
-        self.fdict['init_par'] = self.init_par
+        self.fdict['init_value'] = pinitv
 
     if verbose:
         print('[estimation:]'.ljust(
@@ -178,17 +169,22 @@ def prep_estim(self, N=None, linear=None, seed=None, dispatch=False, obs_cov=Non
 
                 return -np.inf
 
-    def lprior(pars):
+    def lprior(par):
 
         prior = 0
         for i, pl in enumerate(self.fdict['frozen_priors']):
-            prior += pl.logpdf(pars[i])
+            prior += pl.logpdf(par[i])
 
         return prior
 
-    def lprob(pars, linear=linear, verbose=verbose):
+    linear_pa = linear
 
-        return lprior(pars) + llike(pars, linear, verbose)
+    def lprob(par, linear=None, verbose=verbose):
+
+        if linear is None:
+            linear = linear_pa
+
+        return lprior(par) + llike(par, linear, verbose)
 
     global lprob_global
     lprob_global = lprob
@@ -199,21 +195,36 @@ def prep_estim(self, N=None, linear=None, seed=None, dispatch=False, obs_cov=Non
     self.llike = llike
 
 
-def get_init_par(self, which=None, nwalks=1, linear=False, use_top=None, distributed=False, ncores=None, verbose=False):
+def get_par(self, which=None, nsample=1, ncores=None, verbose=False):
+    """Get parameters
 
-    if use_top is None:
-        use_top = 0.
+    Parameters
+    ----------
+    which : str
+        Can be one of {'priors', 'mode', 'calib', 'pmean', 'init'}. 
+    nsample : int
+        Size of the prior sample
+    ncores : int
+        Number of cores used for prior sampling. Defaults to the number of available processors
 
-    if linear is None:
-        linear = self.filter.name == 'KalmanFilter'
+    Returns
+    -------
+    array
+        Numpy array of parameters
+    """
 
-    if distributed:
+    if which is None:
+        which = 'mode' if 'mode_x' in self.fdict.keys() else 'init'
+
+    if which is 'priors':
 
         import pathos
 
-        print()
-        print('[estimation:]'.ljust(15, ' ') +
-              'finding initial values for mcmc (distributed over priors):')
+        if verbose: 
+            print('[estimation:]'.ljust(15, ' ') + 'finding initial values for mcmc (distributed over priors):')
+
+        if not hasattr(self, 'ndim'):
+            self.prep_estim(verbose=verbose)
 
         # globals are *evil*
         global lprob_global
@@ -230,7 +241,7 @@ def get_init_par(self, which=None, nwalks=1, linear=False, use_top=None, distrib
                 nprr = np.random.randint
                 pdraw = [pl.rvs(random_state=nprr(2**32-1))
                          for pl in frozen_priors]
-                draw_prob = lprob_global(pdraw, linear, verbose)
+                draw_prob = lprob_global(pdraw, None, verbose)
 
             return np.array(pdraw)
 
@@ -241,42 +252,23 @@ def get_init_par(self, which=None, nwalks=1, linear=False, use_top=None, distrib
         loc_pool.clear()
 
         pmap_sim = tqdm.tqdm(loc_pool.imap(
-            runner, range(nwalks)), total=nwalks)
+            runner, range(nsample)), total=nsample)
 
         return np.array(list(pmap_sim))
 
     if which is 'mode':
-        return self.fdict['mode_x']
-    if which is 'calib':
-        return self.p0()
-    if which is 'init':
-        return self.fdict['init_par']
-
-    if 'mode_x' in self.fdict.keys():
         par_cand = self.fdict['mode_x']
-    else:
-        par_cand = self.fdict['init_par']
+    if which is 'calib':
+        par_cand = self.par_fix[self.prior_arg]
+    if which is 'pmean':
+        self.init_par = [priors[pp][1] for pp in priors.keys()]
+    if which is 'init':
+        par_cand = self.fdict['init_value']
+        for i in range(self.ndim):
+            if par_cand[i] is None:
+                par_cand[i] = self.par_fix[self.prior_arg][i]
 
-    if np.ndim(par_cand) > 1:
-
-        ranking = (-self.fdict['swarms'][1][:, 0]).argsort()
-        which = max(use_top*par_cand.shape[0], 1)
-        par_cand = par_cand[ranking][:int(which)]
-
-    if np.ndim(par_cand) > 1:
-
-        p0 = np.empty((nwalks, self.ndim))
-        cand_dim = par_cand.shape[0]
-
-        for i, w in enumerate(range(nwalks)):
-            par = par_cand[i % cand_dim]
-            p0[w, :] = par * (1+1e-3*np.random.randn())
-
-        return p0
-
-    if nwalks > 1:
-        return par_cand*(1+1e-3*np.random.randn(nwalks, self.ndim))
-    return par_cand
+    return par_cand*(1 + 1e-3*np.random.randn(nsample, self.ndim)*(nsample>1))
 
 
 def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=None, max_gen=None, initialize_x0=True, use_ring=False, nlopt=True, broadcasting=True, ncores=None, crit_mem=.85, update_freq=None, verbose=False, debug=False):
@@ -662,7 +654,7 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
     elif resume:
         p0 = sampler.get_last_sample()
     else:
-        p0 = get_init_par(self, which=None, nwalks=nwalks, linear=linear, use_top=0, distributed=distr_init_chains, verbose=verbose)
+        p0 = get_par(self, nsample=nwalks, linear=linear, verbose=verbose)
 
     if not verbose:
         np.warnings.filterwarnings('ignore')
@@ -704,7 +696,10 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
                 max_tau.round(2), tau_sign, cnt/50, dev_tau.round(3), dev_sign))
             report("Mean likelihood is %s, mean acceptance fraction is %s." % (lprob_local(np.mean(
                 sample[-update_freq:], axis=(0, 1))).round(3), np.mean(sampler.acceptance_fraction[-update_freq:]).round(2)))
-            old_tau = tau
+
+        if cnt and update_freq and not (cnt+1) % update_freq:
+            sample = sampler.get_chain()
+            old_tau = emcee.autocorr.integrated_time(sample, tol=0)
 
         if not verbose:
             pbar.update(1)
@@ -740,15 +735,13 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
     return
 
 
-def kdes(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=None, linear=None, use_top=None, distr_init_chains=False, resume=False, verbose=False, debug=False):
+def kdes(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=None, linear=None, distr_init_chains=False, resume=False, verbose=False, debug=False):
 
     import pathos
     import kombine
     from grgrlib.patches import kombine_run_mcmc
 
     kombine.Sampler.run_mcmc = kombine_run_mcmc
-
-    self.fdict['use_top'] = use_top
 
     if not hasattr(self, 'ndim'):
         # if it seems to be missing, lets do it.
@@ -759,9 +752,6 @@ def kdes(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
         seed = self.fdict['seed']
 
     np.random.seed(seed)
-
-    if use_top is None:
-        use_top = 0
 
     if tune is None:
         self.tune = None
@@ -800,7 +790,7 @@ def kdes(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
         # should work, but not tested
         p0 = self.fdict['kdes_chain'][-1]
     else:
-        p0 = get_init_par(self, which=None, nwalks=nwalks, linear=linear, use_top=use_top, distributed=distr_init_chains, verbose=verbose)
+        p0 = get_par(self, nsample=nwalks, linear=linear, verbose=verbose)
 
     if not verbose:
         np.warnings.filterwarnings('ignore')

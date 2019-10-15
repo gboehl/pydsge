@@ -177,14 +177,14 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, co
     return res
 
 
-def extract(self, precalc=True, verbose=True, **ipasargs):
+def extract(self, precalc=True, verbose=True, **npasargs):
 
     if precalc:
         get_eps = self.filter.get_eps
     else:
         get_eps = None
 
-    means, cov, res, flag = self.filter.ipas(**ipasargs, get_eps=get_eps)
+    means, cov, res, flag = self.filter.npas(**npasargs, get_eps=get_eps)
 
     self.means = means
     self.cov = cov

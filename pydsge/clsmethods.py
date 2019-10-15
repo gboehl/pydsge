@@ -8,7 +8,7 @@ from .stats import summary, pmdm_report
 from .engine import preprocess, func_dispatch
 from .stuff import *
 from .filtering import *
-from .estimation import prep_estim, swarms, mcmc, kdes, get_init_par
+from .estimation import prep_estim, swarms, mcmc, kdes, get_par
 from .modesearch import pmdm, nlopt
 from .plots import posteriorplot, traceplot
 from .processing import *
@@ -198,19 +198,29 @@ def posteriorplot_m(self, mc_type=None, **args):
     return posteriorplot(self.get_chain(mc_type=mc_type), varnames=self.fdict['prior_names'], tune=tune, **args)
 
 
-def swarm_summary(self, **args):
-    return summary(self.fdict['swarms'], self['__data__']['estimation']['prior'], swarm_mode=True, **args)
+def swarm_summary(self, verbose=True, **args):
 
+    res = summary(self.fdict['swarms'], self['__data__']['estimation']['prior'], swarm_mode=True, **args)
 
-def mcmc_summary(self, mc_type=None, tune=None, **args):
+    if verbose:
+        print(res.round(3))
+
+    return res
+
+def mcmc_summary(self, mc_type=None, tune=None, verbose=True, **args):
 
     if tune is None:
         tune = self.get_tune
 
-    return summary(self.get_chain(mc_type), self['__data__']['estimation']['prior'], tune=tune, **args)
+    res = summary(self.get_chain(mc_type), self['__data__']['estimation']['prior'], tune=tune, **args)
+
+    if verbose:
+        print(res.round(3))
+
+    return res
 
 
-def info_m(self, **args):
+def info_m(self, verbose=True, **args):
 
     if hasattr(self, 'name'):
         name = self.name
@@ -226,10 +236,14 @@ def info_m(self, **args):
         cshp = self.get_chain().shape
         tune = self.get_tune
     except AttributeError:
-        return 'Title: %s (description: %s)' % (name, description)
+        res = 'Title: %s (description: %s)' % (name, description)
+    else:
+        res = 'Title: %s (description: %s). Last %s of %s samples in %s chains with %s parameters.' % (name, description, cshp[0] - tune, cshp[0], cshp[1], cshp[2])
 
-    return 'Title: %s (description: %s). Last %s of %s samples in %s chains with %s parameters.' % (
-        name, description, cshp[0] - tune, cshp[0], cshp[1], cshp[2])
+    if verbose:
+        print(res)
+
+    return res
 
 
 def get_data(self=None, csv=None, sep=None, start=None, end=None):
@@ -269,19 +283,22 @@ def get_data(self=None, csv=None, sep=None, start=None, end=None):
     return d
 
 
-def lprob(self, pars, linear=None, verbose=False):
+def lprob(self, par, linear=None, verbose=False):
 
     if not hasattr(self, 'ndim'):
         self.prep_estim(linear=linear, verbose=verbose)
         linear = self.filter.name == 'KalmanFilter'
 
-    return self.lprob(pars, linear=linear, verbose=verbose)
+    return self.lprob(par, linear=linear, verbose=verbose)
 
 
 def mdd(self, mode_f=None, inv_hess=None, verbose=False):
     """Approximate the marginal data density useing the LaPlace method.
     `inv_hess` can be a matrix or the method string in ('hess', 'cov') telling me how to Approximate the inverse Hessian
     """
+
+    if verbose:
+        st = time.time()
 
     if mode_f is None:
         mode_f = self.fdict['mode_f']
@@ -310,6 +327,9 @@ def mdd(self, mode_f=None, inv_hess=None, verbose=False):
     log_det_inv_hess = np.log(np.linalg.det(inv_hess))
     mdd = .5*ndim*np.log(2*np.pi) + .5*log_det_inv_hess + mode_f
 
+    if verbose:
+        print('[mdd:]'.ljust(15, ' ') + "Calculation took %s. The marginal data density is %s." %(timeprint(time.time()-st), mdd.round(4)))
+
     return mdd
 
 
@@ -324,7 +344,7 @@ DSGE.pmdm_report = pmdm_report
 DSGE.mdd = mdd
 DSGE.get_data = get_data
 DSGE.get_tune = get_tune
-DSGE.get_init_par = get_init_par
+DSGE.get_par = get_par
 DSGE.calc_obs = calc_obs
 # from stuff:
 DSGE.func_dispatch = func_dispatch

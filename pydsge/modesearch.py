@@ -114,10 +114,8 @@ class PMDM(object):
 
         try:
             f_val = -np.inf
-            if 'mode_x' in self.model.fdict.keys():
-                self.x = self.model.fdict['mode_x']
-            else:
-                self.x = self.model.fdict['init_par']
+
+            self.x = get_par(self, linear=linear, verbose=verbose)
 
             res = so.minimize(self, self.x, method=self.method,
                               tol=self.tol, options=self.opt_dict)
@@ -207,7 +205,7 @@ def pmdm(self, linear=None, maxfev=None, linear_pre_pmdm=False, method=None, tol
 
 def nlopt(self, p0=None, linear=None, maxfev=None, method=None, tol=1e-2, update_freq=None, verbose=False):
 
-    from pydsge.estimation import GPP, get_init_par
+    from pydsge.estimation import GPP, get_par
     import pygmo as pg
 
     if linear is None:
@@ -218,7 +216,7 @@ def nlopt(self, p0=None, linear=None, maxfev=None, method=None, tol=1e-2, update
     sfunc_inst = GPP(lprob, self.fdict['prior_bounds'])
 
     if p0 is None:
-        p0 = get_init_par(self, 1, linear, 0, False, verbose)
+        p0 = get_par(self, linear=linear, verbose=verbose)
 
     if method is None:
         method = 'cobyla'
