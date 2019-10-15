@@ -11,16 +11,27 @@ import scipy.optimize as so
 import tqdm
 
 
-def prep_estim(self, N=None, linear=None, seed=None, dispatch=False, obs_cov=None, constr_data=False, verbose=True):
+def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=False, constr_data=False, verbose=True):
     """Initializes the tools necessary for estimation
 
     ...
 
     Parameters
     ----------
-    obs_cov : ndarray, optional
-        obeservation covariance. Defaults to 0.1 of the standard deviation of the time series
-        If a float is given, thi will govern the fraction of the standard deviation.
+    N : int, optional
+        Number of ensemble members for the TEnKF. Defaults to 300 if no previous information is available.
+    linear : bool, optional
+        Whether a liniar or nonlinear filter is used. Defaults to False if no previous information is available.
+    load_R : bool, optional
+        Whether to load `filter.R` from prevous information. 
+    seed : bool, optional
+        Random seed. Defaults to 0
+    dispatch : bool, optional
+        Whether to use a dispatcher to create jitted transition and observation functions. Defaults to False.
+    dispatch : bool, optional
+        Whether to apply the constraint to the data as well. Defaults to False.
+    verbose : bool/int, optional
+        Whether display messages (and to which degree). Defaults to True.
     """
 
     # all that should be reproducible
@@ -47,6 +58,7 @@ def prep_estim(self, N=None, linear=None, seed=None, dispatch=False, obs_cov=Non
     self.fdict['filter_n'] = N
     self.fdict['linear'] = linear
     self.fdict['seed'] = seed
+    self.fdict['constr_data'] = constr_data
 
     if hasattr(self, 'data'):
         self.fdict['data'] = self.data
@@ -55,33 +67,16 @@ def prep_estim(self, N=None, linear=None, seed=None, dispatch=False, obs_cov=Non
 
     self.Z = np.array(self.data)
 
-    if obs_cov is None:
-        if not 'filter_R' in self.fdict.keys():
-            obs_cov = 1e-1
-
-    if isinstance(obs_cov, float):
-        obs_cov = self.create_obs_cov(obs_cov)
-
-    self.fdict['constr_data'] = constr_data
-
     if not hasattr(self, 'sys'):
         self.get_sys(reduce_sys=True, verbose=verbose > 1)
 
     self.preprocess(verbose=verbose > 1)
+    self.create_filter(N=N, ftype='KalmanFilter' if linear else None, random_seed=seed)
 
-    if linear:
-        ftype = 'KalmanFilter'
-    else:
-        ftype = None
-    self.create_filter(N=N, ftype=ftype, random_seed=seed)
-
-    if obs_cov is not None:
-        self.filter.R = obs_cov
-    elif 'filter_R' in self.fdict.keys():
+    if 'filter_R' in self.fdict.keys():
         self.filter.R = self.fdict['filter_R']
-    else:
-        raise NameError('[estimation:]'.ljust(15, ' ') +
-                        'observation covariance matrix not provided.')
+    elif load_R:
+        raise AttributeError('[estimation:]'.ljust(15, ' ') + "`filter.R` not in `fdict`.")
 
     # dry run before the fun beginns
     if np.isinf(self.get_ll(constr_data=constr_data, verbose=verbose > 1, dispatch=dispatch)):
@@ -158,6 +153,7 @@ def prep_estim(self, N=None, linear=None, seed=None, dispatch=False, obs_cov=Non
                     print('[llike:]'.ljust(15, ' ') + "Sample took %ss, ll is %s." %
                           (np.round(time.time() - st, 3), np.round(ll, 4)))
 
+                print(self.get_parval()[0])
                 return ll
 
             except KeyboardInterrupt:
@@ -167,6 +163,8 @@ def prep_estim(self, N=None, linear=None, seed=None, dispatch=False, obs_cov=Non
                 if verbose:
                     print('[llike:]'.ljust(15, ' ') +
                           'Sample took '+str(np.round(time.time() - st, 3))+'s. (failure, error msg: %s)' % err)
+                    if verbose > 1:
+                        print(self.get_parval()[0])
 
                 return -np.inf
 
@@ -196,7 +194,7 @@ def prep_estim(self, N=None, linear=None, seed=None, dispatch=False, obs_cov=Non
     self.llike = llike
 
 
-def get_par(self, which=None, nsample=1, ncores=None, verbose=False):
+def get_par(self, which=None, nsample=1, seed=None, ncores=None, verbose=False):
     """Get parameters
 
     Parameters
@@ -221,20 +219,23 @@ def get_par(self, which=None, nsample=1, ncores=None, verbose=False):
 
         import pathos
 
+        if seed is None:
+            seed = 0
+
         if verbose: 
             print('[estimation:]'.ljust(15, ' ') + 'finding initial values for mcmc (distributed over priors):')
 
         if not hasattr(self, 'ndim'):
-            self.prep_estim(verbose=verbose)
+            self.prep_estim(load_R=True, verbose=verbose)
 
         # globals are *evil*
         global lprob_global
 
         frozen_priors = self.fdict['frozen_priors']
 
-        def runner(seed):
+        def runner(locseed):
 
-            np.random.seed(seed)
+            np.random.seed(seed+locseed)
 
             draw_prob = -np.inf
 
@@ -582,7 +583,7 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
     return xsw
 
 
-def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=None, backend_file=None, linear=None, distr_init_chains=False, resume=False, update_freq=None, verbose=False, debug=False):
+def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=None, backend=True, linear=None, distr_init_chains=False, resume=False, update_freq=None, verbose=False, debug=False):
 
     import pathos
     import emcee
@@ -590,7 +591,7 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
     if not hasattr(self, 'ndim'):
         # if it seems to be missing, lets do it.
         # but without guarantee...
-        self.prep_estim()
+        self.prep_estim(load_R=True)
 
     if seed is None:
         seed = self.fdict['seed']
@@ -610,20 +611,20 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
     if linear is None:
         linear = self.filter.name == 'KalmanFilter'
 
-    if backend_file is None:
+    if backend:
+        if isinstance(backend, str):
+            self.backend_file = backend
         if 'backend_file' in self.fdict.keys():
             self.backend_file = str(self.fdict['backend_file'])
-        elif hasattr(self, 'path') and hasattr(self, 'name'):
-            self.backend_file = self.path + self.name + '_sampler.h5'
         else:
-            print('Sampler will not be recorded.')
+            self.backend_file = self.path + self.name + '_sampler.h5'
+
+        backend = emcee.backends.HDFBackend(self.backend_file)
+
+        if not resume:
+            backend.reset(nwalks, self.ndim)
     else:
-        self.backend_file = backend_file
-
-    backend = emcee.backends.HDFBackend(self.backend_file)
-
-    if not resume:
-        backend.reset(nwalks, self.ndim)
+        backend = None
 
     if nwalks is None:
         if resume:
@@ -655,7 +656,7 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
     elif resume:
         p0 = sampler.get_last_sample()
     else:
-        p0 = get_par(self, nsample=nwalks, linear=linear, verbose=verbose)
+        p0 = get_par(self, nsample=nwalks, verbose=verbose)
 
     if not verbose:
         np.warnings.filterwarnings('ignore')
@@ -747,7 +748,7 @@ def kdes(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
     if not hasattr(self, 'ndim'):
         # if it seems to be missing, lets do it.
         # but without guarantee...
-        self.prep_estim()
+        self.prep_estim(load_R=True)
 
     if seed is None:
         seed = self.fdict['seed']
@@ -791,7 +792,7 @@ def kdes(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
         # should work, but not tested
         p0 = self.fdict['kdes_chain'][-1]
     else:
-        p0 = get_par(self, nsample=nwalks, linear=linear, verbose=verbose)
+        p0 = get_par(self, nsample=nwalks, verbose=verbose)
 
     if not verbose:
         np.warnings.filterwarnings('ignore')

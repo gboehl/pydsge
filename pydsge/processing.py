@@ -1,13 +1,11 @@
 #!/bin/python
 # -*- coding: utf-8 -*-
-import warnings
+
 import time
-import emcee
 import pathos
 import os.path
 import numpy as np
-from tqdm import tqdm
-from .parser import DSGE as dsge
+import tqdm
 
 
 @property
@@ -22,197 +20,74 @@ def mask(self, verbose=False):
     return msk.rename(columns=dict(zip(self.observables, self.shocks)))[:-1]
 
 
-def runner_pooled(nr_samples, ncores, mask, use_pbar):
-    # rewrite!
+def parallellizer(sample, ncores=None, verbose=True, *args):
 
     import pathos
+    import tqdm
+    from grgrlib import map2arr
 
-    global runner_glob
+    global runner
 
     def runner_loc(x):
-        return runner_glob(x, mask)
+        return runner(x, *args)
 
-    pool = pathos.pools.ProcessPool(ncores)
-
-    if use_pbar:
-        res = list(tqdm(pool.imap(runner_loc, range(nr_samples)),
-                        unit=' sample(s)', total=nr_samples, dynamic_ncols=True))
-    else:
-        res = list(pool.imap(runner_loc, range(nr_samples)))
-
-    pool.close()
-    pool.join()
+    pool = pathos.pools.ProcessPool()
     pool.clear()
+
+    wrap = tqdm.tqdm if verbose else lambda x: x
+
+    res = wrap(pool.imap(runner_loc, sample), unit=' sample(s)', total=len(sample), dynamic_ncols=True)
+
+    return map2arr(res)
+
+
+def sampled_extract(self, source=None, k=1, seed=None, verbose=False):
+
+    if source is None and 'mcmc_mode_f' in self.fdict.keys():
+        source = 'posterior'
+
+    if source is 'posterior':
+
+        import random 
+
+        random.seed(seed)
+        sample = self.get_chain()[self.get_tune:]
+        sample = sample.reshape(-1, sample.shape[-1])
+        sample = random.choices(sample, k=k)
+
+    else:
+        sample = self.get_par('priors', nsample=k, seed=seed)
+
+    global runner
+    
+    def runner(par):
+
+        par_fix = self.par_fix
+        par_fix[self.prior_arg] = par
+        par_active_lst = list(par_fix)
+
+        self.get_sys(par=par_active_lst, reduce_sys=True, verbose=verbose > 1)
+
+        self.preprocess(l_max=3, k_max=16, verbose=verbose > 1)
+        self.filter.Q = self.QQ(self.par) @ self.QQ(self.par)
+
+        FX = self.run_filter(verbose=False)
+
+        SX, scov, eps, flag = self.extract(verbose=False, ngen=200, npop=5)
+        
+        if flag:
+            print('[sampled_extract:]'.ljust(15, ' ') + 'Extract returned error.')
+
+        return SX, scov, eps
+
+    res = parallellizer(sample)
+
+    self.fdict['eps'] = eps
 
     return res
 
 
-def posterior_sample(self, be_res=None, seed=0, verbose=False):
-    # rewrite!
-
-    import random
-
-    if be_res is None:
-        chain = self.sampler.get_chain()
-        tune = self.sampler.tune
-        par_fix = self.par_fix
-        prior_arg = self.prior_arg,
-        prior_names = self.prior_names
-
-    else:
-        chain = be_res.chain
-        tune = be_res.tune
-        par_fix = be_res.par_fix
-        prior_arg = be_res.prior_arg
-        prior_names = be_res.prior_names
-
-    all_pars = chain[tune:].reshape(-1, chain.shape[-1])
-
-    random.seed(seed)
-    randpar = par_fix
-    psample = random.choice(all_pars)
-    randpar[prior_arg] = psample
-
-    if verbose:
-        pstr = ''
-        for pv, pn in zip(psample, prior_names):
-            if pstr:
-                pstr += ', '
-            pstr += pn + ': ' + str(pv.round(3))
-
-        print('[epstract:]'.ljust(15, ' ') +
-              'Parameters drawn from posterior:')
-        print(''.ljust(15, ' ') + pstr)
-
-    return list(randpar)
-
-
-def epstract(self, be_res=None, N=None, nr_samples=100, save=None, ncores=None, method=None, itype=(0, 1), penalty=10, max_attempts=3, presmoothing=None, min_options=None, reduce_sys=False, force=False, verbose=False):
-    # rewrite!
-
-    XX = []
-    COV = []
-    EPS = []
-    PAR = []
-
-    if N is None:
-        N = 500
-
-    if reduce_sys is not self.is_reduced:
-        self.get_sys(reduce_sys=reduce_sys)
-
-    if not force and save is not None and os.path.isfile(save):
-
-        files = np.load(save, allow_pickle=True)
-        OBS_COV = files['OBS_COV']
-        smethod = files['method']
-        mess1 = ''
-        mess2 = ''
-
-        if 'is_reduced' in files:
-            if reduce_sys is not files['is_reduced']:
-                mess1 = ", epstract overwrites 'reduce_sys'"
-
-            reduce_sys = files['is_reduced']
-        if 'presmoothing' in files:
-            presmoothing = files['presmoothing'].item()
-
-        EPS = files['EPS']
-        COV = files['COV']
-        XX = files['XX']
-        PAR = files['PAR']
-
-        if EPS.shape[0] >= nr_samples:
-            if presmoothing is not None:
-                mess2 = 'presmoothing: %s,' % presmoothing
-
-            print('[epstract:]'.ljust(15, ' ') +
-                  'Epstract already exists (%sreduced: %s%s)' % (mess2, reduce_sys, mess1))
-
-            self.epstracted = XX, COV, EPS, PAR, self.obs_cov, method
-
-            return XX, COV, EPS, PAR
-
-        else:
-            print('[epstract:]'.ljust(15, ' ') +
-                  'Appending to existing epstract...')
-
-            XX = list(XX)
-            COV = list(COV)
-            EPS = list(EPS)
-            PAR = list(PAR)
-
-    if ncores is None:
-        ncores = pathos.multiprocessing.cpu_count()
-
-    yet = 0
-    if len(EPS):
-        yet = len(EPS)
-    nr_samples = nr_samples - yet
-
-    def runner(nr, mask):
-
-        flag = True
-
-        for att in range(max_attempts):
-
-            par = self.posterior_sample(
-                be_res=be_res, seed=yet + nr + att*nr_samples)
-
-            # define parameters
-            self.get_sys(par, reduce_sys=reduce_sys, verbose=False)
-            # preprocess matrices for speedup
-            self.preprocess(verbose=False)
-
-            self.create_filter(N=N)
-            SX, scov = self.run_filter()
-            IX, icov, eps, flag = self.extract(method=method, penalty=penalty, return_flag=True, itype=itype,
-                                               presmoothing=presmoothing, min_options=min_options, show_warnings=False, verbose=verbose)
-
-            if not flag:
-                return IX, icov, eps, par
-
-        raise ValueError(
-            'epstract: Could not extract shocks after %s attemps.' % max_attempts)
-
-    global runner_glob
-    runner_glob = runner
-
-    res = runner_pooled(nr_samples, ncores, None, not verbose)
-
-    no_obs, dim_z = self.Z.shape
-    dim_e = len(self.shocks)
-
-    for p in res:
-        XX  .append(p[0])
-        COV .append(p[1])
-        EPS .append(p[2])
-        PAR .append(p[3])
-
-    EPS = np.array(EPS)
-    XX = np.array(XX, dtype=object)
-    PAR = np.array(PAR)
-
-    if save is not None:
-        smethod = method
-        if method is None:
-            smethod = -1
-        np.savez(save,
-                 EPS=EPS,
-                 COV=COV,
-                 XX=XX,
-                 PAR=PAR,
-                 OBS_COV=self.obs_cov,
-                 method=smethod,
-                 presmoothing=presmoothing,
-                 is_reduced=reduce_sys
-                 )
-
-    self.epstracted = XX, COV, EPS, PAR, self.obs_cov, method
-
-    return XX, COV, EPS, PAR
-
-
+"""
 def sampled_sim(self, epstracted=None, mask=None, reduce_sys=None, forecast=False, linear=False, nr_samples=None, ncores=None, show_warnings=False, verbose=False):
     # rewrite!
 
@@ -343,3 +218,4 @@ def sampled_irfs(self, be_res, shocklist, wannasee, reduce_sys=None, nr_samples=
         L.append(p[3])
 
     return np.array(X), Xlabels, (np.array(Y), np.array(K), np.array(L))
+"""

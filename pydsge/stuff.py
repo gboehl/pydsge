@@ -188,7 +188,7 @@ def irfs(self, shocklist, wannasee=None, linear=False, show_warnings=True, verbo
         for v_raw in wannasee:
             v = v_raw.replace('_', '')
             if v in slabels:
-                args_sts.append(slabels.index(v))
+                args_sts.append(list(slabels).index(v))
             elif v in olabels:
                 args_obs.append(olabels.index(v))
             else:
@@ -405,14 +405,14 @@ def get_eps(self, x, xp):
     return (x - self.t_func(xp)[0]) @ self.SIG
 
 
-def get_parval(self, parname=None, setpar=None):
+def get_parval(self, parname=None, setpar=None, roundto=5):
 
     pfnames, pffunc = self.parafunc
     pars_str = [str(p) for p in self.parameters]
 
     if parname is None:
-        pdict = dict(zip(pars_str, self.par))
-        pfdict = dict(zip(pfnames, pffunc(self.par)))
+        pdict = dict(zip(pars_str, np.round(self.par,roundto)))
+        pfdict = dict(zip(pfnames, np.round(pffunc(self.par),roundto)))
 
         return pdict, pfdict
 

@@ -1,6 +1,7 @@
 #!/bin/python
 # -*- coding: utf-8 -*-
 
+import emcee
 import numpy as np
 import pandas as pd
 from .parser import DSGE
@@ -286,7 +287,7 @@ def get_data(self=None, csv=None, sep=None, start=None, end=None):
 def lprob(self, par, linear=None, verbose=False):
 
     if not hasattr(self, 'ndim'):
-        self.prep_estim(linear=linear, verbose=verbose)
+        self.prep_estim(linear=linear, load_R=True, verbose=verbose)
         linear = self.filter.name == 'KalmanFilter'
 
     return self.lprob(par, linear=linear, verbose=verbose)
@@ -378,14 +379,13 @@ DSGE.posteriorplot = posteriorplot_m
 DSGE.set_path = set_path
 DSGE.get_chain = get_chain
 DSGE.get_log_prob = get_log_prob
-DSGE.epstract = epstract
-DSGE.sampled_sim = sampled_sim
-DSGE.sampled_irfs = sampled_irfs
 DSGE.extract = extract
 DSGE.create_obs_cov = create_obs_cov
-DSGE.posterior_sample = posterior_sample
 DSGE.preprocess = preprocess
 DSGE.mask = mask
+# DSGE.epstract = epstract
+# DSGE.sampled_sim = sampled_sim
+# DSGE.sampled_irfs = sampled_irfs
 
 """
 def chain_masker(self):

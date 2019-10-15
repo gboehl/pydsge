@@ -184,7 +184,7 @@ def extract(self, precalc=True, verbose=True, **npasargs):
     else:
         get_eps = None
 
-    means, cov, res, flag = self.filter.npas(**npasargs, get_eps=get_eps)
+    means, cov, res, flag = self.filter.npas(get_eps=get_eps, verbose=verbose, **npasargs)
 
     self.means = means
     self.cov = cov
