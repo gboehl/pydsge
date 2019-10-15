@@ -210,10 +210,15 @@ def swarm_summary(self, verbose=True, **args):
 
 def mcmc_summary(self, mc_type=None, tune=None, verbose=True, **args):
 
+    try:
+        chain = self.get_chain(mc_type)
+    except AttributeError:
+        raise AttributeError('[summary:]'.ljust(15, ' ') + "No chain to be found...")
+
+    res = summary(chain, self['__data__']['estimation']['prior'], tune=tune, **args)
+
     if tune is None:
         tune = self.get_tune
-
-    res = summary(self.get_chain(mc_type), self['__data__']['estimation']['prior'], tune=tune, **args)
 
     if verbose:
         print(res.round(3))
