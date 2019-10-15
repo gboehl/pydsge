@@ -40,7 +40,7 @@ def calc_obs(self, states, covs=None):
     return iv95_obs, iv95
 
 
-def get_chain(self, mc_type=None, backend_file=None, flat=None):
+def get_chain(self, get_acceptance_fraction=False, mc_type=None, backend_file=None, flat=None):
 
     if backend_file is None:
 
@@ -62,6 +62,9 @@ def get_chain(self, mc_type=None, backend_file=None, flat=None):
                 "Neither a backend nor a sampler could be found.")
 
     reader = emcee.backends.HDFBackend(backend_file)
+
+    if get_acceptance_fraction:
+        return reader.accepted / reader.iteration
 
     return reader.get_chain(flat=flat)
 
@@ -240,11 +243,12 @@ def info_m(self, verbose=True, **args):
 
     try: 
         cshp = self.get_chain().shape
+        acs = self.get_chain(get_acceptance_fraction=True)
         tune = self.get_tune
     except AttributeError:
         res = 'Title: %s (description: %s)' % (name, description)
     else:
-        res = 'Title: %s (description: %s). Last %s of %s samples in %s chains with %s parameters.' % (name, description, cshp[0] - tune, cshp[0], cshp[1], cshp[2])
+        res = 'Title: %s (description: %s). Last %s of %s samples in %s chains with %s parameters. Mean acceptance fraction: %s.' % (name, description, cshp[0] - tune, cshp[0], cshp[1], cshp[2], np.mean(acs).round(3))
 
     if verbose:
         print(res)

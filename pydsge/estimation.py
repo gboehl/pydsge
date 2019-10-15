@@ -152,8 +152,6 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
                 if verbose:
                     print('[llike:]'.ljust(15, ' ') + "Sample took %ss, ll is %s." %
                           (np.round(time.time() - st, 3), np.round(ll, 4)))
-
-                print(self.get_parval()[0])
                 return ll
 
             except KeyboardInterrupt:
@@ -455,6 +453,7 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
 
     f_max = -np.inf
     f_max_hist = []
+    x_max_hist = []
 
     if not debug and not verbose:
         np.warnings.filterwarnings('ignore')
@@ -489,6 +488,7 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
                     name_max = s.sname
 
                 f_max_hist.append(f_max)
+                x_max_hist.append(x_max)
 
                 name_len = 25 - 9 - len(str(int(f_max))) - len(str(f_max_cnt))
 
@@ -567,7 +567,7 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
 
     self.fdict['ngen'] = ngen
     self.fdict['swarms'] = xsw, fsw, nsw.reshape(1, -1)
-    self.fdict['swarm_history'] = f_max_hist
+    self.fdict['swarm_history'] = np.array(f_max_hist).reshape(1,-1), np.array(x_max_hist)
 
     fas = fsw[:, 0].argmax()
 
