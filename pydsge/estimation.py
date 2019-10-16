@@ -162,7 +162,7 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
                     print('[llike:]'.ljust(15, ' ') +
                           'Sample took '+str(np.round(time.time() - st, 3))+'s. (failure, error msg: %s)' % err)
                     if verbose > 1:
-                        print(self.get_parval()[0])
+                        print(self.get_parval(parname='estim'))
 
                 return -np.inf
 

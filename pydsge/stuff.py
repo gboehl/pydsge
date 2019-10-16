@@ -416,9 +416,10 @@ def get_parval(self, parname=None, roundto=5):
 
         return pdict, pfdict
 
+    elif parname is 'estim':
+        return dict(zip(np.array(pars_str)[self.prior_arg], np.round(self.par,roundto)[self.prior_arg]))
     elif parname in pars_str:
         return self.par[pars_str.index(parname)]
-
     else:
         if parname not in pfnames:
             raise SyntaxError("Parameter '%s' does not exist." % parname)
