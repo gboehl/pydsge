@@ -405,7 +405,7 @@ def get_eps(self, x, xp):
     return (x - self.t_func(xp)[0]) @ self.SIG
 
 
-def get_parval(self, parname=None, setpar=None, roundto=5):
+def get_parval(self, parname=None, roundto=5):
 
     pfnames, pffunc = self.parafunc
     pars_str = [str(p) for p in self.parameters]
@@ -417,16 +417,38 @@ def get_parval(self, parname=None, setpar=None, roundto=5):
         return pdict, pfdict
 
     elif parname in pars_str:
-        if setpar is None:
-            return self.par[pars_str.index(parname)]
-        else:
-            self.par[pars_str.index(parname)] = setpar
-            return self.par[pars_str.index(parname)]
+        return self.par[pars_str.index(parname)]
 
     else:
         if parname not in pfnames:
             raise SyntaxError("Parameter '%s' does not exist." % parname)
-        if setpar is not None:
-            raise SyntaxError(
-                "Can not set parameter '%s' that is function of other parameters." % parname)
         return pffunc(self.par)[pfnames.index(parname)]
+
+
+def set_parval(self, parname=None, setpar=None, roundto=5):
+
+    pfnames, pffunc = self.parafunc
+    pars_str = [str(p) for p in self.parameters]
+
+    if setpar is None:
+        if len(parname) == len(self.par_fix):
+            self.par = parname
+        elif len(parname) == len(self.prior_arg):
+            par = self.par_fix
+            par[self.prior_arg] = parname
+            self.par = par
+        else:
+            raise SyntaxError("No parameter value `setpar` provieded. Maybe you just want to use `get_parval`?")
+
+    elif parname in pars_str:
+        self.par[pars_str.index(parname)] = setpar
+
+    else:
+        if parname not in pfnames:
+            raise SyntaxError("Parameter '%s' does not exist." % parname)
+        raise SyntaxError("Can not set parameter '%s' that is function of other parameters." % parname)
+
+    pdict = dict(zip(pars_str, np.round(self.par,roundto)))
+    pfdict = dict(zip(pfnames, np.round(pffunc(self.par),roundto)))
+
+    return pdict, pfdict

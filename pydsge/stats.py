@@ -54,7 +54,7 @@ def _hpd_df(x, alpha):
     return pd.DataFrame(hpd_vals, columns=cnames)
 
 
-def summary(store, priors, tune=None, alpha=0.05, top=None, show_priors=False, min_col=80, swarm_mode=None):
+def summary(store, priors, bounds=None, tune=None, alpha=0.05, top=None, show_priors=False, min_col=80):
     # in parts stolen from pymc3 because it looks really nice
 
     try:
@@ -63,12 +63,8 @@ def summary(store, priors, tune=None, alpha=0.05, top=None, show_priors=False, m
     except IndexError:
         cols = min_col + 1
 
-    if swarm_mode is None:
-        swarm_mode = False
-
-    if swarm_mode or isinstance(store, tuple):
+    if bounds is not None or isinstance(store, tuple):
         min_col += 20
-        swarm_mode = True
         xs, fs, ns = store
         ns = ns.squeeze()
         fas = (-fs[:, 0]).argsort()
@@ -78,6 +74,9 @@ def summary(store, priors, tune=None, alpha=0.05, top=None, show_priors=False, m
     f_prs = [lambda x: pd.Series(x, name='distribution'),
              lambda x: pd.Series(x, name='pst_mean'),
              lambda x: pd.Series(x, name='sd/df')]
+
+    f_bnd = [lambda x: pd.Series(x, name='lbound'),
+             lambda x: pd.Series(x, name='ubound')]
 
     funcs = [lambda x: pd.Series(np.mean(x), name='mean'),
              lambda x: pd.Series(np.std(x), name='sd'),
@@ -93,8 +92,10 @@ def summary(store, priors, tune=None, alpha=0.05, top=None, show_priors=False, m
             if len(prior) > 3:
                 prior = prior[-3:]
             [lst.append(f(prior[j])) for j, f in enumerate(f_prs)]
+            if bounds is not None:
+                [lst.append(f(bounds.T[i][j])) for j, f in enumerate(f_bnd)]
 
-        if swarm_mode:
+        if bounds is not None:
             [lst.append(pd.Series(s[i], name=n))
              for s, n in zip(xs[:top], ns[:top])]
         else:
@@ -104,19 +105,21 @@ def summary(store, priors, tune=None, alpha=0.05, top=None, show_priors=False, m
         var_df.index = [var]
         var_dfs.append(var_df)
 
-    if swarm_mode:
+    if bounds is not None:
 
         lst = []
 
         if show_priors and int(cols) > min_col:
             [lst.append(f('')) for j, f in enumerate(f_prs)]
+            if bounds is not None:
+                [lst.append(f('')) for j, f in enumerate(f_bnd)]
 
         [lst.append(pd.Series(s, name=n)) for s, n in zip(fs[:top], ns[:top])]
         var_df = pd.concat(lst, axis=1)
         var_df.index = ['loglike']
         var_dfs.append(var_df)
 
-    dforg = pd.concat(var_dfs, axis=0)
+    dforg = pd.concat(var_dfs, axis=0, sort=False)
 
     return dforg
 

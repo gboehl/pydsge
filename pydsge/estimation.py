@@ -127,14 +127,14 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
                 par_active_lst = list(par_fix)
 
                 self.get_sys(par=par_active_lst, reduce_sys=True,
-                             verbose=verbose > 1)
+                             verbose=verbose > 2)
 
                 if not linear:
                     if self.filter.name == 'KalmanFilter':
                         raise AttributeError('[estimation:]'.ljust(
                             15, ' ') + 'Missmatch between linearity choice (filter vs. lprob)')
                     # these max vals should be sufficient given we're only dealing with stochastic linearization
-                    self.preprocess(l_max=3, k_max=16, verbose=verbose > 1)
+                    self.preprocess(l_max=3, k_max=16, verbose=verbose > 2)
                     self.filter.Q = self.QQ(self.par) @ self.QQ(self.par)
                 else:
                     if not self.filter.name == 'KalmanFilter':
@@ -147,7 +147,7 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
                     CO = self.SIG @ self.QQ(self.par)
                     self.filter.Q = CO @ CO.T
 
-                ll = self.get_ll(constr_data=constr_data, verbose=verbose > 1, dispatch=dispatch)
+                ll = self.get_ll(constr_data=constr_data, verbose=verbose > 2, dispatch=dispatch)
 
                 if verbose:
                     print('[llike:]'.ljust(15, ' ') + "Sample took %ss, ll is %s." %
@@ -698,7 +698,7 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
             report(str(summary(sample, self.priors, tune=-update_freq).round(3)))
             report("Convergence stats: maxiumum tau is %s (%s%s) and change is %s (%s0.01)." % (
                 max_tau.round(2), tau_sign, cnt/50, dev_tau.round(3), dev_sign))
-            report("Mean likelihood is %s, mean acceptance fraction is %s." % (lprob_local(np.mean(
+            report("Likelihood at mean is %s, mean acceptance fraction is %s." % (lprob_local(np.mean(
                 sample[-update_freq:], axis=(0, 1))).round(3), np.mean(sampler.acceptance_fraction[-update_freq:]).round(2)))
 
         if cnt and update_freq and not (cnt+1) % update_freq:

@@ -204,7 +204,7 @@ def posteriorplot_m(self, mc_type=None, **args):
 
 def swarm_summary(self, verbose=True, **args):
 
-    res = summary(self.fdict['swarms'], self['__data__']['estimation']['prior'], swarm_mode=True, **args)
+    res = summary(store=self.fdict['swarms'], priors=self['__data__']['estimation']['prior'], bounds=self.fdict['prior_bounds'], **args)
 
     if verbose:
         print(res.round(3))
@@ -360,6 +360,7 @@ DSGE.calc_obs = calc_obs
 DSGE.func_dispatch = func_dispatch
 DSGE.get_sys = get_sys
 DSGE.get_parval = get_parval
+DSGE.set_parval = set_parval
 DSGE.t_func = t_func
 DSGE.o_func = o_func
 DSGE.get_eps = get_eps
