@@ -179,6 +179,6 @@ def sampled_irfs(self, shocklist, nbatch=1, wannasee=None, source=None, ncores=N
 
         return res
 
-    res = parallellizer(list(sample)), ncores=ncores, shocklist=shocklist, wannasee=wannasee)
+    res = parallellizer(list(sample), ncores=ncores, shocklist=shocklist, wannasee=wannasee)
 
     return res

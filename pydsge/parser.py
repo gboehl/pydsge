@@ -688,4 +688,9 @@ class DSGE(dict):
 
         model.get_matrices()
 
+        model.par_fix = np.array(model.p0())
+        p_names = [p.name for p in model.parameters]
+        model.priors = model['__data__']['estimation']['prior']
+        model.prior_arg = [p_names.index(pp) for pp in model.priors.keys()]
+
         return model

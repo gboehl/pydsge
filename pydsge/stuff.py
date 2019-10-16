@@ -165,17 +165,6 @@ def get_sys(self, par=None, reduce_sys=True, verbose=False):
 
     self.sys = N2, A2, J2, cx[~out_msk], b2[~out_msk], x_bar
 
-    # this is needed alot
-    if not hasattr(self, 'par_fix'):
-        par_fix = np.array(self.par).copy()
-        p_names = [p.name for p in self.parameters]
-        priors = self['__data__']['estimation']['prior']
-        prior_arg = [p_names.index(pp) for pp in priors.keys()]
-
-        self.priors = priors
-        self.par_fix = par_fix
-        self.prior_arg = prior_arg
-
     if verbose:
         print('[get_sys:]'.ljust(15, ' ')+'Creation of system matrices finished in %ss.'
               % np.round(time.time() - st, 3))
@@ -344,7 +333,7 @@ def simulate(self, eps=None, mask=None, state=None, linear=False, verbose=False,
     return X, np.expand_dims(K, 2)
 
 
-def simulate_series(self, T=1e3, cov=None, verbose=False:
+def simulate_series(self, T=1e3, cov=None, verbose=False):
 
     import scipy.stats as ss
 
