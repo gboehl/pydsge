@@ -79,7 +79,8 @@ def get_log_prob(self, mc_type=None, backend_file=None, flat=None):
         if 'backend_file' in self.fdict.keys():
             backend_file = str(self.fdict['backend_file'])
         else:
-            raise AttributeError("Neither a backend nor a sampler could be found.")
+            raise AttributeError(
+                "Neither a backend nor a sampler could be found.")
 
     reader = emcee.backends.HDFBackend(backend_file)
 
@@ -204,21 +205,25 @@ def posteriorplot_m(self, mc_type=None, **args):
 
 def swarm_summary(self, verbose=True, **args):
 
-    res = summary(store=self.fdict['swarms'], priors=self['__data__']['estimation']['prior'], bounds=self.fdict['prior_bounds'], **args)
+    res = summary(store=self.fdict['swarms'], priors=self['__data__']
+                  ['estimation']['prior'], bounds=self.fdict['prior_bounds'], **args)
 
     if verbose:
         print(res.round(3))
 
     return res
 
+
 def mcmc_summary(self, mc_type=None, tune=None, verbose=True, **args):
 
     try:
         chain = self.get_chain(mc_type)
     except AttributeError:
-        raise AttributeError('[summary:]'.ljust(15, ' ') + "No chain to be found...")
+        raise AttributeError('[summary:]'.ljust(
+            15, ' ') + "No chain to be found...")
 
-    res = summary(chain, self['__data__']['estimation']['prior'], tune=tune, **args)
+    res = summary(chain, self['__data__']['estimation']
+                  ['prior'], tune=tune, **args)
 
     if tune is None:
         tune = self.get_tune
@@ -241,14 +246,15 @@ def info_m(self, verbose=True, **args):
     else:
         description = self.fdict['description']
 
-    try: 
+    try:
         cshp = self.get_chain().shape
         acs = self.get_chain(get_acceptance_fraction=True)
         tune = self.get_tune
     except AttributeError:
         res = 'Title: %s (description: %s)' % (name, description)
     else:
-        res = 'Title: %s (description: %s). Last %s of %s samples in %s chains with %s parameters. Mean acceptance fraction: %s.' % (name, description, cshp[0] - tune, cshp[0], cshp[1], cshp[2], np.mean(acs).round(3))
+        res = 'Title: %s (description: %s). Last %s of %s samples in %s chains with %s parameters. Mean acceptance fraction: %s.' % (
+            name, description, cshp[0] - tune, cshp[0], cshp[1], cshp[2], np.mean(acs).round(3))
 
     if verbose:
         print(res)
@@ -339,7 +345,8 @@ def mdd(self, mode_f=None, inv_hess=None, verbose=False):
     mdd = .5*ndim*np.log(2*np.pi) + .5*log_det_inv_hess + mode_f
 
     if verbose:
-        print('[mdd:]'.ljust(15, ' ') + "Calculation took %s. The marginal data density is %s." %(timeprint(time.time()-st), mdd.round(4)))
+        print('[mdd:]'.ljust(15, ' ') + "Calculation took %s. The marginal data density is %s." %
+              (timeprint(time.time()-st), mdd.round(4)))
 
     return mdd
 
@@ -357,8 +364,8 @@ DSGE.calc_obs = calc_obs
 # from stuff:
 DSGE.func_dispatch = func_dispatch
 DSGE.get_sys = get_sys
-DSGE.get_parval = get_parval
-DSGE.set_parval = set_parval
+DSGE.get_calib = get_calib
+DSGE.set_calib = set_calib
 DSGE.t_func = t_func
 DSGE.o_func = o_func
 DSGE.get_eps = get_eps

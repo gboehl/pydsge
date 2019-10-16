@@ -92,7 +92,7 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, co
         # copy the data
         data = self.data
         # constaint const_obs
-        x_shift = self.get_parval(constr_data)
+        x_shift = self.get_calib(constr_data)
         data[str(self.const_obs)] = np.maximum(
             data[str(self.const_obs)], x_shift)
         # send to filter
@@ -173,7 +173,8 @@ def extract(self, precalc=True, verbose=True, **npasargs):
     else:
         get_eps = None
 
-    means, cov, res, flag = self.filter.npas(get_eps=get_eps, verbose=verbose, **npasargs)
+    means, cov, res, flag = self.filter.npas(
+        get_eps=get_eps, verbose=verbose, **npasargs)
 
     self.means = means
     self.cov = cov

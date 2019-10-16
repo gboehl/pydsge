@@ -41,7 +41,8 @@ def parallellizer(sample, ncores=None, verbose=True, **args):
 
     wrap = tqdm.tqdm if verbose else lambda x: x
 
-    res = wrap(pool.imap(runner_loc, sample), unit=' sample(s)', total=len(sample), dynamic_ncols=True)
+    res = wrap(pool.imap(runner_loc, sample), unit=' sample(s)',
+               total=len(sample), dynamic_ncols=True)
 
     return map2arr(res)
 
@@ -53,7 +54,7 @@ def get_sample(self, source=None, k=1, seed=None, verbose=False):
 
     if source is 'posterior':
 
-        import random 
+        import random
 
         random.seed(seed)
         sample = self.get_chain()[self.get_tune:]
@@ -88,7 +89,7 @@ def sampled_extract(self, source=None, k=1, seed=None, verbose=False):
     sample = get_sample(self, source=source, k=ke, seed=seed, verbose=verbose)
 
     global runner
-    
+
     def runner(par):
 
         par_fix = self.par_fix
@@ -103,9 +104,10 @@ def sampled_extract(self, source=None, k=1, seed=None, verbose=False):
         FX = self.run_filter(verbose=False)
 
         mean, cov, eps, flag = self.extract(verbose=False, ngen=200, npop=5)
-        
+
         if flag:
-            print('[sampled_extract:]'.ljust(15, ' ') + 'Extract returned error.')
+            print('[sampled_extract:]'.ljust(
+                15, ' ') + 'Extract returned error.')
 
         return mean, cov, eps
 
@@ -122,7 +124,7 @@ def sampled_extract(self, source=None, k=1, seed=None, verbose=False):
     self.fdict[prefix+'eps'] = eps
     self.fdict[prefix+'sample'] = sample
 
-    return 
+    return
 
 
 def sampled_sim(self, source=None, mask=None, ncores=None, verbose=False):
@@ -135,11 +137,11 @@ def sampled_sim(self, source=None, mask=None, ncores=None, verbose=False):
 
     else:
         try:
-            prefix = 'post_' 
+            prefix = 'post_'
             eps = self.fdict[prefix+'eps']
             sample = self.fdict[prefix+'sample']
         except:
-            prefix = 'prio_' 
+            prefix = 'prio_'
             eps = self.fdict[prefix+'eps']
             sample = self.fdict[prefix+'sample']
 
@@ -164,8 +166,9 @@ def sampled_sim(self, source=None, mask=None, ncores=None, verbose=False):
 
 def sampled_irfs(self, shocklist, nbatch=1, wannasee=None, source=None, ncores=None, verbose=False):
 
-    ## this should load existing samples as well
-    sample = get_sample(self, source=source, k=nbatch, seed=seed, verbose=verbose)
+    # this should load existing samples as well
+    sample = get_sample(self, source=source, k=nbatch,
+                        seed=seed, verbose=verbose)
 
     global runner
 
@@ -179,6 +182,7 @@ def sampled_irfs(self, shocklist, nbatch=1, wannasee=None, source=None, ncores=N
 
         return res
 
-    res = parallellizer(list(sample), ncores=ncores, shocklist=shocklist, wannasee=wannasee)
+    res = parallellizer(list(sample), ncores=ncores,
+                        shocklist=shocklist, wannasee=wannasee)
 
     return res

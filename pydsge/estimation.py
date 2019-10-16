@@ -66,12 +66,14 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
         self.get_sys(reduce_sys=True, verbose=verbose > 1)
 
     self.preprocess(verbose=verbose > 1)
-    self.create_filter(N=N, ftype='KalmanFilter' if linear else None, random_seed=seed)
+    self.create_filter(
+        N=N, ftype='KalmanFilter' if linear else None, random_seed=seed)
 
     if 'filter_R' in self.fdict.keys():
         self.filter.R = self.fdict['filter_R']
     elif load_R:
-        raise AttributeError('[estimation:]'.ljust(15, ' ') + "`filter.R` not in `fdict`.")
+        raise AttributeError('[estimation:]'.ljust(
+            15, ' ') + "`filter.R` not in `fdict`.")
 
     # dry run before the fun beginns
     if np.isinf(self.get_ll(constr_data=constr_data, verbose=verbose > 1, dispatch=dispatch)):
@@ -134,7 +136,8 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
                     CO = self.SIG @ self.QQ(self.par)
                     self.filter.Q = CO @ CO.T
 
-                ll = self.get_ll(constr_data=constr_data, verbose=verbose > 2, dispatch=dispatch)
+                ll = self.get_ll(constr_data=constr_data,
+                                 verbose=verbose > 2, dispatch=dispatch)
 
                 return ll
 
@@ -143,9 +146,10 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
 
             except Exception as err:
                 if verbose:
-                    print('[llike:]'.ljust(15, ' ') + 'Failure. Error msg: %s' % err)
+                    print('[llike:]'.ljust(15, ' ') +
+                          'Failure. Error msg: %s' % err)
                     if verbose > 1:
-                        print(self.get_parval(parname='estim'))
+                        print(self.get_calib(parname='estim'))
 
                 return -np.inf
 
@@ -174,7 +178,8 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
 
         ll += lprior(par)
         if verbose:
-            print('[lprob:]'.ljust(15, ' ') + "Sample took %ss, ll is %s." %(np.round(time.time() - st, 3), np.round(ll, 4)))
+            print('[lprob:]'.ljust(15, ' ') + "Sample took %ss, ll is %s." %
+                  (np.round(time.time() - st, 3), np.round(ll, 4)))
 
         return ll
 
@@ -215,8 +220,9 @@ def get_par(self, which=None, nsample=1, seed=None, ncores=None, verbose=False):
         if seed is None:
             seed = 0
 
-        if verbose: 
-            print('[estimation:]'.ljust(15, ' ') + 'finding initial values for mcmc (distributed over priors):')
+        if verbose:
+            print('[estimation:]'.ljust(15, ' ') +
+                  'finding initial values for mcmc (distributed over priors):')
 
         if not hasattr(self, 'ndim'):
             self.prep_estim(load_R=True, verbose=verbose)
@@ -263,7 +269,7 @@ def get_par(self, which=None, nsample=1, seed=None, ncores=None, verbose=False):
             if par_cand[i] is None:
                 par_cand[i] = self.par_fix[self.prior_arg][i]
 
-    return par_cand*(1 + 1e-3*np.random.randn(nsample, self.ndim)*(nsample>1))
+    return par_cand*(1 + 1e-3*np.random.randn(nsample, self.ndim)*(nsample > 1))
 
 
 def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=None, max_gen=None, initialize_x0=True, use_ring=False, nlopt=True, broadcasting=True, ncores=None, crit_mem=.85, update_freq=None, verbose=False, debug=False):
@@ -490,15 +496,17 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
                     x_max_hist.append(x_max)
                     name_max_hist.append(name_max)
 
-                    name_len = 25 - 9 - len(str(int(f_max))) - len(str(f_max_cnt))
+                    name_len = 25 - 9 - \
+                        len(str(int(f_max))) - len(str(f_max_cnt))
 
-                    try: 
+                    try:
                         name0, name1 = name_max.split('_')
                         sname = name0[:name_len-len(name1)-1] + '_' + name1
                     except:
                         sname = name_max[:name_len]
 
-                    pbar.set_description('ll: '+str(f_max_swarm.round(4)).rjust(11, ' ') + ('[%s/%s/%s]' % (f_max.round(4), sname, f_max_cnt)).rjust(26, ' '))
+                    pbar.set_description('ll: '+str(f_max_swarm.round(4)).rjust(11, ' ') + (
+                        '[%s/%s/%s]' % (f_max.round(4), sname, f_max_cnt)).rjust(26, ' '))
 
                 # keep us up to date
                 if update_freq and pbar.n and not pbar.n % update_freq:
@@ -567,7 +575,8 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
 
     self.fdict['ngen'] = ngen
     self.fdict['swarms'] = xsw, fsw, nsw.reshape(1, -1)
-    self.fdict['swarm_history'] = np.array(f_max_hist).reshape(1,-1), np.array(x_max_hist), np.array(name_max_hist).reshape(1,-1)
+    self.fdict['swarm_history'] = np.array(f_max_hist).reshape(
+        1, -1), np.array(x_max_hist), np.array(name_max_hist).reshape(1, -1)
 
     fas = fsw[:, 0].argmax()
 
@@ -673,7 +682,8 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
 
         cnt = sampler.iteration
         if not verbose:
-            pbar.set_description('[MAF: %s]' %(np.mean(sampler.acceptance_fraction[-update_freq:]).round(3)))
+            pbar.set_description('[MAF: %s]' % (
+                np.mean(sampler.acceptance_fraction[-update_freq:]).round(3)))
 
         if cnt and update_freq and not cnt % update_freq:
 

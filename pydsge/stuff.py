@@ -304,7 +304,8 @@ def simulate(self, eps=None, mask=None, state=None, linear=False, verbose=False,
 
     for eps_t in eps:
 
-        state, (l, k), flag = self.t_func(state, noise=eps_t, return_k=True, linear=linear)
+        state, (l, k), flag = self.t_func(
+            state, noise=eps_t, return_k=True, linear=linear)
 
         if flag:
             superflag = True
@@ -407,22 +408,22 @@ def get_eps(self, x, xp):
     return (x - self.t_func(xp)[0]) @ self.SIG
 
 
-def get_parval(self, parname=None, asdict=True, roundto=5):
+def get_calib(self, parname=None, asdict=True, roundto=5):
 
     pfnames, pffunc = self.parafunc
     pars_str = [str(p) for p in self.parameters]
 
     if parname is None:
-        pdict = dict(zip(pars_str, np.round(self.par,roundto)))
-        pfdict = dict(zip(pfnames, np.round(pffunc(self.par),roundto)))
+        pdict = dict(zip(pars_str, np.round(self.par, roundto)))
+        pfdict = dict(zip(pfnames, np.round(pffunc(self.par), roundto)))
 
         return pdict, pfdict
 
     elif parname is 'estim':
         if asdict:
-            return dict(zip(np.array(pars_str)[self.prior_arg], np.round(self.par,roundto)[self.prior_arg]))
+            return dict(zip(np.array(pars_str)[self.prior_arg], np.round(self.par, roundto)[self.prior_arg]))
         else:
-            return np.round(self.par,roundto)[self.prior_arg]
+            return np.round(self.par, roundto)[self.prior_arg]
     elif parname in pars_str:
         return self.par[pars_str.index(parname)]
     else:
@@ -431,7 +432,7 @@ def get_parval(self, parname=None, asdict=True, roundto=5):
         return pffunc(self.par)[pfnames.index(parname)]
 
 
-def set_parval(self, parname=None, setpar=None, roundto=5):
+def set_calib(self, parname=None, setpar=None, roundto=5):
 
     pfnames, pffunc = self.parafunc
     pars_str = [str(p) for p in self.parameters]
@@ -444,7 +445,8 @@ def set_parval(self, parname=None, setpar=None, roundto=5):
             par[self.prior_arg] = parname
             self.par = par
         else:
-            raise SyntaxError("No parameter value `setpar` provieded. Maybe you just want to use `get_parval`?")
+            raise SyntaxError(
+                "No parameter value `setpar` provieded. Maybe you just want to use `get_calib`?")
 
     elif parname in pars_str:
         self.par[pars_str.index(parname)] = setpar
@@ -452,9 +454,10 @@ def set_parval(self, parname=None, setpar=None, roundto=5):
     else:
         if parname not in pfnames:
             raise SyntaxError("Parameter '%s' does not exist." % parname)
-        raise SyntaxError("Can not set parameter '%s' that is function of other parameters." % parname)
+        raise SyntaxError(
+            "Can not set parameter '%s' that is function of other parameters." % parname)
 
-    pdict = dict(zip(pars_str, np.round(self.par,roundto)))
-    pfdict = dict(zip(pfnames, np.round(pffunc(self.par),roundto)))
+    pdict = dict(zip(pars_str, np.round(self.par, roundto)))
+    pfdict = dict(zip(pfnames, np.round(pffunc(self.par), roundto)))
 
     return pdict, pfdict
