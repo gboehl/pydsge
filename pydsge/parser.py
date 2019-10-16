@@ -388,19 +388,26 @@ class DSGE(dict):
     @classmethod
     def load(cls, dfile, verbose=False):
 
+        import dill
+
         if verbose:
             st = time.time()
 
-        filedic = dict(np.load(dfile, allow_pickle=True))
+        fdict = dict(np.load(dfile, allow_pickle=True))
 
-        mtxt = str(filedic['yaml_raw'])
+        mtxt = str(fdict['yaml_raw'])
 
         pmodel = cls.parse(mtxt)
 
-        pmodel.fdict = filedic
-        pmodel.name = str(filedic['name'])
+        pmodel.fdict = fdict
+        pmodel.name = str(fdict['name'])
         pmodel.path = os.path.dirname(dfile) + os.sep
         pmodel.fdict['dfile'] = dfile
+
+        try:
+            pmodel.data = dill.loads(fdict['data'])
+        except:
+            pass
 
         for ob in pmodel.fdict.keys():
             if str(pmodel.fdict[ob]) == 'None':

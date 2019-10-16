@@ -153,7 +153,7 @@ def save_meta(self, filename=None):
     else:
         self.fdict['dfile'] = filename
 
-    objs = 'description', 'data', 'backend_file', 'tune', 'name'
+    objs = 'description', 'backend_file', 'tune', 'name'
 
     for o in objs:
         if hasattr(self, o):
@@ -286,8 +286,9 @@ def get_data(self=None, csv=None, sep=None, start=None, end=None):
     d = d.loc[start:end]
 
     if self is not None:
+        import dill
         self.data = d
-        self.fdict['data'] = d
+        self.fdict['data'] = dill.dumps(d)
         self.fdict['obs'] = self.obs
 
     return d
@@ -348,9 +349,6 @@ DSGE.swarm_summary = swarm_summary
 DSGE.mcmc_summary = mcmc_summary
 DSGE.info = info_m
 DSGE.pmdm_report = pmdm_report
-# DSGE.par_mean = par_mean
-# DSGE.par_median = par_median
-# DSGE.mean_ll = mean_ll
 DSGE.mdd = mdd
 DSGE.get_data = get_data
 DSGE.get_tune = get_tune
@@ -393,9 +391,9 @@ DSGE.extract = extract
 DSGE.create_obs_cov = create_obs_cov
 DSGE.preprocess = preprocess
 DSGE.mask = mask
-# DSGE.epstract = epstract
-# DSGE.sampled_sim = sampled_sim
-# DSGE.sampled_irfs = sampled_irfs
+DSGE.sampled_extract = sampled_extract
+DSGE.sampled_sim = sampled_sim
+DSGE.sampled_irfs = sampled_irfs
 
 """
 def chain_masker(self):

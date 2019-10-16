@@ -17,10 +17,15 @@ def mask(self, verbose=False):
     msk = self.data.copy()
     msk[:] = np.nan
 
+    try:
+        self.observables
+    except AttributeError:
+        self.get_sys()
+
     return msk.rename(columns=dict(zip(self.observables, self.shocks)))[:-1]
 
 
-def parallellizer(sample, ncores=None, verbose=True, *args):
+def parallellizer(sample, ncores=None, verbose=True, **args):
 
     import pathos
     import tqdm
@@ -29,7 +34,7 @@ def parallellizer(sample, ncores=None, verbose=True, *args):
     global runner
 
     def runner_loc(x):
-        return runner(x, *args)
+        return runner(x, **args)
 
     pool = pathos.pools.ProcessPool()
     pool.clear()
@@ -41,7 +46,7 @@ def parallellizer(sample, ncores=None, verbose=True, *args):
     return map2arr(res)
 
 
-def sampled_extract(self, source=None, k=1, seed=None, verbose=False):
+def get_sample(self, source=None, k=1, seed=None, verbose=False):
 
     if source is None and 'mcmc_mode_f' in self.fdict.keys():
         source = 'posterior'
@@ -53,10 +58,34 @@ def sampled_extract(self, source=None, k=1, seed=None, verbose=False):
         random.seed(seed)
         sample = self.get_chain()[self.get_tune:]
         sample = sample.reshape(-1, sample.shape[-1])
-        sample = random.choices(sample, k=k)
+        sample = random.choices(sample, k=ke)
 
-    else:
-        sample = self.get_par('priors', nsample=k, seed=seed)
+        return sample
+
+    return self.get_par('priors', nsample=ke, seed=seed)
+
+
+def sampled_extract(self, source=None, k=1, seed=None, verbose=False):
+
+    if source is None and 'mcmc_mode_f' in self.fdict.keys():
+        source = 'posterior'
+
+    prefix = 'post_' if source is 'posterior' else 'prio_'
+
+    try:
+        means_old = self.fdict[prefix+'means']
+        covs_old = self.fdict[prefix+'covs']
+        eps_old = self.fdict[prefix+'eps']
+        sam_old = self.fdict[prefix+'sample']
+        ke = k-eps_old.shape[0]
+    except KeyError:
+        eps_old = None
+        ke = k
+
+    if ke < 1:
+        return
+
+    sample = get_sample(self, source=source, k=ke, seed=seed, verbose=verbose)
 
     global runner
     
@@ -73,149 +102,83 @@ def sampled_extract(self, source=None, k=1, seed=None, verbose=False):
 
         FX = self.run_filter(verbose=False)
 
-        SX, scov, eps, flag = self.extract(verbose=False, ngen=200, npop=5)
+        mean, cov, eps, flag = self.extract(verbose=False, ngen=200, npop=5)
         
         if flag:
             print('[sampled_extract:]'.ljust(15, ' ') + 'Extract returned error.')
 
-        return SX, scov, eps
+        return mean, cov, eps
 
-    res = parallellizer(sample)
+    means, covs, eps = parallellizer(sample)
 
-    self.fdict['eps'] = eps
+    if eps_old is not None:
+        means = np.vstack((means_old, means))
+        covs = np.vstack((covs_old, covs))
+        eps = np.vstack((eps_old, eps))
+        sample = np.vstack((sam_old, sample))
+
+    self.fdict[prefix+'means'] = means
+    self.fdict[prefix+'covs'] = covs
+    self.fdict[prefix+'eps'] = eps
+    self.fdict[prefix+'sample'] = sample
+
+    return 
+
+
+def sampled_sim(self, source=None, mask=None, ncores=None, verbose=False):
+
+    if source is not None:
+        prefix = 'post_' if source is 'posterior' else 'prio_'
+
+        eps = self.fdict[prefix+'eps']
+        sample = self.fdict[prefix+'sample']
+
+    else:
+        try:
+            prefix = 'post_' 
+            eps = self.fdict[prefix+'eps']
+            sample = self.fdict[prefix+'sample']
+        except:
+            prefix = 'prio_' 
+            eps = self.fdict[prefix+'eps']
+            sample = self.fdict[prefix+'sample']
+
+    global runner
+
+    def runner(arg, mask):
+
+        par, eps = arg
+
+        self.set_parval(par)
+        self.get_sys(verbose=verbose)
+        self.preprocess(verbose=verbose)
+
+        res = self.simulate(eps, mask, verbose=verbose)
+
+        return res
+
+    res = parallellizer(list(zip(sample, eps)), ncores=ncores, mask=mask)
 
     return res
 
 
-"""
-def sampled_sim(self, epstracted=None, mask=None, reduce_sys=None, forecast=False, linear=False, nr_samples=None, ncores=None, show_warnings=False, verbose=False):
-    # rewrite!
+def sampled_irfs(self, shocklist, nbatch=1, wannasee=None, source=None, ncores=None, verbose=False):
 
-    if ncores is None:
-        ncores = pathos.multiprocessing.cpu_count()
+    ## this should load existing samples as well
+    sample = get_sample(self, source=source, k=nbatch, seed=seed, verbose=verbose)
 
-    if epstracted is None:
-        epstracted = self.epstracted[:4]
+    global runner
 
-    if reduce_sys is None:
-        reduce_sys = self.is_reduced
+    def runner(par, shocklist, wannasee):
 
-    XX, COV, EPS, PAR = epstracted
-
-    # XX had to be saved as an object array. pathos can't deal with that
-    if XX.ndim > 2:
-        X0 = [x.astype(float) for x in XX[:, 0, :]]
-    else:
-        X0 = [x.astype(float) for x in XX]
-
-    if nr_samples is None:
-        nr_samples = EPS.shape[0]
-
-    if forecast:
-        E0 = np.zeros((EPS.shape[0], forecast, EPS.shape[2]))
-        EPS = np.hstack([EPS, E0])
-        if mask is not None:
-            m0 = np.zeros((forecast, EPS.shape[2]))
-            mask = np.vstack([mask, m0])
-
-    def runner(nr, mask):
-
-        par = list(PAR[nr])
-        eps = EPS[nr]
-        x0 = X0[nr]
-
-        self.get_sys(par, reduce_sys=reduce_sys, verbose=verbose)
+        self.set_parval(par)
+        self.get_sys(verbose=verbose)
         self.preprocess(verbose=verbose)
 
-        if mask is not None:
-            eps = np.where(np.isnan(mask), eps, mask*eps)
+        res = self.irfs(shocklist, wannasee, verbose=verbose)
 
-            ss = np.where(self.SIG)[0]
-            mask1 = np.where(np.isnan(mask[0]), 1, mask[0])
-            x0[ss] = self.SIG[ss] @ np.diag(mask1) @ self.SIG.T @ x0
+        return res
 
-        SX, SK, flag = self.simulate(
-            eps, initial_state=x0, linear=linear, show_warnings=show_warnings, verbose=verbose, return_flag=True)
+    res = parallellizer(list(sample)), ncores=ncores, shocklist=shocklist, wannasee=wannasee)
 
-        SZ = (self.hx[0] @ SX.T).T + self.hx[1]
-
-        return SZ, SX, SK, self.vv
-
-    global runner_glob
-    runner_glob = runner
-
-    res = runner_pooled(nr_samples, ncores, mask, True)
-
-    dim_x = 1e50
-    for p in res:
-        if len(p[3]) < dim_x:
-            minr = p[3]
-            dim_x = len(minr)
-
-    SZS = []
-    SXS = []
-    SKS = []
-
-    for n, p in enumerate(res):
-
-        SZS.append(p[0])
-        SKS.append(p[2])
-
-        if len(p[3]) > dim_x:
-            idx = [list(p[3]).index(v) for v in minr]
-            SXS.append(p[1][:, idx])
-        else:
-            SXS.append(p[1])
-
-    return np.array(SZS), np.array(SXS), np.array(SKS)
-
-
-def sampled_irfs(self, be_res, shocklist, wannasee, reduce_sys=None, nr_samples=1000, ncores=None, show_warnings=False):
-    # rewrite!
-
-    import pathos
-
-    if ncores is None:
-        ncores = pathos.multiprocessing.cpu_count()
-
-    if reduce_sys is None:
-        reduce_sys = self.is_reduced
-
-    # dry run
-    par = be_res.means()
-    # define parameters
-    self.get_sys(par, reduce_sys=reduce_sys, verbose=False)
-    # preprocess matrices for speedup
-    self.preprocess(verbose=False)
-
-    Xlabels = self.irfs(shocklist, wannasee)[1]
-
-    def runner(nr, useless_arg):
-
-        par = self.posterior_sample(be_res=be_res, seed=nr)
-
-        # define parameters
-        self.get_sys(par, reduce_sys=reduce_sys, verbose=False)
-        # preprocess matrices for speedup
-        self.preprocess(verbose=False)
-
-        xs, _, (ys, ks, ls) = self.irfs(
-            shocklist, wannasee, show_warnings=show_warnings)
-
-        return xs, ys, ks, ls
-
-    global runner_glob
-    runner_glob = runner
-
-    res = runner_pooled(nr_samples, ncores, None, True)
-
-    X, Y, K, L = [], [], [], []
-
-    for p in res:
-        X.append(p[0])
-        Y.append(p[1])
-        K.append(p[2])
-        L.append(p[3])
-
-    return np.array(X), Xlabels, (np.array(Y), np.array(K), np.array(L))
-"""
+    return res

@@ -165,12 +165,25 @@ def get_sys(self, par=None, reduce_sys=True, verbose=False):
 
     self.sys = N2, A2, J2, cx[~out_msk], b2[~out_msk], x_bar
 
+    # this is needed alot
+    if not hasattr(self, 'par_fix'):
+        par_fix = np.array(self.par).copy()
+        p_names = [p.name for p in self.parameters]
+        priors = self['__data__']['estimation']['prior']
+        prior_arg = [p_names.index(pp) for pp in priors.keys()]
+
+        self.priors = priors
+        self.par_fix = par_fix
+        self.prior_arg = prior_arg
+
     if verbose:
         print('[get_sys:]'.ljust(15, ' ')+'Creation of system matrices finished in %ss.'
               % np.round(time.time() - st, 3))
 
+    return
 
-def irfs(self, shocklist, wannasee=None, linear=False, show_warnings=True, verbose=False):
+
+def irfs(self, shocklist, wannasee=None, linear=False, verbose=False):
 
     # returns time series of impule responses
     # shocklist: takes list of tuples of (shock, size, timing)
@@ -232,7 +245,7 @@ def irfs(self, shocklist, wannasee=None, linear=False, show_warnings=True, verbo
         K.append(k)
         L.append(l)
 
-    if superflag and show_warnings:
+    if superflag and verbose:
         print('[irfs:]'.ljust(15, ' ') +
               ' No rational expectations solution found.')
 
@@ -275,7 +288,7 @@ def irfs(self, shocklist, wannasee=None, linear=False, show_warnings=True, verbo
     return X, labels, (Y, K, L)
 
 
-def simulate(self, eps=None, mask=None, state=None, linear=False, verbose=False, show_warnings=True, return_flag=False):
+def simulate(self, eps=None, mask=None, state=None, linear=False, verbose=False, return_flag=False):
     """
         eps: shock innovations of shape (T, n_eps)
     """
@@ -321,7 +334,7 @@ def simulate(self, eps=None, mask=None, state=None, linear=False, verbose=False,
         print('[simulate:]'.ljust(15, ' ')+'Simulation took ',
               time.time() - st, ' seconds.')
 
-    if superflag and show_warnings:
+    if superflag and verbose:
         print('[simulate:]'.ljust(
             15, ' ')+' No rational expectations solution found.')
 
@@ -331,7 +344,7 @@ def simulate(self, eps=None, mask=None, state=None, linear=False, verbose=False,
     return X, np.expand_dims(K, 2)
 
 
-def simulate_series(self, T=1e3, cov=None, verbose=False, show_warnings=True):
+def simulate_series(self, T=1e3, cov=None, verbose=False:
 
     import scipy.stats as ss
 
@@ -348,7 +361,7 @@ def simulate_series(self, T=1e3, cov=None, verbose=False, show_warnings=True):
         states.append(st_vec)
         Ks.append(ks)
 
-        if show_warnings and flag:
+        if verbose and flag:
             print('[irfs:]'.ljust(15, ' ') +
                   ' No rational expectations solution found.')
 

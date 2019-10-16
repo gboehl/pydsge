@@ -9,12 +9,7 @@ from econsieve.stats import logpdf
 
 def create_obs_cov(self, scale_obs=0.1):
 
-    if not hasattr(self, 'Z'):
-        try:
-            self.Z = np.array(self.data)
-        except:
-            raise LookupError('No time series of observables provided')
-
+    self.Z = np.array(self.data)
     sig_obs = np.var(self.Z, axis=0)*scale_obs**2
     obs_cov = np.diagflat(sig_obs)
 
@@ -23,11 +18,7 @@ def create_obs_cov(self, scale_obs=0.1):
 
 def create_filter(self, P=None, R=None, N=None, ftype=None, random_seed=None):
 
-    if not hasattr(self, 'data'):
-        warnings.warn('No time series of observables provided')
-    else:
-        ## this is not nice
-        self.Z = np.array(self.data)
+    self.Z = np.array(self.data)
 
     if random_seed is not None:
         np.random.seed(random_seed)
@@ -99,17 +90,15 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, co
 
     if constr_data:
         # copy the data
-        wdata = self.data.copy()
+        data = self.data
         # constaint const_obs
         x_shift = self.get_parval(constr_data)
-        wdata[str(self.const_obs)] = np.maximum(
-            wdata[str(self.const_obs)], x_shift)
+        data[str(self.const_obs)] = np.maximum(
+            data[str(self.const_obs)], x_shift)
         # send to filter
-        self.Z = np.array(wdata)
-    elif hasattr(self, 'data'):
-        self.Z = np.array(self.data)
+        self.Z = np.array(data)
     else:
-        self.Z = self.fdict['data']
+        self.Z = np.array(self.data)
 
     if dispatch is None:
         dispatch = self.filter.name == 'ParticleFilter'

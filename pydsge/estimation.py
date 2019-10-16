@@ -60,11 +60,6 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
     self.fdict['seed'] = seed
     self.fdict['constr_data'] = constr_data
 
-    if hasattr(self, 'data'):
-        self.fdict['data'] = self.data
-    elif 'data' in self.fdict.keys():
-        self.data = self.fdict['data']
-
     self.Z = np.array(self.data)
 
     if not hasattr(self, 'sys'):
@@ -87,17 +82,12 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
         print('[estimation:]'.ljust(15, ' ') + 'Model operational. %s states, %s observables.' %
               (len(self.vv), len(self.observables)))
 
-    par_fix = np.array(self.par).copy()
-
-    p_names = [p.name for p in self.parameters]
-    priors = self['__data__']['estimation']['prior']
-    prior_arg = [p_names.index(pp) for pp in priors.keys()]
+    priors = self.priors
+    par_fix = self.par_fix
+    prior_arg = self.prior_arg
 
     # add to class so that it can be stored later
     self.fdict['prior_names'] = [pp for pp in priors.keys()]
-    self.priors = priors
-    self.par_fix = par_fix
-    self.prior_arg = prior_arg
 
     self.ndim = len(priors.keys())
 
@@ -457,6 +447,7 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
     pbar = tqdm.tqdm(total=ngen, dynamic_ncols=True)
 
     f_max = -np.inf
+    f_max_cnt = 0
     f_max_hist = []
     x_max_hist = []
     name_max_hist = []
@@ -487,25 +478,27 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
 
                 # keep us informed
                 f_max_swarm = -fs[fas][0][0]
+
                 if f_max_swarm > f_max:
                     f_max = f_max_swarm
                     x_max = xs[fas][0]
                     f_max_cnt = pbar.n
                     name_max = s.sname
 
-                f_max_hist.append(f_max)
-                x_max_hist.append(x_max)
-                name_max_hist.append(name_max)
+                if not np.isinf(f_max):
+                    f_max_hist.append(f_max)
+                    x_max_hist.append(x_max)
+                    name_max_hist.append(name_max)
 
-                name_len = 25 - 9 - len(str(int(f_max))) - len(str(f_max_cnt))
+                    name_len = 25 - 9 - len(str(int(f_max))) - len(str(f_max_cnt))
 
-                try: 
-                    name0, name1 = name_max.split('_')
-                    sname = name0[:name_len-len(name1)-1] + '_' + name1
-                except:
-                    sname = name_max[:name_len]
+                    try: 
+                        name0, name1 = name_max.split('_')
+                        sname = name0[:name_len-len(name1)-1] + '_' + name1
+                    except:
+                        sname = name_max[:name_len]
 
-                pbar.set_description('ll: '+str(f_max_swarm.round(4)).rjust(11, ' ') + ('[%s/%s/%s]' % (f_max.round(4), sname, f_max_cnt)).rjust(26, ' '))
+                    pbar.set_description('ll: '+str(f_max_swarm.round(4)).rjust(11, ' ') + ('[%s/%s/%s]' % (f_max.round(4), sname, f_max_cnt)).rjust(26, ' '))
 
                 # keep us up to date
                 if update_freq and pbar.n and not pbar.n % update_freq:
@@ -679,6 +672,8 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
     for result in sampler.sample(p0, iterations=nsteps):
 
         cnt = sampler.iteration
+        if not verbose:
+            pbar.set_description('[MAF: %s]' %(np.mean(sampler.acceptance_fraction[-update_freq:]).round(3)))
 
         if cnt and update_freq and not cnt % update_freq:
 
