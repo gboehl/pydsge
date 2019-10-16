@@ -454,6 +454,7 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
     f_max = -np.inf
     f_max_hist = []
     x_max_hist = []
+    name_max_hist = []
 
     if not debug and not verbose:
         np.warnings.filterwarnings('ignore')
@@ -489,6 +490,7 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
 
                 f_max_hist.append(f_max)
                 x_max_hist.append(x_max)
+                name_max_hist.append(name_max)
 
                 name_len = 25 - 9 - len(str(int(f_max))) - len(str(f_max_cnt))
 
@@ -567,7 +569,7 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
 
     self.fdict['ngen'] = ngen
     self.fdict['swarms'] = xsw, fsw, nsw.reshape(1, -1)
-    self.fdict['swarm_history'] = np.array(f_max_hist).reshape(1,-1), np.array(x_max_hist)
+    self.fdict['swarm_history'] = np.array(f_max_hist).reshape(1,-1), np.array(x_max_hist), np.array(name_max_hist).reshape(1,-1)
 
     fas = fsw[:, 0].argmax()
 
