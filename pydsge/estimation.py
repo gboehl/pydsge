@@ -114,9 +114,6 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
 
     def llike(parameters, linear, verbose):
 
-        if verbose:
-            st = time.time()
-
         with warnings.catch_warnings(record=True):
             try:
                 warnings.filterwarnings('error')
@@ -149,9 +146,6 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
 
                 ll = self.get_ll(constr_data=constr_data, verbose=verbose > 2, dispatch=dispatch)
 
-                if verbose:
-                    print('[llike:]'.ljust(15, ' ') + "Sample took %ss, ll is %s." %
-                          (np.round(time.time() - st, 3), np.round(ll, 4)))
                 return ll
 
             except KeyboardInterrupt:
@@ -159,8 +153,7 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
 
             except Exception as err:
                 if verbose:
-                    print('[llike:]'.ljust(15, ' ') +
-                          'Sample took '+str(np.round(time.time() - st, 3))+'s. (failure, error msg: %s)' % err)
+                    print('[llike:]'.ljust(15, ' ') + 'Failure. Error msg: %s' % err)
                     if verbose > 1:
                         print(self.get_parval(parname='estim'))
 
@@ -181,7 +174,19 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
         if linear is None:
             linear = linear_pa
 
-        return lprior(par) + llike(par, linear, verbose)
+        if verbose:
+            st = time.time()
+
+        ll = llike(par, linear, verbose)
+
+        if np.isinf(ll):
+            return ll
+
+        ll += lprior(par)
+        if verbose:
+            print('[lprob:]'.ljust(15, ' ') + "Sample took %ss, ll is %s." %(np.round(time.time() - st, 3), np.round(ll, 4)))
+
+        return ll
 
     global lprob_global
     lprob_global = lprob

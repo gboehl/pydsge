@@ -405,7 +405,7 @@ def get_eps(self, x, xp):
     return (x - self.t_func(xp)[0]) @ self.SIG
 
 
-def get_parval(self, parname=None, roundto=5):
+def get_parval(self, parname=None, asdict=True, roundto=5):
 
     pfnames, pffunc = self.parafunc
     pars_str = [str(p) for p in self.parameters]
@@ -417,7 +417,10 @@ def get_parval(self, parname=None, roundto=5):
         return pdict, pfdict
 
     elif parname is 'estim':
-        return dict(zip(np.array(pars_str)[self.prior_arg], np.round(self.par,roundto)[self.prior_arg]))
+        if asdict:
+            return dict(zip(np.array(pars_str)[self.prior_arg], np.round(self.par,roundto)[self.prior_arg]))
+        else:
+            return np.round(self.par,roundto)[self.prior_arg]
     elif parname in pars_str:
         return self.par[pars_str.index(parname)]
     else:
