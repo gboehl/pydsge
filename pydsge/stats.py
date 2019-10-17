@@ -137,7 +137,6 @@ def mc_mean(trace, varnames):
 
 
 class InvGammaDynare(ss.rv_continuous):
-    # probably not needed anymore
 
     name = 'inv_gamma_dynare'
 
@@ -146,8 +145,7 @@ class InvGammaDynare(ss.rv_continuous):
         if x < 0:
             lpdf = -np.inf
         else:
-            lpdf = np.log(2) - gammaln(nu/2) - nu/2*(np.log(2) -
-                                                     np.log(s)) - (nu+1)*np.log(x) - .5*s/x**2
+            lpdf = np.log(2) - gammaln(nu/2) - nu/2*(np.log(2) - np.log(s)) - (nu+1)*np.log(x) - .5*s/np.square(x)
 
         return lpdf
 

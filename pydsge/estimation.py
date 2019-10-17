@@ -235,17 +235,21 @@ def get_par(self, which=None, nsample=1, seed=None, ncores=None, verbose=False):
 
         def runner(locseed):
 
-            np.random.seed(seed+locseed)
+            if seed is not None:
+                np.random.seed(seed+locseed)
 
             draw_prob = -np.inf
 
             while np.isinf(draw_prob):
-
-                nprr = np.random.randint
-                print(nprr(2**16-1))
-                pdraw = [pl.rvs(random_state=nprr(2**16-1))
-                         for pl in frozen_priors]
-                draw_prob = lprob_global(pdraw, None, verbose)
+                with warnings.catch_warnings(record=False):
+                    try:
+                        warnings.filterwarnings('error')
+                        nprr = np.random.randint
+                        pdraw = [pl.rvs(random_state=nprr(2**32-1))
+                                 for pl in frozen_priors]
+                        draw_prob = lprob_global(pdraw, None, verbose)
+                    except:
+                        pass
 
             return pdraw
 
@@ -255,8 +259,7 @@ def get_par(self, which=None, nsample=1, seed=None, ncores=None, verbose=False):
         loc_pool = pathos.pools.ProcessPool(ncores)
         loc_pool.clear()
 
-        pmap_sim = tqdm.tqdm(loc_pool.imap(
-            runner, range(nsample)), total=nsample)
+        pmap_sim = tqdm.tqdm(loc_pool.imap(runner, range(nsample)), total=nsample)
 
         return map2arr(pmap_sim)
 
@@ -265,14 +268,17 @@ def get_par(self, which=None, nsample=1, seed=None, ncores=None, verbose=False):
     if which is 'calib':
         par_cand = self.par_fix[self.prior_arg]
     if which is 'pmean':
-        self.init_par = [priors[pp][1] for pp in priors.keys()]
+        par_cand = [priors[pp][1] for pp in priors.keys()]
     if which is 'init':
         par_cand = self.fdict['init_value']
         for i in range(self.ndim):
             if par_cand[i] is None:
                 par_cand[i] = self.par_fix[self.prior_arg][i]
 
-    return par_cand*(1 + 1e-3*np.random.randn(nsample, self.ndim)*(nsample > 1))
+    try:
+        return par_cand*(1 + 1e-3*np.random.randn(nsample, self.ndim)*(nsample > 1))
+    except UnboundLocalError:
+        raise KeyError("`which` must be in {'priors', 'mode', 'calib', 'pmean', 'init'")
 
 
 def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=None, max_gen=None, initialize_x0=True, use_ring=False, nlopt=True, broadcasting=True, ncores=None, crit_mem=.85, update_freq=None, verbose=False, debug=False):
