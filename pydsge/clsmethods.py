@@ -87,44 +87,6 @@ def get_log_prob(self, mc_type=None, backend_file=None, flat=None):
     return reader.get_log_prob(flat=flat)
 
 
-@property
-def par_mean(self, full=False):
-
-    chain = self.get_chain()
-    x_est = chain[self.get_tune:].mean(axis=(0, 1))
-
-    if not full:
-        return x_est
-
-    x = self.par_fix
-    x[self.prior_arg] = x_est
-
-    return list(x)
-
-
-def mean_ll(self):
-
-    meanll = self.lprob(self.par_mean)
-    medill = self.lprob(self.par_median)
-
-    return meanll, medill
-
-
-@property
-def par_median(self, full=False):
-
-    chain = self.get_chain()
-    x_est = np.median(chain[self.get_tune:], axis=(0, 1))
-
-    if not full:
-        return x_est
-
-    x = self.par_fix
-    x[self.prior_arg] = x_est
-
-    return list(x)
-
-
 def write_yaml(self, filename):
 
     if filename[-5:] is not '.yaml':
@@ -229,8 +191,13 @@ def mcmc_summary(self, mc_type=None, tune=None, verbose=True, **args):
         tune = self.get_tune
 
     if verbose:
+        acs = get_chain(self, get_acceptance_fraction=True)
         print(res.round(3))
+        print('Marginal data density:' + str(mdd(self).round(4)).rjust(16))
+        print('Mean acceptance fraction:' + str(np.mean(acs).round(3)).rjust(13))
 
+            # raise ValueError('[mdd:]'.ljust(
+                # 15, ' ') + "Option `hess` is experimental and did not return a usable hessian matrix.")
     return res
 
 
@@ -246,15 +213,17 @@ def info_m(self, verbose=True, **args):
     else:
         description = self.fdict['description']
 
+    res = 'Title: %s\n' %name
+    res += 'Description: %s\n' %description
+
     try:
         cshp = self.get_chain().shape
-        acs = self.get_chain(get_acceptance_fraction=True)
         tune = self.get_tune
+        res += 'Parameters: %s\n' %cshp[2]
+        res += 'Chains: %s\n' %cshp[1]
+        res += 'Last %s of %s samples\n' %(cshp[0] - tune, cshp[0])
     except AttributeError:
-        res = 'Title: %s (description: %s)' % (name, description)
-    else:
-        res = 'Title: %s (description: %s). Last %s of %s samples in %s chains with %s parameters. Mean acceptance fraction: %s.' % (
-            name, description, cshp[0] - tune, cshp[0], cshp[1], cshp[2], np.mean(acs).round(3))
+        pass
 
     if verbose:
         print(res)

@@ -6,7 +6,7 @@ import warnings
 import os
 import time
 from .stats import get_priors, mc_mean, summary, pmdm_report
-from grgrlib.stuff import GPP
+from grgrlib.stuff import GPP, map2arr
 import scipy.optimize as so
 import tqdm
 
@@ -240,12 +240,14 @@ def get_par(self, which=None, nsample=1, seed=None, ncores=None, verbose=False):
             draw_prob = -np.inf
 
             while np.isinf(draw_prob):
+
                 nprr = np.random.randint
-                pdraw = [pl.rvs(random_state=nprr(2**32-1))
+                print(nprr(2**16-1))
+                pdraw = [pl.rvs(random_state=nprr(2**16-1))
                          for pl in frozen_priors]
                 draw_prob = lprob_global(pdraw, None, verbose)
 
-            return np.array(pdraw)
+            return pdraw
 
         if ncores is None:
             ncores = pathos.multiprocessing.cpu_count()
@@ -256,7 +258,7 @@ def get_par(self, which=None, nsample=1, seed=None, ncores=None, verbose=False):
         pmap_sim = tqdm.tqdm(loc_pool.imap(
             runner, range(nsample)), total=nsample)
 
-        return np.array(list(pmap_sim))
+        return map2arr(pmap_sim)
 
     if which is 'mode':
         par_cand = self.fdict['mode_x']

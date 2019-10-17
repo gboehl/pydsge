@@ -176,19 +176,18 @@ def get_sys(self, par=None, reduce_sys=None, verbose=False):
 
 def irfs(self, shocklist, wannasee=None, linear=False, verbose=False):
 
+    # REWRITE!!
     # returns time series of impule responses
     # shocklist: takes list of tuples of (shock, size, timing)
     # wannasee: list of strings of the variables to be plotted and stored
 
-    # slabels = [v.replace('_', '') for v in self.vv]
-    # olabels = [v.name.replace('_', '') for v in self.observables]
     slabels = self.vv
     olabels = self.observables
 
     args_sts = []
     args_obs = []
 
-    if wannasee is not None and wannasee is not 'all':
+    if wannasee not in (None, 'all', 'full'):
         for v_raw in wannasee:
             v = v_raw.replace('_', '')
             if v in slabels:
@@ -197,7 +196,7 @@ def irfs(self, shocklist, wannasee=None, linear=False, verbose=False):
                 args_obs.append(olabels.index(v))
             else:
                 raise Exception(
-                    "Variable %s neither in states nor observables. You might don't want to call self.get_sys() with the 'reduce_sys = False' argument. Note that underscores '_' are discarged." % v)
+                    "Variable %s neither in states nor observables. You might want to call self.get_sys() with the 'reduce_sys = False' argument. Note that underscores '_' are discarged." % v)
 
     st_vec = np.zeros(len(self.vv))
 
@@ -217,7 +216,6 @@ def irfs(self, shocklist, wannasee=None, linear=False, verbose=False):
                 shock = vec[0]
                 shocksize = vec[1]
 
-                # shock_arg = [v.name for v in self.shocks].index(shock)
                 shock_arg = self.shocks.index(shock)
                 shk_vec[shock_arg] = shocksize
 
@@ -254,6 +252,9 @@ def irfs(self, shocklist, wannasee=None, linear=False, verbose=False):
                        tt])+list(self.vv[care_for_sts])
         X2 = Y[:, care_for_sts]
         X = np.hstack((Z[:, tt], X2))
+    elif wannasee is 'full':
+        llabels = list(self.vv)
+        X = Y
     elif wannasee is 'all':
         tt = ~fast0(Y-Y.mean(axis=0), 0)
         llabels = list(self.vv[tt])
@@ -279,9 +280,17 @@ def irfs(self, shocklist, wannasee=None, linear=False, verbose=False):
     return X, labels, (Y, K, L)
 
 
-def simulate(self, eps=None, mask=None, state=None, linear=False, verbose=False, return_flag=False):
-    """
-        eps: shock innovations of shape (T, n_eps)
+def simulate(self, eps=None, mask=None, state=None, linear=False, verbose=False):
+    """Simulate time series given a series of exogenous innovations.
+
+    Parameters
+    ----------
+        eps : array
+            Shock innovations of shape (T, n_eps)>
+        mask : array
+            Mask for eps. Each non-None element will be replaced.
+        state : array
+            Inital state.
     """
 
     if eps is None:
@@ -309,8 +318,7 @@ def simulate(self, eps=None, mask=None, state=None, linear=False, verbose=False,
         state, (l, k), flag = self.t_func(
             state, noise=eps_t, return_k=True, linear=linear)
 
-        if flag:
-            superflag = True
+        superflag |= flag
 
         X.append(state)
         K.append(k)
@@ -330,10 +338,7 @@ def simulate(self, eps=None, mask=None, state=None, linear=False, verbose=False,
         print('[simulate:]'.ljust(
             15, ' ')+' No rational expectations solution found.')
 
-    if return_flag:
-        return X, np.expand_dims(K, 2), superflag
-
-    return X, np.expand_dims(K, 2)
+    return X, np.expand_dims(K, 2), superflag
 
 
 def simulate_series(self, T=1e3, cov=None, verbose=False):
@@ -410,7 +415,10 @@ def get_eps(self, x, xp):
     return (x - self.t_func(xp)[0]) @ self.SIG
 
 
-def get_calib(self, parname=None, asdict=True, roundto=5):
+def get_calib(self, parname=None, asdict=True, roundto=5, verbose=False):
+
+    if not hasattr(self, 'par'):
+        get_sys(self, verbose=verbose)
 
     pfnames, pffunc = self.parafunc
     pars_str = [str(p) for p in self.parameters]
@@ -462,6 +470,6 @@ def set_calib(self, parname=None, setpar=None, roundto=5, verbose=False):
     pdict = dict(zip(pars_str, np.round(self.par, roundto)))
     pfdict = dict(zip(pfnames, np.round(pffunc(self.par), roundto)))
 
-    get_sys(self, par=self.par, verbose=verbose)
+    get_sys(self, par=list(self.par), verbose=verbose)
 
     return pdict, pfdict

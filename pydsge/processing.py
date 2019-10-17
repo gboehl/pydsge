@@ -25,10 +25,23 @@ def mask(self, verbose=False):
     return msk.rename(columns=dict(zip(self.observables, self.shocks)))[:-1]
 
 
-def parallellizer(sample, ncores=None, verbose=True, **args):
+def parallellizer(sample, verbose=True, **args):
+    """Runs global function `runner` in parallel. 
+
+    Necessary for dill to avoid pickling of model objects. A dirty hack...
+
+    Parameters
+    ----------
+    verbose : bool
+        Whether to use tqdm to display process. Defaults to `True`.
+
+    Returns
+    -------
+    tuple
+        The result(s).
+    """
 
     import pathos
-    import tqdm
     from grgrlib import map2arr
 
     global runner
@@ -48,9 +61,25 @@ def parallellizer(sample, ncores=None, verbose=True, **args):
 
 
 def get_sample(self, source=None, k=1, seed=None, verbose=False):
+    """Creates (or loads) a parameter sample from `source`.
+
+    If more samples are requested than already stored, new samples are taken.
+    """
 
     if source is None and 'mcmc_mode_f' in self.fdict.keys():
         source = 'posterior'
+
+    prefix = 'post_' if source is 'posterior' else 'prio_'
+    try:
+        sample_old = self.fdict[prefix+'sample']
+        # don't use the same seed twice in one sample
+        seed += sample_old.shape[0]
+
+        k -= sample_old.shape[0]
+        if k < 1:
+            return sample_old
+    except:
+        sample_old = None
 
     if source is 'posterior':
 
@@ -59,11 +88,15 @@ def get_sample(self, source=None, k=1, seed=None, verbose=False):
         random.seed(seed)
         sample = self.get_chain()[self.get_tune:]
         sample = sample.reshape(-1, sample.shape[-1])
-        sample = random.choices(sample, k=ke)
+        sample = random.choices(sample, k=k)
 
-        return sample
+    else:
+        sample = self.get_par('priors', nsample=k, seed=seed)
 
-    return self.get_par('priors', nsample=ke, seed=seed)
+    if sample_old is not None:
+        return np.concatenate((sample_old, sample), 0)
+
+    return sample
 
 
 def sampled_extract(self, source=None, k=1, seed=None, verbose=False):
@@ -72,21 +105,20 @@ def sampled_extract(self, source=None, k=1, seed=None, verbose=False):
         source = 'posterior'
 
     prefix = 'post_' if source is 'posterior' else 'prio_'
+    
+    # adjust for source = 'random' to simulate with random noise given parameter
 
     try:
         means_old = self.fdict[prefix+'means']
         covs_old = self.fdict[prefix+'covs']
         eps_old = self.fdict[prefix+'eps']
-        sam_old = self.fdict[prefix+'sample']
-        ke = k-eps_old.shape[0]
+        k -= eps_old.shape[0]
+        if k < 1:
+            return means_old, covs_old, eps_old
     except KeyError:
         eps_old = None
-        ke = k
 
-    if ke < 1:
-        return
-
-    sample = get_sample(self, source=source, k=ke, seed=seed, verbose=verbose)
+    sample = get_sample(self, source=source, k=k, seed=seed, verbose=verbose)
 
     global runner
 
@@ -114,75 +146,63 @@ def sampled_extract(self, source=None, k=1, seed=None, verbose=False):
     means, covs, eps = parallellizer(sample)
 
     if eps_old is not None:
-        means = np.vstack((means_old, means))
-        covs = np.vstack((covs_old, covs))
-        eps = np.vstack((eps_old, eps))
-        sample = np.vstack((sam_old, sample))
+        means = np.concatenate((means_old, means), 0)
+        covs = np.concatenate((covs_old, covs), 0)
+        eps = np.concatenate((eps_old, eps), 0)
 
     self.fdict[prefix+'means'] = means
     self.fdict[prefix+'covs'] = covs
     self.fdict[prefix+'eps'] = eps
-    self.fdict[prefix+'sample'] = sample
 
-    return
+    return means, covs, eps
 
 
-def sampled_sim(self, source=None, mask=None, ncores=None, verbose=False):
+def sampled_sim(self, k=1, source=None, mask=None, seed=None, verbose=False):
 
-    if source is not None:
-        prefix = 'post_' if source is 'posterior' else 'prio_'
-
-        eps = self.fdict[prefix+'eps']
-        sample = self.fdict[prefix+'sample']
-
+    if source is None: 
+        source = 'posterior'
+    if source in ('prior', 'posterior'):
+        sample = get_sample(self, source=source, k=k, seed=seed, verbose=verbose)
+        means, covs, eps = sampled_extract(self, source=source, k=k, seed=seed, verbose=verbose)
     else:
-        try:
-            prefix = 'post_'
-            eps = self.fdict[prefix+'eps']
-            sample = self.fdict[prefix+'sample']
-        except:
-            prefix = 'prio_'
-            eps = self.fdict[prefix+'eps']
-            sample = self.fdict[prefix+'sample']
+        raise NotImplementedError('No other sampling methods implemented.')
 
     global runner
 
     def runner(arg, mask):
 
-        par, eps = arg
+        par, eps, inits = arg
 
-        self.set_parval(par)
+        self.set_calib(par)
         self.get_sys(verbose=verbose)
         self.preprocess(verbose=verbose)
 
-        res = self.simulate(eps, mask, verbose=verbose)
+        res = self.simulate(eps=eps, mask=mask, state=inits, verbose=verbose)
 
         return res
 
-    res = parallellizer(list(zip(sample, eps)), ncores=ncores, mask=mask)
+    res = parallellizer(list(zip(sample, eps, means[:,0])), mask=mask)
 
     return res
 
 
-def sampled_irfs(self, shocklist, nbatch=1, wannasee=None, source=None, ncores=None, verbose=False):
+def sampled_irfs(self, shocklist, k=1, source=None, seed=None, verbose=False):
 
-    # this should load existing samples as well
-    sample = get_sample(self, source=source, k=nbatch,
-                        seed=seed, verbose=verbose)
+    if source is None: 
+        source = 'posterior'
+    sample = get_sample(self, source=source, k=k, seed=seed, verbose=verbose)
 
     global runner
 
-    def runner(par, shocklist, wannasee):
+    def runner(par):
 
-        self.set_parval(par)
-        self.get_sys(verbose=verbose)
+        self.set_calib(par)
         self.preprocess(verbose=verbose)
 
-        res = self.irfs(shocklist, wannasee, verbose=verbose)
+        res = self.irfs(shocklist, wannasee='full', verbose=verbose)
 
-        return res
+        return res[0], res[2][1:]
 
-    res = parallellizer(list(sample), ncores=ncores,
-                        shocklist=shocklist, wannasee=wannasee)
+    res = parallellizer(list(sample))
 
     return res
