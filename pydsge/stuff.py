@@ -15,9 +15,12 @@ except ModuleNotFoundError:
     ParafuncError = Exception
 
 
-def get_sys(self, par=None, reduce_sys=True, verbose=False):
+def get_sys(self, par=None, reduce_sys=None, verbose=False):
 
     st = time.time()
+
+    if reduce_sys is None:
+        reduce_sys = True
 
     self.is_reduced = reduce_sys
 
@@ -151,7 +154,6 @@ def get_sys(self, par=None, reduce_sys=True, verbose=False):
     self.dim_x = dim_x
     self.dim_v = len(self.vv)
 
-    self.observables = [str(o) for o in self['observables']]
     self.par = par
 
     self.hx = self.ZZ(par)[:, ~s_out_msk], self.DD(par).squeeze()
@@ -432,7 +434,7 @@ def get_calib(self, parname=None, asdict=True, roundto=5):
         return pffunc(self.par)[pfnames.index(parname)]
 
 
-def set_calib(self, parname=None, setpar=None, roundto=5):
+def set_calib(self, parname=None, setpar=None, roundto=5, verbose=False):
 
     pfnames, pffunc = self.parafunc
     pars_str = [str(p) for p in self.parameters]
@@ -459,5 +461,7 @@ def set_calib(self, parname=None, setpar=None, roundto=5):
 
     pdict = dict(zip(pars_str, np.round(self.par, roundto)))
     pfdict = dict(zip(pfnames, np.round(pffunc(self.par), roundto)))
+
+    get_sys(self, par=self.par, verbose=verbose)
 
     return pdict, pfdict

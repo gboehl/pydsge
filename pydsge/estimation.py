@@ -64,8 +64,9 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
 
     if not hasattr(self, 'sys'):
         self.get_sys(reduce_sys=True, verbose=verbose > 1)
+    if not hasattr(self, 'precalc_mat'):
+        self.preprocess(verbose=verbose > 1)
 
-    self.preprocess(verbose=verbose > 1)
     self.create_filter(
         N=N, ftype='KalmanFilter' if linear else None, random_seed=seed)
 
@@ -699,15 +700,16 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
             sample = sampler.get_chain()
 
             tau = emcee.autocorr.integrated_time(sample, tol=0)
-            max_tau = np.max(tau)
+            min_tau = np.min(tau).round(2)
+            max_tau = np.max(tau).round(2)
             dev_tau = np.max(np.abs(old_tau - tau)/tau)
 
             tau_sign = '>' if max_tau > cnt/50 else '<'
             dev_sign = '>' if dev_tau > .01 else '<'
 
             report(str(summary(sample, self.priors, tune=-update_freq).round(3)))
-            report("Convergence stats: maxiumum tau is %s (%s%s) and change is %s (%s0.01)." % (
-                max_tau.round(2), tau_sign, cnt/50, dev_tau.round(3), dev_sign))
+            report("Convergence stats: tau is in (%s,%s) (%s%s) and change is %s (%s0.01)." % (
+                min_tau, max_tau, tau_sign, cnt/50, dev_tau.round(3), dev_sign))
             report("Likelihood at mean is %s, mean acceptance fraction is %s." % (lprob_local(np.mean(
                 sample[-update_freq:], axis=(0, 1))).round(3), np.mean(sampler.acceptance_fraction[-update_freq:]).round(2)))
 
