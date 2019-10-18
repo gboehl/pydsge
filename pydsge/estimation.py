@@ -5,7 +5,7 @@ import numpy as np
 import warnings
 import os
 import time
-from .stats import get_priors, mc_mean, summary, pmdm_report
+from .stats import get_prior, mc_mean, summary, pmdm_report
 from grgrlib.stuff import GPP, map2arr
 import scipy.optimize as so
 import tqdm
@@ -85,19 +85,19 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
         print('[estimation:]'.ljust(15, ' ') + 'Model operational. %s states, %s observables.' %
               (len(self.vv), len(self.observables)))
 
-    priors = self.priors
+    prior = self.prior
     par_fix = self.par_fix
     prior_arg = self.prior_arg
 
     # add to class so that it can be stored later
-    self.fdict['prior_names'] = [pp for pp in priors.keys()]
+    self.fdict['prior_names'] = [pp for pp in prior.keys()]
 
-    self.ndim = len(priors.keys())
+    self.ndim = len(prior.keys())
 
-    if 'frozen_priors' not in self.fdict.keys():
+    if 'frozen_prior' not in self.fdict.keys():
 
-        pfrozen, pinitv, bounds = get_priors(priors)
-        self.fdict['frozen_priors'] = pfrozen
+        pfrozen, pinitv, bounds = get_prior(prior)
+        self.fdict['frozen_prior'] = pfrozen
         self.fdict['prior_bounds'] = bounds
         self.fdict['init_value'] = pinitv
 
@@ -107,6 +107,7 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
 
     def llike(parameters, linear, verbose):
 
+        random_state = np.random.get_state()
         with warnings.catch_warnings(record=True):
             try:
                 warnings.filterwarnings('error')
@@ -140,6 +141,7 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
                 ll = self.get_ll(constr_data=constr_data,
                                  verbose=verbose > 2, dispatch=dispatch)
 
+                np.random.set_state(random_state)
                 return ll
 
             except KeyboardInterrupt:
@@ -152,12 +154,13 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
                     if verbose > 1:
                         print(self.get_calib(parname='estim'))
 
+                np.random.set_state(random_state)
                 return -np.inf
 
     def lprior(par):
 
         prior = 0
-        for i, pl in enumerate(self.fdict['frozen_priors']):
+        for i, pl in enumerate(self.fdict['frozen_prior']):
             prior += pl.logpdf(par[i])
 
         return prior
@@ -199,7 +202,7 @@ def get_par(self, which=None, nsample=1, seed=None, ncores=None, verbose=False):
     Parameters
     ----------
     which : str
-        Can be one of {'priors', 'mode', 'calib', 'pmean', 'init'}. 
+        Can be one of {'prior', 'mode', 'calib', 'pmean', 'init'}. 
     nsample : int
         Size of the prior sample
     ncores : int
@@ -214,7 +217,7 @@ def get_par(self, which=None, nsample=1, seed=None, ncores=None, verbose=False):
     if which is None:
         which = 'mode' if 'mode_x' in self.fdict.keys() else 'init'
 
-    if which is 'priors':
+    if which is 'prior':
 
         import pathos
 
@@ -223,7 +226,7 @@ def get_par(self, which=None, nsample=1, seed=None, ncores=None, verbose=False):
 
         if verbose:
             print('[estimation:]'.ljust(15, ' ') +
-                  'finding initial values for mcmc (distributed over priors):')
+                  'finding initial values for mcmc (distributed over prior):')
 
         if not hasattr(self, 'ndim'):
             self.prep_estim(load_R=True, verbose=verbose)
@@ -231,7 +234,7 @@ def get_par(self, which=None, nsample=1, seed=None, ncores=None, verbose=False):
         # globals are *evil*
         global lprob_global
 
-        frozen_priors = self.fdict['frozen_priors']
+        frozen_prior = self.fdict['frozen_prior']
 
         def runner(locseed):
 
@@ -244,9 +247,8 @@ def get_par(self, which=None, nsample=1, seed=None, ncores=None, verbose=False):
                 with warnings.catch_warnings(record=False):
                     try:
                         warnings.filterwarnings('error')
-                        nprr = np.random.randint
-                        pdraw = [pl.rvs(random_state=nprr(2**32-1))
-                                 for pl in frozen_priors]
+                        rst = np.random.randint(2**16)
+                        pdraw = [pl.rvs(random_state=rst) for pl in frozen_prior]
                         draw_prob = lprob_global(pdraw, None, verbose)
                     except:
                         pass
@@ -268,7 +270,7 @@ def get_par(self, which=None, nsample=1, seed=None, ncores=None, verbose=False):
     if which is 'calib':
         par_cand = self.par_fix[self.prior_arg]
     if which is 'pmean':
-        par_cand = [priors[pp][1] for pp in priors.keys()]
+        par_cand = [prior[pp][1] for pp in prior.keys()]
     if which is 'init':
         par_cand = self.fdict['init_value']
         for i in range(self.ndim):
@@ -278,10 +280,10 @@ def get_par(self, which=None, nsample=1, seed=None, ncores=None, verbose=False):
     try:
         return par_cand*(1 + 1e-3*np.random.randn(nsample, self.ndim)*(nsample > 1))
     except UnboundLocalError:
-        raise KeyError("`which` must be in {'priors', 'mode', 'calib', 'pmean', 'init'")
+        raise KeyError("`which` must be in {'prior', 'mode', 'calib', 'pmean', 'init'")
 
 
-def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=None, max_gen=None, initialize_x0=True, use_ring=False, nlopt=True, broadcasting=True, ncores=None, crit_mem=.85, update_freq=None, verbose=False, debug=False):
+def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=None, max_gen=None, initialize_x0=True, use_ring=False, nlopt=True, broadcasting=True, ncores=None, crit_mem=.85, autosave=100, update_freq=None, verbose=False, debug=False):
 
     import pygmo as pg
     import dill
@@ -529,12 +531,6 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
                     pbar.write(str(summary(
                         swarms, self['__data__']['estimation']['prior'], swarm_mode=True).round(3)))
 
-                if f_max_cnt < pbar.n - max_gen and f_max == f_max_swarm:
-                    print('[swarms:]'.ljust(
-                        15, ' ') + 'No improvement in the last %s generations, exiting...' % max_gen)
-                    done = True
-                    break
-
                 # migrate the worst
                 if best_x is not None and pbar.n < ngen:
                     for no, x, f in zip(fas[-mig_abs:], best_x, best_f):
@@ -570,7 +566,25 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
                 else:
                     s.res = evolve(s.algo, s.pop)
 
-        done = done or pbar.n >= ngen
+            done |= pbar.n >= ngen
+
+            if done or (pbar.n and not pbar.n % autosave):
+
+                self.fdict['swarm_history'] = np.array(f_max_hist).reshape(1, -1), np.array(x_max_hist), np.array(name_max_hist).reshape(1, -1)
+
+                fas = fsw[:, 0].argmax()
+                self.fdict['swarms_x'] = xsw[fas]
+                self.fdict['swarms_f'] = fsw[fas]
+
+                if 'mode_f' in self.fdict.keys() and fsw[fas] < self.fdict['mode_f']:
+                    if done:
+                        print('[swarms:]'.ljust(15, ' ') + " New mode of %s is below old mode of %s. Rejecting..." %(fsw[fas], self.fdict['mode_f']))
+                else:
+                    self.fdict['mode_x'] = xsw[fas]
+                    self.fdict['mode_f'] = fsw[fas]
+
+                if autosave:
+                    self.save(verbose=verbose)
 
     pool.terminate()
     pbar.close()
@@ -584,19 +598,6 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
 
     self.fdict['ngen'] = ngen
     self.fdict['swarms'] = xsw, fsw, nsw.reshape(1, -1)
-    self.fdict['swarm_history'] = np.array(f_max_hist).reshape(
-        1, -1), np.array(x_max_hist), np.array(name_max_hist).reshape(1, -1)
-
-    fas = fsw[:, 0].argmax()
-
-    self.fdict['swarms_x'] = xsw[fas]
-    self.fdict['swarms_f'] = fsw[fas]
-    if 'mode_f' in self.fdict.keys() and fsw[fas] < self.fdict['mode_f']:
-        print('[swarms:]'.ljust(15, ' ') + " New mode of %s is below old mode of %s. Rejecting..." %
-              (fsw[fas], self.fdict['mode_f']))
-    else:
-        self.fdict['mode_x'] = xsw[fas]
-        self.fdict['mode_f'] = fsw[fas]
 
     return xsw
 
@@ -715,7 +716,7 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
             tau_sign = '>' if max_tau > cnt/50 else '<'
             dev_sign = '>' if dev_tau > .01 else '<'
 
-            report(str(summary(sample, self.priors, tune=-update_freq).round(3)))
+            report(str(summary(sample, self.prior, tune=-update_freq).round(3)))
             report("Convergence stats: tau is in (%s,%s) (%s%s) and change is %s (%s0.01)." % (
                 min_tau, max_tau, tau_sign, cnt/50, dev_tau.round(3), dev_sign))
             report("Likelihood at mean is %s, mean acceptance fraction is %s." % (lprob_local(np.mean(

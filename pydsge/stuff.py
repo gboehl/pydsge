@@ -471,5 +471,6 @@ def set_calib(self, parname=None, setpar=None, roundto=5, verbose=False):
     pfdict = dict(zip(pfnames, np.round(pffunc(self.par), roundto)))
 
     get_sys(self, par=list(self.par), verbose=verbose)
+    self.preprocess(verbose=verbose)
 
     return pdict, pfdict

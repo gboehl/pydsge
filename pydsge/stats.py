@@ -54,7 +54,7 @@ def _hpd_df(x, alpha):
     return pd.DataFrame(hpd_vals, columns=cnames)
 
 
-def summary(store, priors, bounds=None, tune=None, alpha=0.05, top=None, show_priors=True, min_col=80):
+def summary(store, priors, bounds=None, tune=None, alpha=0.05, top=None, show_prior=True, min_col=80):
     # in parts stolen from pymc3 because it looks really nice
 
     try:
@@ -87,7 +87,7 @@ def summary(store, priors, bounds=None, tune=None, alpha=0.05, top=None, show_pr
     for i, var in enumerate(priors):
 
         lst = []
-        if show_priors and int(cols) > min_col:
+        if show_prior and int(cols) > min_col:
             prior = priors[var]
             if len(prior) > 3:
                 prior = prior[-3:]
@@ -109,7 +109,7 @@ def summary(store, priors, bounds=None, tune=None, alpha=0.05, top=None, show_pr
 
         lst = []
 
-        if show_priors and int(cols) > min_col:
+        if show_prior and int(cols) > min_col:
             [lst.append(f('')) for j, f in enumerate(f_prs)]
             if bounds is not None:
                 [lst.append(f('')) for j, f in enumerate(f_bnd)]
@@ -203,17 +203,17 @@ def inv_gamma_spec(mu, sigma):
     return s, nu
 
 
-def get_priors(priors):
+def get_prior(prior):
 
-    priors_lst = []
+    prior_lst = []
     initv = []
     lb = []
     ub = []
 
     print('Adding parameters to the prior distribution...')
-    for pp in priors:
+    for pp in prior:
 
-        dist = priors[str(pp)]
+        dist = prior[str(pp)]
 
         if len(dist) == 3:
             initv.append(None)
@@ -238,20 +238,20 @@ def get_priors(priors):
 
         # simply make use of frozen distributions
         if str(ptype) == 'uniform':
-            priors_lst.append(ss.uniform(loc=pmean, scale=pstdd-pmean))
+            prior_lst.append(ss.uniform(loc=pmean, scale=pstdd-pmean))
 
         elif str(ptype) == 'normal':
-            priors_lst.append(ss.norm(loc=pmean, scale=pstdd))
+            prior_lst.append(ss.norm(loc=pmean, scale=pstdd))
 
         elif str(ptype) == 'gamma':
             b = pstdd**2/pmean
             a = pmean/b
-            priors_lst.append(ss.gamma(a, scale=b))
+            prior_lst.append(ss.gamma(a, scale=b))
 
         elif str(ptype) == 'beta':
             a = (1-pmean)*pmean**2/pstdd**2 - pmean
             b = a*(1/pmean - 1)
-            priors_lst.append(ss.beta(a=a, b=b))
+            prior_lst.append(ss.beta(a=a, b=b))
 
         elif str(ptype) == 'inv_gamma':
 
@@ -263,7 +263,7 @@ def get_priors(priors):
             ig_res = so.root(targf, np.array([4, 4]))
             if ig_res['success']:
                 a = ig_res['x']
-                priors_lst.append(ss.invgamma(a[0], scale=a[1]))
+                prior_lst.append(ss.invgamma(a[0], scale=a[1]))
             else:
                 raise ValueError(
                     'Can not find inverse gamma distribution with mean %s and std %s' % (pmean, pstdd))
@@ -271,7 +271,7 @@ def get_priors(priors):
             s, nu = inv_gamma_spec(pmean, pstdd)
             ig = InvGammaDynare()(s, nu)
             # ig = ss.invgamma(nu/2, scale=s/2)
-            priors_lst.append(ig)
+            prior_lst.append(ig)
 
         else:
             raise NotImplementedError(
@@ -283,7 +283,7 @@ def get_priors(priors):
             print('  parameter %s as %s (%s, %s). Init @ %s, with bounds (%s, %s)...' % (
                 pp, ptype, pmean, pstdd, dist[0], dist[1], dist[2]))
 
-    return priors_lst, initv, (lb, ub)
+    return prior_lst, initv, (lb, ub)
 
 
 def pmdm_report(self, x_max, res_max, n=np.inf, printfunc=print):
@@ -300,11 +300,11 @@ def pmdm_report(self, x_max, res_max, n=np.inf, printfunc=print):
                   ' Current best guess @ %s and ll of %s):' % (n, -res_max.round(5)))
 
     # split the info such that it is readable
-    lnum = (len(self.priors)*8)//(int(cols)-8) + 1
-    priors_chunks = np.array_split(np.array(self.fdict['prior_names']), lnum)
+    lnum = (len(self.prior)*8)//(int(cols)-8) + 1
+    prior_chunks = np.array_split(np.array(self.fdict['prior_names']), lnum)
     vals_chunks = np.array_split([round(m_val, 3) for m_val in x_max], lnum)
 
-    for pchunk, vchunk in zip(priors_chunks, vals_chunks):
+    for pchunk, vchunk in zip(prior_chunks, vals_chunks):
 
         row_format = "{:>8}" * (len(pchunk) + 1)
         printfunc(row_format.format("", *pchunk))

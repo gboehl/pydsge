@@ -690,9 +690,9 @@ class DSGE(dict):
 
         model.par_fix = np.array(model.p0())
         p_names = [p.name for p in model.parameters]
-        model.priors = model['__data__']['estimation']['prior']
-        model.prior_arg = [p_names.index(pp) for pp in model.priors.keys()]
-        model.prior_names = [str(pp) for pp in model.priors.keys()]
+        model.prior = model['__data__']['estimation']['prior']
+        model.prior_arg = [p_names.index(pp) for pp in model.prior.keys()]
+        model.prior_names = [str(pp) for pp in model.prior.keys()]
         model.observables = [str(o) for o in observables]
 
         return model

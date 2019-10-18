@@ -5,7 +5,7 @@ import numpy as np
 import warnings
 import os
 import time
-from .stats import get_priors, mc_mean, summary, pmdm_report
+from .stats import get_prior, mc_mean, summary, pmdm_report
 import scipy.optimize as so
 import tqdm
 
@@ -187,12 +187,12 @@ def pmdm(self, linear=None, maxfev=None, linear_pre_pmdm=False, method=None, tol
     print('[estimation:]'.ljust(30, ' ')+' posterior mode values:')
     with os.popen('stty size', 'r') as rows_cols:
         cols = rows_cols.read().split()[1]
-        lnum = (len(self.priors)*8)//(int(cols)-8) + 1
-        priors_chunks = np.array_split(
+        lnum = (len(self.prior)*8)//(int(cols)-8) + 1
+        prior_chunks = np.array_split(
             np.array(self.fdict['prior_names']), lnum)
         vals_chunks = np.array_split([round(m_val, 3)
                                       for m_val in self.pmdm_par], lnum)
-        for pchunk, vchunk in zip(priors_chunks, vals_chunks):
+        for pchunk, vchunk in zip(prior_chunks, vals_chunks):
             row_format = "{:>8}" * (len(pchunk) + 1)
             print(row_format.format("", *pchunk))
             print(row_format.format("", *vchunk))

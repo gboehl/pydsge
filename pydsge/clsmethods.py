@@ -102,7 +102,7 @@ def write_yaml(self, filename):
     return
 
 
-def save_meta(self, filename=None):
+def save_meta(self, filename=None, verbose=True):
 
     if filename is None:
         if hasattr(self, 'path') and hasattr(self, 'name'):
@@ -128,7 +128,8 @@ def save_meta(self, filename=None):
 
     np.savez(filename, **self.fdict)
 
-    print("'Metadata saved as '%s'" % filename)
+    if verbose:
+        print("'Metadata saved as '%s'" % filename)
 
     return
 
@@ -155,7 +156,7 @@ def traceplot_m(self, chain=None, **args):
             chain = self.get_chain()
             args['tune'] = self.get_tune
 
-    return traceplot(chain, varnames=self.fdict['prior_names'], priors=self.fdict['frozen_priors'], **args)
+    return traceplot(chain, varnames=self.fdict['prior_names'], prior=self.fdict['frozen_prior'], **args)
 
 
 def posteriorplot_m(self, mc_type=None, **args):

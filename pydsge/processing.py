@@ -73,11 +73,12 @@ def get_sample(self, source=None, k=1, seed=None, verbose=False):
     try:
         sample_old = self.fdict[prefix+'sample']
         # don't use the same seed twice in one sample
-        seed += sample_old.shape[0]
 
         k -= sample_old.shape[0]
         if k < 1:
             return sample_old
+        if seed is not None:
+            seed += sample_old.shape[0]
     except:
         sample_old = None
 
@@ -91,10 +92,12 @@ def get_sample(self, source=None, k=1, seed=None, verbose=False):
         sample = random.choices(sample, k=k)
 
     else:
-        sample = self.get_par('priors', nsample=k, seed=seed)
+        sample = self.get_par('prior', nsample=k, seed=seed)
 
     if sample_old is not None:
-        return np.concatenate((sample_old, sample), 0)
+        sample = np.concatenate((sample_old, sample), 0)
+
+    self.fdict[prefix+'sample'] = sample
 
     return sample
 
