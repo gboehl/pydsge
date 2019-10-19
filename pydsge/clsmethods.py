@@ -156,7 +156,7 @@ def traceplot_m(self, chain=None, **args):
             chain = self.get_chain()
             args['tune'] = self.get_tune
 
-    return traceplot(chain, varnames=self.fdict['prior_names'], prior=self.fdict['frozen_prior'], **args)
+    return traceplot(chain, varnames=self.fdict['prior_names'], **args)
 
 
 def posteriorplot_m(self, mc_type=None, **args):
@@ -331,6 +331,7 @@ DSGE.get_data = get_data
 DSGE.get_tune = get_tune
 DSGE.get_par = get_par
 DSGE.calc_obs = calc_obs
+DSGE.obs = calc_obs
 # from stuff:
 DSGE.func_dispatch = func_dispatch
 DSGE.get_sys = get_sys

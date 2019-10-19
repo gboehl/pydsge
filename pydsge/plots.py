@@ -433,7 +433,7 @@ def swarm_rank(self, figsize=None, ax=None):
     else:
         fig = None
 
-    ax.barh(y_pos, height, tick_label=list(bars))
+    ax.barh(y_pos, list(height), tick_label=list(bars))
 
     if fig is not None:
         fig.tight_layout()

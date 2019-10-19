@@ -291,19 +291,19 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
     ----------
     algos : list
         List of initilized pygmo algorithms.
-    linear : bool
-        ...
+    linear : bool, optional
+        Optimize linear model. Defaults to whether the filter object is linear.
     pop_size : int
         Size of each population. (Default: 100)
-    ngen : int
+    ngen : in, optional
         Number of generations. Note that this runs *on top* of the generations defined in each algorithm. (default: 500)
-    mig_share : float
+    mig_share : floa, optional
         Percentage of solution candidates broadcasted and exchanged. (default: 0.1)
-    use_ring : bool
+    use_ring : boo, optional
         Ordering of the execution of algorithm. If `False`, solutions will be evaluated and broadcasted whenever they are ready. The disadvantage is that results are not *exactly* reproducible since they depend on evaluation time. `False` is faster (if everything runs smoothly your results should not depend on random numbers). (default: False)
-    nlopt : bool
+    nlopt : boo, optional
         Whether to let local optimizers run with the wolfs (and bees and ants). (default: True)
-    broadcasting : bool
+    broadcasting : boo, optional
         Whether to broadcast candidates to everybody or only to the next population. (default: True)
     """
 

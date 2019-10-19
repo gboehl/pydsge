@@ -25,7 +25,7 @@ def mask(self, verbose=False):
     return msk.rename(columns=dict(zip(self.observables, self.shocks)))[:-1]
 
 
-def parallellizer(sample, verbose=True, **args):
+def parallellizer(sample, verbose=True, ncores=None, **args):
     """Runs global function `runner` in parallel. 
 
     Necessary for dill to avoid pickling of model objects. A dirty hack...
@@ -49,12 +49,15 @@ def parallellizer(sample, verbose=True, **args):
     def runner_loc(x):
         return runner(x, **args)
 
-    pool = pathos.pools.ProcessPool()
-    pool.clear()
+    mapper = map
+    if ncores is None or ncores > 1:
+        pool = pathos.pools.ProcessPool(ncores)
+        pool.clear()
+        mapper = pool.imap
 
     wrap = tqdm.tqdm if verbose else lambda x: x
 
-    res = wrap(pool.imap(runner_loc, sample), unit=' sample(s)',
+    res = wrap(mapper(runner_loc, sample), unit=' sample(s)',
                total=len(sample), dynamic_ncols=True)
 
     return map2arr(res)
@@ -127,13 +130,10 @@ def sampled_extract(self, source=None, k=1, seed=None, verbose=False):
 
     def runner(par):
 
-        par_fix = self.par_fix
-        par_fix[self.prior_arg] = par
-        par_active_lst = list(par_fix)
-
+        self.set_calib(par, autocompile=False)
         self.get_sys(par=par_active_lst, reduce_sys=True, verbose=verbose > 1)
-
         self.preprocess(l_max=3, k_max=16, verbose=verbose > 1)
+
         self.filter.Q = self.QQ(self.par) @ self.QQ(self.par)
 
         FX = self.run_filter(verbose=False)
@@ -176,7 +176,7 @@ def sampled_sim(self, k=1, source=None, mask=None, seed=None, verbose=False):
 
         par, eps, inits = arg
 
-        self.set_calib(par)
+        self.set_calib(par, autocompile=False)
         self.get_sys(verbose=verbose)
         self.preprocess(verbose=verbose)
 
@@ -199,7 +199,7 @@ def sampled_irfs(self, shocklist, k=1, source=None, seed=None, verbose=False):
 
     def runner(par):
 
-        self.set_calib(par)
+        self.set_calib(par, autocompile=False)
         self.preprocess(verbose=verbose)
 
         res = self.irfs(shocklist, wannasee='full', verbose=verbose)

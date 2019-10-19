@@ -442,7 +442,25 @@ def get_calib(self, parname=None, asdict=True, roundto=5, verbose=False):
         return pffunc(self.par)[pfnames.index(parname)]
 
 
-def set_calib(self, parname=None, setpar=None, roundto=5, verbose=False):
+def set_calib(self, parname=None, setpar=None, roundto=5, autocompile=True, verbose=False):
+    """Set the current parameter values.
+
+    Parameter
+    ---------
+    parname : str or array
+        If an array, sets all parameters. If a string, `setpar` must be provided to define a value.
+    setpar : float
+        Parametervalue.
+    roundto : int
+        Define output precision. (default: 5)
+    autocompile : bool
+        If true, already defines the system and prprocesses matrics. (default: True)
+
+    Returns
+    -------
+    tuple(dict, dict)
+        First dict contains the parameters, second dict contains parameter functions. 
+    """
 
     pfnames, pffunc = self.parafunc
     pars_str = [str(p) for p in self.parameters]
