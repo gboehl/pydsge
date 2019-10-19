@@ -195,10 +195,11 @@ def mcmc_summary(self, mc_type=None, tune=None, verbose=True, **args):
         acs = get_chain(self, get_acceptance_fraction=True)
         print(res.round(3))
         print('Marginal data density:' + str(mdd(self).round(4)).rjust(16))
-        print('Mean acceptance fraction:' + str(np.mean(acs).round(3)).rjust(13))
+        print('Mean acceptance fraction:' +
+              str(np.mean(acs).round(3)).rjust(13))
 
-            # raise ValueError('[mdd:]'.ljust(
-                # 15, ' ') + "Option `hess` is experimental and did not return a usable hessian matrix.")
+        # raise ValueError('[mdd:]'.ljust(
+        # 15, ' ') + "Option `hess` is experimental and did not return a usable hessian matrix.")
     return res
 
 
@@ -214,15 +215,15 @@ def info_m(self, verbose=True, **args):
     else:
         description = self.fdict['description']
 
-    res = 'Title: %s\n' %name
-    res += 'Description: %s\n' %description
+    res = 'Title: %s\n' % name
+    res += 'Description: %s\n' % description
 
     try:
         cshp = self.get_chain().shape
         tune = self.get_tune
-        res += 'Parameters: %s\n' %cshp[2]
-        res += 'Chains: %s\n' %cshp[1]
-        res += 'Last %s of %s samples\n' %(cshp[0] - tune, cshp[0])
+        res += 'Parameters: %s\n' % cshp[2]
+        res += 'Chains: %s\n' % cshp[1]
+        res += 'Last %s of %s samples\n' % (cshp[0] - tune, cshp[0])
     except AttributeError:
         pass
 

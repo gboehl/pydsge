@@ -67,7 +67,8 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
     if not hasattr(self, 'precalc_mat'):
         self.preprocess(verbose=verbose > 1)
 
-    self.create_filter(N=N, ftype='KalmanFilter' if linear else None, seed=seed)
+    self.create_filter(
+        N=N, ftype='KalmanFilter' if linear else None, seed=seed)
 
     if 'filter_R' in self.fdict.keys():
         self.filter.R = self.fdict['filter_R']
@@ -247,7 +248,8 @@ def get_par(self, which=None, nsample=1, seed=None, ncores=None, verbose=False):
                     try:
                         warnings.filterwarnings('error')
                         rst = np.random.randint(2**16)
-                        pdraw = [pl.rvs(random_state=rst) for pl in frozen_prior]
+                        pdraw = [pl.rvs(random_state=rst)
+                                 for pl in frozen_prior]
                         draw_prob = lprob_global(pdraw, None, verbose)
                     except:
                         pass
@@ -260,7 +262,8 @@ def get_par(self, which=None, nsample=1, seed=None, ncores=None, verbose=False):
         loc_pool = pathos.pools.ProcessPool(ncores)
         loc_pool.clear()
 
-        pmap_sim = tqdm.tqdm(loc_pool.imap(runner, range(nsample)), total=nsample)
+        pmap_sim = tqdm.tqdm(loc_pool.imap(
+            runner, range(nsample)), total=nsample)
 
         return map2arr(pmap_sim)
 
@@ -279,7 +282,8 @@ def get_par(self, which=None, nsample=1, seed=None, ncores=None, verbose=False):
     try:
         return par_cand*(1 + 1e-3*np.random.randn(nsample, self.ndim)*(nsample > 1))
     except UnboundLocalError:
-        raise KeyError("`which` must be in {'prior', 'mode', 'calib', 'pmean', 'init'")
+        raise KeyError(
+            "`which` must be in {'prior', 'mode', 'calib', 'pmean', 'init'")
 
 
 def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=None, use_ring=False, nlopt=True, broadcasting=True, ncores=None, crit_mem=.85, autosave=100, update_freq=None, verbose=False, debug=False):
@@ -312,7 +316,7 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
     import pathos
     import random
 
-    ## get the maximum generation len of all algos for nlopt methods
+    # get the maximum generation len of all algos for nlopt methods
     maxalgogenlen = 1
     for algo in algos:
         st = algo.get_extra_info()
@@ -597,7 +601,8 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
 
             if done or (pbar.n and not pbar.n % autosave):
 
-                self.fdict['swarm_history'] = np.array(f_max_hist).reshape(1, -1), np.array(x_max_hist), np.array(name_max_hist).reshape(1, -1)
+                self.fdict['swarm_history'] = np.array(f_max_hist).reshape(
+                    1, -1), np.array(x_max_hist), np.array(name_max_hist).reshape(1, -1)
 
                 fas = fsw[:, 0].argmax()
                 self.fdict['swarms_x'] = xsw[fas]
@@ -605,7 +610,8 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
 
                 if 'mode_f' in self.fdict.keys() and fsw[fas] < self.fdict['mode_f']:
                     if done:
-                        print('[swarms:]'.ljust(15, ' ') + " New mode of %s is below old mode of %s. Rejecting..." %(fsw[fas], self.fdict['mode_f']))
+                        print('[swarms:]'.ljust(
+                            15, ' ') + " New mode of %s is below old mode of %s. Rejecting..." % (fsw[fas], self.fdict['mode_f']))
                 else:
                     self.fdict['mode_x'] = xsw[fas]
                     self.fdict['mode_f'] = fsw[fas]
@@ -624,9 +630,7 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
     pool.terminate()
     pbar.close()
 
-
     self.overlord = overlord
-
 
     return xsw
 

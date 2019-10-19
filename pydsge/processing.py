@@ -111,7 +111,7 @@ def sampled_extract(self, source=None, k=1, seed=None, verbose=False):
         source = 'posterior'
 
     prefix = 'post_' if source is 'posterior' else 'prio_'
-    
+
     # adjust for source = 'random' to simulate with random noise given parameter
 
     try:
@@ -162,11 +162,13 @@ def sampled_extract(self, source=None, k=1, seed=None, verbose=False):
 
 def sampled_sim(self, k=1, source=None, mask=None, seed=None, verbose=False):
 
-    if source is None: 
+    if source is None:
         source = 'posterior'
     if source in ('prior', 'posterior'):
-        sample = get_sample(self, source=source, k=k, seed=seed, verbose=verbose)
-        means, covs, eps = sampled_extract(self, source=source, k=k, seed=seed, verbose=verbose)
+        sample = get_sample(self, source=source, k=k,
+                            seed=seed, verbose=verbose)
+        means, covs, eps = sampled_extract(
+            self, source=source, k=k, seed=seed, verbose=verbose)
     else:
         raise NotImplementedError('No other sampling methods implemented.')
 
@@ -184,14 +186,14 @@ def sampled_sim(self, k=1, source=None, mask=None, seed=None, verbose=False):
 
         return res
 
-    res = parallellizer(list(zip(sample, eps, means[:,0])), mask=mask)
+    res = parallellizer(list(zip(sample, eps, means[:, 0])), mask=mask)
 
     return res
 
 
 def sampled_irfs(self, shocklist, k=1, source=None, seed=None, verbose=False):
 
-    if source is None: 
+    if source is None:
         source = 'posterior'
     sample = get_sample(self, source=source, k=k, seed=seed, verbose=verbose)
 

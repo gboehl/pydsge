@@ -93,7 +93,8 @@ def summary(store, priors, bounds=None, tune=None, alpha=0.05, top=None, show_pr
                 prior = prior[-3:]
             [lst.append(f(prior[j])) for j, f in enumerate(f_prs)]
             if bounds is not None:
-                [lst.append(f(np.array(bounds).T[i][j])) for j, f in enumerate(f_bnd)]
+                [lst.append(f(np.array(bounds).T[i][j]))
+                 for j, f in enumerate(f_bnd)]
 
         if bounds is not None:
             [lst.append(pd.Series(s[i], name=n))
@@ -145,7 +146,8 @@ class InvGammaDynare(ss.rv_continuous):
         if x < 0:
             lpdf = -np.inf
         else:
-            lpdf = np.log(2) - gammaln(nu/2) - nu/2*(np.log(2) - np.log(s)) - (nu+1)*np.log(x) - .5*s/np.square(x)
+            lpdf = np.log(2) - gammaln(nu/2) - nu/2*(np.log(2) -
+                                                     np.log(s)) - (nu+1)*np.log(x) - .5*s/np.square(x)
 
         return lpdf
 
