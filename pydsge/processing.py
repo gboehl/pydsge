@@ -166,8 +166,7 @@ def sampled_sim(self, k=1, source=None, mask=None, seed=None, ncores=None, verbo
     if source is None:
         source = 'posterior'
     if source in ('prior', 'posterior'):
-        sample = get_sample(self, source=source, k=k,
-                            seed=seed, ncores=ncores, verbose=verbose)
+        sample = get_sample(self, source=source, k=k, seed=seed, ncores=ncores, verbose=verbose)
         means, covs, eps = sampled_extract(
             self, source=source, k=k, seed=seed, verbose=verbose)
     else:
@@ -187,7 +186,7 @@ def sampled_sim(self, k=1, source=None, mask=None, seed=None, ncores=None, verbo
 
         return res
 
-    res = parallellizer(list(zip(sample, eps, means[:, 0])), mask=mask, func=runner, ncores=ncores)
+    res = parallellizer(list(zip(sample[:k], eps[:k], means[:k, 0])), mask=mask, func=runner, ncores=ncores)
 
     return res
 
@@ -209,6 +208,6 @@ def sampled_irfs(self, shocklist, k=1, source=None, seed=None, ncores=None, verb
 
         return res[0], res[2][1:]
 
-    res = parallellizer(list(sample), func=runner, ncores=ncores)
+    res = parallellizer(list(sample)[:k], func=runner, ncores=ncores)
 
     return res
