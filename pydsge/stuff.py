@@ -20,9 +20,12 @@ def get_sys(self, par=None, reduce_sys=None, verbose=False):
     st = time.time()
 
     if reduce_sys is None:
-        reduce_sys = True
+        try:
+            reduce_sys = self.fdict['reduced_sys']
+        except KeyError:
+            reduce_sys = False
 
-    self.is_reduced = reduce_sys
+    self.fdict['reduce_sys'] reduce_sys
 
     if par is None:
         par = self.p0()
@@ -461,6 +464,9 @@ def set_calib(self, parname=None, setpar=None, roundto=5, autocompile=True, verb
     tuple(dict, dict)
         First dict contains the parameters, second dict contains parameter functions. 
     """
+
+    if not hasattr(self, 'par'):
+        get_sys(self, verbose=verbose)
 
     pfnames, pffunc = self.parafunc
     pars_str = [str(p) for p in self.parameters]

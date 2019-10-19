@@ -20,7 +20,7 @@ def mask(self, verbose=False):
     try:
         self.observables
     except AttributeError:
-        self.get_sys()
+        self.get_sys(verbose=verbose)
 
     return msk.rename(columns=dict(zip(self.observables, self.shocks)))[:-1]
 
