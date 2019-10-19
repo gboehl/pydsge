@@ -383,3 +383,60 @@ def posteriorplot(trace, varnames=None, tune=0, figsize=None, max_no=4, text_siz
         figs.append(fig)
 
     return figs, axs
+
+
+def swarm_champ(self, ax=None, *plotargs):
+
+    if ax is None:
+        fig, ax = plt.subplots()
+    else:
+        fig = None
+
+    fs = self.fdict['swarm_history'][0]
+
+    ax.plot(fs.flatten(), lw=2, color='maroon')
+
+    if fig is not None:
+        fig.tight_layout()
+
+        return fig, ax
+
+    return ax
+
+
+def swarm_plot(self, ax=None, *pplotargs):
+
+    from grgrlib import pplot
+
+    xs = self.fdict['swarm_history'][1]
+
+    return pplot(xs, labels=self.prior_names, *pplotargs)
+
+
+def swarm_rank(self, figsize=None, ax=None):
+
+    from collections import Counter
+
+    names = self.fdict['swarm_history'][2][0]
+    names = Counter(names)
+
+    if figsize is None:
+        figsize = (8, .3*len(names))
+
+    ndict = dict(sorted(names.items(), key=lambda x: x[1]))
+    height = ndict.values()
+    bars = ndict.keys()
+    y_pos = np.arange(len(bars))
+
+    if ax is None:
+        fig, ax = plt.subplots(figsize=figsize)
+    else:
+        fig = None
+
+    ax.barh(y_pos, height, tick_label=list(bars))
+
+    if fig is not None:
+        fig.tight_layout()
+        return fig, ax
+
+    return ax

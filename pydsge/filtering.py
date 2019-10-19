@@ -16,12 +16,9 @@ def create_obs_cov(self, scale_obs=0.1):
     return obs_cov
 
 
-def create_filter(self, P=None, R=None, N=None, ftype=None, random_seed=None):
+def create_filter(self, P=None, R=None, N=None, ftype=None, seed=None):
 
     self.Z = np.array(self.data)
-
-    if random_seed is not None:
-        np.random.seed(random_seed)
 
     if ftype == 'KalmanFilter' or ftype == 'KF':
 
@@ -48,7 +45,7 @@ def create_filter(self, P=None, R=None, N=None, ftype=None, random_seed=None):
 
         if N is None:
             N = 500
-        f = TEnKF(N=N, dim_x=len(self.vv), dim_z=self.ny)
+        f = TEnKF(N=N, dim_x=len(self.vv), dim_z=self.ny, seed=seed)
 
     if P is not None:
         f.P = P

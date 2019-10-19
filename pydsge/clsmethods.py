@@ -11,7 +11,7 @@ from .stuff import *
 from .filtering import *
 from .estimation import prep_estim, swarms, mcmc, kdes, get_par
 from .modesearch import pmdm, nlopt
-from .plots import posteriorplot, traceplot
+from .plots import posteriorplot, traceplot, swarm_rank, swarm_champ, swarm_plot
 from .processing import *
 
 
@@ -360,6 +360,9 @@ DSGE.get_ll = get_ll
 # from plot:
 DSGE.traceplot = traceplot_m
 DSGE.posteriorplot = posteriorplot_m
+DSGE.swarm_champ = swarm_champ
+DSGE.swarm_plot = swarm_plot
+DSGE.swarm_rank = swarm_rank
 # from others:
 DSGE.set_path = set_path
 DSGE.get_chain = get_chain

@@ -583,21 +583,23 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
                     self.fdict['mode_x'] = xsw[fas]
                     self.fdict['mode_f'] = fsw[fas]
 
+                for i, s in enumerate(overlord):
+                    fsw[i, :] = -s.pop[1].min()
+                    xsw[i, :] = s.pop[0][s.pop[1].argmin()]
+                    nsw[i, :] = s.sname
+
+                self.fdict['ngen'] = ngen
+                self.fdict['swarms'] = xsw, fsw, nsw.reshape(1, -1)
+
                 if autosave:
                     self.save(verbose=verbose)
 
     pool.terminate()
     pbar.close()
 
-    for i, s in enumerate(overlord):
-        fsw[i, :] = -s.pop[1].min()
-        xsw[i, :] = s.pop[0][s.pop[1].argmin()]
-        nsw[i, :] = s.sname
 
     self.overlord = overlord
 
-    self.fdict['ngen'] = ngen
-    self.fdict['swarms'] = xsw, fsw, nsw.reshape(1, -1)
 
     return xsw
 
