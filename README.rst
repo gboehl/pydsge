@@ -10,6 +10,8 @@ The beta stage will involve considerable restructuring of packages, code, and th
 
 The dependencies are listed in the setup.py file. Note that this package depends on the ``econsieve`` and ``grgrlib`` packages which both can be found on my github page (they will thus not be installed automatically via ``pip``\ , at least for now).
 
+There is some `very preliminary documentation <https://pydsge.readthedocs.io/en/latest/index.html>`_ out there.
+
 parser
 ------
 
@@ -22,9 +24,9 @@ Installation with ``pip`` (simple)
 
 First get the ``econsieve`` and ``grgrlib`` packages:
 
-https://github.com/gboehl/grgrlib
+* https://github.com/gboehl/grgrlib
 
-https://github.com/gboehl/econsieve
+* https://github.com/gboehl/econsieve
 
 The simplest way is to clone the repository and then from within the cloned folder run (Windows user from the Anaconda Prompt):
 

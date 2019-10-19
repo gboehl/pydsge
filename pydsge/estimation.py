@@ -67,8 +67,7 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
     if not hasattr(self, 'precalc_mat'):
         self.preprocess(verbose=verbose > 1)
 
-    self.create_filter(
-        N=N, ftype='KalmanFilter' if linear else None, random_seed=seed)
+    self.create_filter(N=N, ftype='KalmanFilter' if linear else None, seed=seed)
 
     if 'filter_R' in self.fdict.keys():
         self.filter.R = self.fdict['filter_R']
@@ -283,12 +282,43 @@ def get_par(self, which=None, nsample=1, seed=None, ncores=None, verbose=False):
         raise KeyError("`which` must be in {'prior', 'mode', 'calib', 'pmean', 'init'")
 
 
-def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=None, max_gen=None, initialize_x0=True, use_ring=False, nlopt=True, broadcasting=True, ncores=None, crit_mem=.85, autosave=100, update_freq=None, verbose=False, debug=False):
+def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=None, use_ring=False, nlopt=True, broadcasting=True, ncores=None, crit_mem=.85, autosave=100, update_freq=None, verbose=False, debug=False):
+    """Find mode using pygmo swarms.
+
+    The interface partly replicates some features of the distributed island model because the original implementation has problems with the picklability of the DSGE class
+
+    Parameters
+    ----------
+    algos : list
+        List of initilized pygmo algorithms.
+    linear : bool
+        ...
+    pop_size : int
+        Size of each population. (Default: 100)
+    ngen : int
+        Number of generations. Note that this runs *on top* of the generations defined in each algorithm. (default: 500)
+    mig_share : float
+        Percentage of solution candidates broadcasted and exchanged. (default: 0.1)
+    use_ring : bool
+        Ordering of the execution of algorithm. If `False`, solutions will be evaluated and broadcasted whenever they are ready. The disadvantage is that results are not *exactly* reproducible since they depend on evaluation time. `False` is faster (if everything runs smoothly your results should not depend on random numbers). (default: False)
+    nlopt : bool
+        Whether to let local optimizers run with the wolfs (and bees and ants). (default: True)
+    broadcasting : bool
+        Whether to broadcast candidates to everybody or only to the next population. (default: True)
+    """
 
     import pygmo as pg
     import dill
     import pathos
     import random
+
+    ## get the maximum generation len of all algos for nlopt methods
+    maxalgogenlen = 1
+    for algo in algos:
+        st = algo.get_extra_info()
+        if 'Generations' in st:
+            genlen = int(st.split('\n')[0].split(' ')[-1])
+            maxalgogenlen = max(maxalgogenlen, genlen)
 
     if crit_mem is not None:
 
@@ -302,9 +332,6 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
 
     if seed is None:
         seed = self.fdict['seed']
-
-    if max_gen is None:
-        max_gen = ngen
 
     if update_freq is None:
         update_freq = 0
@@ -396,12 +423,12 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
             algo = pg.algorithm(pg.nlopt(solver="cobyla"))
             print('[swarms:]'.ljust(15, ' ') + 'On seed ' +
                   str(seed)+' creating ' + algo.get_name())
-            algo.extract(pg.nlopt).maxeval = pop_size
+            algo.extract(pg.nlopt).maxeval = pop_size*maxalgogenlen
         elif nlopt and seed == 1:
             algo = pg.algorithm(pg.nlopt(solver="neldermead"))
             print('[swarms:]'.ljust(15, ' ') + 'On seed ' +
                   str(seed)+' creating ' + algo.get_name())
-            algo.extract(pg.nlopt).maxeval = pop_size
+            algo.extract(pg.nlopt).maxeval = pop_size*maxalgogenlen
         else:
             random.seed(seed)
             algo = random.sample(algos, 1)[0]
