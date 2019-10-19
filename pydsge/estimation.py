@@ -234,6 +234,9 @@ def get_par(self, which=None, nsample=1, seed=None, ncores=None, verbose=False):
         # globals are *evil*
         global lprob_global
 
+        if ncores and ncores < 1:
+            self.lprob
+
         frozen_prior = self.fdict['frozen_prior']
 
         def runner(locseed):
@@ -259,13 +262,19 @@ def get_par(self, which=None, nsample=1, seed=None, ncores=None, verbose=False):
         if ncores is None:
             ncores = pathos.multiprocessing.cpu_count()
 
-        loc_pool = pathos.pools.ProcessPool(ncores)
-        loc_pool.clear()
+        if ncores > 1:
+            loc_pool = pathos.pools.ProcessPool(ncores)
+            loc_pool.clear()
+            mapper = loc_pool.imap
+        else:
+            mapper = map
 
-        pmap_sim = tqdm.tqdm(loc_pool.imap(
+        print('[get_par:]'.ljust(15, ' ') + 'Sampling parameters from prior...')
+        pmap_sim = tqdm.tqdm(mapper(
             runner, range(nsample)), total=nsample)
+        res = map2arr(pmap_sim)
 
-        return map2arr(pmap_sim)
+        return res
 
     if which is 'mode':
         par_cand = self.fdict['mode_x']

@@ -25,7 +25,7 @@ def mask(self, verbose=False):
     return msk.rename(columns=dict(zip(self.observables, self.shocks)))[:-1]
 
 
-def parallellizer(sample, verbose=True, ncores=None, **args):
+def parallellizer(sample, verbose=True, func=None, ncores=None, **args):
     """Runs global function `runner` in parallel. 
 
     Necessary for dill to avoid pickling of model objects. A dirty hack...
@@ -53,6 +53,7 @@ def parallellizer(sample, verbose=True, ncores=None, **args):
     if ncores is None or ncores > 1:
         pool = pathos.pools.ProcessPool(ncores)
         pool.clear()
+        runner_loc = func
         mapper = pool.imap
 
     wrap = tqdm.tqdm if verbose else lambda x: x
@@ -63,7 +64,7 @@ def parallellizer(sample, verbose=True, ncores=None, **args):
     return map2arr(res)
 
 
-def get_sample(self, source=None, k=1, seed=None, verbose=False):
+def get_sample(self, source=None, k=1, seed=None, ncores=None, verbose=False):
     """Creates (or loads) a parameter sample from `source`.
 
     If more samples are requested than already stored, new samples are taken.
@@ -95,7 +96,7 @@ def get_sample(self, source=None, k=1, seed=None, verbose=False):
         sample = random.choices(sample, k=k)
 
     else:
-        sample = self.get_par('prior', nsample=k, seed=seed)
+        sample = self.get_par('prior', nsample=k, seed=seed, ncores=ncores)
 
     if sample_old is not None:
         sample = np.concatenate((sample_old, sample), 0)
@@ -105,7 +106,7 @@ def get_sample(self, source=None, k=1, seed=None, verbose=False):
     return sample
 
 
-def sampled_extract(self, source=None, k=1, seed=None, verbose=False):
+def sampled_extract(self, source=None, k=1, seed=None, ncores=None, verbose=False):
 
     if source is None and 'mcmc_mode_f' in self.fdict.keys():
         source = 'posterior'
@@ -124,7 +125,7 @@ def sampled_extract(self, source=None, k=1, seed=None, verbose=False):
     except KeyError:
         eps_old = None
 
-    sample = get_sample(self, source=source, k=k, seed=seed, verbose=verbose)
+    sample = get_sample(self, source=source, k=k, seed=seed, ncores=ncores, verbose=verbose)
 
     global runner
 
@@ -146,7 +147,7 @@ def sampled_extract(self, source=None, k=1, seed=None, verbose=False):
 
         return mean, cov, eps
 
-    means, covs, eps = parallellizer(sample)
+    means, covs, eps = parallellizer(sample, func=runner, ncores=ncores)
 
     if eps_old is not None:
         means = np.concatenate((means_old, means), 0)
@@ -160,13 +161,13 @@ def sampled_extract(self, source=None, k=1, seed=None, verbose=False):
     return means, covs, eps
 
 
-def sampled_sim(self, k=1, source=None, mask=None, seed=None, verbose=False):
+def sampled_sim(self, k=1, source=None, mask=None, seed=None, ncores=None, verbose=False):
 
     if source is None:
         source = 'posterior'
     if source in ('prior', 'posterior'):
         sample = get_sample(self, source=source, k=k,
-                            seed=seed, verbose=verbose)
+                            seed=seed, ncores=ncores, verbose=verbose)
         means, covs, eps = sampled_extract(
             self, source=source, k=k, seed=seed, verbose=verbose)
     else:
@@ -186,16 +187,16 @@ def sampled_sim(self, k=1, source=None, mask=None, seed=None, verbose=False):
 
         return res
 
-    res = parallellizer(list(zip(sample, eps, means[:, 0])), mask=mask)
+    res = parallellizer(list(zip(sample, eps, means[:, 0])), mask=mask, func=runner, ncores=ncores)
 
     return res
 
 
-def sampled_irfs(self, shocklist, k=1, source=None, seed=None, verbose=False):
+def sampled_irfs(self, shocklist, k=1, source=None, seed=None, ncores=None, verbose=False):
 
     if source is None:
         source = 'posterior'
-    sample = get_sample(self, source=source, k=k, seed=seed, verbose=verbose)
+    sample = get_sample(self, source=source, k=k, seed=seed, ncores=ncores, verbose=verbose)
 
     global runner
 
@@ -208,6 +209,6 @@ def sampled_irfs(self, shocklist, k=1, source=None, seed=None, verbose=False):
 
         return res[0], res[2][1:]
 
-    res = parallellizer(list(sample))
+    res = parallellizer(list(sample), func=runner, ncores=ncores)
 
     return res
