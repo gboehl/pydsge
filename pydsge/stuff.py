@@ -25,7 +25,7 @@ def get_sys(self, par=None, reduce_sys=None, verbose=False):
         except KeyError:
             reduce_sys = False
 
-    self.fdict['reduce_sys'] reduce_sys
+    self.fdict['reduce_sys'] = reduce_sys
 
     if par is None:
         par = self.p0()

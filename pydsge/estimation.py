@@ -277,7 +277,7 @@ def get_par(self, which=None, nsample=1, seed=None, ncores=None, verbose=False):
         return res
 
     if which is 'mode':
-        par_cand = self.fdict['mode_x']
+        par_cand = self.fdict['mode_x'][0]
     if which is 'calib':
         par_cand = self.par_fix[self.prior_arg]
     if which is 'pmean':
