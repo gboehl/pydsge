@@ -1,13 +1,10 @@
 #!/bin/python
 # -*- coding: utf-8 -*-
 
+from grgrlib import fast0, eig, re_bc
 import numpy as np
 import numpy.linalg as nl
-import warnings
 import time
-from grgrlib import fast0, eig, re_bc
-from .engine import boehlgorithm, boehlgorithm_jit
-from decimal import Decimal
 
 try:
     from numpy.core._exceptions import UFuncTypeError as ParafuncError
@@ -21,7 +18,7 @@ def get_sys(self, par=None, reduce_sys=None, verbose=False):
 
     if reduce_sys is None:
         try:
-            reduce_sys = self.fdict['reduced_sys']
+            reduce_sys = self.fdict['reduce_sys']
         except KeyError:
             reduce_sys = False
 
@@ -31,7 +28,7 @@ def get_sys(self, par=None, reduce_sys=None, verbose=False):
         par = self.p0()
 
     if not self.const_var:
-        warnings.warn('Code is only meant to work with OBCs')
+        raise NotImplementedError('Pakage is only meant to work with OBCs')
 
     vv_v = np.array([v.name for v in self.variables])
     vv_x = np.array(self.variables)
@@ -90,8 +87,8 @@ def get_sys(self, par=None, reduce_sys=None, verbose=False):
     c1 = U.T @ c_M
 
     if not fast0(c1[s0], 2) or not fast0(U.T[s0] @ c_P, 2):
-        warnings.warn(
-            '\nNot implemented: the system depends directly or indirectly on whether the constraint holds in the future or not.\n')
+        NotImplementedError(
+            'The system depends directly or indirectly on whether the constraint holds in the future or not.\n')
 
     # actual desingularization by iterating equations in M forward
     P2[s0] = M2[s0]
@@ -102,8 +99,7 @@ def get_sys(self, par=None, reduce_sys=None, verbose=False):
         pf = self.parafunc
         x_bar = pf[1](par)[pf[0].index('x_bar')]
     else:
-        warnings.warn(
-            "\nx_bar (maximum value of the constraint) not specified. Assuming x_bar = -1 for now.\n")
+        print("Parameter `x_bar` (maximum value of the constraint) not specified. Assuming x_bar = -1 for now.")
         x_bar = -1
 
     # create the stuff that the algorithm needs
@@ -177,248 +173,98 @@ def get_sys(self, par=None, reduce_sys=None, verbose=False):
     return
 
 
-def irfs(self, shocklist, wannasee=None, linear=False, verbose=False):
-
-    # REWRITE!!
-    # returns time series of impule responses
-    # shocklist: takes list of tuples of (shock, size, timing)
-    # wannasee: list of strings of the variables to be plotted and stored
-
-    slabels = self.vv
-    olabels = self.observables
-
-    args_sts = []
-    args_obs = []
-
-    if wannasee not in (None, 'all', 'full'):
-        for v_raw in wannasee:
-            v = v_raw.replace('_', '')
-            if v in slabels:
-                args_sts.append(list(slabels).index(v))
-            elif v in olabels:
-                args_obs.append(olabels.index(v))
-            else:
-                raise Exception(
-                    "Variable %s neither in states nor observables. You might want to call self.get_sys() with the 'reduce_sys = False' argument. Note that underscores '_' are discarged." % v)
-
-    st_vec = np.zeros(len(self.vv))
-
-    Y = []
-    K = []
-    L = []
-    superflag = False
-
-    st = time.time()
-
-    for t in range(30):
-
-        shk_vec = np.zeros(len(self.shocks))
-        for vec in shocklist:
-            if vec[2] == t:
-
-                shock = vec[0]
-                shocksize = vec[1]
-
-                shock_arg = self.shocks.index(shock)
-                shk_vec[shock_arg] = shocksize
-
-                shk_process = (self.SIG @ shk_vec).nonzero()
-
-                for shk in shk_process:
-                    args_sts += list(shk)
-
-        st_vec, (l, k), flag = self.t_func(
-            st_vec, shk_vec, linear=linear, return_k=True)
-
-        if flag:
-            superflag = True
-
-        Y.append(st_vec)
-        K.append(k)
-        L.append(l)
-
-    if superflag and verbose:
-        print('[irfs:]'.ljust(15, ' ') +
-              ' No rational expectations solution found.')
-
-    Y = np.array(Y)
-    K = np.array(K)
-    L = np.array(L)
-
-    care_for_sts = np.unique(args_sts)
-    care_for_obs = np.unique(args_obs)
-
-    if wannasee is None:
-        Z = (self.hx[0] @ Y.T).T + self.hx[1]
-        tt = ~fast0(Z-Z.mean(axis=0), 0)
-        llabels = list(np.array(self.observables)[
-                       tt])+list(self.vv[care_for_sts])
-        X2 = Y[:, care_for_sts]
-        X = np.hstack((Z[:, tt], X2))
-    elif wannasee is 'full':
-        llabels = list(self.vv)
-        X = Y
-    elif wannasee is 'all':
-        tt = ~fast0(Y-Y.mean(axis=0), 0)
-        llabels = list(self.vv[tt])
-        X = Y[:, tt]
-    else:
-        llabels = list(self.vv[care_for_sts])
-        X = Y[:, care_for_sts]
-        if care_for_obs.size:
-            llabels = list(np.array(self.observables)[care_for_obs]) + llabels
-            Z = ((self.hx[0] @ Y.T).T + self.hx[1])[:, care_for_obs]
-            X = np.hstack((Z, X))
-
-    if verbose:
-        print('[irfs:]'.ljust(15, ' ')+'Simulation took ',
-              np.round((time.time() - st), 5), ' seconds.')
-
-    labels = []
-    for l in llabels:
-        if not isinstance(l, str):
-            l = l.name
-        labels.append(l)
-
-    return X, labels, (Y, K, L)
-
-
-def simulate(self, eps=None, mask=None, state=None, linear=False, verbose=False):
-    """Simulate time series given a series of exogenous innovations.
+def prior_draw(self, nsample, seed=None, ncores=None, verbose=False):
+    """Draw parameters from prior. Drawn parameters have a finite likelihood.
 
     Parameters
     ----------
-        eps : array
-            Shock innovations of shape (T, n_eps)>
-        mask : array
-            Mask for eps. Each non-None element will be replaced.
-        state : array
-            Inital state.
+    nsample : int
+        Size of the prior sample
+    ncores : int
+        Number of cores used for prior sampling. Defaults to the number of available processors
+
+    Returns
+    -------
+    array
+        Numpy array of parameters
     """
 
-    if eps is None:
-        eps = self.res.copy()
+    import pathos
+    import warnings
+    import tqdm
+    import cloudpickle as cpickle
+    from grgrlib import map2arr
 
-    if mask is not None:
-        eps = np.where(np.isnan(mask), eps, mask*eps)
-
-    if state is None:
-        try:
-            state = self.means[0]
-        except:
-            state = np.zeros(len(self.vv))
-
-    X = [state]
-    K = [0]
-    L = [0]
-    superflag = False
+    if seed is None:
+        seed = 0
 
     if verbose:
-        st = time.time()
+        print('[get_par:]'.ljust(15, ' ') +
+              'Drawing from the pior and checking likelihood.')
 
-    for eps_t in eps:
+    if not hasattr(self, 'ndim'):
+        self.prep_estim(load_R=True, verbose=verbose)
 
-        state, (l, k), flag = self.t_func(
-            state, noise=eps_t, return_k=True, linear=linear)
+    lprob = cpickle.loads(self.lprob_dump)
+    frozen_prior = self.fdict['frozen_prior']
 
-        superflag |= flag
+    def runner(locseed):
 
-        X.append(state)
-        K.append(k)
-        L.append(l)
+        np.random.seed(seed+locseed)
+        draw_prob = -np.inf
 
-    X = np.array(X)
-    K = np.array(K)
-    L = np.array(L)
+        while np.isinf(draw_prob):
+            with warnings.catch_warnings(record=False):
+                try:
+                    np.warnings.filterwarnings('error')
+                    rst = np.random.randint(2**16)
+                    pdraw = [pl.rvs(random_state=rst)
+                             for pl in frozen_prior]
+                    draw_prob = lprob(pdraw, None, verbose)
+                except:
+                    pass
 
-    self.simulated_X = X
+        return pdraw
 
-    if verbose:
-        print('[simulate:]'.ljust(15, ' ')+'Simulation took ',
-              time.time() - st, ' seconds.')
+    if ncores is None:
+        ncores = pathos.multiprocessing.cpu_count()
 
-    if superflag and verbose:
-        print('[simulate:]'.ljust(
-            15, ' ')+' No rational expectations solution found.')
+    mapper = map
+    if ncores > 1:
+        loc_pool = pathos.pools.ProcessPool(ncores)
+        loc_pool.clear()
+        mapper = loc_pool.imap
 
-    return X, np.expand_dims(K, 2), superflag
+    print('[get_cand:]'.ljust(15, ' ') + 'Sampling parameters from prior...')
+    pmap_sim = tqdm.tqdm(mapper(
+        runner, range(nsample)), total=nsample)
 
-
-def simulate_series(self, T=1e3, cov=None, verbose=False):
-
-    import scipy.stats as ss
-
-    if cov is None:
-        cov = self.QQ(self.par)
-
-    st_vec = np.zeros(len(self.vv))
-
-    states, Ks = [], []
-    for i in range(int(T)):
-        shk_vec = ss.multivariate_normal.rvs(cov=cov)
-        st_vec, ks, flag = self.t_func(
-            st_vec, shk_vec, return_k=True, verbose=verbose)
-        states.append(st_vec)
-        Ks.append(ks)
-
-        if verbose and flag:
-            print('[irfs:]'.ljust(15, ' ') +
-                  ' No rational expectations solution found.')
-
-    return np.array(states), np.array(Ks)
+    return map2arr(pmap_sim)
 
 
-@property
-def linear_representation(self):
+def get_par(self, dummy=None, parname=None, asdict=True, full=True, roundto=5, nsample=1, seed=None, ncores=None, verbose=False):
+    """Get parameters. Tries to figure out what you want. 
 
-    N, A, J, cx, b, x_bar = self.sys
+    Parameters
+    ----------
+    dummy : str, optional
+        Can be one of {'mode', 'calib', 'prior_mean', 'init'} or a parameter name. 
+    parname : str, optional
+        Parameter name if you want to query a single parameter.
+    asdict : bool, optional
+        Returns a dict of the values if `True` (default) and an array otherwise.
+    full : bool, optional
+        Whether to return all parameters or the estimated ones only. (default: True)
+    nsample : int, optional
+        Size of the prior sample
+    ncores : int, optional
+        Number of cores used for prior sampling. Defaults to the number of available processors
 
-    if not hasattr(self, 'precalc_mat') or (hasattr(self, 'par_lr') and self.par_lr is not self.par):
-        self.preprocess(l_max=1, k_max=0, verbose=False)
-        self.par_lr = self.par
-
-    mat = self.precalc_mat[0]
-
-    dim_x = J.shape[0]
-
-    return mat[1, 0, 1][dim_x:]
-
-
-def t_func(self, state, noise=None, return_flag=True, return_k=False, linear=False, verbose=False):
-
-    if verbose:
-        st = time.time()
-
-    newstate = state.copy()
-
-    if noise is not None:
-        newstate += self.SIG @ noise
-    newstate, (l, k), flag = boehlgorithm(self, newstate, linear=linear)
-
-    if verbose:
-        print('[t_func:]'.ljust(15, ' ') +
-              ' Transition function took %.2Es.' % Decimal(time.time() - st))
-
-    if return_k:
-        return newstate, (l, k), flag
-    elif return_flag:
-        return newstate, flag
-    else:
-        return newstate
-
-
-def o_func(self, state):
+    Returns
+    -------
+    array or dict
+        Numpy array of parameters or dict of parameters
     """
-    observation function
-    """
-    return state @ self.hx[0].T + self.hx[1]
-
-
-def get_eps(self, x, xp):
-    return (x - self.t_func(xp)[0]) @ self.SIG
-
-
-def get_calib(self, parname=None, asdict=True, roundto=5, verbose=False):
 
     if not hasattr(self, 'par'):
         get_sys(self, verbose=verbose)
@@ -427,30 +273,63 @@ def get_calib(self, parname=None, asdict=True, roundto=5, verbose=False):
     pars_str = [str(p) for p in self.parameters]
 
     if parname is None:
-        pdict = dict(zip(pars_str, np.round(self.par, roundto)))
-        pfdict = dict(zip(pfnames, np.round(pffunc(self.par), roundto)))
+        # all with len(par_cand) = len(prior_arg)
+        if dummy is None and not asdict:
+            dummy = 'mode' if 'mode_x' in self.fdict.keys() else 'init'
+
+        if dummy is None and asdict:
+            par_cand = np.array(self.par)[self.prior_arg]
+        elif dummy is 'prior':
+            return prior_draw(self, nsample, seed, ncores, verbose)
+        elif dummy is 'mode':
+            par_cand = self.fdict['mode_x']
+        elif dummy is 'calib':
+            par_cand = self.par_fix[self.prior_arg]
+        elif dummy is 'prior_mean':
+            par_cand = [self.prior[pp][1] for pp in self.prior.keys()]
+        elif dummy is 'init':
+            par_cand = self.fdict['init_value']
+            for i in range(self.ndim):
+                if par_cand[i] is None:
+                    par_cand[i] = self.par_fix[self.prior_arg][i]
+        else:
+            parname = dummy
+
+    if parname is not None:
+        if parname in pars_str:
+            return self.par[pars_str.index(parname)]
+        elif parname in pfnames:
+            return pffunc(self.par)[pfnames.index(parname)]
+        elif dummy is not None:
+            raise KeyError(
+                "`which` must be in {'prior', 'mode', 'calib', 'prior_mean', 'init'")
+        else:
+            raise KeyError("Parameter '%s' does not exist." % parname)
+
+    if asdict and full:
+        par = self.par_fix.copy()
+        par[self.prior_arg] = par_cand
+
+        pdict = dict(zip(pars_str, np.round(par, roundto)))
+        pfdict = dict(zip(pfnames, np.round(pffunc(par), roundto)))
 
         return pdict, pfdict
 
-    elif parname is 'estim':
-        if asdict:
-            return dict(zip(np.array(pars_str)[self.prior_arg], np.round(self.par, roundto)[self.prior_arg]))
-        else:
-            return np.round(self.par, roundto)[self.prior_arg]
-    elif parname in pars_str:
-        return self.par[pars_str.index(parname)]
-    else:
-        if parname not in pfnames:
-            raise SyntaxError("Parameter '%s' does not exist." % parname)
-        return pffunc(self.par)[pfnames.index(parname)]
+    if asdict and not full:
+        return dict(zip(pars_str, np.round(par_cand, roundto)))
+
+    if nsample > 1:
+        par_cand = par_cand*(1 + 1e-3*np.random.randn(nsample, self.ndim))
+
+    return par_cand
 
 
-def set_calib(self, parname=None, setpar=None, roundto=5, autocompile=True, verbose=False):
+def set_par(self, dummy, setpar=None, roundto=5, autocompile=True, verbose=False):
     """Set the current parameter values.
 
     Parameter
     ---------
-    parname : str or array
+    dummy : str or array
         If an array, sets all parameters. If a string, `setpar` must be provided to define a value.
     setpar : float
         Parametervalue.
@@ -458,43 +337,41 @@ def set_calib(self, parname=None, setpar=None, roundto=5, autocompile=True, verb
         Define output precision. (default: 5)
     autocompile : bool
         If true, already defines the system and prprocesses matrics. (default: True)
-
-    Returns
-    -------
-    tuple(dict, dict)
-        First dict contains the parameters, second dict contains parameter functions. 
     """
 
-    if not hasattr(self, 'par'):
-        get_sys(self, verbose=verbose)
+    # if not hasattr(self, 'par'):
+    # get_sys(self, verbose=verbose)
 
     pfnames, pffunc = self.parafunc
     pars_str = [str(p) for p in self.parameters]
 
     if setpar is None:
-        if len(parname) == len(self.par_fix):
-            self.par = parname
-        elif len(parname) == len(self.prior_arg):
-            par = self.par_fix
-            par[self.prior_arg] = parname
-            self.par = par
+        if len(dummy) == len(self.par_fix):
+            par = dummy
+        elif len(dummy) == len(self.prior_arg):
+            par = self.par_fix.copy()
+            par[self.prior_arg] = dummy
         else:
-            raise SyntaxError(
-                "No parameter value `setpar` provieded. Maybe you just want to use `get_calib`?")
+            par = self.par_fix.copy()
+            par[self.prior_arg] = get_par(
+                self, dummy=dummy, parname=None, asdict=False, verbose=verbose)
 
-    elif parname in pars_str:
-        self.par[pars_str.index(parname)] = setpar
-
-    else:
-        if parname not in pfnames:
-            raise SyntaxError("Parameter '%s' does not exist." % parname)
+    elif dummy in pars_str:
+        par[pars_str.index(parname)] = setpar
+    elif parname in pfnames:
         raise SyntaxError(
             "Can not set parameter '%s' that is function of other parameters." % parname)
+    else:
+        raise SyntaxError("Parameter '%s' does not exist." % parname)
 
-    pdict = dict(zip(pars_str, np.round(self.par, roundto)))
-    pfdict = dict(zip(pfnames, np.round(pffunc(self.par), roundto)))
-
-    get_sys(self, par=list(self.par), verbose=verbose)
+    get_sys(self, par=list(par), verbose=verbose)
     self.preprocess(verbose=verbose)
 
-    return pdict, pfdict
+    if verbose:
+        pdict = dict(zip(pars_str, np.round(self.par, roundto)))
+        pfdict = dict(zip(pfnames, np.round(pffunc(self.par), roundto)))
+
+        print('[set_ar:]'.ljust(15, ' ') +
+              "Parameter(s):\n%s\n%s" % (pdict, pfdict))
+
+    return

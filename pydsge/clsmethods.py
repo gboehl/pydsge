@@ -8,8 +8,9 @@ from .parser import DSGE
 from .stats import summary, pmdm_report
 from .engine import preprocess, func_dispatch
 from .stuff import *
+from .tools import *
 from .filtering import *
-from .estimation import prep_estim, swarms, mcmc, kdes, get_par
+from .estimation import prep_estim, swarms, mcmc, kdes
 from .modesearch import pmdm, nlopt
 from .plots import posteriorplot, traceplot, swarm_rank, swarm_champ, swarm_plot
 from .processing import *
@@ -330,14 +331,13 @@ DSGE.pmdm_report = pmdm_report
 DSGE.mdd = mdd
 DSGE.get_data = get_data
 DSGE.get_tune = get_tune
-DSGE.get_par = get_par
 DSGE.calc_obs = calc_obs
 DSGE.obs = calc_obs
-# from stuff:
+# from stuff & tools:
+DSGE.get_par = get_par
+DSGE.set_par = set_par
 DSGE.func_dispatch = func_dispatch
 DSGE.get_sys = get_sys
-DSGE.get_calib = get_calib
-DSGE.set_calib = set_calib
 DSGE.t_func = t_func
 DSGE.o_func = o_func
 DSGE.get_eps = get_eps

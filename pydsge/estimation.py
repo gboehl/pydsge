@@ -2,13 +2,12 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
-import warnings
 import os
 import time
-from .stats import get_prior, mc_mean, summary, pmdm_report
-from grgrlib.stuff import GPP, map2arr
-import scipy.optimize as so
+from .stats import get_prior, mc_mean, summary
+from grgrlib.stuff import GPP
 import tqdm
+import cloudpickle as cpickle
 
 
 def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=False, constr_data=False, verbose=True):
@@ -33,6 +32,8 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
     verbose : bool/int, optional
         Whether display messages (and to which degree). Defaults to True.
     """
+
+    import warnings
 
     # all that should be reproducible
     np.random.seed(seed)
@@ -152,7 +153,7 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
                     print('[llike:]'.ljust(15, ' ') +
                           'Failure. Error msg: %s' % err)
                     if verbose > 1:
-                        print(self.get_calib(parname='estim'))
+                        print(self.get_calib(full=false))
 
                 np.random.set_state(random_state)
                 return -np.inf
@@ -187,112 +188,11 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
 
         return ll
 
-    global lprob_global
-    lprob_global = lprob
-
-    # also make functions accessible
+    # make functions accessible
     self.lprob = lprob
+    self.lprob_dump = cpickle.dumps(lprob)
     self.lprior = lprior
     self.llike = llike
-
-
-def get_par(self, which=None, nsample=1, seed=None, ncores=None, verbose=False):
-    """Get parameters
-
-    Parameters
-    ----------
-    which : str
-        Can be one of {'prior', 'mode', 'calib', 'pmean', 'init'}. 
-    nsample : int
-        Size of the prior sample
-    ncores : int
-        Number of cores used for prior sampling. Defaults to the number of available processors
-
-    Returns
-    -------
-    array
-        Numpy array of parameters
-    """
-
-    if which is None:
-        which = 'mode' if 'mode_x' in self.fdict.keys() else 'init'
-
-    if which is 'prior':
-
-        import pathos
-
-        if seed is None:
-            seed = 0
-
-        if verbose:
-            print('[estimation:]'.ljust(15, ' ') +
-                  'finding initial values for mcmc (distributed over prior):')
-
-        if not hasattr(self, 'ndim'):
-            self.prep_estim(load_R=True, verbose=verbose)
-
-        # globals are *evil*
-        global lprob_global
-
-        if ncores and ncores < 1:
-            self.lprob
-
-        frozen_prior = self.fdict['frozen_prior']
-
-        def runner(locseed):
-
-            if seed is not None:
-                np.random.seed(seed+locseed)
-
-            draw_prob = -np.inf
-
-            while np.isinf(draw_prob):
-                with warnings.catch_warnings(record=False):
-                    try:
-                        warnings.filterwarnings('error')
-                        rst = np.random.randint(2**16)
-                        pdraw = [pl.rvs(random_state=rst)
-                                 for pl in frozen_prior]
-                        draw_prob = lprob_global(pdraw, None, verbose)
-                    except:
-                        pass
-
-            return pdraw
-
-        if ncores is None:
-            ncores = pathos.multiprocessing.cpu_count()
-
-        if ncores > 1:
-            loc_pool = pathos.pools.ProcessPool(ncores)
-            loc_pool.clear()
-            mapper = loc_pool.imap
-        else:
-            mapper = map
-
-        print('[get_par:]'.ljust(15, ' ') + 'Sampling parameters from prior...')
-        pmap_sim = tqdm.tqdm(mapper(
-            runner, range(nsample)), total=nsample)
-        res = map2arr(pmap_sim)
-
-        return res
-
-    if which is 'mode':
-        par_cand = self.fdict['mode_x'][0]
-    if which is 'calib':
-        par_cand = self.par_fix[self.prior_arg]
-    if which is 'pmean':
-        par_cand = [prior[pp][1] for pp in prior.keys()]
-    if which is 'init':
-        par_cand = self.fdict['init_value']
-        for i in range(self.ndim):
-            if par_cand[i] is None:
-                par_cand[i] = self.par_fix[self.prior_arg][i]
-
-    try:
-        return par_cand*(1 + 1e-3*np.random.randn(nsample, self.ndim)*(nsample > 1))
-    except UnboundLocalError:
-        raise KeyError(
-            "`which` must be in {'prior', 'mode', 'calib', 'pmean', 'init'")
 
 
 def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=None, use_ring=False, nlopt=True, broadcasting=True, ncores=None, crit_mem=.85, autosave=100, update_freq=None, verbose=False, debug=False):
@@ -321,17 +221,8 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
     """
 
     import pygmo as pg
-    import dill
     import pathos
     import random
-
-    # get the maximum generation len of all algos for nlopt methods
-    maxalgogenlen = 1
-    for algo in algos:
-        st = algo.get_extra_info()
-        if 'Generations' in st:
-            genlen = int(st.split('\n')[0].split(' ')[-1])
-            maxalgogenlen = max(maxalgogenlen, genlen)
 
     if crit_mem is not None:
 
@@ -352,14 +243,10 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
     np.random.seed(seed)
     random.seed(seed)
 
-    # globals are *evil*
-    global lprob_global
+    lprob_global = cpickle.loads(self.lprob_dump)
+    def lprob(par): return lprob_global(par, linear, verbose)
 
-    # import the global function and pretend it is defined on top level
-    def lprob_local(par):
-        return lprob_global(par, linear, verbose)
-
-    sfunc_inst = GPP(lprob_local, self.fdict['prior_bounds'])
+    sfunc_inst = GPP(lprob, self.fdict['prior_bounds'])
 
     class Swarm(object):
 
@@ -397,7 +284,7 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
         @property
         def sname(self):
 
-            algo = dill.loads(self.algo)
+            algo = cpickle.loads(self.algo)
             aname = algo.get_name()
             sname = aname.split(':')[0]
 
@@ -436,12 +323,12 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
             algo = pg.algorithm(pg.nlopt(solver="cobyla"))
             print('[swarms:]'.ljust(15, ' ') + 'On seed ' +
                   str(seed)+' creating ' + algo.get_name())
-            algo.extract(pg.nlopt).maxeval = pop_size*maxalgogenlen
+            algo.extract(pg.nlopt).maxeval = pop_size
         elif nlopt and seed == 1:
             algo = pg.algorithm(pg.nlopt(solver="neldermead"))
             print('[swarms:]'.ljust(15, ' ') + 'On seed ' +
                   str(seed)+' creating ' + algo.get_name())
-            algo.extract(pg.nlopt).maxeval = pop_size*maxalgogenlen
+            algo.extract(pg.nlopt).maxeval = pop_size
         else:
             random.seed(seed)
             algo = random.sample(algos, 1)[0]
@@ -451,17 +338,17 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
 
         pop = pg.population(prob, size=pop_size, seed=seed)
         ser_pop = dump_pop(pop)
-        ser_algo = dill.dumps(algo)
+        ser_algo = cpickle.dumps(algo)
 
         return ser_algo, ser_pop
 
     def evolve(ser_algo, ser_pop):
 
-        algo = dill.loads(ser_algo)
+        algo = cpickle.loads(ser_algo)
         pop = load_pop(ser_pop)
         pop = algo.evolve(pop)
 
-        return dill.dumps(algo), dump_pop(pop),
+        return cpickle.dumps(algo), dump_pop(pop),
 
     if ncores is None:
         ncores = pathos.multiprocessing.cpu_count()
@@ -614,8 +501,8 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
                     1, -1), np.array(x_max_hist), np.array(name_max_hist).reshape(1, -1)
 
                 fas = fsw[:, 0].argmax()
-                self.fdict['swarms_x'] = xsw[fas]
-                self.fdict['swarms_f'] = fsw[fas]
+                self.fdict['swarms_mode_x'] = xsw[fas]
+                self.fdict['swarms_mode_f'] = fsw[fas]
 
                 if 'mode_f' in self.fdict.keys() and fsw[fas] < self.fdict['mode_f']:
                     if done:
@@ -696,28 +583,24 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
     if 'description' in self.fdict.keys():
         self.description = self.fdict['description']
 
-    # globals are *evil*
-    global lprob_global
-
-    # import the global function and pretend it is defined on top level
-    def lprob_local(par):
-        return lprob_global(par, linear, verbose)
+    lprob_global = cpickle.loads(self.lprob_dump)
+    def lprob(par): return lprob_global(par, linear, verbose)
 
     loc_pool = pathos.pools.ProcessPool(ncores)
     loc_pool.clear()
 
     if debug:
-        sampler = emcee.EnsembleSampler(nwalks, self.ndim, lprob_local)
+        sampler = emcee.EnsembleSampler(nwalks, self.ndim, lprob)
     else:
         sampler = emcee.EnsembleSampler(
-            nwalks, self.ndim, lprob_local, pool=loc_pool, backend=backend)
+            nwalks, self.ndim, lprob, pool=loc_pool, backend=backend)
 
     if p0 is not None:
         pass
     elif resume:
         p0 = sampler.get_last_sample()
     else:
-        p0 = get_par(self, nsample=nwalks, verbose=verbose)
+        p0 = self.get_par(asdict=False, nsample=nwalks, verbose=verbose)
 
     if not verbose:
         np.warnings.filterwarnings('ignore')
@@ -761,7 +644,7 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
             report(str(summary(sample, self.prior, tune=-update_freq).round(3)))
             report("Convergence stats: tau is in (%s,%s) (%s%s) and change is %s (%s0.01)." % (
                 min_tau, max_tau, tau_sign, cnt/50, dev_tau.round(3), dev_sign))
-            report("Likelihood at mean is %s, mean acceptance fraction is %s." % (lprob_local(np.mean(
+            report("Likelihood at mean is %s, mean acceptance fraction is %s." % (lprob(np.mean(
                 sample[-update_freq:], axis=(0, 1))).round(3), np.mean(sampler.acceptance_fraction[-update_freq:]).round(2)))
 
         if cnt and update_freq and not (cnt+1) % update_freq:
@@ -785,7 +668,7 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
 
     arg_max = log_probs.argmax()
     mode_f = log_probs.flat[arg_max]
-    mode_x = chain[arg_max]
+    mode_x = chain[arg_max].flatten()
 
     self.fdict['mcmc_mode_x'] = mode_x
     self.fdict['mcmc_mode_f'] = mode_f
@@ -835,21 +718,17 @@ def kdes(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
     if 'description' in self.fdict.keys():
         self.description = self.fdict['description']
 
-    # globals are *evil*
-    global lprob_global
-
-    # import the global function and pretend it is defined on top level
-    def lprob_local(par):
-        return lprob_global(par, linear, verbose)
+    lprob_global = cpickle.loads(self.lprob_dump)
+    def lprob(par): return lprob_global(par, linear, verbose)
 
     loc_pool = pathos.pools.ProcessPool(ncores)
     loc_pool.clear()
 
     if debug:
-        sampler = kombine.Sampler(nwalks, self.ndim, lprob_local)
+        sampler = kombine.Sampler(nwalks, self.ndim, lprob)
     else:
         sampler = kombine.Sampler(
-            nwalks, self.ndim, lprob_local, pool=loc_pool)
+            nwalks, self.ndim, lprob, pool=loc_pool)
 
     if p0 is not None:
         pass
@@ -857,7 +736,7 @@ def kdes(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
         # should work, but not tested
         p0 = self.fdict['kdes_chain'][-1]
     else:
-        p0 = get_par(self, nsample=nwalks, verbose=verbose)
+        p0 = self.get_par(self, nsample=nwalks, verbose=verbose)
 
     if not verbose:
         np.warnings.filterwarnings('ignore')

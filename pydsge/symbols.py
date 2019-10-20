@@ -69,11 +69,11 @@ class TSymbol(sympy.Symbol):
 
     def __getstate__(self):
         return {
-            'date': self.date,
-            'name': self.name,
-            'exp_date': self.exp_date,
-            'is_commutative': self.is_commutative,
-            '_mhash': self._mhash
+            # 'date': self.date,
+            # 'name': self.name,
+            # 'exp_date': self.exp_date,
+            # 'is_commutative': self.is_commutative,
+            # '_mhash': self._mhash
         }
 
     def class_key(self):

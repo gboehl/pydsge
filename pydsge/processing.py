@@ -4,8 +4,9 @@
 import time
 import pathos
 import os.path
-import numpy as np
 import tqdm
+import numpy as np
+import cloudpickle as cpickle
 
 
 @property
@@ -25,7 +26,7 @@ def mask(self, verbose=False):
     return msk.rename(columns=dict(zip(self.observables, self.shocks)))[:-1]
 
 
-def parallellizer(sample, verbose=True, func=None, ncores=None, **args):
+def parallellizer(sample, func_dump, verbose=True, ncores=None, **args):
     """Runs global function `runner` in parallel. 
 
     Necessary for dill to avoid pickling of model objects. A dirty hack...
@@ -44,16 +45,15 @@ def parallellizer(sample, verbose=True, func=None, ncores=None, **args):
     import pathos
     from grgrlib import map2arr
 
-    global runner
+    func = cpickle.loads(func_dump)
 
     def runner_loc(x):
-        return runner(x, **args)
+        return func(x, **args)
 
     mapper = map
     if ncores is None or ncores > 1:
         pool = pathos.pools.ProcessPool(ncores)
         pool.clear()
-        runner_loc = func
         mapper = pool.imap
 
     wrap = tqdm.tqdm if verbose else lambda x: x
@@ -125,14 +125,13 @@ def sampled_extract(self, source=None, k=1, seed=None, ncores=None, verbose=Fals
     except KeyError:
         eps_old = None
 
-    sample = get_sample(self, source=source, k=k, seed=seed, ncores=ncores, verbose=verbose)
-
-    global runner
+    sample = get_sample(self, source=source, k=k, seed=seed,
+                        ncores=ncores, verbose=verbose)
 
     def runner(par):
 
         self.set_calib(par, autocompile=False)
-        self.get_sys(par=par_active_lst, reduce_sys=True, verbose=verbose > 1)
+        self.get_sys(verbose=verbose > 1)
         self.preprocess(l_max=3, k_max=16, verbose=verbose > 1)
 
         self.filter.Q = self.QQ(self.par) @ self.QQ(self.par)
@@ -147,7 +146,8 @@ def sampled_extract(self, source=None, k=1, seed=None, ncores=None, verbose=Fals
 
         return mean, cov, eps
 
-    means, covs, eps = parallellizer(sample, func=runner, ncores=ncores)
+    runner_dump = cpickle.dumps(runner)
+    means, covs, eps = parallellizer(sample, runner_dump, ncores=ncores)
 
     if eps_old is not None:
         means = np.concatenate((means_old, means), 0)
@@ -166,13 +166,12 @@ def sampled_sim(self, k=1, source=None, mask=None, seed=None, ncores=None, verbo
     if source is None:
         source = 'posterior'
     if source in ('prior', 'posterior'):
-        sample = get_sample(self, source=source, k=k, seed=seed, ncores=ncores, verbose=verbose)
+        sample = get_sample(self, source=source, k=k,
+                            seed=seed, ncores=ncores, verbose=verbose)
         means, covs, eps = sampled_extract(
-            self, source=source, k=k, seed=seed, verbose=verbose)
+            self, source=source, k=k, seed=seed, ncores=ncores, verbose=verbose)
     else:
         raise NotImplementedError('No other sampling methods implemented.')
-
-    global runner
 
     def runner(arg, mask):
 
@@ -186,7 +185,9 @@ def sampled_sim(self, k=1, source=None, mask=None, seed=None, ncores=None, verbo
 
         return res
 
-    res = parallellizer(list(zip(sample[:k], eps[:k], means[:k, 0])), mask=mask, func=runner, ncores=ncores)
+    runner_dump = cpickle.dumps(runner)
+    res = parallellizer(list(
+        zip(sample[:k], eps[:k], means[:k, 0])), runner_dump, mask=mask, ncores=ncores)
 
     return res
 
@@ -195,9 +196,8 @@ def sampled_irfs(self, shocklist, k=1, source=None, seed=None, ncores=None, verb
 
     if source is None:
         source = 'posterior'
-    sample = get_sample(self, source=source, k=k, seed=seed, ncores=ncores, verbose=verbose)
-
-    global runner
+    sample = get_sample(self, source=source, k=k, seed=seed,
+                        ncores=ncores, verbose=verbose)
 
     def runner(par):
 
