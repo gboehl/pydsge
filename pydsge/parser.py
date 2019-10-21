@@ -9,8 +9,10 @@ import sympy
 import time
 import numpy as np
 import cloudpickle as cpickle
+from copy import copy
 from .symbols import Variable, Equation, Shock, Parameter, TSymbol
 from sympy.matrices import Matrix, zeros
+
 
 
 class DSGE(dict):
@@ -347,8 +349,6 @@ class DSGE(dict):
     @classmethod
     def read(cls, mfile, verbose=False):
 
-        from copy import copy
-
         global processed_raw_model
 
         if verbose:
@@ -401,15 +401,17 @@ class DSGE(dict):
 
         mtxt = str(fdict['yaml_raw'])
 
-
         try:
             pmodel = cpickle.loads(fdict['model_dump'])
         except:
+            use_cached = False
+
             if 'processed_raw_model' in globals():
                 use_cached = processed_raw_model.fdict['yaml_raw'] == mtxt
 
             if use_cached:
                 pmodel = copy(processed_raw_model)
+            else:
                 pmodel = cls.parse(mtxt)
 
                 pmodel.fdict = fdict

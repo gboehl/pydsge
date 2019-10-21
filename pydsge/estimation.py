@@ -189,8 +189,8 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
         return ll
 
     ## using cpickle causes mem leakage
-    global lprob_global
-    lprob_global = lprob
+    # global lprob_global
+    # lprob_global = lprob
 
     # make functions accessible
     self.lprob = lprob
@@ -248,14 +248,10 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
     random.seed(seed)
 
     # globals are *evil*
-    global lprob_global
+    # global lprob_global
+    lprob_global = cpickle.loads(self.lprob_dump)
 
-    # import the global function and pretend it is defined on top level
-    def lprob(par):
-        return lprob_global(par, linear, verbose)
-
-    # lprob_global = cpickle.loads(self.lprob_dump)
-    # def lprob(par): return lprob_global(par, linear, verbose)
+    def lprob(par): return lprob_global(par, linear, verbose)
 
     sfunc_inst = GPP(lprob, self.fdict['prior_bounds'])
 
@@ -595,17 +591,15 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
         self.description = self.fdict['description']
 
     # globals are *evil*
-    global lprob_global
+    # global lprob_global
+    lprob_global = cpickle.loads(self.lprob_dump)
 
-    # import the global function and pretend it is defined on top level
-    def lprob(par):
-        return lprob_global(par, linear, verbose)
-
-    # lprob_global = cpickle.loads(self.lprob_dump)
-    # lprob = lambda par: lprob_global(par, linear, verbose)
+    def lprob(par): return lprob_global(par, linear, verbose)
 
     loc_pool = pathos.pools.ProcessPool(ncores)
     loc_pool.clear()
+    # from loky import get_reusable_executor
+    # loc_pool = get_reusable_executor(max_workers=ncores, timeout=2)
 
     if debug:
         sampler = emcee.EnsembleSampler(nwalks, self.ndim, lprob)
@@ -737,14 +731,10 @@ def kdes(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
         self.description = self.fdict['description']
 
     # globals are *evil*
-    global lprob_global
+    # global lprob_global
+    lprob_global = cpickle.loads(self.lprob_dump)
 
-    # import the global function and pretend it is defined on top level
-    def lprob(par):
-        return lprob_global(par, linear, verbose)
-
-    # lprob_global = cpickle.loads(self.lprob_dump)
-    # def lprob(par): return lprob_global(par, linear, verbose)
+    def lprob(par): return lprob_global(par, linear, verbose)
 
     loc_pool = pathos.pools.ProcessPool(ncores)
     loc_pool.clear()
