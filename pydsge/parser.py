@@ -414,10 +414,10 @@ class DSGE(dict):
             else:
                 pmodel = cls.parse(mtxt)
 
-                pmodel.fdict = fdict
-                pmodel.name = str(fdict['name'])
-                pmodel.path = os.path.dirname(dfile) + os.sep
-                pmodel.fdict['dfile'] = dfile
+        pmodel.fdict = fdict
+        pmodel.name = str(fdict['name'])
+        pmodel.path = os.path.dirname(dfile) + os.sep
+        pmodel.fdict['dfile'] = dfile
 
         try:
             pmodel.data = cpickle.loads(fdict['data'])

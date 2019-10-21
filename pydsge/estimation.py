@@ -530,10 +530,7 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
                 if autosave:
                     self.save(verbose=verbose)
 
-    pool.terminate()
     pbar.close()
-
-    self.overlord = overlord
 
     return xsw
 
@@ -598,8 +595,6 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
 
     loc_pool = pathos.pools.ProcessPool(ncores)
     loc_pool.clear()
-    # from loky import get_reusable_executor
-    # loc_pool = get_reusable_executor(max_workers=ncores, timeout=2)
 
     if debug:
         sampler = emcee.EnsembleSampler(nwalks, self.ndim, lprob)

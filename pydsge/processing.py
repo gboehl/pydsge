@@ -21,7 +21,7 @@ def mask(self, verbose=False):
     try:
         self.observables
     except AttributeError:
-        self.get_sys(verbose=verbose)
+        self.get_sys(self.par, verbose=verbose)
 
     return msk.rename(columns=dict(zip(self.observables, self.shocks)))[:-1]
 
@@ -43,7 +43,13 @@ def parallellizer(sample, func_dump, verbose=True, ncores=None, **args):
     import pathos
     from grgrlib import map2arr
 
-    func = cpickle.loads(func_dump)
+    if func_dump is None:
+        global runner
+        func = runner
+        print('hier')
+        print(func)
+    else:
+        func = cpickle.loads(func_dump)
 
     def runner_loc(x):
         return func(x, **args)
@@ -128,8 +134,8 @@ def sampled_extract(self, source=None, k=1, seed=None, ncores=None, verbose=Fals
 
     def runner(par):
 
-        self.set_calib(par, autocompile=False)
-        self.get_sys(verbose=verbose > 1)
+        self.set_par(par, autocompile=False)
+        self.get_sys(self.par, verbose=verbose > 1)
         self.preprocess(l_max=3, k_max=16, verbose=verbose > 1)
 
         self.filter.Q = self.QQ(self.par) @ self.QQ(self.par)
@@ -144,8 +150,10 @@ def sampled_extract(self, source=None, k=1, seed=None, ncores=None, verbose=Fals
 
         return mean, cov, eps
 
+    print('[sampled_extract:]'.ljust(15, ' ') + 'Starting extaction of shocks from %s...' %source)
+
     runner_dump = cpickle.dumps(runner)
-    means, covs, eps = parallellizer(sample, runner_dump, ncores=ncores)
+    means, covs, eps = parallellizer(list(sample), runner_dump, ncores=ncores)
 
     if eps_old is not None:
         means = np.concatenate((means_old, means), 0)
@@ -176,7 +184,7 @@ def sampled_sim(self, k=1, source=None, mask=None, seed=None, ncores=None, verbo
         par, eps, inits = arg
 
         self.set_calib(par, autocompile=False)
-        self.get_sys(verbose=verbose)
+        self.get_sys(self.par, verbose=verbose)
         self.preprocess(verbose=verbose)
 
         res = self.simulate(eps=eps, mask=mask, state=inits, verbose=verbose)

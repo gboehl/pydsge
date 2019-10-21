@@ -376,11 +376,3 @@ DSGE.mask = mask
 DSGE.sampled_extract = sampled_extract
 DSGE.sampled_sim = sampled_sim
 DSGE.sampled_irfs = sampled_irfs
-
-"""
-def chain_masker(self):
-    iss = np.zeros(len(self.prior_names), dtype=bool)
-    for v in self.prior_names:
-        iss = iss | (self.prior_names == v)
-    return iss
-"""
