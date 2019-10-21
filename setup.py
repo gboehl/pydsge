@@ -19,5 +19,6 @@ setup(
             'pyaml',
             'pygmo',
             'grgrlib',
+            'cloudpickle',
          ],
    )

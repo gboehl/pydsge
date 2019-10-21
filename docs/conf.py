@@ -50,7 +50,7 @@ html_theme = 'alabaster'
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
 
-autodoc_mock_imports = ['grgrlib', 'econsieve', 'econsieve.stats', 'particles', 'numpy', 'pandas', 'emcee', 'kombine', 'pathos', 'yaml', 'sympy', 'scipy', 'numba', 'tqdm', 'dill', 'pygmo', 'matplotlib']
+autodoc_mock_imports = ['grgrlib', 'econsieve', 'econsieve.stats', 'particles', 'numpy', 'pandas', 'emcee', 'kombine', 'pathos', 'yaml', 'sympy', 'scipy', 'numba', 'tqdm', 'pygmo', 'matplotlib', 'cloudpickle']
 
 autoclass_content = 'both'
 autodoc_member_order = 'groupwise'
