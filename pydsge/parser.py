@@ -8,6 +8,7 @@ import itertools
 import sympy
 import time
 import numpy as np
+import cloudpickle as cpickle
 from .symbols import Variable, Equation, Shock, Parameter, TSymbol
 from sympy.matrices import Matrix, zeros
 
@@ -347,6 +348,7 @@ class DSGE(dict):
     def read(cls, mfile, verbose=False):
 
         from copy import copy
+
         global processed_raw_model
 
         if verbose:
@@ -365,12 +367,14 @@ class DSGE(dict):
             pmodel = copy(processed_raw_model)
 
         else:
-
             pmodel = cls.parse(mtxt)
 
             pmodel.fdict = {}
             pmodel.fdict['yaml_raw'] = mtxt
             pmodel.path = os.path.dirname(mfile) + os.sep
+
+            pmodel_dump = cpickle.dumps(pmodel)
+            pmodel.fdict['model_dump'] = pmodel_dump
 
             processed_raw_model = copy(pmodel)
 
@@ -388,7 +392,7 @@ class DSGE(dict):
     @classmethod
     def load(cls, dfile, verbose=False):
 
-        import dill
+        global processed_raw_model
 
         if verbose:
             st = time.time()
@@ -397,15 +401,24 @@ class DSGE(dict):
 
         mtxt = str(fdict['yaml_raw'])
 
-        pmodel = cls.parse(mtxt)
-
-        pmodel.fdict = fdict
-        pmodel.name = str(fdict['name'])
-        pmodel.path = os.path.dirname(dfile) + os.sep
-        pmodel.fdict['dfile'] = dfile
 
         try:
-            pmodel.data = dill.loads(fdict['data'])
+            pmodel = cpickle.loads(fdict['model_dump'])
+        except:
+            if 'processed_raw_model' in globals():
+                use_cached = processed_raw_model.fdict['yaml_raw'] == mtxt
+
+            if use_cached:
+                pmodel = copy(processed_raw_model)
+                pmodel = cls.parse(mtxt)
+
+                pmodel.fdict = fdict
+                pmodel.name = str(fdict['name'])
+                pmodel.path = os.path.dirname(dfile) + os.sep
+                pmodel.fdict['dfile'] = dfile
+
+        try:
+            pmodel.data = cpickle.loads(fdict['data'])
         except:
             pass
 

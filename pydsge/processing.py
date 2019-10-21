@@ -27,9 +27,7 @@ def mask(self, verbose=False):
 
 
 def parallellizer(sample, func_dump, verbose=True, ncores=None, **args):
-    """Runs global function `runner` in parallel. 
-
-    Necessary for dill to avoid pickling of model objects. A dirty hack...
+    """Runs the `func_dump` in parallel. 
 
     Parameters
     ----------
