@@ -183,7 +183,7 @@ def sampled_sim(self, k=1, source=None, mask=None, seed=None, ncores=None, verbo
 
         par, eps, inits = arg
 
-        self.set_calib(par, autocompile=False)
+        self.set_par(par, autocompile=False)
         self.get_sys(self.par, verbose=verbose)
         self.preprocess(verbose=verbose)
 
@@ -207,13 +207,14 @@ def sampled_irfs(self, shocklist, k=1, source=None, seed=None, ncores=None, verb
 
     def runner(par):
 
-        self.set_calib(par, autocompile=False)
+        self.set_par(par, autocompile=False)
         self.preprocess(verbose=verbose)
 
         res = self.irfs(shocklist, wannasee='full', verbose=verbose)
 
         return res[0], res[2][1:]
 
-    res = parallellizer(list(sample)[:k], func=runner, ncores=ncores)
+    runner_dump = cpickle.dumps(runner)
+    res = parallellizer(list(sample)[:k], runner_dump, ncores=ncores)
 
     return res
