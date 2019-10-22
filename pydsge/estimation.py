@@ -87,7 +87,7 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
               (len(self.vv), len(self.observables)))
 
     prior = self.prior
-    par_fix = self.par_fix
+    par_fix = self.par_fix.copy()
     prior_arg = self.prior_arg
 
     # add to class so that it can be stored later
@@ -188,13 +188,12 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
 
         return ll
 
-    ## using cpickle causes mem leakage
+    ## old and evil way, kept for reference
     # global lprob_global
     # lprob_global = lprob
 
-    # make functions accessible
+    ## make functions accessible
     self.lprob = lprob
-    self.lprob_dump = cpickle.dumps(lprob)
     self.lprior = lprior
     self.llike = llike
 
@@ -249,7 +248,8 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
 
     # globals are *evil*
     # global lprob_global
-    lprob_global = cpickle.loads(self.lprob_dump)
+    lprob_dump = cpickle.dumps(self.lprob)
+    lprob_global = cpickle.loads(lprob_dump)
 
     def lprob(par): return lprob_global(par, linear, verbose)
 
@@ -589,7 +589,8 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
 
     # globals are *evil*
     # global lprob_global
-    lprob_global = cpickle.loads(self.lprob_dump)
+    lprob_dump = cpickle.dumps(self.lprob)
+    lprob_global = cpickle.loads(lprob_dump)
 
     def lprob(par): return lprob_global(par, linear, verbose)
 
@@ -727,7 +728,8 @@ def kdes(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
 
     # globals are *evil*
     # global lprob_global
-    lprob_global = cpickle.loads(self.lprob_dump)
+    lprob_dump = cpickle.dumps(self.lprob)
+    lprob_global = cpickle.loads(lprob_dump)
 
     def lprob(par): return lprob_global(par, linear, verbose)
 

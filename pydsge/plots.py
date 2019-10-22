@@ -385,7 +385,7 @@ def posteriorplot(trace, varnames=None, tune=0, figsize=None, max_no=4, text_siz
     return figs, axs
 
 
-def swarm_champ(self, ax=None, *plotargs):
+def swarm_champ(self, ax=None, **plotargs):
 
     if ax is None:
         fig, ax = plt.subplots()
@@ -394,7 +394,7 @@ def swarm_champ(self, ax=None, *plotargs):
 
     fs = self.fdict['swarm_history'][0]
 
-    ax.plot(fs.flatten(), lw=2, color='maroon')
+    ax.plot(fs.flatten(), lw=2, **plotargs)
 
     if fig is not None:
         fig.tight_layout()
@@ -404,13 +404,13 @@ def swarm_champ(self, ax=None, *plotargs):
     return ax
 
 
-def swarm_plot(self, ax=None, *pplotargs):
+def swarm_plot(self, ax=None, **pplotargs):
 
     from grgrlib import pplot
 
     xs = self.fdict['swarm_history'][1]
 
-    return pplot(xs, labels=self.prior_names, *pplotargs)
+    return pplot(xs, labels=self.prior_names, ax=ax, **pplotargs)
 
 
 def swarm_rank(self, figsize=None, ax=None):

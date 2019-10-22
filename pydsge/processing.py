@@ -43,13 +43,7 @@ def parallellizer(sample, func_dump, verbose=True, ncores=None, **args):
     import pathos
     from grgrlib import map2arr
 
-    if func_dump is None:
-        global runner
-        func = runner
-        print('hier')
-        print(func)
-    else:
-        func = cpickle.loads(func_dump)
+    func = cpickle.loads(func_dump)
 
     def runner_loc(x):
         return func(x, **args)
