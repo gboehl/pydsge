@@ -227,6 +227,14 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
     import pathos
     import random
 
+    ## get the maximum generation len of all algos for nlopt methods
+    maxalgogenlen = 1
+    for algo in algos:
+        st = algo.get_extra_info()
+        if 'Generations' in st:
+            genlen = int(st.split('\n')[0].split(' ')[-1])
+            maxalgogenlen = max(maxalgogenlen, genlen)
+
     if crit_mem is not None:
 
         # TODO: one of the functions exposed by C++ leaks into memory...
@@ -330,12 +338,12 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
             algo = pg.algorithm(pg.nlopt(solver="cobyla"))
             print('[swarms:]'.ljust(15, ' ') + 'On seed ' +
                   str(seed)+' creating ' + algo.get_name())
-            algo.extract(pg.nlopt).maxeval = pop_size
+            algo.extract(pg.nlopt).maxeval = pop_size*maxalgogenlen
         elif nlopt and seed == 1:
             algo = pg.algorithm(pg.nlopt(solver="neldermead"))
             print('[swarms:]'.ljust(15, ' ') + 'On seed ' +
                   str(seed)+' creating ' + algo.get_name())
-            algo.extract(pg.nlopt).maxeval = pop_size
+            algo.extract(pg.nlopt).maxeval = pop_size*maxalgogenlen
         else:
             random.seed(seed)
             algo = random.sample(algos, 1)[0]
