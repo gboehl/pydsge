@@ -154,6 +154,7 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
                           'Failure. Error msg: %s' % err)
                     if verbose > 1:
                         print(self.get_calib(full=false))
+                        self.box_check(self.par)
 
                 np.random.set_state(random_state)
                 return -np.inf

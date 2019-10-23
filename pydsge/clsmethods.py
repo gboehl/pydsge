@@ -323,6 +323,31 @@ def mdd(self, mode_f=None, inv_hess=None, verbose=False):
     return mdd
 
 
+def box_check(self, par=None):
+    """Check if parameterset lies outside the box constraints
+
+    Parameter
+    ---------
+    par : array or list, optional
+        The parameter set to check
+    """
+
+    if par is None:
+        par = self.par
+
+    for i, name in enumerate(self.fdict['prior_names']):
+
+        lb, ub = self.fdict['prior_bounds']
+
+        if par[i] < lb[i]:
+            print('[box_check:]'.ljust(15, ' ') + 'Parameter %s of %s lower than lb of %s.' %(name, par[i], lb[i]))
+
+        if par[i] > ub[i]:
+            print('[box_check:]'.ljust(15, ' ') + 'Parameter %s of %s higher than ub of %s.' %(name, par[i], ub[i])) 
+
+    return 
+
+
 DSGE.save = save_meta
 DSGE.swarm_summary = swarm_summary
 DSGE.mcmc_summary = mcmc_summary
@@ -333,6 +358,7 @@ DSGE.get_data = get_data
 DSGE.get_tune = get_tune
 DSGE.calc_obs = calc_obs
 DSGE.obs = calc_obs
+DSGE.box_check = box_check
 # from stuff & tools:
 DSGE.get_par = get_par
 DSGE.set_par = set_par
