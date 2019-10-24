@@ -190,8 +190,8 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
         return ll
 
     ## old and evil way, kept for reference
-    # global lprob_global
-    # lprob_global = lprob
+    global lprob_global
+    lprob_global = lprob
 
     ## make functions accessible
     self.lprob = lprob
@@ -260,9 +260,9 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
     random.seed(seed)
 
     # globals are *evil*
-    # global lprob_global
-    lprob_dump = cpickle.dumps(self.lprob)
-    lprob_global = cpickle.loads(lprob_dump)
+    global lprob_global
+    # lprob_dump = cpickle.dumps(self.lprob)
+    # lprob_global = cpickle.loads(lprob_dump)
 
     def lprob(par): return lprob_global(par, linear, verbose)
 
@@ -601,9 +601,9 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
         self.description = self.fdict['description']
 
     # globals are *evil*
-    # global lprob_global
-    lprob_dump = cpickle.dumps(self.lprob)
-    lprob_global = cpickle.loads(lprob_dump)
+    global lprob_global
+    # lprob_dump = cpickle.dumps(self.lprob)
+    # lprob_global = cpickle.loads(lprob_dump)
 
     def lprob(par): return lprob_global(par, linear, verbose)
 
@@ -740,9 +740,9 @@ def kdes(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
         self.description = self.fdict['description']
 
     # globals are *evil*
-    # global lprob_global
-    lprob_dump = cpickle.dumps(self.lprob)
-    lprob_global = cpickle.loads(lprob_dump)
+    global lprob_global
+    # lprob_dump = cpickle.dumps(self.lprob)
+    # lprob_global = cpickle.loads(lprob_dump)
 
     def lprob(par): return lprob_global(par, linear, verbose)
 
