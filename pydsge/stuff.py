@@ -205,7 +205,8 @@ def prior_draw(self, nsample, seed=None, ncores=None, verbose=False):
     if not hasattr(self, 'ndim'):
         self.prep_estim(load_R=True, verbose=verbose)
 
-    lprob = cpickle.loads(self.lprob_dump)
+    lprob_dump = cpickle.dums(self.lprob)
+    lprob = cpickle.loads(lprob_dump)
     frozen_prior = self.fdict['frozen_prior']
 
     def runner(locseed):
@@ -238,6 +239,11 @@ def prior_draw(self, nsample, seed=None, ncores=None, verbose=False):
     print('[get_cand:]'.ljust(15, ' ') + 'Sampling parameters from prior...')
     pmap_sim = tqdm.tqdm(mapper(
         runner, range(nsample)), total=nsample)
+
+    ## to circumvent mem overflow
+    if ncores > 1:
+        loc_pool.close()
+        loc_pool.join()
 
     return map2arr(pmap_sim)
 
@@ -357,7 +363,8 @@ def set_par(self, dummy, setpar=None, roundto=5, autocompile=True, verbose=False
                 self, dummy=dummy, parname=None, asdict=False, verbose=verbose)
 
     elif dummy in pars_str:
-        par[pars_str.index(parname)] = setpar
+        par = self.par_fix.copy()
+        par[pars_str.index(dummy)] = setpar
     elif parname in pfnames:
         raise SyntaxError(
             "Can not set parameter '%s' that is function of other parameters." % parname)

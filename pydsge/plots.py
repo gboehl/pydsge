@@ -418,7 +418,9 @@ def swarm_rank(self, figsize=None, ax=None):
     from collections import Counter
 
     names = self.fdict['swarm_history'][2][0]
-    names = Counter(names)
+    alls = self.fdict['swarms'][2][0]
+    names = Counter(list(names) + list(alls))
+    names = {key: names[key] - 1 for key in names.keys()}
 
     if figsize is None:
         figsize = (8, .3*len(names))

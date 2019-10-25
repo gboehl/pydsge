@@ -59,6 +59,10 @@ def parallellizer(sample, func_dump, verbose=True, ncores=None, **args):
     res = wrap(mapper(runner_loc, sample), unit=' sample(s)',
                total=len(sample), dynamic_ncols=True)
 
+    if ncores is None or ncores > 1:
+        pool.close()
+        pool.join()
+
     return map2arr(res)
 
 
