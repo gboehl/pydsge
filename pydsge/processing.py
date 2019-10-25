@@ -6,7 +6,8 @@ import pathos
 import os.path
 import tqdm
 import numpy as np
-import cloudpickle as cpickle
+# import cloudpickle as cpickle
+import dill as cpickle
 
 
 @property
@@ -44,6 +45,9 @@ def parallellizer(sample, func_dump, verbose=True, ncores=None, **args):
     from grgrlib import map2arr
 
     func = cpickle.loads(func_dump)
+
+    global runner
+    func = runner
 
     def runner_loc(x):
         return func(x, **args)
@@ -130,6 +134,8 @@ def sampled_extract(self, source=None, k=1, seed=None, ncores=None, verbose=Fals
     sample = get_sample(self, source=source, k=k, seed=seed,
                         ncores=ncores, verbose=verbose)
 
+    global runner
+
     def runner(par):
 
         self.set_par(par, autocompile=False)
@@ -177,6 +183,8 @@ def sampled_sim(self, k=1, source=None, mask=None, seed=None, ncores=None, verbo
     else:
         raise NotImplementedError('No other sampling methods implemented.')
 
+    global runner
+
     def runner(arg, mask):
 
         par, eps, inits = arg
@@ -202,6 +210,8 @@ def sampled_irfs(self, shocklist, k=1, source=None, seed=None, ncores=None, verb
         source = 'posterior'
     sample = get_sample(self, source=source, k=k, seed=seed,
                         ncores=ncores, verbose=verbose)
+
+    global runner
 
     def runner(par):
 
