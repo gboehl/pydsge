@@ -205,8 +205,11 @@ def prior_draw(self, nsample, seed=None, ncores=None, verbose=False):
     if not hasattr(self, 'ndim'):
         self.prep_estim(load_R=True, verbose=verbose)
 
-    lprob_dump = cpickle.dums(self.lprob)
-    lprob = cpickle.loads(lprob_dump)
+    if ncores > 1:
+        lprob_dump = cpickle.dumps(self.lprob)
+        lprob = cpickle.loads(lprob_dump)
+    else:
+        lprob = self.lprob
     frozen_prior = self.fdict['frozen_prior']
 
     def runner(locseed):

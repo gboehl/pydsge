@@ -157,7 +157,9 @@ def sampled_extract(self, source=None, k=1, seed=None, ncores=None, verbose=Fals
     print('[sampled_extract:]'.ljust(15, ' ') + 'Starting extaction of shocks from %s...' %source)
 
     runner_dump = cpickle.dumps(runner)
-    means, covs, eps = parallellizer(list(sample), runner_dump, ncores=ncores)
+    means, covs, eps = parallellizer(list(sample)[:k], runner_dump, ncores=ncores)
+
+    print('[sampled_extract:]'.ljust(15, ' ') + 'Done extaction of shocks from %s...' %source)
 
     if eps_old is not None:
         means = np.concatenate((means_old, means), 0)
