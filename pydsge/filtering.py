@@ -74,7 +74,7 @@ def get_ll(self, **args):
     return run_filter(self, smoother=False, get_ll=True, **args)
 
 
-def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, constr_data=None, verbose=False):
+def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, constr_data=None, sobol=True, verbose=False):
 
     if verbose:
         st = time.time()
@@ -140,7 +140,7 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, co
     else:
 
         res = self.filter.batch_filter(
-            self.Z, calc_ll=get_ll, store=smoother, verbose=verbose)
+            self.Z, calc_ll=get_ll, store=smoother, sobol=sobol, verbose=verbose)
 
         if smoother:
             res = self.filter.rts_smoother(res, rcond=rcond)

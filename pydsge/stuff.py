@@ -366,7 +366,7 @@ def set_par(self, dummy, setpar=None, roundto=5, autocompile=True, verbose=False
                 self, dummy=dummy, parname=None, asdict=False, verbose=verbose)
 
     elif dummy in pars_str:
-        par = self.par_fix.copy()
+        par = self.par.copy() if hasattr(self, 'par') else self.par_fix.copy()
         par[pars_str.index(dummy)] = setpar
     elif parname in pfnames:
         raise SyntaxError(
