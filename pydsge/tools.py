@@ -58,7 +58,7 @@ def get_eps(self, x, xp):
     return (x - self.t_func(xp)[0]) @ self.SIG
 
 
-def irfs(self, shocklist, wannasee=None, linear=False, verbose=False):
+def irfs(self, shocklist, wannasee=None, horizon=30, linear=False, verbose=False):
 
     # REWRITE!!
     # returns time series of impule responses
@@ -91,7 +91,7 @@ def irfs(self, shocklist, wannasee=None, linear=False, verbose=False):
 
     st = time.time()
 
-    for t in range(30):
+    for t in range(horizon):
 
         shk_vec = np.zeros(len(self.shocks))
         for vec in shocklist:

@@ -63,9 +63,8 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
 
     self.Z = np.array(self.data)
 
-    if not hasattr(self, 'sys'):
+    if not hasattr(self, 'sys') or not hasattr(self, 'precalc_mat'):
         self.get_sys(reduce_sys=True, verbose=verbose > 1)
-    if not hasattr(self, 'precalc_mat'):
         self.preprocess(verbose=verbose > 1)
 
     self.create_filter(
