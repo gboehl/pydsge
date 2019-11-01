@@ -186,8 +186,6 @@ class DSGE(dict):
         sub_var = self['var_ordering']
         fvarl = [l(+1) for l in sub_var]
         lvarl = [l(-1) for l in sub_var]
-        print(fvarl)
-        print(lvarl)
 
         no_var = len(sub_var)
         no_lvar = len(lvarl)

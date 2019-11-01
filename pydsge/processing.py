@@ -102,7 +102,7 @@ def get_sample(self, source=None, k=1, seed=None, ncores=None, verbose=False):
         sample = random.choices(sample, k=k)
 
     else:
-        sample = self.get_par('prior', nsample=k, seed=seed, ncores=ncores)
+        sample = self.get_par('prior', nsample=k, seed=seed, ncores=ncores, verbose=verbose)
 
     if sample_old is not None:
         sample = np.concatenate((sample_old, sample), 0)
@@ -206,7 +206,7 @@ def sampled_sim(self, k=1, source=None, mask=None, seed=None, ncores=None, verbo
     return res
 
 
-def sampled_irfs(self, shocklist, k=1, source=None, seed=None, ncores=None, verbose=False):
+def sampled_irfs(self, shocklist, k=1, source=None, seed=None, ncores=None, verbose=False, **irfsargs):
 
     if source is None:
         source = 'posterior'
@@ -220,7 +220,7 @@ def sampled_irfs(self, shocklist, k=1, source=None, seed=None, ncores=None, verb
         self.set_par(par, autocompile=False)
         self.preprocess(verbose=verbose)
 
-        res = self.irfs(shocklist, wannasee='full', verbose=verbose)
+        res = self.irfs(shocklist, wannasee='full', verbose=verbose, **irfsargs)
 
         return res[0], res[2][1:]
 

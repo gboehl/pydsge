@@ -199,8 +199,17 @@ def prior_draw(self, nsample, seed=None, ncores=None, verbose=False):
         seed = 0
 
     if verbose:
-        print('[get_par:]'.ljust(15, ' ') +
+        print('[prior_draw:]'.ljust(15, ' ') +
               'Drawing from the pior and checking likelihood.')
+
+    print('[prior_draw:]'.ljust(15, ' ') + '... is in emergency mode. Parallelization is disabled :(')
+    ncores = 0
+
+    reduce_sys = self.fdict['reduce_sys'].copy()
+    if not self.fdict['reduce_sys']:
+        self.get_sys(reduce_sys=True, verbose=verbose > 1)
+        self.preprocess(verbose=verbose > 1)
+        self.prep_estim(load_R=True, verbose=verbose > 1)
 
     if not hasattr(self, 'ndim'):
         self.prep_estim(load_R=True, verbose=verbose)
@@ -248,6 +257,11 @@ def prior_draw(self, nsample, seed=None, ncores=None, verbose=False):
         loc_pool.close()
         loc_pool.join()
 
+    if not reduce_sys:
+        print('hier!')
+        self.get_sys(reduce_sys=False, verbose=verbose > 1)
+        self.preprocess(verbose=verbose > 1)
+
     return map2arr(pmap_sim)
 
 
@@ -286,7 +300,7 @@ def get_par(self, dummy=None, parname=None, asdict=True, full=True, roundto=5, n
         if dummy is None and not asdict:
             dummy = 'mode' if 'mode_x' in self.fdict.keys() else 'init'
 
-        if dummy is None and asdict:
+        if (dummy is None and asdict) or dummy is 'current':
             par_cand = np.array(self.par)[self.prior_arg]
         elif dummy is 'prior':
             return prior_draw(self, nsample, seed, ncores, verbose)

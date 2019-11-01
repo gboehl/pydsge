@@ -7,7 +7,7 @@ import pandas as pd
 from .parser import DSGE
 from .stats import summary, pmdm_report
 from .engine import preprocess, func_dispatch
-from .stuff import *
+from .core import *
 from .tools import *
 from .filtering import *
 from .estimation import prep_estim, swarms, mcmc, kdes
@@ -359,7 +359,7 @@ DSGE.get_tune = get_tune
 DSGE.calc_obs = calc_obs
 DSGE.obs = calc_obs
 DSGE.box_check = box_check
-# from stuff & tools:
+# from core & tools:
 DSGE.get_par = get_par
 DSGE.set_par = set_par
 DSGE.func_dispatch = func_dispatch

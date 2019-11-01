@@ -63,9 +63,8 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
 
     self.Z = np.array(self.data)
 
-    if not hasattr(self, 'sys'):
+    if not hasattr(self, 'sys') or not hasattr(self, 'precalc_mat'):
         self.get_sys(reduce_sys=True, verbose=verbose > 1)
-    if not hasattr(self, 'precalc_mat'):
         self.preprocess(verbose=verbose > 1)
 
     self.create_filter(
@@ -106,7 +105,7 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
         print('[estimation:]'.ljust(
             15, ' ') + '%s priors detected. Adding parameters to the prior distribution.' % self.ndim)
 
-    def llike(parameters, linear, verbose):
+    def llike(parameters, linear, verbose, seed):
 
         random_state = np.random.get_state()
         with warnings.catch_warnings(record=True):
@@ -169,7 +168,7 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
 
     linear_pa = linear
 
-    def lprob(par, linear=None, verbose=verbose):
+    def lprob(par, linear=None, verbose=verbose, draw_seed=False):
 
         if linear is None:
             linear = linear_pa
@@ -177,9 +176,13 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
         if verbose:
             st = time.time()
 
-        ll = llike(par, linear, verbose)
+        seed_loc = np.random.randint(2**32-1) if draw_seed else seed
+
+        ll = llike(par, linear, verbose, seed_loc)
 
         if np.isinf(ll):
+            if draw_seed:
+                return ll, seed_loc
             return ll
 
         ll += lprior(par)
@@ -187,6 +190,8 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
             print('[lprob:]'.ljust(15, ' ') + "Sample took %ss, ll is %s." %
                   (np.round(time.time() - st, 3), np.round(ll, 4)))
 
+        if draw_seed:
+            return ll, seed_loc
         return ll
 
     ## old and evil way, kept for reference
@@ -605,7 +610,7 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
     # lprob_dump = cpickle.dumps(self.lprob)
     # lprob_global = cpickle.loads(lprob_dump)
 
-    def lprob(par): return lprob_global(par, linear, verbose)
+    def lprob(par): return lprob_global(par, linear, verbose, True)
 
     loc_pool = pathos.pools.ProcessPool(ncores)
     loc_pool.clear()
@@ -666,7 +671,7 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
             report("Convergence stats: tau is in (%s,%s) (%s%s) and change is %s (%s0.01)." % (
                 min_tau, max_tau, tau_sign, cnt/50, dev_tau.round(3), dev_sign))
             report("Likelihood at mean is %s, mean acceptance fraction is %s." % (lprob(np.mean(
-                sample[-update_freq:], axis=(0, 1))).round(3), np.mean(sampler.acceptance_fraction[-update_freq:]).round(2)))
+                sample[-update_freq:], axis=(0, 1)))[0].round(3), np.mean(sampler.acceptance_fraction[-update_freq:]).round(2)))
 
         if cnt and update_freq and not (cnt+1) % update_freq:
             sample = sampler.get_chain()
