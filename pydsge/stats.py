@@ -78,10 +78,12 @@ def summary(store, priors, bounds=None, tune=None, alpha=0.05, top=None, show_pr
     f_bnd = [lambda x: pd.Series(x, name='lbound'),
              lambda x: pd.Series(x, name='ubound')]
 
-    funcs = [lambda x: pd.Series(np.mean(x), name='mean'),
-             lambda x: pd.Series(np.std(x), name='sd'),
-             lambda x: pd.Series(mc_error(x), name='mc_error'),
-             lambda x: _hpd_df(x, alpha)]
+    funcs = [ 
+        lambda x: pd.Series(np.mean(x), name='mean'),
+        lambda x: pd.Series(np.std(x), name='sd'),
+        lambda x: pd.Series(ss.mode(x.flatten())[0], name='mode'),
+        lambda x: _hpd_df(x, alpha),
+        lambda x: pd.Series(mc_error(x), name='mc_error') ]
 
     var_dfs = []
     for i, var in enumerate(priors):

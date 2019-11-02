@@ -106,8 +106,8 @@ def get_sys(self, par=None, reduce_sys=None, verbose=False):
     N = nl.inv(P2) @ M2
     A = nl.inv(P2) @ (M2 + np.outer(c1, b2))
 
-    if sum(eig(A).round(3) >= 1) - len(vv_x3):
-        raise ValueError('BC *not* satisfied.')
+    if sum(eig(A).round(8) >= 1) - len(vv_x3):
+        raise ValueError('B-K condition *not* satisfied.')
 
     dim_x = len(vv_x3)
     OME = re_bc(A, dim_x)

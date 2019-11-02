@@ -670,8 +670,9 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
             report(str(summary(sample, self.prior, tune=-update_freq).round(3)))
             report("Convergence stats: tau is in (%s,%s) (%s%s) and change is %s (%s0.01)." % (
                 min_tau, max_tau, tau_sign, cnt/50, dev_tau.round(3), dev_sign))
-            report("Likelihood at mean is %s, mean acceptance fraction is %s." % (lprob(np.mean(
-                sample[-update_freq:], axis=(0, 1)))[0].round(3), np.mean(sampler.acceptance_fraction[-update_freq:]).round(2)))
+            report("Max likelihood in chain is %s, mean acceptance fraction is %s." % (
+                np.max(sampler.get_log_prob()[-update_freq:]).round(3), 
+                np.mean(sampler.acceptance_fraction[-update_freq:]).round(3)))
 
         if cnt and update_freq and not (cnt+1) % update_freq:
             sample = sampler.get_chain()
