@@ -33,8 +33,9 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
         Whether display messages:
             0 - no messages
             1 - only error messages
-            2 - likelihood estimates plus duration
-            3 - maximum informative
+            2 - error messages plus vectors
+            3 - likelihood estimates plus duration
+            4 - maximum informative
     """
 
     import warnings
@@ -68,8 +69,8 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
     self.Z = np.array(self.data)
 
     if not hasattr(self, 'sys') or not hasattr(self, 'precalc_mat'):
-        self.get_sys(reduce_sys=True, verbose=verbose > 2)
-        self.preprocess(verbose=verbose > 2)
+        self.get_sys(reduce_sys=True, verbose=verbose > 3)
+        self.preprocess(verbose=verbose > 3)
 
     self.create_filter(
         N=N, ftype='KalmanFilter' if linear else None, seed=seed)
@@ -81,7 +82,7 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
             15, ' ') + "`filter.R` not in `fdict`.")
 
     # dry run before the fun beginns
-    if np.isinf(self.get_ll(constr_data=constr_data, verbose=verbose > 2, dispatch=dispatch)):
+    if np.isinf(self.get_ll(constr_data=constr_data, verbose=verbose > 3, dispatch=dispatch)):
         raise ValueError('[estimation:]'.ljust(
             15, ' ') + 'likelihood of initial values is zero.')
 
@@ -122,14 +123,14 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
                 par_active_lst = list(par_fix)
 
                 self.get_sys(par=par_active_lst, reduce_sys=True,
-                             verbose=verbose > 2)
+                             verbose=verbose > 3)
 
                 if not linear:
                     if self.filter.name == 'KalmanFilter':
                         raise AttributeError('[estimation:]'.ljust(
                             15, ' ') + 'Missmatch between linearity choice (filter vs. lprob)')
                     # these max vals should be sufficient given we're only dealing with stochastic linearization
-                    self.preprocess(l_max=3, k_max=16, verbose=verbose > 2)
+                    self.preprocess(l_max=3, k_max=16, verbose=verbose > 3)
                     self.filter.Q = self.QQ(self.par) @ self.QQ(self.par)
                 else:
                     if not self.filter.name == 'KalmanFilter':
@@ -143,7 +144,7 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
                     self.filter.Q = CO @ CO.T
 
                 ll = self.get_ll(constr_data=constr_data,
-                                 verbose=verbose > 2, dispatch=dispatch)
+                                 verbose=verbose > 3, dispatch=dispatch)
 
                 np.random.set_state(random_state)
                 return ll
@@ -177,7 +178,7 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
         if linear is None:
             linear = linear_pa
 
-        if verbose > 1:
+        if verbose > 2:
             st = time.time()
 
         seed_loc = np.random.randint(2**32-1) if draw_seed else seed
@@ -190,7 +191,7 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
             return ll
 
         ll += lprior(par)
-        if verbose > 1:
+        if verbose > 2:
             print('[lprob:]'.ljust(15, ' ') + "Sample took %ss, ll is %s." %
                   (np.round(time.time() - st, 3), np.round(ll, 4)))
 
@@ -208,7 +209,7 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
     self.llike = llike
 
 
-def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=None, use_ring=False, nlopt=True, broadcasting=True, ncores=None, crit_mem=.85, autosave=100, update_freq=None, verbose=False, debug=False):
+def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=None, use_ring=False, nlopt=True, broadcasting=True, ncores=None, crit_mem=.85, autosave=100, update_freq=None, use_cloudpickle=False, verbose=False, debug=False):
     """Find mode using pygmo swarms.
 
     The interface partly replicates some features of the distributed island model because the original implementation has problems with the picklability of the DSGE class
@@ -269,9 +270,12 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
     random.seed(seed)
 
     # globals are *evil*
-    global lprob_global
-    # lprob_dump = cpickle.dumps(self.lprob)
-    # lprob_global = cpickle.loads(lprob_dump)
+
+    if not use_cloudpickle:
+        global lprob_global
+    else:
+        lprob_dump = cpickle.dumps(self.lprob)
+        lprob_global = cpickle.loads(lprob_dump)
 
     def lprob(par): return lprob_global(par, linear, verbose)
 
@@ -557,7 +561,7 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
     return xsw
 
 
-def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=None, backend=True, linear=None, distr_init_chains=False, resume=False, update_freq=None, verbose=False, debug=False):
+def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=None, backend=True, linear=None, distr_init_chains=False, resume=False, update_freq=None, use_cloudpickle=False, verbose=False, debug=False):
 
     import pathos
     import emcee
@@ -610,9 +614,11 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
         self.description = self.fdict['description']
 
     # globals are *evil*
-    global lprob_global
-    # lprob_dump = cpickle.dumps(self.lprob)
-    # lprob_global = cpickle.loads(lprob_dump)
+    if not use_cloudpickle:
+        global lprob_global
+    else:
+        lprob_dump = cpickle.dumps(self.lprob)
+        lprob_global = cpickle.loads(lprob_dump)
 
     def lprob(par): return lprob_global(par, linear, verbose, True)
 
@@ -635,11 +641,11 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
     if not verbose:
         np.warnings.filterwarnings('ignore')
 
-    if not verbose:
+    if verbose > 2:
+        report = print
+    else:
         pbar = tqdm.tqdm(total=nsteps, unit='sample(s)', dynamic_ncols=True)
         report = pbar.write
-    else:
-        report = print
 
     old_tau = np.inf
 
@@ -749,10 +755,12 @@ def kdes(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
     if 'description' in self.fdict.keys():
         self.description = self.fdict['description']
 
-    # globals are *evil*
-    global lprob_global
-    # lprob_dump = cpickle.dumps(self.lprob)
-    # lprob_global = cpickle.loads(lprob_dump)
+    if not use_cloudpickle:
+        # globals are *evil*
+        global lprob_global
+    else:
+        lprob_dump = cpickle.dumps(self.lprob)
+        lprob_global = cpickle.loads(lprob_dump)
 
     def lprob(par): return lprob_global(par, linear, verbose)
 

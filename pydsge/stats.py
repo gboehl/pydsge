@@ -8,6 +8,7 @@ import os
 import scipy.stats as ss
 import scipy.optimize as so
 from scipy.special import gammaln
+from grgrlib.stuff import mode
 
 
 def mc_error(x):
@@ -81,7 +82,7 @@ def summary(store, priors, bounds=None, tune=None, alpha=0.05, top=None, show_pr
     funcs = [ 
         lambda x: pd.Series(np.mean(x), name='mean'),
         lambda x: pd.Series(np.std(x), name='sd'),
-        lambda x: pd.Series(ss.mode(x.flatten())[0], name='mode'),
+        lambda x: pd.Series(mode(x.flatten()), name='mode'),
         lambda x: _hpd_df(x, alpha),
         lambda x: pd.Series(mc_error(x), name='mc_error') ]
 
