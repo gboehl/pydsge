@@ -181,7 +181,7 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
         if verbose > 2:
             st = time.time()
 
-        seed_loc = np.random.randint(2**32-1) if draw_seed else seed
+        seed_loc = np.random.randint(2**(32-1)) if draw_seed else seed
 
         ll = llike(par, linear, verbose, seed_loc)
 
