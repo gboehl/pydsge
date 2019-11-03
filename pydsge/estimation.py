@@ -157,7 +157,7 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
                     print('[llike:]'.ljust(15, ' ') +
                           'Failure. Error msg: %s' % err)
                     if verbose > 1:
-                        print(self.get_calib(full=false))
+                        print(self.get_calib(full=False))
                         self.box_check(self.par)
 
                 np.random.set_state(random_state)
