@@ -350,8 +350,8 @@ def get_par(self, dummy=None, parname=None, asdict=True, full=True, roundto=5, n
 def set_par(self, dummy, setpar=None, roundto=5, autocompile=True, verbose=False):
     """Set the current parameter values.
 
-    Parameter
-    ---------
+    Parameters
+    ----------
     dummy : str or array
         If an array, sets all parameters. If a string, `setpar` must be provided to define a value.
     setpar : float
