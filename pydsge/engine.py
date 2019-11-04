@@ -92,7 +92,7 @@ def preprocess_jit(vals, l_max, k_max):
     return mat, term, bmat, bterm
 
 
-def preprocess(self, l_max=4, k_max=17, verbose=False):
+def preprocess(self, l_max, k_max, verbose):
     st = time.time()
     self.precalc_mat = preprocess_jit(self.sys, l_max, k_max)
     if verbose:

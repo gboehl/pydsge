@@ -139,8 +139,7 @@ def sampled_extract(self, source=None, k=1, seed=None, ncores=None, verbose=Fals
     def runner(par):
 
         self.set_par(par, autocompile=False)
-        self.get_sys(self.par, verbose=verbose > 1)
-        self.preprocess(l_max=3, k_max=16, verbose=verbose > 1)
+        self.get_sys(self.par, l_max=3, k_max=16, verbose=verbose > 1)
 
         self.filter.Q = self.QQ(self.par) @ self.QQ(self.par)
 
@@ -193,7 +192,6 @@ def sampled_sim(self, k=1, source=None, mask=None, seed=None, ncores=None, verbo
 
         self.set_par(par, autocompile=False)
         self.get_sys(self.par, verbose=verbose)
-        self.preprocess(verbose=verbose)
 
         res = self.simulate(eps=eps, mask=mask, state=inits, verbose=verbose)
 
@@ -218,7 +216,6 @@ def sampled_irfs(self, shocklist, k=1, source=None, seed=None, ncores=None, verb
     def runner(par):
 
         self.set_par(par, autocompile=False)
-        self.preprocess(verbose=verbose)
 
         res = self.irfs(shocklist, wannasee='full', verbose=verbose, **irfsargs)
 

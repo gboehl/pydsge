@@ -136,10 +136,6 @@ class DSGE(dict):
         return len(self['fvars'])
 
     @property
-    def ns(self):
-        return
-
-    @property
     def ny(self):
         return len(self['observables'])
 
@@ -153,9 +149,6 @@ class DSGE(dict):
 
     def p0(self):
         return list(map(lambda x: self['calibration'][str(x)], self.parameters))
-
-    def calibrate(**kwargs):
-        pass
 
     def get_matrices(self, matrix_format='numeric'):
 

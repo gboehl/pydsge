@@ -70,7 +70,6 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
 
     if not hasattr(self, 'sys') or not hasattr(self, 'precalc_mat'):
         self.get_sys(reduce_sys=True, verbose=verbose > 3)
-        self.preprocess(verbose=verbose > 3)
 
     self.create_filter(
         N=N, ftype='KalmanFilter' if linear else None, seed=seed)
@@ -122,21 +121,19 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
                 par_fix[prior_arg] = parameters
                 par_active_lst = list(par_fix)
 
-                self.get_sys(par=par_active_lst, reduce_sys=True,
-                             verbose=verbose > 3)
 
                 if not linear:
                     if self.filter.name == 'KalmanFilter':
                         raise AttributeError('[estimation:]'.ljust(
                             15, ' ') + 'Missmatch between linearity choice (filter vs. lprob)')
                     # these max vals should be sufficient given we're only dealing with stochastic linearization
-                    self.preprocess(l_max=3, k_max=16, verbose=verbose > 3)
+                    self.get_sys(par=par_active_lst, l_max=3, k_max=16, reduce_sys=True, verbose=verbose > 3)
                     self.filter.Q = self.QQ(self.par) @ self.QQ(self.par)
                 else:
                     if not self.filter.name == 'KalmanFilter':
                         raise AttributeError('[estimation:]'.ljust(
                             15, ' ') + 'Missmatch between linearity choice (filter vs. lprob)')
-                    self.preprocess(l_max=1, k_max=0, verbose=False)
+                    self.get_sys(par=par_active_lst, l_max=1, k_max=0, reduce_sys=True, verbose=verbose > 3)
                     self.filter.F = self.linear_representation
                     self.filter.H = self.hx
 
@@ -636,7 +633,7 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
     elif resume:
         p0 = sampler.get_last_sample()
     else:
-        p0 = self.get_par(asdict=False, nsample=nwalks, verbose=verbose)
+        p0 = self.get_par('best', asdict=False, nsample=nwalks, verbose=verbose)
 
     if not verbose:
         np.warnings.filterwarnings('ignore')
@@ -779,7 +776,7 @@ def kdes(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
         # should work, but not tested
         p0 = self.fdict['kdes_chain'][-1]
     else:
-        p0 = self.get_par(self, nsample=nwalks, verbose=verbose)
+        p0 = self.get_par('best', asdict=False, nsample=nwalks, verbose=verbose)
 
     if not verbose:
         np.warnings.filterwarnings('ignore')

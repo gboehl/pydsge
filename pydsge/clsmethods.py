@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 from .parser import DSGE
 from .stats import summary, pmdm_report
-from .engine import preprocess, func_dispatch
+from .engine import func_dispatch
 from .core import *
 from .tools import *
 from .filtering import *
@@ -397,7 +397,6 @@ DSGE.get_chain = get_chain
 DSGE.get_log_prob = get_log_prob
 DSGE.extract = extract
 DSGE.create_obs_cov = create_obs_cov
-DSGE.preprocess = preprocess
 DSGE.mask = mask
 DSGE.sampled_extract = sampled_extract
 DSGE.sampled_sim = sampled_sim

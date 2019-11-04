@@ -115,7 +115,7 @@ class PMDM(object):
         try:
             f_val = -np.inf
 
-            self.x = get_par(self, linear=linear, verbose=verbose)
+            self.x = get_par('best', self, linear=linear, verbose=verbose)
 
             res = so.minimize(self, self.x, method=self.method,
                               tol=self.tol, options=self.opt_dict)
@@ -216,7 +216,7 @@ def nlopt(self, p0=None, linear=None, maxfev=None, method=None, tol=1e-2, update
     sfunc_inst = GPP(lprob, self.fdict['prior_bounds'])
 
     if p0 is None:
-        p0 = get_par(self, linear=linear, verbose=verbose)
+        p0 = get_par('best', self, linear=linear, verbose=verbose)
 
     if method is None:
         method = 'cobyla'

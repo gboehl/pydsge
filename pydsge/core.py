@@ -5,6 +5,7 @@ from grgrlib import fast0, eig, re_bc
 import numpy as np
 import numpy.linalg as nl
 import time
+from .engine import preprocess
 
 try:
     from numpy.core._exceptions import UFuncTypeError as ParafuncError
@@ -12,7 +13,7 @@ except ModuleNotFoundError:
     ParafuncError = Exception
 
 
-def get_sys(self, par=None, reduce_sys=None, verbose=False):
+def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, verbose=False):
 
     st = time.time()
 
@@ -22,10 +23,12 @@ def get_sys(self, par=None, reduce_sys=None, verbose=False):
         except KeyError:
             reduce_sys = False
 
+    l_max = 3 if l_max is None else l_max
+    k_max = 17 if k_max is None else k_max
+
     self.fdict['reduce_sys'] = reduce_sys
 
-    if par is None:
-        par = self.p0()
+    par = self.p0() if par is None else list(par)
 
     if not self.const_var:
         raise NotImplementedError('Pakage is only meant to work with OBCs')
@@ -170,7 +173,7 @@ def get_sys(self, par=None, reduce_sys=None, verbose=False):
         print('[get_sys:]'.ljust(15, ' ')+'Creation of system matrices finished in %ss.'
               % np.round(time.time() - st, 3))
 
-    return
+    return preprocess(self, l_max, k_max, verbose)
 
 
 def prior_draw(self, nsample, seed=None, ncores=None, verbose=False):
@@ -208,7 +211,6 @@ def prior_draw(self, nsample, seed=None, ncores=None, verbose=False):
     reduce_sys = self.fdict['reduce_sys'].copy()
     if not self.fdict['reduce_sys']:
         self.get_sys(reduce_sys=True, verbose=verbose > 1)
-        self.preprocess(verbose=verbose > 1)
         self.prep_estim(load_R=True, verbose=verbose > 1)
 
     if not hasattr(self, 'ndim'):
@@ -230,9 +232,9 @@ def prior_draw(self, nsample, seed=None, ncores=None, verbose=False):
             with warnings.catch_warnings(record=False):
                 try:
                     np.warnings.filterwarnings('error')
-                    rst = np.random.randint(2**16)
-                    pdraw = [pl.rvs(random_state=rst)
-                             for pl in frozen_prior]
+                    rst = np.random.randint(np.iinfo(np.int64).max, dtype=np.int64)
+                    pdraw = [pl.rvs(random_state=rst+sn)
+                             for sn,pl in enumerate(frozen_prior)]
                     draw_prob = lprob(pdraw, None, verbose)
                 except:
                     pass
@@ -260,7 +262,6 @@ def prior_draw(self, nsample, seed=None, ncores=None, verbose=False):
     if not reduce_sys:
         print('hier!')
         self.get_sys(reduce_sys=False, verbose=verbose > 1)
-        self.preprocess(verbose=verbose > 1)
 
     return map2arr(pmap_sim)
 
@@ -296,12 +297,23 @@ def get_par(self, dummy=None, parname=None, asdict=True, full=True, roundto=5, n
     pars_str = [str(p) for p in self.parameters]
 
     if parname is None:
-        # all with len(par_cand) = len(prior_arg)
-        if dummy is None and not asdict:
-            dummy = 'mode' if 'mode_x' in self.fdict.keys() else 'init'
-
-        if (dummy is None and asdict) or dummy is 'current':
-            par_cand = np.array(self.par)[self.prior_arg]
+        if dummy is None:
+            try:
+                par_cand = np.array(self.par)[self.prior_arg]
+            except:
+                par_cand = get_par(self, 'best', asdict=False)
+        elif len(dummy) == len(self.par_fix):
+            par_cand = dummy[self.prior_arg]
+        elif len(dummy) == len(self.prior_arg):
+            # par = self.par.copy() if hasattr(self, 'par') else self.par_fix.copy()
+            # par_cand = np.array(par)
+            # par_cand[self.prior_arg] = dummy
+            par_cand = dummy
+        elif dummy is 'best':
+            try:
+                par_cand = get_par(self, 'mode', asdict=False)
+            except:
+                par_cand = get_par(self, 'init', asdict=False)
         elif dummy is 'prior':
             return prior_draw(self, nsample, seed, ncores, verbose)
         elif dummy is 'mode':
@@ -317,29 +329,31 @@ def get_par(self, dummy=None, parname=None, asdict=True, full=True, roundto=5, n
                     par_cand[i] = self.par_fix[self.prior_arg][i]
         else:
             parname = dummy
+    elif parname in pars_str:
+        return self.par[pars_str.index(parname)]
+    elif parname in pfnames:
+        return pffunc(self.par)[pfnames.index(parname)]
+    elif dummy is not None:
+        raise KeyError(
+            "`which` must be in {'prior', 'mode', 'calib', 'prior_mean', 'init'")
+    else:
+        raise KeyError("Parameter '%s' does not exist." % parname)
 
-    if parname is not None:
-        if parname in pars_str:
-            return self.par[pars_str.index(parname)]
-        elif parname in pfnames:
-            return pffunc(self.par)[pfnames.index(parname)]
-        elif dummy is not None:
-            raise KeyError(
-                "`which` must be in {'prior', 'mode', 'calib', 'prior_mean', 'init'")
-        else:
-            raise KeyError("Parameter '%s' does not exist." % parname)
-
-    if asdict and full:
-        par = self.par_fix.copy()
+    if full:
+        par = self.par.copy() if hasattr(self, 'par') else self.par_fix.copy()
+        par = np.array(par)
         par[self.prior_arg] = par_cand
+
+        if not asdict:
+            return par
 
         pdict = dict(zip(pars_str, np.round(par, roundto)))
         pfdict = dict(zip(pfnames, np.round(pffunc(par), roundto)))
 
         return pdict, pfdict
 
-    if asdict and not full:
-        return dict(zip(pars_str, np.round(par_cand, roundto)))
+    if asdict:
+        return dict(zip(np.array(pars_str)[self.prior_arg], np.round(par_cand, roundto)))
 
     if nsample > 1:
         par_cand = par_cand*(1 + 1e-3*np.random.randn(nsample, self.ndim))
@@ -347,7 +361,7 @@ def get_par(self, dummy=None, parname=None, asdict=True, full=True, roundto=5, n
     return par_cand
 
 
-def set_par(self, dummy, setpar=None, roundto=5, autocompile=True, verbose=False):
+def set_par(self, dummy, setpar=None, par=None, roundto=5, autocompile=True, verbose=False):
     """Set the current parameter values.
 
     Parameters
@@ -372,7 +386,7 @@ def set_par(self, dummy, setpar=None, roundto=5, autocompile=True, verbose=False
         if len(dummy) == len(self.par_fix):
             par = dummy
         elif len(dummy) == len(self.prior_arg):
-            par = self.par_fix.copy()
+            par = self.par.copy() if hasattr(self, 'par') else self.par_fix.copy()
             par[self.prior_arg] = dummy
         else:
             par = self.par_fix.copy()
@@ -380,7 +394,13 @@ def set_par(self, dummy, setpar=None, roundto=5, autocompile=True, verbose=False
                 self, dummy=dummy, parname=None, asdict=False, verbose=verbose)
 
     elif dummy in pars_str:
-        par = self.par.copy() if hasattr(self, 'par') else self.par_fix.copy()
+        if par is None:
+            par = self.par.copy() if hasattr(self, 'par') else self.par_fix.copy()
+        elif len(par) == len(self.prior_arg):
+            npar = self.par.copy() if hasattr(self, 'par') else self.par_fix.copy()
+            npar = np.array(npar)
+            npar[self.prior_arg] = par
+            par = npar
         par[pars_str.index(dummy)] = setpar
     elif parname in pfnames:
         raise SyntaxError(
@@ -389,7 +409,6 @@ def set_par(self, dummy, setpar=None, roundto=5, autocompile=True, verbose=False
         raise SyntaxError("Parameter '%s' does not exist." % parname)
 
     get_sys(self, par=list(par), verbose=verbose)
-    self.preprocess(verbose=verbose)
 
     if verbose:
         pdict = dict(zip(pars_str, np.round(self.par, roundto)))

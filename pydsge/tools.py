@@ -10,16 +10,12 @@ from decimal import Decimal
 
 @property
 def linear_representation(self):
+    """Get a linear representation of the system under the current parameters
+    """
 
-    N, A, J, cx, b, x_bar = self.sys
-
-    if not hasattr(self, 'precalc_mat') or (hasattr(self, 'par_lr') and self.par_lr is not self.par):
-        self.preprocess(l_max=1, k_max=0, verbose=False)
-        self.par_lr = self.par
-
+    get_sys(self, l_max=1, k_max=0)
     mat = self.precalc_mat[0]
-
-    dim_x = J.shape[0]
+    dim_x = self.sys[2].shape[0]
 
     return mat[1, 0, 1][dim_x:]
 
