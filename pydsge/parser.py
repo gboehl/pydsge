@@ -9,7 +9,7 @@ import sympy
 import time
 import numpy as np
 import cloudpickle as cpickle
-from copy import copy
+from copy import deepcopy
 from .symbols import Variable, Equation, Shock, Parameter, TSymbol
 from sympy.matrices import Matrix, zeros
 
@@ -358,7 +358,7 @@ class DSGE(dict):
             use_cached = processed_raw_model.fdict['yaml_raw'] == mtxt
 
         if use_cached:
-            pmodel = copy(processed_raw_model)
+            pmodel = deepcopy(processed_raw_model)
 
         else:
             pmodel = cls.parse(mtxt)
@@ -370,7 +370,7 @@ class DSGE(dict):
             pmodel_dump = cpickle.dumps(pmodel)
             pmodel.fdict['model_dump'] = pmodel_dump
 
-            processed_raw_model = copy(pmodel)
+            processed_raw_model = deepcopy(pmodel)
 
         if verbose:
             duration = np.round(time.time()-st, 3)
@@ -404,7 +404,7 @@ class DSGE(dict):
                 use_cached = processed_raw_model.fdict['yaml_raw'] == mtxt
 
             if use_cached:
-                pmodel = copy(processed_raw_model)
+                pmodel = deepcopy(processed_raw_model)
             else:
                 pmodel = cls.parse(mtxt)
 

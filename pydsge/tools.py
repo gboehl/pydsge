@@ -12,6 +12,7 @@ from decimal import Decimal
 def linear_representation(self):
     """Get a linear representation of the system under the current parameters
     """
+    from .core import get_sys
 
     get_sys(self, l_max=1, k_max=0)
     mat = self.precalc_mat[0]

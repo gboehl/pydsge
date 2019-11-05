@@ -109,6 +109,7 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, verbose=Fal
     N = nl.inv(P2) @ M2
     A = nl.inv(P2) @ (M2 + np.outer(c1, b2))
 
+    ## rounding here must correspond to the rounding in re_bc
     # if sum(eig(A).round(8) >= 1) != len(vv_x3):
     if sum(eig(A).round(8) < 1) != len(vv_v):
         raise ValueError('B-K condition *not* satisfied.')
@@ -174,7 +175,13 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, verbose=Fal
         print('[get_sys:]'.ljust(15, ' ')+'Creation of system matrices finished in %ss.'
               % np.round(time.time() - st, 3))
 
-    return preprocess(self, l_max, k_max, verbose)
+    preprocess(self, l_max, k_max, verbose)
+
+    test = self.precalc_mat[0][1,0,1]
+    if (eig(test[-test.shape[1]:]) > 1).any():
+        raise ValueError('Explosive dynamics detected.')
+
+    return 
 
 
 def prior_draw(self, nsample, seed=None, ncores=None, verbose=False):
@@ -329,7 +336,7 @@ def get_par(self, dummy=None, parname=None, asdict=True, full=True, roundto=5, n
                 if par_cand[i] is None:
                     par_cand[i] = self.par_fix[self.prior_arg][i]
         else:
-            parname = dummy
+            par_cand = get_par(parname=dummy)
     elif parname in pars_str:
         return self.par[pars_str.index(parname)]
     elif parname in pfnames:

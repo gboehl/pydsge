@@ -119,7 +119,7 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, co
             res = ll
 
         if smoother:
-            res, cov, _, _ = self.filter.rts_smoother(res, cov)
+            res, cov, _, _ = self.filter.rts_smoother(res, cov, inv=np.linalg.pinv)
 
         self.cov = cov
 
