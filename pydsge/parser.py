@@ -260,6 +260,7 @@ class DSGE(dict):
         context = dict([(p.name, p) for p in self.parameters])
         context['exp'] = sympy.exp
         context['log'] = sympy.log
+        context['sqrt'] = sympy.sqrt
         context_f = {}
         context_f['exp'] = np.exp
         if 'helper_func' in self['__data__']['declarations']:

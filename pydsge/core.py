@@ -109,7 +109,8 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, verbose=Fal
     N = nl.inv(P2) @ M2
     A = nl.inv(P2) @ (M2 + np.outer(c1, b2))
 
-    if sum(eig(A).round(12) >= 1) != len(vv_x3):
+    # if sum(eig(A).round(8) >= 1) != len(vv_x3):
+    if sum(eig(A).round(8) < 1) != len(vv_v):
         raise ValueError('B-K condition *not* satisfied.')
 
     dim_x = len(vv_x3)
