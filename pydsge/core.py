@@ -313,9 +313,6 @@ def get_par(self, dummy=None, parname=None, asdict=True, full=True, roundto=5, n
         elif len(dummy) == len(self.par_fix):
             par_cand = dummy[self.prior_arg]
         elif len(dummy) == len(self.prior_arg):
-            # par = self.par.copy() if hasattr(self, 'par') else self.par_fix.copy()
-            # par_cand = np.array(par)
-            # par_cand[self.prior_arg] = dummy
             par_cand = dummy
         elif dummy is 'best':
             try:
@@ -336,7 +333,7 @@ def get_par(self, dummy=None, parname=None, asdict=True, full=True, roundto=5, n
                 if par_cand[i] is None:
                     par_cand[i] = self.par_fix[self.prior_arg][i]
         else:
-            par_cand = get_par(parname=dummy)
+            return get_par(self, parname=dummy)
     elif parname in pars_str:
         return self.par[pars_str.index(parname)]
     elif parname in pfnames:
@@ -397,9 +394,7 @@ def set_par(self, dummy, setpar=None, par=None, roundto=5, autocompile=True, ver
             par = self.par.copy() if hasattr(self, 'par') else self.par_fix.copy()
             par[self.prior_arg] = dummy
         else:
-            par = self.par_fix.copy()
-            par[self.prior_arg] = get_par(
-                self, dummy=dummy, parname=None, asdict=False, verbose=verbose)
+            par = get_par(self, dummy=dummy, parname=None, asdict=False, verbose=verbose)
 
     elif dummy in pars_str:
         if par is None:

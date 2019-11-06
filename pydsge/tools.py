@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+import pandas as pd
 import time
 from grgrlib import fast0
 from .engine import boehlgorithm
@@ -55,40 +56,37 @@ def get_eps(self, x, xp):
     return (x - self.t_func(xp)[0]) @ self.SIG
 
 
-def irfs(self, shocklist, wannasee=None, horizon=30, linear=False, verbose=False):
+def irfs(self, shocklist, T=30, linear=False, verbose=False):
+    """Simulate impulse responses
 
-    # REWRITE!!
-    # returns time series of impule responses
-    # shocklist: takes list of tuples of (shock, size, timing)
-    # wannasee: list of strings of the variables to be plotted and stored
+    Parameters
+    ----------
 
-    slabels = self.vv
-    olabels = self.observables
+    shocklist : tuple or list of tuples
+        Tuple of (shockname, size, period)
+    T : int
+        Simulation horizon. (default: 30)
 
-    args_sts = []
-    args_obs = []
-
-    if wannasee not in (None, 'all', 'full'):
-        for v_raw in wannasee:
-            v = v_raw.replace('_', '')
-            if v in slabels:
-                args_sts.append(list(slabels).index(v))
-            elif v in olabels:
-                args_obs.append(olabels.index(v))
-            else:
-                raise Exception(
-                    "Variable %s neither in states nor observables. You might want to call self.get_sys() with the 'reduce_sys = False' argument. Note that underscores '_' are discarged." % v)
+    Returns
+    -------
+    DataFrame, tuple(int,int)
+        The simulated series as a pandas.DataFrame object and the expected durations at the constraint
+    """
 
     st_vec = np.zeros(len(self.vv))
 
-    Y = []
-    K = []
-    L = []
+    X = np.empty((T, len(self.vv)))
+    K = np.empty(T)
+    L = np.empty(T)
+
     superflag = False
+
+    if isinstance(shocklist, tuple):
+        shocklist = [shocklist,]
 
     st = time.time()
 
-    for t in range(horizon):
+    for t in range(T):
 
         shk_vec = np.zeros(len(self.shocks))
         for vec in shocklist:
@@ -102,63 +100,26 @@ def irfs(self, shocklist, wannasee=None, horizon=30, linear=False, verbose=False
 
                 shk_process = (self.SIG @ shk_vec).nonzero()
 
-                for shk in shk_process:
-                    args_sts += list(shk)
-
         st_vec, (l, k), flag = self.t_func(
             st_vec, shk_vec, linear=linear, return_k=True)
 
-        if flag:
-            superflag = True
+        superflag |= flag
 
-        Y.append(st_vec)
-        K.append(k)
-        L.append(l)
+        X[t,:] = st_vec
+        L[t] = l
+        K[t] = k
 
-    if superflag and verbose:
+    X = pd.DataFrame(X, columns=self.vv)
+
+    if superflag:
         print('[irfs:]'.ljust(15, ' ') +
               ' No rational expectations solution found.')
-
-    Y = np.array(Y)
-    K = np.array(K)
-    L = np.array(L)
-
-    care_for_sts = np.unique(args_sts)
-    care_for_obs = np.unique(args_obs)
-
-    if wannasee is None:
-        Z = (self.hx[0] @ Y.T).T + self.hx[1]
-        tt = ~fast0(Z-Z.mean(axis=0), 0)
-        llabels = list(np.array(self.observables)[
-                       tt])+list(self.vv[care_for_sts])
-        X2 = Y[:, care_for_sts]
-        X = np.hstack((Z[:, tt], X2))
-    elif wannasee is 'full':
-        llabels = list(self.vv)
-        X = Y
-    elif wannasee is 'all':
-        tt = ~fast0(Y-Y.mean(axis=0), 0)
-        llabels = list(self.vv[tt])
-        X = Y[:, tt]
-    else:
-        llabels = list(self.vv[care_for_sts])
-        X = Y[:, care_for_sts]
-        if care_for_obs.size:
-            llabels = list(np.array(self.observables)[care_for_obs]) + llabels
-            Z = ((self.hx[0] @ Y.T).T + self.hx[1])[:, care_for_obs]
-            X = np.hstack((Z, X))
 
     if verbose:
         print('[irfs:]'.ljust(15, ' ')+'Simulation took ',
               np.round((time.time() - st), 5), ' seconds.')
 
-    labels = []
-    for l in llabels:
-        if not isinstance(l, str):
-            l = l.name
-        labels.append(l)
-
-    return X, labels, (Y, K, L)
+    return X, (K, L)
 
 
 def simulate(self, eps=None, mask=None, state=None, linear=False, verbose=False):
