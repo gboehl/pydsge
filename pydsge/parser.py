@@ -342,6 +342,13 @@ class DSGE(dict):
 
     @classmethod
     def read(cls, mfile, verbose=False):
+        """Read and parse a given *.yaml file.
+
+        Parameters
+        ----------
+        mfile : str
+            Path to the *.yaml file.
+        """
 
         global processed_raw_model
 

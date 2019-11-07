@@ -633,7 +633,7 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
     elif resume:
         p0 = sampler.get_last_sample()
     else:
-        p0 = self.get_par('best', asdict=False, nsample=nwalks, verbose=verbose)
+        p0 = self.get_par('best', asdict=False, full=False, nsample=nwalks, verbose=verbose)
 
     if not verbose:
         np.warnings.filterwarnings('ignore')

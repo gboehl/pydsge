@@ -309,16 +309,16 @@ def get_par(self, dummy=None, parname=None, asdict=True, full=True, roundto=5, n
             try:
                 par_cand = np.array(self.par)[self.prior_arg]
             except:
-                par_cand = get_par(self, 'best', asdict=False)
+                par_cand = get_par(self, 'best', asdict=False, full=False)
         elif len(dummy) == len(self.par_fix):
             par_cand = dummy[self.prior_arg]
         elif len(dummy) == len(self.prior_arg):
             par_cand = dummy
         elif dummy is 'best':
             try:
-                par_cand = get_par(self, 'mode', asdict=False)
+                par_cand = get_par(self, 'mode', asdict=False, full=False)
             except:
-                par_cand = get_par(self, 'init', asdict=False)
+                par_cand = get_par(self, 'init', asdict=False, full=False)
         elif dummy is 'prior':
             return prior_draw(self, nsample, seed, ncores, verbose)
         elif dummy is 'mode':
@@ -333,7 +333,7 @@ def get_par(self, dummy=None, parname=None, asdict=True, full=True, roundto=5, n
                 if par_cand[i] is None:
                     par_cand[i] = self.par_fix[self.prior_arg][i]
         else:
-            return get_par(self, parname=dummy)
+            return get_par(self, parname=dummy, full=full)
     elif parname in pars_str:
         return self.par[pars_str.index(parname)]
     elif parname in pfnames:
@@ -361,7 +361,7 @@ def get_par(self, dummy=None, parname=None, asdict=True, full=True, roundto=5, n
         return dict(zip(np.array(pars_str)[self.prior_arg], np.round(par_cand, roundto)))
 
     if nsample > 1:
-        par_cand = par_cand*(1 + 1e-3*np.random.randn(nsample, self.ndim))
+        par_cand = par_cand*(1 + 1e-3*np.random.randn(nsample, par_cand.shape[0]))
 
     return par_cand
 
