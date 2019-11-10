@@ -147,7 +147,7 @@ def traceplot(trace, varnames, tune, figsize=None,
             if not np.isclose(d, 0).all():
 
                 artists = kdeplot_op(
-                    ax[i, 0], d_stream[tune:], bw, prior, prior_alpha, prior_style)[0]
+                    ax[i, 0], d_stream[-tune:], bw, prior, prior_alpha, prior_style)[0]
                 colors = [a[0].get_color() for a in artists]
 
             else:
@@ -157,13 +157,15 @@ def traceplot(trace, varnames, tune, figsize=None,
             ax[i, 0].set_title(str(v))
             ax[i, 1].set_title(str(v))
 
+            auxtune = d.shape[0] - tune
+
             if draw_lines:
-                ax[i, 1].plot(range(0, tune+1), d[:tune+1],
+                ax[i, 1].plot(range(0, auxtune+1), d[:auxtune+1],
                               c='maroon', alpha=0.03)
-                ax[i, 1].plot(range(tune, width), d[tune:],
+                ax[i, 1].plot(range(auxtune, width), d[auxtune:],
                               c='maroon', alpha=0.045)
-                ax[i, 1].plot([tune, tune], [np.mean(d_stream, 1)[tune] - np.std(d_stream, 1)[tune]*3,
-                                             np.mean(d_stream, 1)[tune] + np.std(d_stream, 1)[tune]*3], '--', alpha=.4, color='k')
+                ax[i, 1].plot([auxtune, auxtune], [np.mean(d_stream, 1)[auxtune] - np.std(d_stream, 1)[auxtune]*3,
+                                             np.mean(d_stream, 1)[auxtune] + np.std(d_stream, 1)[auxtune]*3], '--', alpha=.4, color='k')
 
             else:
                 i95s = np.percentile(d_stream, [2.5, 97.5], axis=1)
@@ -172,19 +174,19 @@ def traceplot(trace, varnames, tune, figsize=None,
                 medis = np.median(d_stream, axis=1)
 
                 ax[i, 1].fill_between(
-                    range(0, tune+1), *i95s[:, :tune+1], lw=0, alpha=.1, color='C1')
+                    range(0, auxtune+1), *i95s[:, :auxtune+1], lw=0, alpha=.1, color='C1')
                 ax[i, 1].fill_between(
-                    range(tune, width), *i95s[:, tune:], lw=0, alpha=.2, color='C1')
+                    range(auxtune, width), *i95s[:, auxtune:], lw=0, alpha=.2, color='C1')
                 ax[i, 1].fill_between(
-                    range(0, tune+1), *i66s[:, :tune+1], lw=0, alpha=.3, color='C1')
+                    range(0, auxtune+1), *i66s[:, :auxtune+1], lw=0, alpha=.3, color='C1')
                 ax[i, 1].fill_between(
-                    range(tune, width), *i66s[:, tune:], lw=0, alpha=.4, color='C1')
-                ax[i, 1].plot(range(tune, width),   means[tune:], lw=2, c='C0')
-                ax[i, 1].plot(range(0, tune+1),
-                              means[:tune+1], lw=2, c='C0', alpha=.5)
+                    range(auxtune, width), *i66s[:, auxtune:], lw=0, alpha=.4, color='C1')
+                ax[i, 1].plot(range(auxtune, width),   means[auxtune:], lw=2, c='C0')
+                ax[i, 1].plot(range(0, auxtune+1),
+                              means[:auxtune+1], lw=2, c='C0', alpha=.5)
 
-                ax[i, 1].plot([tune, tune], [np.mean(d_stream, 1)[tune] - np.std(d_stream, 1)[tune]*3,
-                                             np.mean(d_stream, 1)[tune] + np.std(d_stream, 1)[tune]*3],
+                ax[i, 1].plot([auxtune, auxtune], [np.mean(d_stream, 1)[auxtune] - np.std(d_stream, 1)[auxtune]*3,
+                                             np.mean(d_stream, 1)[auxtune] + np.std(d_stream, 1)[auxtune]*3],
                               '--', alpha=.4, color='k')
 
             ax[i, 0].set_ylabel("Frequency")
@@ -370,7 +372,7 @@ def posteriorplot(trace, varnames=None, tune=0, figsize=None, max_no=4, text_siz
         if len(np.atleast_1d(ax).flatten()) != len(vnames_chunk):
             print('Given axis does not match number of plots')
         for idx, (a, v) in enumerate(zip(np.atleast_1d(ax), vnames_chunk)):
-            tr_values = trace_chunk[tune:, :, idx].flatten()
+            tr_values = trace_chunk[-tune:, :, idx].flatten()
             plot_posterior_op(tr_values, ax=a, bw=bw, kde_plot=kde_plot,
                               point_estimate=point_estimate, round_to=round_to,
                               alpha_level=alpha_level, ref_val=ref_val[idx],

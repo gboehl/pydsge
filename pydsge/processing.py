@@ -97,7 +97,7 @@ def get_sample(self, source=None, k=1, seed=None, ncores=None, verbose=False):
         import random
 
         random.seed(seed)
-        sample = self.get_chain()[self.get_tune:]
+        sample = self.get_chain()[-self.get_tune:]
         sample = sample.reshape(-1, sample.shape[-1])
         sample = random.choices(sample, k=k)
 

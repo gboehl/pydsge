@@ -326,7 +326,7 @@ def get_par(self, dummy=None, parname=None, asdict=True, full=True, roundto=5, n
         elif dummy is 'calib':
             par_cand = self.par_fix[self.prior_arg]
         elif dummy is 'prior_mean':
-            par_cand = [self.prior[pp][1] for pp in self.prior.keys()]
+            par_cand = [self.prior[pp][-2] for pp in self.prior.keys()]
         elif dummy is 'init':
             par_cand = self.fdict['init_value']
             for i in range(self.ndim):
@@ -361,7 +361,7 @@ def get_par(self, dummy=None, parname=None, asdict=True, full=True, roundto=5, n
         return dict(zip(np.array(pars_str)[self.prior_arg], np.round(par_cand, roundto)))
 
     if nsample > 1:
-        par_cand = par_cand*(1 + 1e-3*np.random.randn(nsample, par_cand.shape[0]))
+        par_cand = par_cand*(1 + 1e-3*np.random.randn(nsample, len(par_cand)))
 
     return par_cand
 

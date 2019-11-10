@@ -15,7 +15,6 @@ def linear_representation(self):
     """
     from .core import get_sys
 
-    get_sys(self, l_max=1, k_max=0)
     mat = self.precalc_mat[0]
     dim_x = self.sys[2].shape[0]
 

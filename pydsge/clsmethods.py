@@ -10,7 +10,7 @@ from .engine import func_dispatch
 from .core import *
 from .tools import *
 from .filtering import *
-from .estimation import prep_estim, swarms, mcmc, kdes
+from .estimation import prep_estim, swarms, mcmc, tmcmc, kdes
 from .modesearch import pmdm, nlopt
 from .plots import posteriorplot, traceplot, swarm_rank, swarm_champ, swarm_plot
 from .processing import *
@@ -152,7 +152,7 @@ def traceplot_m(self, chain=None, **args):
     if chain is None:
         if 'kdes_chain' in self.fdict.keys():
             chain = self.fdict['kdes_chain']
-            args['tune'] = int(chain.shape[0]*4/5)
+            args['tune'] = int(chain.shape[0]/5)
         else:
             chain = self.get_chain()
             args['tune'] = self.get_tune
@@ -178,10 +178,10 @@ def swarm_summary(self, verbose=True, **args):
     return res
 
 
-def mcmc_summary(self, mc_type=None, tune=None, verbose=True, **args):
+def mcmc_summary(self, chain=None, mc_type=None, tune=None, calc_mdd=True, calc_ll_stats=False, calc_maf=True, out=print, verbose=True, **args):
 
     try:
-        chain = self.get_chain(mc_type)
+        chain = self.get_chain(mc_type) if chain is None else chain
     except AttributeError:
         raise AttributeError('[summary:]'.ljust(
             15, ' ') + "No chain to be found...")
@@ -193,14 +193,30 @@ def mcmc_summary(self, mc_type=None, tune=None, verbose=True, **args):
         tune = self.get_tune
 
     if verbose:
-        acs = get_chain(self, get_acceptance_fraction=True)
-        print(res.round(3))
-        print('Marginal data density:' + str(mdd(self).round(4)).rjust(16))
-        print('Mean acceptance fraction:' +
-              str(np.mean(acs).round(3)).rjust(13))
 
-        # raise ValueError('[mdd:]'.ljust(
-        # 15, ' ') + "Option `hess` is experimental and did not return a usable hessian matrix.")
+        out(res.round(3))
+
+        if calc_mdd:
+            out('Marginal data density:' + str(mdd(self).round(4)).rjust(16))
+        if calc_ll_stats:
+
+            chain = sampler.get_chain()[-tune:]
+            chain = chain.reshape(-1, chain.shape[-1])
+            lprobs = sampler.get_log_prob()[-tune:]
+            lprobs = lprobs.reshape(-1, lprobs.shape[-1])
+            par_lprob = chain[lprobs.argmax]
+            max_lprior = self.lprior(list(par_lprob))
+            max_llike = (max_lprob - max_lprior) / self.temp if self.temp else np.nan
+
+            out('Max posterior density:' + str(np.round(max_lprob, 4)).rjust(16))
+            out('Respective true likelihood:' + str(np.round(max_llike, 4)).rjust(11))
+            out('Corresponding prior density:' + str(np.round(max_lprior,4)).rjust(10))
+        if calc_maf:
+
+            acs = get_chain(self, get_acceptance_fraction=True)[-tune:]
+
+            out('Mean acceptance fraction:' + str(np.mean(acs).round(3)).rjust(13))
+
     return res
 
 
@@ -224,7 +240,7 @@ def info_m(self, verbose=True, **args):
         tune = self.get_tune
         res += 'Parameters: %s\n' % cshp[2]
         res += 'Chains: %s\n' % cshp[1]
-        res += 'Last %s of %s samples\n' % (cshp[0] - tune, cshp[0])
+        res += 'Last %s of %s samples\n' % (tune, cshp[0])
     except AttributeError:
         pass
 
@@ -308,7 +324,7 @@ def mdd(self, mode_f=None, inv_hess=None, verbose=False):
 
     elif inv_hess is None:
 
-        chain = self.get_chain()[self.get_tune:]
+        chain = self.get_chain()[-self.get_tune:]
         chain = chain.reshape(-1, chain.shape[-1])
         inv_hess = np.cov(chain.T)
 
@@ -340,10 +356,10 @@ def box_check(self, par=None):
         lb, ub = self.fdict['prior_bounds']
 
         if par[i] < lb[i]:
-            print('[box_check:]'.ljust(15, ' ') + 'Parameter %s of %s lower than lb of %s.' %(name, par[i], lb[i]))
+            print('[box_check:]'.ljust(15, ' ') + 'Parameter %s of %s lower than lb of %s.' %(name, par[i].round(5), lb[i]))
 
         if par[i] > ub[i]:
-            print('[box_check:]'.ljust(15, ' ') + 'Parameter %s of %s higher than ub of %s.' %(name, par[i], ub[i])) 
+            print('[box_check:]'.ljust(15, ' ') + 'Parameter %s of %s higher than ub of %s.' %(name, par[i].round(5), ub[i])) 
 
     return 
 
@@ -374,6 +390,7 @@ DSGE.simulate_series = simulate_series
 # from estimation:
 DSGE.swarms = swarms
 DSGE.mcmc = mcmc
+DSGE.tmcmc = tmcmc
 DSGE.kdes = kdes
 DSGE.kombine = kdes
 DSGE.prep_estim = prep_estim

@@ -55,7 +55,7 @@ def _hpd_df(x, alpha):
     return pd.DataFrame(hpd_vals, columns=cnames)
 
 
-def summary(store, priors, bounds=None, tune=None, alpha=0.05, top=None, show_prior=True, min_col=80):
+def summary(store, priors, bounds=None, tune=None, alpha=0.10, top=None, show_prior=True, min_col=80):
     # in parts stolen from pymc3 because it looks really nice
 
     try:
@@ -103,7 +103,7 @@ def summary(store, priors, bounds=None, tune=None, alpha=0.05, top=None, show_pr
             [lst.append(pd.Series(s[i], name=n))
              for s, n in zip(xs[:top], ns[:top])]
         else:
-            vals = store[tune:, :, i]
+            vals = store[-tune:, :, i]
             [lst.append(f(vals)) for f in funcs]
         var_df = pd.concat(lst, axis=1)
         var_df.index = [var]
