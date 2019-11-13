@@ -10,7 +10,7 @@ from .engine import func_dispatch
 from .core import *
 from .tools import *
 from .filtering import *
-from .estimation import prep_estim, swarms, mcmc, tmcmc, kdes
+from .estimation import *
 from .modesearch import pmdm, nlopt
 from .plots import posteriorplot, traceplot, swarm_rank, swarm_champ, swarm_plot
 from .processing import *
@@ -389,6 +389,7 @@ DSGE.linear_representation = linear_representation
 DSGE.simulate_series = simulate_series
 # from estimation:
 DSGE.swarms = swarms
+DSGE.cmaes = cmaes
 DSGE.mcmc = mcmc
 DSGE.tmcmc = tmcmc
 DSGE.kdes = kdes

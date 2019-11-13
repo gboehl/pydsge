@@ -2,9 +2,11 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+import pandas as pd
 import os
 import time
 from .stats import get_prior, mc_mean, summary
+from .core import get_par
 from grgrlib.stuff import GPP
 import tqdm
 import cloudpickle as cpickle
@@ -153,7 +155,7 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
                     print('[llike:]'.ljust(15, ' ') +
                           'Failure. Error msg: %s' % err)
                     if verbose > 1:
-                        pardict = self.get_par(full=False)
+                        pardict = get_par(self, full=False)
                         print(pardict)
                         self.box_check([*pardict.values()])
 
@@ -637,9 +639,9 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
     elif resume:
         p0 = sampler.get_last_sample()
     elif temp < 1:
-        p0 = self.get_par('prior_mean', asdict=False, full=False, nsample=nwalks, verbose=verbose)
+        p0 = get_par(self, 'prior_mean', asdict=False, full=False, nsample=nwalks, verbose=verbose)
     else:
-        p0 = self.get_par('best', asdict=False, full=False, nsample=nwalks, verbose=verbose)
+        p0 = get_par(self, 'best', asdict=False, full=False, nsample=nwalks, verbose=verbose)
 
     if not verbose:
         np.warnings.filterwarnings('ignore')
@@ -733,7 +735,7 @@ def tmcmc(self, ntemps, nsteps, nwalks, update_freq=False, tempscale=2, verbose=
     """Run Tempered Ensemble MCMC
     """
 
-    pars = self.get_par('prior_mean', asdict=False, full=False, nsample=nwalks, verbose=verbose)
+    pars = get_par(self, 'prior_mean', asdict=False, full=False, nsample=nwalks, verbose=verbose)
 
     for tmp in np.linspace(0,1,ntemps)**tempscale:
 
@@ -808,7 +810,7 @@ def kdes(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
         # should work, but not tested
         p0 = self.fdict['kdes_chain'][-1]
     else:
-        p0 = self.get_par('best', asdict=False, nsample=nwalks, verbose=verbose)
+        p0 = get_par(self, 'best', asdict=False, nsample=nwalks, verbose=verbose)
 
     if not verbose:
         np.warnings.filterwarnings('ignore')
@@ -876,3 +878,93 @@ def kdes(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
     self.sampler = sampler
 
     return
+
+
+def cmaes(self, p0=None, pop_size=None, nseeds=3, initseed=None, ftol=1e-4, linear=None, use_cloudpickle=False, ncores=None, verbose=True, debug=False):
+    """Find mode using CMA-ES.
+
+    The interface partly replicates some features of the distributed island model because the original implementation has problems with the picklability of the DSGE class
+
+    Parameters
+    ----------
+    pop_size : int
+        Size of each population. (Default: number of dimensions)
+    nseeds : in, optional
+        Number of different seeds tried. (Default: 3)
+    """
+
+    import cma
+    import pathos
+
+    seed = initseed or self.fdict['seed']
+
+    opt_dict = { 'tolfun': ftol, 'bounds': [0,1], 'verbose': verbose }
+
+    bnd = np.array(self.fdict['prior_bounds'])
+
+    p0 = p0 or get_par(self, 'prior_mean', full=False, asdict=False) 
+    p0 = (p0 - bnd[0])/(bnd[1] - bnd[0])
+
+    if not use_cloudpickle:
+        global lprob_global
+    else:
+        lprob_dump = cpickle.dumps(self.lprob)
+        lprob_global = cpickle.loads(lprob_dump)
+
+    def lprob(par): return lprob_global(par, linear, verbose > 2)
+    lprob_scaled = lambda x: -lprob((bnd[1] - bnd[0])*x + bnd[0])
+
+    if not debug:
+        pool = pathos.pools.ProcessPool(ncores)
+        pool.clear()
+        mapper = pool.imap
+    else:
+        mapper = map
+
+    if not debug and verbose < 2:
+        np.warnings.filterwarnings('ignore')
+
+    lprob_pooled = lambda X: list(mapper(lprob_scaled, list(X)))
+
+    f_min = np.inf
+
+    print('[cma-es:]'.ljust(15, ' ') + 'Starting mode search over %s seeds...' %nseeds)
+
+    for s in range(nseeds):
+
+        opt_dict['seed'] = seed + s
+
+        res = cma.fmin(None, p0, .25, parallel_objective=lprob_pooled, options=opt_dict, noise_handler=cma.NoiseHandler(len(p0), parallel=True))
+
+        if res[1] < f_min:
+
+            f_min = res[1]
+            x_min = res[0]
+
+            if verbose:
+                print('[cma-es:]'.ljust(15, ' ') + 'Updating best solution to %s at seed %s.' %(-np.round(f_min, 4), seed+s))
+
+        elif verbose:
+            print('[cma-es:]'.ljust(15, ' ') + 'Current solution of %s rejected at seed %s.' %(-np.round(f_min, 4), seed+s))
+
+        x_min_scaled = x_min * (bnd[1] - bnd[0]) + bnd[0]
+        if verbose:
+            print('[cma-es:]'.ljust(15, ' ') + 'Best solution:')
+            data = {'parameter': list(self.prior_names),
+                    'value': list(x_min_scaled)}
+            print(pd.DataFrame(data).round(3))
+
+    np.warnings.filterwarnings('default')
+
+    self.fdict['cmaes_mode_x'] = x_min_scaled
+    self.fdict['cmaes_mode_f'] = -f_min
+
+    if 'mode_f' in self.fdict.keys() and -f_min<self.fdict['mode_f']:
+        if done:
+            print('[swarms:]'.ljust(
+                15, ' ') + " New mode of %s is below old mode of %s. Rejecting..." % (-f_min, self.fdict['mode_f']))
+    else:
+        self.fdict['mode_x'] = x_min_scaled
+        self.fdict['mode_f'] = self.fdict['cmaes_mode_f']
+
+    return x_min_scaled
