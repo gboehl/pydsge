@@ -217,11 +217,12 @@ def mcmc_summary(self, chain=None, mc_type=None, tune=None, calc_mdd=True, calc_
             out('Marginal data density:' + str(mdd(self).round(4)).rjust(16))
         if calc_ll_stats:
 
-            chain = sampler.get_chain()[-tune:]
+            chain = self.sampler.get_chain()[-tune:]
             chain = chain.reshape(-1, chain.shape[-1])
-            lprobs = sampler.get_log_prob()[-tune:]
+            lprobs = self.sampler.get_log_prob()[-tune:]
             lprobs = lprobs.reshape(-1, lprobs.shape[-1])
-            par_lprob = chain[lprobs.argmax]
+            par_lprob = chain[lprobs.argmax()]
+            max_lprob = lprobs.max()
             max_lprior = self.lprior(list(par_lprob))
             max_llike = (max_lprob - max_lprior) / self.temp if self.temp else np.nan
 

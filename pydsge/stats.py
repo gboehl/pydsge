@@ -79,6 +79,9 @@ def summary(store, priors, bounds=None, tune=None, alpha=0.10, top=None, show_pr
     f_bnd = [lambda x: pd.Series(x, name='lbound'),
              lambda x: pd.Series(x, name='ubound')]
 
+    def sss(x):
+        return pd.Series(mode(x.flatten()), name='mode'),
+
     funcs = [ 
         lambda x: pd.Series(np.mean(x), name='mean'),
         lambda x: pd.Series(np.std(x), name='sd'),

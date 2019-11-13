@@ -683,7 +683,7 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
             dev_sign = '>' if dev_tau > .01 else '<'
 
 
-            self.mcmc_summary(tune=-update_freq, calc_mdd=False, calc_ll_stats=True, out=lambda x: report(str(x)))
+            self.mcmc_summary(tune=update_freq, calc_mdd=False, calc_ll_stats=True, out=lambda x: report(str(x)))
 
             report("Convergence stats: tau is in (%s,%s) (%s%s) and change is %s (%s0.01)." % (
                 min_tau, max_tau, tau_sign, cnt/50, dev_tau.round(3), dev_sign))
@@ -876,7 +876,7 @@ def kdes(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
     return
 
 
-def cmaes(self, p0=None, pop_size=None, nseeds=3, initseed=None, ftol=5e-3, xtol=5e-3, linear=None, use_cloudpickle=False, ncores=None, verbose=True, debug=False):
+def cmaes(self, p0=None, pop_size=None, nseeds=3, initseed=None, ftol=5e-4, xtol=2e-4, linear=None, use_cloudpickle=False, ncores=None, verbose=True, debug=False):
     """Find mode using CMA-ES.
 
     The interface partly replicates some features of the distributed island model because the original implementation has problems with the picklability of the DSGE class
