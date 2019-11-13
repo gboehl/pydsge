@@ -180,13 +180,12 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
         if verbose > 2:
             st = time.time()
 
-        seed_loc = np.random.randint(2**(32-1)) if draw_seed else seed
+        seed_loc = sum(p // 10**(np.log(abs(p))/np.log(10)-9) for p in par)
+        seed_loc = int(seed) % (2**32 - 1) if draw_seed else seed
 
         ll = llike(par, linear, verbose, seed_loc)*temp if temp else 0
 
         if np.isinf(ll):
-            if draw_seed:
-                return ll, seed_loc
             return ll
 
         ll += lprior(par)
@@ -194,8 +193,6 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
             print('[lprob:]'.ljust(15, ' ') + "Sample took %ss, ll is %s, temp is %s." %
                   (np.round(time.time() - st, 3), np.round(ll, 4), np.round(temp,3)))
 
-        if draw_seed:
-            return ll, seed_loc
         return ll
 
     ## old and evil way, kept for reference
@@ -620,7 +617,6 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
     if isinstance(temp, bool) and not temp:
         temp = 1
 
-
     def lprob(par): return lprob_global(par, linear, verbose, temp, True)
 
     loc_pool = pathos.pools.ProcessPool(ncores)
@@ -880,7 +876,7 @@ def kdes(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
     return
 
 
-def cmaes(self, p0=None, pop_size=None, nseeds=3, initseed=None, ftol=5e-3, xtol=5e-3, linear=None, use_cloudpickle=False, ncores=None, verbose=True, debug=False):
+def cmaes(self, p0=None, pop_size=None, nseeds=3, initseed=None, ftol=1e-3, xtol=1e-3, linear=None, use_cloudpickle=False, ncores=None, verbose=True, debug=False):
     """Find mode using CMA-ES.
 
     The interface partly replicates some features of the distributed island model because the original implementation has problems with the picklability of the DSGE class
@@ -896,17 +892,18 @@ def cmaes(self, p0=None, pop_size=None, nseeds=3, initseed=None, ftol=5e-3, xtol
     import cma
     import pathos
 
-    seed = initseed or self.fdict['seed']
-
-    np.random.seed(seed)
+    np.random.seed(initseed or self.fdict['seed'])
     seeds = np.random.randint(2**32-2, size=nseeds)
 
-    opt_dict = { 'tolfun': ftol, 'tolx': xtol, 'bounds': [0,1], 'verbose': verbose }
+    ncores = pathos.multiprocessing.cpu_count()
 
     bnd = np.array(self.fdict['prior_bounds'])
-
     p0 = p0 or get_par(self, 'prior_mean', full=False, asdict=False) 
     p0 = (p0 - bnd[0])/(bnd[1] - bnd[0])
+
+    pop_size = pop_size or ncores*np.ceil(len(p0)/ncores)
+
+    opt_dict = { 'popsize': pop_size, 'tolfun': ftol, 'tolx': xtol, 'bounds': [0,1], 'verbose': verbose }
 
     if not use_cloudpickle:
         global lprob_global
@@ -914,7 +911,7 @@ def cmaes(self, p0=None, pop_size=None, nseeds=3, initseed=None, ftol=5e-3, xtol
         lprob_dump = cpickle.dumps(self.lprob)
         lprob_global = cpickle.loads(lprob_dump)
 
-    def lprob(par): return lprob_global(par, linear, verbose > 2)
+    def lprob(par): return lprob_global(par, linear=linear, verbose=verbose > 2, draw_seed=True)
     lprob_scaled = lambda x: -lprob((bnd[1] - bnd[0])*x + bnd[0])
 
     if not debug:
@@ -939,14 +936,12 @@ def cmaes(self, p0=None, pop_size=None, nseeds=3, initseed=None, ftol=5e-3, xtol
     for s in seeds:
 
         opt_dict['seed'] = s
-
         res = cma.fmin(None, p0, .25, parallel_objective=lprob_pooled, options=opt_dict, noise_handler=cma.NoiseHandler(len(p0), parallel=True))
 
         if res[1] < f_min:
 
             f_min = res[1]
             x_min = res[0]
-
             if verbose:
                 print('[cma-es:]'.ljust(15, ' ') + 'Updating best solution to %s at seed %s.' %(-np.round(f_min, 4), s))
 
