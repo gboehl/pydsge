@@ -180,8 +180,8 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
         if verbose > 2:
             st = time.time()
 
-        seed_loc = sum(p // 10**(np.log(abs(p))/np.log(10)-9) for p in par)
-        seed_loc = int(seed) % (2**32 - 1) if draw_seed else seed
+        seed_loc = sum(p // 10**(int(np.log(abs(p))/np.log(10))-9) for p in par)
+        seed_loc = int(seed_loc) % (2**32 - 1) if draw_seed else seed
 
         ll = llike(par, linear, verbose, seed_loc)*temp if temp else 0
 
