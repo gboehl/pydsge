@@ -167,6 +167,23 @@ def posteriorplot_m(self, mc_type=None, **args):
     return posteriorplot(self.get_chain(mc_type=mc_type), varnames=self.fdict['prior_names'], tune=tune, **args)
 
 
+def cmaes_summary(self, data=None, verbose=True):
+
+    data = data or self.fdict['cmaes_history'][:2]
+
+    f_hist, x_hist = data
+
+    df_inp = {}
+    for s, p in enumerate(x_hist):
+        df_inp['run ' + str(s)] = list(p) + [f_hist[s]]
+    df = pd.DataFrame(df_inp)
+    df.index = self.prior_names + ['loglike']
+
+    if verbose:
+        print(df.round(3))
+
+    return df
+
 def swarm_summary(self, verbose=True, **args):
 
     res = summary(store=self.fdict['swarms'], priors=self['__data__']
@@ -365,6 +382,7 @@ def box_check(self, par=None):
 
 
 DSGE.save = save_meta
+DSGE.cmaes_summary = cmaes_summary
 DSGE.swarm_summary = swarm_summary
 DSGE.mcmc_summary = mcmc_summary
 DSGE.info = info_m

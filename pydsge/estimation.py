@@ -880,7 +880,7 @@ def kdes(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
     return
 
 
-def cmaes(self, p0=None, pop_size=None, nseeds=3, initseed=None, ftol=1e-4, linear=None, use_cloudpickle=False, ncores=None, verbose=True, debug=False):
+def cmaes(self, p0=None, pop_size=None, nseeds=3, initseed=None, ftol=5e-3, xtol=5e-3, linear=None, use_cloudpickle=False, ncores=None, verbose=True, debug=False):
     """Find mode using CMA-ES.
 
     The interface partly replicates some features of the distributed island model because the original implementation has problems with the picklability of the DSGE class
@@ -898,7 +898,10 @@ def cmaes(self, p0=None, pop_size=None, nseeds=3, initseed=None, ftol=1e-4, line
 
     seed = initseed or self.fdict['seed']
 
-    opt_dict = { 'tolfun': ftol, 'bounds': [0,1], 'verbose': verbose }
+    np.random.seed(seed)
+    seeds = np.random.randint(2**32-2, size=nseeds)
+
+    opt_dict = { 'tolfun': ftol, 'tolx': xtol, 'bounds': [0,1], 'verbose': verbose }
 
     bnd = np.array(self.fdict['prior_bounds'])
 
@@ -930,9 +933,12 @@ def cmaes(self, p0=None, pop_size=None, nseeds=3, initseed=None, ftol=1e-4, line
 
     print('[cma-es:]'.ljust(15, ' ') + 'Starting mode search over %s seeds...' %nseeds)
 
-    for s in range(nseeds):
+    f_hist = []
+    x_hist = []
+    
+    for s in seeds:
 
-        opt_dict['seed'] = seed + s
+        opt_dict['seed'] = s
 
         res = cma.fmin(None, p0, .25, parallel_objective=lprob_pooled, options=opt_dict, noise_handler=cma.NoiseHandler(len(p0), parallel=True))
 
@@ -942,22 +948,25 @@ def cmaes(self, p0=None, pop_size=None, nseeds=3, initseed=None, ftol=1e-4, line
             x_min = res[0]
 
             if verbose:
-                print('[cma-es:]'.ljust(15, ' ') + 'Updating best solution to %s at seed %s.' %(-np.round(f_min, 4), seed+s))
+                print('[cma-es:]'.ljust(15, ' ') + 'Updating best solution to %s at seed %s.' %(-np.round(f_min, 4), s))
 
         elif verbose:
-            print('[cma-es:]'.ljust(15, ' ') + 'Current solution of %s rejected at seed %s.' %(-np.round(f_min, 4), seed+s))
+            print('[cma-es:]'.ljust(15, ' ') + 'Current solution of %s rejected at seed %s.' %(-np.round(-res[1], 4), s))
 
-        x_min_scaled = x_min * (bnd[1] - bnd[0]) + bnd[0]
+        x_min_scaled = res[0] * (bnd[1] - bnd[0]) + bnd[0]
+        f_hist.append(-res[1])
+        x_hist.append(x_min_scaled)
+
         if verbose:
-            print('[cma-es:]'.ljust(15, ' ') + 'Best solution:')
-            data = {'parameter': list(self.prior_names),
-                    'value': list(x_min_scaled)}
-            print(pd.DataFrame(data).round(3))
+            from .clsmethods import cmaes_summary
+            cmaes_summary(self, data=(f_hist, x_hist))
+            print('')
 
     np.warnings.filterwarnings('default')
 
     self.fdict['cmaes_mode_x'] = x_min_scaled
     self.fdict['cmaes_mode_f'] = -f_min
+    self.fdict['cmaes_history'] = f_hist, x_hist, seeds
 
     if 'mode_f' in self.fdict.keys() and -f_min<self.fdict['mode_f']:
         if done:
