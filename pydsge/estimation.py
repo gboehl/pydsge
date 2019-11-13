@@ -572,7 +572,8 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
 
     self.tune = tune
     if tune is None:
-        self.tune = int(nsteps*1/5.)
+        # self.tune = int(nsteps*1/5.)
+        self.tune = int(nsteps*2/5.)
 
     if update_freq is None:
         update_freq = int(nsteps/5.)
@@ -683,7 +684,7 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
             dev_sign = '>' if dev_tau > .01 else '<'
 
 
-            self.mcmc_summary(tune=-update_freq, calc_mdd=False, calc_ll_stats=True, out=lambda x: report(str(x)))
+            self.mcmc_summary(tune=update_freq, calc_mdd=False, calc_ll_stats=True, out=lambda x: report(str(x)))
 
             report("Convergence stats: tau is in (%s,%s) (%s%s) and change is %s (%s0.01)." % (
                 min_tau, max_tau, tau_sign, cnt/50, dev_tau.round(3), dev_sign))
@@ -876,7 +877,7 @@ def kdes(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
     return
 
 
-def cmaes(self, p0=None, pop_size=None, nseeds=3, initseed=None, ftol=1e-3, xtol=1e-3, linear=None, use_cloudpickle=False, ncores=None, verbose=True, debug=False):
+def cmaes(self, p0=None, pop_size=None, nseeds=3, initseed=None, ftol=5e-4, xtol=2e-4, linear=None, use_cloudpickle=False, ncores=None, verbose=True, debug=False):
     """Find mode using CMA-ES.
 
     The interface partly replicates some features of the distributed island model because the original implementation has problems with the picklability of the DSGE class
@@ -926,7 +927,7 @@ def cmaes(self, p0=None, pop_size=None, nseeds=3, initseed=None, ftol=1e-3, xtol
 
     lprob_pooled = lambda X: list(mapper(lprob_scaled, list(X)))
 
-    f_min = np.inf
+    f_max = -np.inf
 
     print('[cma-es:]'.ljust(15, ' ') + 'Starting mode search over %s seeds...' %nseeds)
 
@@ -938,19 +939,19 @@ def cmaes(self, p0=None, pop_size=None, nseeds=3, initseed=None, ftol=1e-3, xtol
         opt_dict['seed'] = s
         res = cma.fmin(None, p0, .25, parallel_objective=lprob_pooled, options=opt_dict, noise_handler=cma.NoiseHandler(len(p0), parallel=True))
 
-        if res[1] < f_min:
+        x_scaled = res[0] * (bnd[1] - bnd[0]) + bnd[0]
+        f_hist.append(-res[1])
+        x_hist.append(x_scaled)
 
-            f_min = res[1]
-            x_min = res[0]
+        if -res[1] > f_max:
+
+            f_max = -res[1]
+            x_max_scaled = x_scaled
             if verbose:
-                print('[cma-es:]'.ljust(15, ' ') + 'Updating best solution to %s at seed %s.' %(-np.round(f_min, 4), s))
+                print('[cma-es:]'.ljust(15, ' ') + 'Updating best solution to %s at seed %s.' %(np.round(f_max, 4), s))
 
         elif verbose:
-            print('[cma-es:]'.ljust(15, ' ') + 'Current solution of %s rejected at seed %s.' %(-np.round(-res[1], 4), s))
-
-        x_min_scaled = res[0] * (bnd[1] - bnd[0]) + bnd[0]
-        f_hist.append(-res[1])
-        x_hist.append(x_min_scaled)
+            print('[cma-es:]'.ljust(15, ' ') + 'Current solution of %s rejected at seed %s.' %(np.round(-res[1], 4), s))
 
         if verbose:
             from .clsmethods import cmaes_summary
@@ -959,16 +960,16 @@ def cmaes(self, p0=None, pop_size=None, nseeds=3, initseed=None, ftol=1e-3, xtol
 
     np.warnings.filterwarnings('default')
 
-    self.fdict['cmaes_mode_x'] = x_min_scaled
-    self.fdict['cmaes_mode_f'] = -f_min
+    self.fdict['cmaes_mode_x'] = x_max_scaled
+    self.fdict['cmaes_mode_f'] = f_max
     self.fdict['cmaes_history'] = f_hist, x_hist, seeds
 
-    if 'mode_f' in self.fdict.keys() and -f_min<self.fdict['mode_f']:
+    if 'mode_f' in self.fdict.keys() and f_max < self.fdict['mode_f']:
         if done:
             print('[swarms:]'.ljust(
-                15, ' ') + " New mode of %s is below old mode of %s. Rejecting..." % (-f_min, self.fdict['mode_f']))
+                15, ' ') + " New mode of %s is below old mode of %s. Rejecting..." % (f_max, self.fdict['mode_f']))
     else:
-        self.fdict['mode_x'] = x_min_scaled
-        self.fdict['mode_f'] = self.fdict['cmaes_mode_f']
+        self.fdict['mode_x'] = x_max_scaled
+        self.fdict['mode_f'] = f_max
 
-    return x_min_scaled
+    return x_max_scaled

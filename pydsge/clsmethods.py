@@ -43,29 +43,27 @@ def calc_obs(self, states, covs=None):
 
 def get_chain(self, get_acceptance_fraction=False, mc_type=None, backend_file=None, flat=None):
 
-    if backend_file is None:
+    if backend_file:
+        reader = emcee.backends.HDFBackend(backend_file)
 
-        if hasattr(self, 'kdes_sample') and mc_type != 'mcmc':
-            return self.kdes_sample
-
+    else:
         if hasattr(self, 'sampler'):
-            return self.sampler.get_chain(flat=flat)
-
-        if 'kdes_sample' in self.fdict.keys() and mc_type != 'mcmc':
-            return self.fdict['kdes_sample']
-
-        if hasattr(self, 'backend_file'):
-            backend_file = self.backend_file
-        elif 'backend_file' in self.fdict.keys():
-            backend_file = str(self.fdict['backend_file'])
+            reader = self.sampler
         else:
-            raise AttributeError(
-                "Neither a backend nor a sampler could be found.")
-
-    reader = emcee.backends.HDFBackend(backend_file)
+            if hasattr(self, 'backend_file'):
+                backend_file = self.backend_file
+            elif 'backend_file' in self.fdict.keys():
+                backend_file = str(self.fdict['backend_file'])
+            else:
+                raise AttributeError(
+                    "Neither a backend nor a sampler could be found.")
+            reader = emcee.backends.HDFBackend(backend_file)
 
     if get_acceptance_fraction:
-        return reader.accepted / reader.iteration
+        try:
+            return reader.acceptance_fraction
+        except:
+            return reader.accepted / reader.iteration
 
     return reader.get_chain(flat=flat)
 
@@ -203,11 +201,10 @@ def mcmc_summary(self, chain=None, mc_type=None, tune=None, calc_mdd=True, calc_
         raise AttributeError('[summary:]'.ljust(
             15, ' ') + "No chain to be found...")
 
-    res = summary(chain, self['__data__']['estimation']
-                  ['prior'], tune=tune, **args)
-
     if tune is None:
         tune = self.get_tune
+
+    res = summary(chain, self['__data__']['estimation']['prior'], tune=tune, **args)
 
     if verbose:
 
@@ -217,21 +214,21 @@ def mcmc_summary(self, chain=None, mc_type=None, tune=None, calc_mdd=True, calc_
             out('Marginal data density:' + str(mdd(self).round(4)).rjust(16))
         if calc_ll_stats:
 
-            chain = sampler.get_chain()[-tune:]
+            chain = chain[-tune:]
             chain = chain.reshape(-1, chain.shape[-1])
-            lprobs = sampler.get_log_prob()[-tune:]
+            lprobs = self.sampler.get_log_prob()[-tune:]
             lprobs = lprobs.reshape(-1, lprobs.shape[-1])
-            par_lprob = chain[lprobs.argmax]
+            par_lprob = chain[lprobs.argmax()]
+            max_lprob = lprobs.max()
             max_lprior = self.lprior(list(par_lprob))
             max_llike = (max_lprob - max_lprior) / self.temp if self.temp else np.nan
 
             out('Max posterior density:' + str(np.round(max_lprob, 4)).rjust(16))
-            out('Respective true likelihood:' + str(np.round(max_llike, 4)).rjust(11))
+            out('Corresponding likelihood:' + str(np.round(max_llike, 4)).rjust(13))
             out('Corresponding prior density:' + str(np.round(max_lprior,4)).rjust(10))
         if calc_maf:
 
             acs = get_chain(self, get_acceptance_fraction=True)[-tune:]
-
             out('Mean acceptance fraction:' + str(np.mean(acs).round(3)).rjust(13))
 
     return res
