@@ -31,7 +31,7 @@ def preprocess_jit(vals, l_max, k_max):
     core_mat = np.empty((l_max, s_max, dim_y, dim_y))
     core_term = np.empty((s_max, dim_y))
 
-    core_mat[0, 0, :] = np.eye(dim_y)
+    core_mat[0, 0, :] = np.identity(dim_y)
     res = np.zeros((dim_y, dim_y))
 
     for s in range(s_max):

@@ -12,7 +12,7 @@ import tqdm
 import cloudpickle as cpickle
 
 
-def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=False, constr_data=False, verbose=True):
+def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=False, constr_data=False, verbose=True, **filterargs):
     """Initializes the tools necessary for estimation
 
     ...
@@ -74,7 +74,7 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
         self.get_sys(reduce_sys=True, verbose=verbose > 3)
 
     self.create_filter(
-        N=N, ftype='KalmanFilter' if linear else None)
+        N=N, ftype='KalmanFilter' if linear else None, **filterargs)
 
     if 'filter_R' in self.fdict.keys():
         self.filter.R = self.fdict['filter_R']
@@ -948,6 +948,8 @@ def cmaes(self, p0=None, pop_size=None, nseeds=3, initseed=None, stagtol=150, ft
 
     f_hist = []
     x_hist = []
+    mean_hist = []
+    std_hist = []
     
     for s in seeds:
 
@@ -955,8 +957,12 @@ def cmaes(self, p0=None, pop_size=None, nseeds=3, initseed=None, stagtol=150, ft
         res = cma.fmin(None, p0, .25, parallel_objective=lprob_pooled, options=opt_dict, noise_handler=cma.NoiseHandler(len(p0), parallel=True))
 
         x_scaled = res[0] * (bnd[1] - bnd[0]) + bnd[0]
+        mean_scaled = res[5] * (bnd[1] - bnd[0]) + bnd[0]
+        std_scaled = res[5] * (bnd[1] - bnd[0]) 
         f_hist.append(-res[1])
         x_hist.append(x_scaled)
+        mean_hist.append(mean_scaled)
+        std_hist.append(std_scaled)
 
         if -res[1] > f_max:
 
@@ -970,7 +976,7 @@ def cmaes(self, p0=None, pop_size=None, nseeds=3, initseed=None, stagtol=150, ft
 
         if verbose:
             from .clsmethods import cmaes_summary
-            cmaes_summary(self, data=(f_hist, x_hist))
+            cmaes_summary(self, data=(f_hist, x_hist, mean_hist, std_hist))
             print('')
 
     np.warnings.filterwarnings('default')
