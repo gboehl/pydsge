@@ -180,11 +180,12 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
         if verbose:
             st = time.time()
 
-        if draw_seed == 'vec':
+        if draw_seed in ('vec', 'rand'):
             seed_loc = sum(p // 10**(int(np.log(abs(p))/np.log(10))-9) for p in par)
+            if draw_seed == 'rand':
+                seed_loc += np.random.randint(2**32-2) 
             seed_loc = int(seed_loc) % (2**32 - 1)
-        elif draw_seed == 'rand':
-            seed_loc = np.random.randint(2**32-2) 
+
         elif draw_seed == 'set':
             seed_loc = seed
         else:
