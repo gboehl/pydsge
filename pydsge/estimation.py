@@ -74,7 +74,7 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
         self.get_sys(reduce_sys=True, verbose=verbose > 3)
 
     self.create_filter(
-        N=N, ftype='KalmanFilter' if linear else None, seed=seed)
+        N=N, ftype='KalmanFilter' if linear else None)
 
     if 'filter_R' in self.fdict.keys():
         self.filter.R = self.fdict['filter_R']
@@ -127,7 +127,7 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
                     if self.filter.name == 'KalmanFilter':
                         raise AttributeError('[estimation:]'.ljust(
                             15, ' ') + 'Missmatch between linearity choice (filter vs. lprob)')
-                    # these max vals should be sufficient given we're only dealing with stochastic linearization
+                    # these max vals should be sufficient given we're dealing with stochastic linearization
                     self.get_sys(par=par_active_lst, l_max=3, k_max=16, reduce_sys=True, verbose=verbose > 3)
                     self.filter.Q = self.QQ(self.par) @ self.QQ(self.par)
                 else:
