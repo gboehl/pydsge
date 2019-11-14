@@ -34,9 +34,9 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
     verbose : bool/int, optional
         Whether display messages:
             0 - no messages
-            1 - only error messages
-            2 - error messages plus vectors
-            3 - likelihood estimates plus duration
+            1 - duration
+            2 - duration & error messages
+            3 - duration, error messages & vectors
             4 - maximum informative
     """
 
@@ -172,16 +172,23 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
 
     linear_pa = linear
 
-    def lprob(par, linear=None, verbose=verbose, temp=1, draw_seed=False):
+    def lprob(par, linear=None, verbose=verbose, temp=1, draw_seed='vec'):
 
         if linear is None:
             linear = linear_pa
 
-        if verbose > 2:
+        if verbose:
             st = time.time()
 
-        seed_loc = sum(p // 10**(int(np.log(abs(p))/np.log(10))-9) for p in par)
-        seed_loc = int(seed_loc) % (2**32 - 1) if draw_seed else seed
+        if draw_seed == 'vec':
+            seed_loc = sum(p // 10**(int(np.log(abs(p))/np.log(10))-9) for p in par)
+            seed_loc = int(seed_loc) % (2**32 - 1)
+        elif draw_seed == 'rand':
+            seed_loc = np.random.randint(2**32-2) 
+        elif draw_seed == 'set':
+            seed_loc = seed
+        else:
+            raise NotImplementedError("`draw_seed` must be one of `('vec', 'rand', 'set')`.")
 
         ll = llike(par, linear, verbose, seed_loc)*temp if temp else 0
 
@@ -189,7 +196,7 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
             return ll
 
         ll += lprior(par)
-        if verbose > 2:
+        if verbose:
             print('[lprob:]'.ljust(15, ' ') + "Sample took %ss, ll is %s, temp is %s." %
                   (np.round(time.time() - st, 3), np.round(ll, 4), np.round(temp,3)))
 
@@ -618,7 +625,7 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
     if isinstance(temp, bool) and not temp:
         temp = 1
 
-    def lprob(par): return lprob_global(par, linear, verbose, temp, True)
+    def lprob(par): return lprob_global(par, linear, verbose, temp, 'vec')
 
     loc_pool = pathos.pools.ProcessPool(ncores)
     loc_pool.clear()
@@ -877,7 +884,7 @@ def kdes(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
     return
 
 
-def cmaes(self, p0=None, pop_size=None, nseeds=3, initseed=None, ftol=5e-4, xtol=2e-4, linear=None, use_cloudpickle=False, ncores=None, verbose=True, debug=False):
+def cmaes(self, p0=None, pop_size=None, nseeds=3, initseed=None, stagtol=150, ftol=5e-4, xtol=2e-4, linear=None, use_cloudpickle=False, ncores=None, verbose=True, debug=False):
     """Find mode using CMA-ES.
 
     The interface partly replicates some features of the distributed island model because the original implementation has problems with the picklability of the DSGE class
@@ -904,7 +911,14 @@ def cmaes(self, p0=None, pop_size=None, nseeds=3, initseed=None, ftol=5e-4, xtol
 
     pop_size = pop_size or ncores*np.ceil(len(p0)/ncores)
 
-    opt_dict = { 'popsize': pop_size, 'tolfun': ftol, 'tolx': xtol, 'bounds': [0,1], 'verbose': verbose }
+    opt_dict = { 
+        'popsize': pop_size, 
+        'tolstagnation': stagtol, 
+        'tolfunhist': ftol, 
+        'tolfun': ftol, 
+        'tolx': xtol, 
+        'bounds': [0,1], 
+        'verbose': verbose }
 
     if not use_cloudpickle:
         global lprob_global
@@ -912,7 +926,7 @@ def cmaes(self, p0=None, pop_size=None, nseeds=3, initseed=None, ftol=5e-4, xtol
         lprob_dump = cpickle.dumps(self.lprob)
         lprob_global = cpickle.loads(lprob_dump)
 
-    def lprob(par): return lprob_global(par, linear=linear, verbose=verbose > 2, draw_seed=True)
+    def lprob(par): return lprob_global(par, linear=linear, draw_seed='rand')
     lprob_scaled = lambda x: -lprob((bnd[1] - bnd[0])*x + bnd[0])
 
     if not debug:
