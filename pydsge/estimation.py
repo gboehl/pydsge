@@ -172,7 +172,7 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
 
     linear_pa = linear
 
-    def lprob(par, linear=None, verbose=verbose, temp=1, draw_seed='vec'):
+    def lprob(par, linear=None, verbose=verbose, temp=1, lprob_seed='vec'):
 
         if linear is None:
             linear = linear_pa
@@ -180,16 +180,16 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
         if verbose:
             st = time.time()
 
-        if draw_seed in ('vec', 'rand'):
+        if lprob_seed in ('vec', 'rand'):
             seed_loc = sum(p // 10**(int(np.log(abs(p))/np.log(10))-9) for p in par)
-            if draw_seed == 'rand':
+            if lprob_seed == 'rand':
                 seed_loc += np.random.randint(2**32-2) 
             seed_loc = int(seed_loc) % (2**32 - 1)
 
-        elif draw_seed == 'set':
+        elif lprob_seed == 'set':
             seed_loc = seed
         else:
-            raise NotImplementedError("`draw_seed` must be one of `('vec', 'rand', 'set')`.")
+            raise NotImplementedError("`lprob_seed` must be one of `('vec', 'rand', 'set')`.")
 
         ll = llike(par, linear, verbose, seed_loc)*temp if temp else 0
 
@@ -565,7 +565,7 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
     return xsw
 
 
-def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=False, seed=None, ncores=None, backend=True, linear=None, distr_init_chains=False, resume=False, update_freq=None, draw_seed=None, use_cloudpickle=False, verbose=False, debug=False):
+def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=False, seed=None, ncores=None, backend=True, linear=None, distr_init_chains=False, resume=False, update_freq=None, lprob_seed=None, use_cloudpickle=False, verbose=False, debug=False):
 
     import pathos
     import emcee
@@ -626,7 +626,7 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
     if isinstance(temp, bool) and not temp:
         temp = 1
 
-    def lprob(par): return lprob_global(par, linear, verbose, temp, draw_seed or 'vec')
+    def lprob(par): return lprob_global(par, linear, verbose, temp, lprob_seed or 'vec')
 
     loc_pool = pathos.pools.ProcessPool(ncores)
     loc_pool.clear()
@@ -885,7 +885,7 @@ def kdes(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
     return
 
 
-def cmaes(self, p0=None, pop_size=None, seeds=3, initseed=None, stagtol=150, ftol=5e-4, xtol=2e-4, linear=None, draw_seed=None, use_cloudpickle=False, ncores=None, verbose=True, debug=False):
+def cmaes(self, p0=None, pop_size=None, seeds=3, initseed=None, stagtol=150, ftol=5e-4, xtol=2e-4, linear=None, lprob_seed=None, use_cloudpickle=False, ncores=None, verbose=True, debug=False):
     """Find mode using CMA-ES.
 
     The interface partly replicates some features of the distributed island model because the original implementation has problems with the picklability of the DSGE class
@@ -929,9 +929,9 @@ def cmaes(self, p0=None, pop_size=None, seeds=3, initseed=None, stagtol=150, fto
         lprob_dump = cpickle.dumps(self.lprob)
         lprob_global = cpickle.loads(lprob_dump)
 
-    def lprob(par): return lprob_global(par, linear=linear, draw_seed=draw_seed or 'rand')
+    def lprob(par): return lprob_global(par, linear=linear, lprob_seed=lprob_seed or 'rand')
     lprob_scaled = lambda x: -lprob((bnd[1] - bnd[0])*x + bnd[0])
-    nhandler = None if draw_seed == 'set' else cma.NoiseHandler(len(p0), parallel=True)
+    nhandler = None if lprob_seed == 'set' else cma.NoiseHandler(len(p0), parallel=True)
 
     if not debug:
         pool = pathos.pools.ProcessPool(ncores)
@@ -947,7 +947,7 @@ def cmaes(self, p0=None, pop_size=None, seeds=3, initseed=None, stagtol=150, fto
 
     f_max = -np.inf
 
-    print('[cma-es:]'.ljust(15, ' ') + 'Starting mode search over %s seeds...' %seeds if isinstance(seeds, int) else len(seeds))
+    print('[cma-es:]'.ljust(15, ' ') + 'Starting mode search over %s seeds...' %(seeds if isinstance(seeds, int) else len(seeds)))
 
     f_hist = []
     x_hist = []
