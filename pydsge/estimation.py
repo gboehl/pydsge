@@ -565,7 +565,7 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
     return xsw
 
 
-def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=False, seed=None, ncores=None, backend=True, linear=None, distr_init_chains=False, resume=False, update_freq=None, use_cloudpickle=False, verbose=False, debug=False):
+def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=False, seed=None, ncores=None, backend=True, linear=None, distr_init_chains=False, resume=False, update_freq=None, draw_seed=None, use_cloudpickle=False, verbose=False, debug=False):
 
     import pathos
     import emcee
@@ -626,7 +626,7 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
     if isinstance(temp, bool) and not temp:
         temp = 1
 
-    def lprob(par): return lprob_global(par, linear, verbose, temp, 'vec')
+    def lprob(par): return lprob_global(par, linear, verbose, temp, draw_seed or 'vec')
 
     loc_pool = pathos.pools.ProcessPool(ncores)
     loc_pool.clear()
@@ -885,7 +885,7 @@ def kdes(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
     return
 
 
-def cmaes(self, p0=None, pop_size=None, nseeds=3, initseed=None, stagtol=150, ftol=5e-4, xtol=2e-4, linear=None, use_cloudpickle=False, ncores=None, verbose=True, debug=False):
+def cmaes(self, p0=None, pop_size=None, seeds=3, initseed=None, stagtol=150, ftol=5e-4, xtol=2e-4, linear=None, draw_seed=None, use_cloudpickle=False, ncores=None, verbose=True, debug=False):
     """Find mode using CMA-ES.
 
     The interface partly replicates some features of the distributed island model because the original implementation has problems with the picklability of the DSGE class
@@ -894,7 +894,7 @@ def cmaes(self, p0=None, pop_size=None, nseeds=3, initseed=None, stagtol=150, ft
     ----------
     pop_size : int
         Size of each population. (Default: number of dimensions)
-    nseeds : in, optional
+    seeds : in, optional
         Number of different seeds tried. (Default: 3)
     """
 
@@ -902,7 +902,9 @@ def cmaes(self, p0=None, pop_size=None, nseeds=3, initseed=None, stagtol=150, ft
     import pathos
 
     np.random.seed(initseed or self.fdict['seed'])
-    seeds = np.random.randint(2**32-2, size=nseeds)
+
+    if isinstance(seeds, int):
+        seeds = np.random.randint(2**32-2, size=seeds)
 
     ncores = pathos.multiprocessing.cpu_count()
 
@@ -927,8 +929,9 @@ def cmaes(self, p0=None, pop_size=None, nseeds=3, initseed=None, stagtol=150, ft
         lprob_dump = cpickle.dumps(self.lprob)
         lprob_global = cpickle.loads(lprob_dump)
 
-    def lprob(par): return lprob_global(par, linear=linear, draw_seed='rand')
+    def lprob(par): return lprob_global(par, linear=linear, draw_seed=draw_seed or 'rand')
     lprob_scaled = lambda x: -lprob((bnd[1] - bnd[0])*x + bnd[0])
+    nhandler = None if draw_seed == 'set' else cma.NoiseHandler(len(p0), parallel=True)
 
     if not debug:
         pool = pathos.pools.ProcessPool(ncores)
@@ -944,7 +947,7 @@ def cmaes(self, p0=None, pop_size=None, nseeds=3, initseed=None, stagtol=150, ft
 
     f_max = -np.inf
 
-    print('[cma-es:]'.ljust(15, ' ') + 'Starting mode search over %s seeds...' %nseeds)
+    print('[cma-es:]'.ljust(15, ' ') + 'Starting mode search over %s seeds...' %seeds if isinstance(seeds, int) else len(seeds))
 
     f_hist = []
     x_hist = []
@@ -954,11 +957,11 @@ def cmaes(self, p0=None, pop_size=None, nseeds=3, initseed=None, stagtol=150, ft
     for s in seeds:
 
         opt_dict['seed'] = s
-        res = cma.fmin(None, p0, .25, parallel_objective=lprob_pooled, options=opt_dict, noise_handler=cma.NoiseHandler(len(p0), parallel=True))
+        res = cma.fmin(None, p0, .25, parallel_objective=lprob_pooled, options=opt_dict, noise_handler=nhandler)
 
         x_scaled = res[0] * (bnd[1] - bnd[0]) + bnd[0]
         mean_scaled = res[5] * (bnd[1] - bnd[0]) + bnd[0]
-        std_scaled = res[5] * (bnd[1] - bnd[0]) 
+        std_scaled = res[6] * (bnd[1] - bnd[0]) 
         f_hist.append(-res[1])
         x_hist.append(x_scaled)
         mean_hist.append(mean_scaled)
