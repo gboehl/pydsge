@@ -885,7 +885,7 @@ def kdes(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
     return
 
 
-def cmaes(self, p0=None, pop_size=None, seeds=3, initseed=None, stagtol=150, ftol=5e-4, xtol=2e-4, linear=None, lprob_seed=None, use_cloudpickle=False, ncores=None, verbose=True, debug=False):
+def cmaes(self, p0=None, sigma0=None, pop_size=None, seeds=3, init_seed=None, stagtol=150, ftol=5e-4, xtol=2e-4, linear=None, lprob_seed=None, use_cloudpickle=False, ncores=None, cma_callback=None, verbose=True, debug=False):
     """Find mode using CMA-ES.
 
     The interface partly replicates some features of the distributed island model because the original implementation has problems with the picklability of the DSGE class
@@ -901,7 +901,7 @@ def cmaes(self, p0=None, pop_size=None, seeds=3, initseed=None, stagtol=150, fto
     import cma
     import pathos
 
-    np.random.seed(initseed or self.fdict['seed'])
+    np.random.seed(init_seed or self.fdict['seed'])
 
     if isinstance(seeds, int):
         seeds = np.random.randint(2**32-2, size=seeds)
@@ -909,8 +909,9 @@ def cmaes(self, p0=None, pop_size=None, seeds=3, initseed=None, stagtol=150, fto
     ncores = pathos.multiprocessing.cpu_count()
 
     bnd = np.array(self.fdict['prior_bounds'])
-    p0 = p0 or get_par(self, 'prior_mean', full=False, asdict=False) 
+    p0 = get_par(self, 'prior_mean', full=False, asdict=False) if p0 is None else p0
     p0 = (p0 - bnd[0])/(bnd[1] - bnd[0])
+    sigma0 = sigma0 or .25
 
     pop_size = pop_size or ncores*np.ceil(len(p0)/ncores)
 
@@ -956,7 +957,7 @@ def cmaes(self, p0=None, pop_size=None, seeds=3, initseed=None, stagtol=150, fto
     for s in seeds:
 
         opt_dict['seed'] = s
-        res = cma.fmin(None, p0, .25, parallel_objective=lprob_pooled, options=opt_dict, noise_handler=nhandler)
+        res = cma.fmin(None, p0, sigma0, parallel_objective=lprob_pooled, options=opt_dict, noise_handler=nhandler, callback=cma_callback)
 
         x_scaled = res[0] * (bnd[1] - bnd[0]) + bnd[0]
         mean_scaled = res[5] * (bnd[1] - bnd[0]) + bnd[0]
@@ -978,7 +979,7 @@ def cmaes(self, p0=None, pop_size=None, seeds=3, initseed=None, stagtol=150, fto
 
         if verbose:
             from .clsmethods import cmaes_summary
-            cmaes_summary(self, data=(f_hist, x_hist, mean_hist, std_hist))
+            cmaes_summary(self, data=(f_hist, x_hist, std_hist))
             print('')
 
     np.warnings.filterwarnings('default')

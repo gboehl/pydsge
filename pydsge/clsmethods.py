@@ -167,14 +167,13 @@ def posteriorplot_m(self, mc_type=None, **args):
 
 def cmaes_summary(self, data=None, verbose=True):
 
-    data = data or self.fdict['cmaes_history'][:2]
+    data = data or self.fdict['cmaes_history'][:3]
 
-    f, x, mean, std = data
+    f, x, std = data
 
     df_inp = {}
     for s, p in enumerate(x):
         df_inp['run %s: mode' %s] = list(p) + [f[s]]
-        df_inp['run %s: mean' %s] = list(mean[s]) + [None]
         df_inp['run %s: stds' %s] = list(std[s]) + [None]
     df = pd.DataFrame(df_inp)
     df.index = self.prior_names + ['loglike']
