@@ -917,7 +917,6 @@ def cmaes(self, p0=None, pop_size=None, seeds=3, initseed=None, stagtol=150, fto
     opt_dict = { 
         'popsize': pop_size, 
         'tolstagnation': stagtol, 
-        'tolfunhist': ftol, 
         'tolfun': ftol, 
         'tolx': xtol, 
         'bounds': [0,1], 
