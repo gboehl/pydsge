@@ -14,6 +14,20 @@ except ModuleNotFoundError:
 
 
 def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, verbose=False):
+    """Creates the transition function given a set of parameters. 
+
+    If no parameters are given this will default to the calibration in the `yaml` file.
+    Parameters
+    ----------
+    par : array or list, optional
+        The parameters to parse into the transition function. (defaults to calibration in `yaml`)
+    reduce_sys : bool, optional
+        If true, the state space is reduced. This speeds up computation.
+    l_max : int, optional
+        The expected number of periods *until* the constraint binds (defaults to 3).
+    k_max : int, optional
+        The expected number of periods for which the constraint binds (defaults to 17).
+    """
 
     st = time.time()
 
@@ -314,20 +328,20 @@ def get_par(self, dummy=None, parname=None, asdict=True, full=True, roundto=5, n
             par_cand = dummy[self.prior_arg]
         elif len(dummy) == len(self.prior_arg):
             par_cand = dummy
-        elif dummy is 'best':
+        elif dummy == 'best':
             try:
                 par_cand = get_par(self, 'mode', asdict=False, full=False)
             except:
                 par_cand = get_par(self, 'init', asdict=False, full=False)
-        elif dummy is 'prior':
+        elif dummy == 'prior':
             return prior_draw(self, nsample, seed, ncores, verbose)
-        elif dummy is 'mode':
+        elif dummy == 'mode':
             par_cand = self.fdict['mode_x']
-        elif dummy is 'calib':
+        elif dummy == 'calib':
             par_cand = self.par_fix[self.prior_arg]
-        elif dummy is 'prior_mean':
+        elif dummy == 'prior_mean':
             par_cand = [self.prior[pp][-2] for pp in self.prior.keys()]
-        elif dummy is 'init':
+        elif dummy == 'init':
             par_cand = self.fdict['init_value']
             for i in range(self.ndim):
                 if par_cand[i] is None:

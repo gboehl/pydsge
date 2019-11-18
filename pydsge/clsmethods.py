@@ -26,6 +26,14 @@ def get_tune(self):
 
 
 def calc_obs(self, states, covs=None):
+    """Get observables from state representation
+
+    Parameters
+    ----------
+    states : array
+    covs : array, optional
+        Series of covariance matrices. If provided, 95% intervals will be calculated.
+    """
 
     if covs is None:
         return states @ self.hx[0].T + self.hx[1]
@@ -88,7 +96,7 @@ def get_log_prob(self, mc_type=None, backend_file=None, flat=None):
 
 def write_yaml(self, filename):
 
-    if filename[-5:] is not '.yaml':
+    if filename[-5:] != '.yaml':
         filename = filename + '.yaml'
 
     f = open(filename, "w+")
@@ -357,8 +365,8 @@ def mdd(self, mode_f=None, inv_hess=None, verbose=False):
 def box_check(self, par=None):
     """Check if parameterset lies outside the box constraints
 
-    Parameter
-    ---------
+    Parameters
+    ----------
     par : array or list, optional
         The parameter set to check
     """
@@ -388,7 +396,6 @@ DSGE.pmdm_report = pmdm_report
 DSGE.mdd = mdd
 DSGE.get_data = get_data
 DSGE.get_tune = get_tune
-DSGE.calc_obs = calc_obs
 DSGE.obs = calc_obs
 DSGE.box_check = box_check
 # from core & tools:

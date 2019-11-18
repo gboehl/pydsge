@@ -17,10 +17,48 @@ from sympy.matrices import Matrix, zeros
 
 class DSGE(dict):
     """Base class. Every model is an instance of the DSGE class and inherents its methods.
-    """
 
-    max_lead = 1
-    max_lag = 1
+    Examples
+    --------
+
+    Let us import, parse and load the example model:
+
+    .. code::
+
+        from pydsge import DSGE, example
+        mod = DSGE.read(example)
+
+    If you would want to parse your own `*.yaml` model, you could easily do that by:
+
+    .. code::
+
+        yaml_path = "/full/path/to/your/model.yaml"
+        mod = DSGE.read(yaml_path)
+
+    The `mod` object is now an instance of the DSGE class. 
+    Lets load the calibrated parameters from the file (they are loaded by default anyways, but for educative purposes...) and instantize the transition function:
+
+    .. code::
+
+        par = mod.set_par()
+        mod.get_sys(par, reduce_sys=False, verbose=True)
+
+    Let us use this to simulate a series of impulse responses:
+
+    .. code::
+
+        shock_list = 'e_u', size, 1
+        X1, (L1, K1) = mod.irfs(shock_list, verbose=True)
+
+    Nice. For details see the `irfs` function. Lets plot it using the `grgrlib` plot function:
+
+    .. code::
+
+        from grgrlib import pplot
+        pplot(X1)
+
+    So far! To continue, you might want to have a look at the `get_sys` method.
+    """
 
     def __init__(self, *kargs, **kwargs):
         super(DSGE, self).__init__(self, *kargs, **kwargs)
@@ -342,12 +380,12 @@ class DSGE(dict):
 
     @classmethod
     def read(cls, mfile, verbose=False):
-        """Read and parse a given *.yaml file.
+        """Read and parse a given `*.yaml` file.
 
         Parameters
         ----------
         mfile : str
-            Path to the *.yaml file.
+            Path to the `*.yaml` file.
         """
 
         global processed_raw_model
