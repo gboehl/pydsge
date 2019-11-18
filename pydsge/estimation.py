@@ -971,7 +971,6 @@ def cmaes(self, p0=None, sigma0=None, pop_size=None, seeds=3, init_seed=None, st
 
         if -res[1] < f_max:
             print('[cma-es:]'.ljust(15, ' ') + 'Current solution of %s rejected at seed %s.' %(np.round(-res[1], 4), s))
-        and not np.isin(res[0], (0,1)):
 
         elif check_bnd.any():
             print('[cma-es:]'.ljust(15, ' ') + 'Current solution of %s rejected at seed %s because %s is at the bound.' %(np.round(-res[1], 4), s, self.prior_names[check_bnd]))
