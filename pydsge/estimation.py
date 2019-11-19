@@ -967,12 +967,12 @@ def cmaes(self, p0=None, sigma0=None, pop_size=None, seeds=3, init_seed=None, st
         mean_hist.append(mean_scaled)
         std_hist.append(std_scaled)
 
-        check_bnd = np.isin(res[0], (0,1))
+        check_bnd = np.any(res[0] < .01) or np.any(res[0] > .99)
 
         if -res[1] < f_max:
             print('[cma-es:]'.ljust(15, ' ') + 'Current solution of %s rejected at seed %s.' %(np.round(-res[1], 4), s))
 
-        elif check_bnd.any():
+        elif check_bnd:
             print('[cma-es:]'.ljust(15, ' ') + 'Current solution of %s rejected at seed %s because %s is at the bound.' %(np.round(-res[1], 4), s, self.prior_names[check_bnd]))
 
         else:
