@@ -40,7 +40,7 @@ class DSGE(dict):
 
     .. code::
 
-        par = mod.set_par()
+        par = mod.set_par('calib')
         mod.get_sys(par, reduce_sys=False, verbose=True)
 
     Let us use this to simulate a series of impulse responses:
@@ -57,7 +57,7 @@ class DSGE(dict):
         from grgrlib import pplot
         pplot(X1)
 
-    So far! To continue, you might want to have a look at the `get_sys` method.
+    So far! 
     """
 
     def __init__(self, *kargs, **kwargs):
@@ -636,6 +636,7 @@ class DSGE(dict):
         # arbitrary lags/leads of exogenous shocks
         subs_dict = dict()
         old_var = var_ordering[:]
+
         for v in old_var:
 
             # lags
@@ -653,7 +654,21 @@ class DSGE(dict):
                 var_ordering.append(var_l)
                 equations.append(Equation(var_l, var_l_1))
 
-            # still need to do leads
+            # leads
+            for i in np.arange(2, abs(max_lead_endo[v])+1):
+                var_l = Variable(v.name + "_LEAD" + str(i-1))
+
+                var_l_1 = v(+1)
+                ## i > 2 can not be handled by method anyways
+                # if i == 2:
+                    # var_l_1 = v(+1)
+                # else:
+                    # var_l_1 = Variable(v.name + "_LEAD" + str(i-2), date=+1)
+
+                subs_dict[Variable(v.name, date=+i)] = var_l(+1)
+                var_ordering.append(var_l)
+                equations.append(Equation(var_l, var_l_1))
+
 
         equations = [eq.subs(subs_dict) for eq in equations]
 

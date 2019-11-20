@@ -923,6 +923,7 @@ def cmaes(self, p0=None, sigma0=None, pop_size=None, seeds=3, init_seed=None, st
         'tolfun': ftol, 
         'tolx': xtol, 
         'bounds': [0,1], 
+        'verb_disp': 2000,
         'verbose': verbose }
 
     if not use_cloudpickle:
@@ -996,6 +997,7 @@ def cmaes(self, p0=None, sigma0=None, pop_size=None, seeds=3, init_seed=None, st
     self.fdict['cmaes_mode_x'] = x_max_scaled
     self.fdict['cmaes_mode_f'] = f_max
     self.fdict['cmaes_history'] = f_hist, x_hist, mean_hist, std_hist, seeds
+    self.fdict['cmaes_dict'] = opt_dict
 
     if 'mode_f' in self.fdict.keys() and f_max < self.fdict['mode_f']:
         if done:

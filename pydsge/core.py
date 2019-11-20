@@ -17,6 +17,7 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, verbose=Fal
     """Creates the transition function given a set of parameters. 
 
     If no parameters are given this will default to the calibration in the `yaml` file.
+
     Parameters
     ----------
     par : array or list, optional
@@ -125,8 +126,8 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, verbose=Fal
 
     ## rounding here must correspond to the rounding in re_bc
     # if sum(eig(A).round(8) >= 1) != len(vv_x3):
-    if sum(eig(A).round(8) < 1) != len(vv_v):
-        raise ValueError('B-K condition *not* satisfied.')
+    # if sum(eig(A).round(8) < 1) != len(vv_v):
+        # raise ValueError('B-K condition *not* satisfied.')
 
     dim_x = len(vv_x3)
     OME = re_bc(A, dim_x)
