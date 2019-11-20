@@ -885,7 +885,7 @@ def kdes(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
     return
 
 
-def cmaes(self, p0=None, sigma0=None, pop_size=None, seeds=3, init_seed=None, stagtol=150, ftol=5e-4, xtol=2e-4, linear=None, lprob_seed=None, use_cloudpickle=False, ncores=None, cma_callback=None, verbose=True, debug=False):
+def cmaes(self, p0=None, sigma0=None, pop_size=None, seeds=3, init_seed=None, stagtol=150, ftol=5e-4, xtol=2e-4, burnin=False, linear=None, lprob_seed=None, use_cloudpickle=False, ncores=None, cma_callback=None, verbose=True, debug=False):
     """Find mode using CMA-ES.
 
     The interface partly replicates some features of the distributed island model because the original implementation has problems with the picklability of the DSGE class
@@ -904,6 +904,8 @@ def cmaes(self, p0=None, sigma0=None, pop_size=None, seeds=3, init_seed=None, st
     np.random.seed(init_seed or self.fdict['seed'])
 
     if isinstance(seeds, int):
+        if burnin:
+            seeds += 1
         seeds = np.random.randint(2**32-2, size=seeds)
 
     ncores = pathos.multiprocessing.cpu_count()
@@ -916,7 +918,7 @@ def cmaes(self, p0=None, sigma0=None, pop_size=None, seeds=3, init_seed=None, st
     pop_size = pop_size or ncores*np.ceil(len(p0)/ncores)
 
     opt_dict = { 
-        'popsize': pop_size, 
+        'popsize': ncores if burnin else pop_size, 
         'tolstagnation': stagtol, 
         'tolfun': ftol, 
         'tolx': xtol, 
@@ -959,20 +961,21 @@ def cmaes(self, p0=None, sigma0=None, pop_size=None, seeds=3, init_seed=None, st
         opt_dict['seed'] = s
         res = cma.fmin(None, p0, sigma0, parallel_objective=lprob_pooled, options=opt_dict, noise_handler=nhandler, callback=cma_callback)
 
+        repair = res[-2].boundary_handler.repair
         x_scaled = res[0] * (bnd[1] - bnd[0]) + bnd[0]
-        mean_scaled = res[5] * (bnd[1] - bnd[0]) + bnd[0]
+        mean_scaled = repair(res[5]) * (bnd[1] - bnd[0]) + bnd[0]
         std_scaled = res[6] * (bnd[1] - bnd[0]) 
         f_hist.append(-res[1])
         x_hist.append(x_scaled)
         mean_hist.append(mean_scaled)
         std_hist.append(std_scaled)
 
-        check_bnd = np.any(res[0] < .01) or np.any(res[0] > .99)
+        check_bnd = np.bitwise_or(res[0] < 1e-3, res[0] > 1-1e-3)
 
         if -res[1] < f_max:
             print('[cma-es:]'.ljust(15, ' ') + 'Current solution of %s rejected at seed %s.' %(np.round(-res[1], 4), s))
 
-        elif check_bnd:
+        elif check_bnd.any():
             print('[cma-es:]'.ljust(15, ' ') + 'Current solution of %s rejected at seed %s because %s is at the bound.' %(np.round(-res[1], 4), s, self.prior_names[check_bnd]))
 
         else:
@@ -983,14 +986,16 @@ def cmaes(self, p0=None, sigma0=None, pop_size=None, seeds=3, init_seed=None, st
 
         if verbose:
             from .clsmethods import cmaes_summary
-            cmaes_summary(self, data=(f_hist, x_hist, std_hist))
+            cmaes_summary(self, data=(f_hist, x_hist, mean_hist, std_hist))
             print('')
+
+        opt_dict['popsize'] = pop_size
 
     np.warnings.filterwarnings('default')
 
     self.fdict['cmaes_mode_x'] = x_max_scaled
     self.fdict['cmaes_mode_f'] = f_max
-    self.fdict['cmaes_history'] = f_hist, x_hist, seeds
+    self.fdict['cmaes_history'] = f_hist, x_hist, mean_hist, std_hist, seeds
 
     if 'mode_f' in self.fdict.keys() and f_max < self.fdict['mode_f']:
         if done:
