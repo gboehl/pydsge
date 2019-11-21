@@ -8,7 +8,7 @@ The code is in alpha state and provided for reasons of replicability and code sh
 
 The beta stage will involve considerable restructuring of packages, code, and the API.
 
-The dependencies are listed in the setup.py file. Note that this package depends on the ``econsieve`` and ``grgrlib`` packages which both can be found on my github page (they will thus not be installed automatically via ``pip``\ , at least for now).
+The dependencies are listed in the setup.py file. Note that this package depends on the ``econsieve`` and ``grgrlib`` packages which both can be found on my github page (they will thus not be installed automatically via ``pip``\ , at least for now). The code does *not* work with Python 2.x!
 
 There is some `very preliminary documentation <https://pydsge.readthedocs.io/en/latest/index.html>`_ out there.
 
@@ -22,7 +22,7 @@ See https://github.com/EconForge/dolo and https://github.com/eph.
 Installation with ``pip`` (simple)
 --------------------------------------
 
-First get the ``econsieve`` and ``grgrlib`` packages:
+First, be sure that you are on Python 3.x. Then, get the ``econsieve`` and ``grgrlib`` packages:
 
 * https://github.com/gboehl/grgrlib
 

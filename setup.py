@@ -17,7 +17,7 @@ setup(
             'sympy',
             'tqdm',
             'pyaml',
-            'pygmo',
+            # 'pygmo',
             'grgrlib',
             'cloudpickle',
          ],

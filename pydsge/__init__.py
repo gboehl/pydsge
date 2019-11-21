@@ -5,4 +5,4 @@ import os
 from .clsmethods import DSGE, get_data
 
 pth = os.path.dirname(__file__)
-example = os.path.join(pth,'..','docs','dfi.yaml')
+example = os.path.join(pth,'dfi.yaml')
