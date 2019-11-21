@@ -7,6 +7,7 @@ setup(
         author_email='admin@gregorboehl.com',
         description='Solve, filter and estimate DSGE models with occasionaly binding constraints',
         packages = find_packages(),
+        package_data={'pydsge': ["dfi.yaml"]},
         install_requires=[
             'emcee',
             'numba',
