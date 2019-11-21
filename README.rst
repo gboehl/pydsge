@@ -37,10 +37,22 @@ The simplest way is to clone the repository and then from within the cloned fold
 Installation with ``pip`` (elegant via ``git``\ )
 -------------------------------------------------------
 
-The handy way is to first install ``git``. Linux users just use their respective repos. Windows users get it here: https://git-scm.com/download/win
+The handy way is to first install ``git``. Linux users just use their respective repos. 
+
+Windows users probably use anaconda and can do
 
 .. code-block:: bash
 
-   pip3 install git+https://github.com/gboehl/grgrlib
-   pip3 install git+https://github.com/gboehl/econsieve
-   pip3 install git+https://github.com/gboehl/pydsge
+   conda install -c anaconda git
+
+In the conda shell
+`as they tell us here <https://anaconda.org/anaconda/git>`_. Otherwise you can probably get it here: https://git-scm.com/download/win
+
+Then you can simply do
+.. code-block:: bash
+
+   pip install git+https://github.com/gboehl/grgrlib
+   pip install git+https://github.com/gboehl/econsieve
+   pip install git+https://github.com/gboehl/pydsge
+
+Maybe you'd have to use `pip3` instead. If you run it and it complains about missing packages, please let me know so that I can update the `setup.py`!

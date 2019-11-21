@@ -108,7 +108,7 @@ estimation:
     # uniform distribution takes lower & upper as input
     # inv_gamma_dynare function takes weird stuff as input
     # all other function take mean & std as input
-    theta   : [0.7813, 0.5, 0.95, beta, 0.5, 0.10]
+    theta   : [0.7813, 0.2, 0.95, beta, 0.5, 0.10]
     sigma   : [1.2312, 0.25, 3, normal,1.50, 0.375]
     phi_pi  : [1.7985, 1.0, 3, normal,1.5, 0.25]
     phi_y   : [0.0893, 0.001, 0.5, normal, 0.125, 0.05]
