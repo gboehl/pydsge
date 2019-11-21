@@ -45,10 +45,10 @@ Windows users probably use anaconda and can do
 
    conda install -c anaconda git
 
-In the conda shell
-`as they tell us here <https://anaconda.org/anaconda/git>`_. Otherwise you can probably get it here: https://git-scm.com/download/win
+in the conda shell `as they kindly tell us here <https://anaconda.org/anaconda/git>`_. Otherwise you can probably get it `here <https://git-scm.com/download/win>`.
 
 Then you can simply do
+
 .. code-block:: bash
 
    pip install git+https://github.com/gboehl/grgrlib
