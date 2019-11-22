@@ -178,20 +178,10 @@ def cmaes_summary(self, data=None, verbose=True):
     data = data or self.fdict['cmaes_history']
 
     f, x = data[:2]
-    try:
-        f, x, std, mean = *data, None
-        f, x, mean, std = data
-    except ValueError:
-        pass
 
     df_inp = {}
     for s, p in enumerate(x):
         df_inp['run %s: mode' %s] = list(p) + [f[s]]
-        try:
-            df_inp['run %s: cma_mean' %s] = list(mean[s]) + [None]
-            df_inp['run %s: stds' %s] = list(std[s]) + [None]
-        except UnboundLocalError:
-            pass
     df = pd.DataFrame(df_inp)
     df.index = self.prior_names + ['loglike']
 

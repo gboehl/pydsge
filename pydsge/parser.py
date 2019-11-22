@@ -47,7 +47,7 @@ class DSGE(dict):
 
     .. code::
 
-        shock_list = 'e_u', size, 1
+        shock_list = ('e_u', 5, 1) # (name, size, period)
         X1, (L1, K1) = mod.irfs(shock_list, verbose=True)
 
     Nice. For details see the `irfs` function. Lets plot it using the `grgrlib` plot function:

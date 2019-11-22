@@ -9,7 +9,6 @@ from .stats import get_prior, mc_mean, summary
 from .core import get_par
 from grgrlib.stuff import GPP
 import tqdm
-import cloudpickle as cpickle
 
 
 def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=False, constr_data=False, verbose=True, **filterargs):
@@ -238,9 +237,10 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
         Whether to broadcast candidates to everybody or only to the next population. (default: True)
     """
 
-    import pygmo as pg
     import pathos
     import random
+    import cloudpickle as cpickle
+    import pygmo as pg
 
     ## get the maximum generation len of all algos for nlopt methods
     if isinstance(nlopt, bool) and nlopt:
@@ -278,6 +278,7 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
     if not use_cloudpickle:
         global lprob_global
     else:
+        import cloudpickle as cpickle
         lprob_dump = cpickle.dumps(self.lprob)
         lprob_global = cpickle.loads(lprob_dump)
 
@@ -561,6 +562,8 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
                     self.save(verbose=verbose)
 
     pbar.close()
+    if not debug:
+        pool.close()
 
     return xsw
 
@@ -620,6 +623,7 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
     if not use_cloudpickle:
         global lprob_global
     else:
+        import cloudpickle as cpickle
         lprob_dump = cpickle.dumps(self.lprob)
         lprob_global = cpickle.loads(lprob_dump)
 
@@ -705,6 +709,7 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
             pbar.update(1)
 
     pbar.close()
+    loc_pool.close()
 
     if not verbose:
         np.warnings.filterwarnings('default')
@@ -795,6 +800,7 @@ def kdes(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
         # globals are *evil*
         global lprob_global
     else:
+        import cloudpickle as cpickle
         lprob_dump = cpickle.dumps(self.lprob)
         lprob_global = cpickle.loads(lprob_dump)
 
@@ -808,6 +814,8 @@ def kdes(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
     else:
         sampler = kombine.Sampler(
             nwalks, self.ndim, lprob, pool=loc_pool)
+
+        loc_pool.close()
 
     if p0 is not None:
         pass
@@ -885,10 +893,8 @@ def kdes(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
     return
 
 
-def cmaes(self, p0=None, sigma0=None, pop_size=None, seeds=3, init_seed=None, stagtol=150, ftol=5e-4, xtol=2e-4, burnin=False, linear=None, lprob_seed=None, use_cloudpickle=False, ncores=None, cma_callback=None, verbose=True, debug=False):
-    """Find mode using CMA-ES.
-
-    The interface partly replicates some features of the distributed island model because the original implementation has problems with the picklability of the DSGE class
+def cmaes2(self, p0=None, sigma=None, pop_size=None, seeds=3, init_seed=None, stagtol=150, ftol=5e-4, xtol=2e-4, burnin=False, linear=None, lprob_seed=None, use_cloudpickle=False, ncores=None, cma_callback=None, verbose=True, debug=False):
+    """Find mode using CMA-ES from pycma.
 
     Parameters
     ----------
@@ -913,7 +919,7 @@ def cmaes(self, p0=None, sigma0=None, pop_size=None, seeds=3, init_seed=None, st
     bnd = np.array(self.fdict['prior_bounds'])
     p0 = get_par(self, 'prior_mean', full=False, asdict=False) if p0 is None else p0
     p0 = (p0 - bnd[0])/(bnd[1] - bnd[0])
-    sigma0 = sigma0 or .25
+    sigma = sigma or .25
 
     pop_size = pop_size or ncores*np.ceil(len(p0)/ncores)
 
@@ -929,6 +935,7 @@ def cmaes(self, p0=None, sigma0=None, pop_size=None, seeds=3, init_seed=None, st
     if not use_cloudpickle:
         global lprob_global
     else:
+        import cloudpickle as cpickle
         lprob_dump = cpickle.dumps(self.lprob)
         lprob_global = cpickle.loads(lprob_dump)
 
@@ -954,22 +961,16 @@ def cmaes(self, p0=None, sigma0=None, pop_size=None, seeds=3, init_seed=None, st
 
     f_hist = []
     x_hist = []
-    mean_hist = []
-    std_hist = []
     
     for s in seeds:
 
         opt_dict['seed'] = s
-        res = cma.fmin(None, p0, sigma0, parallel_objective=lprob_pooled, options=opt_dict, noise_handler=nhandler, callback=cma_callback)
+        res = cma.fmin(None, p0, sigma, parallel_objective=lprob_pooled, options=opt_dict, noise_handler=nhandler, callback=cma_callback)
 
         repair = res[-2].boundary_handler.repair
         x_scaled = res[0] * (bnd[1] - bnd[0]) + bnd[0]
-        mean_scaled = repair(res[5]) * (bnd[1] - bnd[0]) + bnd[0]
-        std_scaled = res[6] * (bnd[1] - bnd[0]) 
         f_hist.append(-res[1])
         x_hist.append(x_scaled)
-        mean_hist.append(mean_scaled)
-        std_hist.append(std_scaled)
 
         check_bnd = np.bitwise_or(res[0] < 1e-3, res[0] > 1-1e-3)
 
@@ -987,7 +988,7 @@ def cmaes(self, p0=None, sigma0=None, pop_size=None, seeds=3, init_seed=None, st
 
         if verbose:
             from .clsmethods import cmaes_summary
-            cmaes_summary(self, data=(f_hist, x_hist, mean_hist, std_hist))
+            cmaes_summary(self, data=(f_hist, x_hist))
             print('')
 
         opt_dict['popsize'] = pop_size
@@ -996,7 +997,7 @@ def cmaes(self, p0=None, sigma0=None, pop_size=None, seeds=3, init_seed=None, st
 
     self.fdict['cmaes_mode_x'] = x_max_scaled
     self.fdict['cmaes_mode_f'] = f_max
-    self.fdict['cmaes_history'] = f_hist, x_hist, mean_hist, std_hist, seeds
+    self.fdict['cmaes_history'] = f_hist, x_hist, seeds
     self.fdict['cmaes_dict'] = opt_dict
 
     if 'mode_f' in self.fdict.keys() and f_max < self.fdict['mode_f']:
@@ -1007,4 +1008,99 @@ def cmaes(self, p0=None, sigma0=None, pop_size=None, seeds=3, init_seed=None, st
         self.fdict['mode_x'] = x_max_scaled
         self.fdict['mode_f'] = f_max
 
+    if not debug:
+        pool.close()
+
     return x_max_scaled
+
+
+def cmaes(self, p0=None, sigma=None, pop_size=None, seeds=3, init_seed=None, linear=None, lprob_seed=None, use_cloudpickle=False, ncores=None, update_freq=None, verbose=True, debug=False, **args):
+    """Find mode using CMA-ES from grgrlib.
+
+    Parameters
+    ----------
+    pop_size : int
+        Size of each population. (Default: number of dimensions)
+    seeds : in, optional
+        Number of different seeds tried. (Default: 3)
+    """
+
+    import pathos
+    from grgrlib.optimize import cmaes as fmin
+
+    np.random.seed(init_seed or self.fdict['seed'])
+
+    if isinstance(seeds, int):
+        seeds = np.random.randint(2**32-2, size=seeds)
+
+    ncores = pathos.multiprocessing.cpu_count()
+
+    bnd = np.array(self.fdict['prior_bounds'])
+    p0 = get_par(self, 'prior_mean', full=False, asdict=False) if p0 is None else p0
+    p0 = (p0 - bnd[0])/(bnd[1] - bnd[0])
+
+    sigma = sigma or .25
+    pop_size = pop_size or ncores*np.ceil(len(p0)/ncores)
+
+    if not use_cloudpickle:
+        global lprob_global
+    else:
+        import cloudpickle as cpickle
+        lprob_dump = cpickle.dumps(self.lprob)
+        lprob_global = cpickle.loads(lprob_dump)
+
+    def lprob(par): return lprob_global(par, linear=linear, lprob_seed=lprob_seed or 'rand')
+
+    lprob_scaled = lambda x: -lprob((bnd[1] - bnd[0])*x + bnd[0])
+
+    pool = pathos.pools.ProcessPool(ncores)
+    pool.clear()
+
+    f_max = -np.inf
+
+    print('[cma-es:]'.ljust(15, ' ') + 'Starting mode search over %s seeds...' %(seeds if isinstance(seeds, int) else len(seeds)))
+
+    f_hist = []
+    x_hist = []
+    
+    for s in seeds:
+
+        np.random.seed(s)
+        res = fmin(lprob_scaled, p0, sigma, popsize=pop_size, verb_disp=update_freq, pool=pool, **args)
+
+        x_scaled = res[0] * (bnd[1] - bnd[0]) + bnd[0]
+        f_hist.append(-res[1])
+        x_hist.append(x_scaled)
+
+        if -res[1] < f_max:
+            print('[cma-es:]'.ljust(15, ' ') + 'Current solution of %s rejected at seed %s.' %(np.round(-res[1], 4), s))
+
+        else:
+            f_max = -res[1]
+            x_max_scaled = x_scaled
+            if verbose:
+                print('[cma-es:]'.ljust(15, ' ') + 'Updating best solution to %s at seed %s.' %(np.round(f_max, 4), s))
+
+        if verbose:
+            from .clsmethods import cmaes_summary
+            cmaes_summary(self, data=(f_hist, x_hist))
+            print('')
+
+    np.warnings.filterwarnings('default')
+
+    self.fdict['cmaes_mode_x'] = x_max_scaled
+    self.fdict['cmaes_mode_f'] = f_max
+    self.fdict['cmaes_history'] = f_hist, x_hist, seeds
+
+    if 'mode_f' in self.fdict.keys() and f_max < self.fdict['mode_f']:
+        if done:
+            print('[swarms:]'.ljust(
+                15, ' ') + " New mode of %s is below old mode of %s. Rejecting..." % (f_max, self.fdict['mode_f']))
+    else:
+        self.fdict['mode_x'] = x_max_scaled
+        self.fdict['mode_f'] = f_max
+
+    pool.close()
+
+    return x_max_scaled
+
