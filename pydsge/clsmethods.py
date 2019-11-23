@@ -412,6 +412,7 @@ DSGE.simulate_series = simulate_series
 # from estimation:
 DSGE.swarms = swarms
 DSGE.cmaes = cmaes
+DSGE.cmaes2 = cmaes2
 DSGE.mcmc = mcmc
 DSGE.tmcmc = tmcmc
 DSGE.kdes = kdes

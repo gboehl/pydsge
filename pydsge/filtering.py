@@ -3,7 +3,7 @@
 
 import numpy as np
 from .core import time
-from grgrlib.stuff import timeprint
+from grgrlib.core import timeprint
 from econsieve.stats import logpdf
 
 

@@ -7,7 +7,6 @@ import os
 import time
 from .stats import get_prior, mc_mean, summary
 from .core import get_par
-from grgrlib.stuff import GPP
 import tqdm
 
 
@@ -173,6 +172,11 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
 
     def lprob(par, linear=None, verbose=verbose, temp=1, lprob_seed='vec'):
 
+        lp = lprior(par)
+
+        if np.isinf(lp):
+            return lp
+
         if linear is None:
             linear = linear_pa
 
@@ -195,7 +199,8 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
         if np.isinf(ll):
             return ll
 
-        ll += lprior(par)
+        ll += lp
+
         if verbose:
             print('[lprob:]'.ljust(15, ' ') + "Sample took %ss, ll is %s, temp is %s." %
                   (np.round(time.time() - st, 3), np.round(ll, 4), np.round(temp,3)))
@@ -241,6 +246,7 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
     import random
     import cloudpickle as cpickle
     import pygmo as pg
+    from grgrlib.core import GPP
 
     ## get the maximum generation len of all algos for nlopt methods
     if isinstance(nlopt, bool) and nlopt:
@@ -919,7 +925,7 @@ def cmaes2(self, p0=None, sigma=None, pop_size=None, seeds=3, init_seed=None, st
     bnd = np.array(self.fdict['prior_bounds'])
     p0 = get_par(self, 'prior_mean', full=False, asdict=False) if p0 is None else p0
     p0 = (p0 - bnd[0])/(bnd[1] - bnd[0])
-    sigma = sigma or .25
+    sigma = sigma or .2
 
     pop_size = pop_size or ncores*np.ceil(len(p0)/ncores)
 

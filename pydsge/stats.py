@@ -8,7 +8,7 @@ import os
 import scipy.stats as ss
 import scipy.optimize as so
 from scipy.special import gammaln
-from grgrlib.stuff import mode
+from grgrlib.core import mode
 
 
 def mc_error(x):
