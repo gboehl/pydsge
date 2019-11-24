@@ -170,7 +170,7 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
 
     linear_pa = linear
 
-    def lprob(par, linear=None, verbose=verbose, temp=1, lprob_seed='vec'):
+    def lprob(par, linear=None, verbose=verbose, temp=1, lprob_seed='set'):
 
         lp = lprior(par)
 
@@ -756,7 +756,7 @@ def tmcmc(self, ntemps, nsteps, nwalks, update_freq=False, tempscale=2, verbose=
     for tmp in np.linspace(0,1,ntemps)**tempscale:
 
         if tmp:
-            print('[tmcmc:]'.ljust(15, ' ') + "Increasing tempearture to %s." %np.round(tmp, 3))
+            print('[tmcmc:]'.ljust(15, ' ') + "Increasing temperature to %s%%." %np.round(tmp, 6)*100)
 
 
         self.mcmc(p0=pars, nsteps=nsteps, nwalks=nwalks, temp=tmp, update_freq=update_freq, verbose=verbose, backend=False, **mcmc_args)
@@ -984,7 +984,7 @@ def cmaes2(self, p0=None, sigma=None, pop_size=None, seeds=3, init_seed=None, st
             print('[cma-es:]'.ljust(15, ' ') + 'Current solution of %s rejected at seed %s.' %(np.round(-res[1], 4), s))
 
         elif check_bnd.any():
-            print('[cma-es:]'.ljust(15, ' ') + 'Current solution of %s rejected at seed %s because %s is at the bound.' %(np.round(-res[1], 4), s, self.prior_names[check_bnd]))
+            print('[cma-es:]'.ljust(15, ' ') + 'Current solution of %s rejected at seed %s because %s is at the bound.' %(np.round(-res[1], 4), s, np.array(self.prior_names)[check_bnd]))
 
         else:
             f_max = -res[1]
