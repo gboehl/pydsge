@@ -1045,7 +1045,7 @@ def cmaes(self, p0=None, sigma=None, pop_size=None, seeds=3, seed=None, linear=N
     p0 = get_par(self, 'adj_prior_mean', full=False, asdict=False) if p0 is None else p0
     p0 = (p0 - bnd[0])/(bnd[1] - bnd[0])
 
-    sigma = sigma or .25
+    sigma = sigma or .2
     # pop_size = pop_size or ncores*np.ceil(len(p0)/ncores)
 
     if not use_cloudpickle:
@@ -1072,7 +1072,7 @@ def cmaes(self, p0=None, sigma=None, pop_size=None, seeds=3, seed=None, linear=N
     for s in seeds:
 
         np.random.seed(s)
-        res = fmin(lprob_scaled, p0, sigma, popsize=pop_size, verb_disp=update_freq, pool=pool, **args)
+        res = fmin(lprob_scaled, p0, sigma, popsize=pop_size, verb_disp=int(update_freq/pop_size), pool=pool, **args)
 
         x_scaled = res[0] * (bnd[1] - bnd[0]) + bnd[0]
         f_hist.append(-res[1])
