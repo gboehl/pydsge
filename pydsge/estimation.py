@@ -899,7 +899,7 @@ def kdes(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
     return
 
 
-def cmaes2(self, p0=None, sigma=None, pop_size=None, seeds=3, init_seed=None, stagtol=150, ftol=5e-4, xtol=2e-4, burnin=False, linear=None, lprob_seed=None, use_cloudpickle=False, ncores=None, cma_callback=None, verbose=True, debug=False):
+def cmaes2(self, p0=None, sigma=None, pop_size=None, seeds=3, seed=None, stagtol=150, ftol=5e-4, xtol=2e-4, burnin=False, linear=None, lprob_seed=None, use_cloudpickle=False, ncores=None, cma_callback=None, verbose=True, debug=False):
     """Find mode using CMA-ES from pycma.
 
     Parameters
@@ -913,7 +913,7 @@ def cmaes2(self, p0=None, sigma=None, pop_size=None, seeds=3, init_seed=None, st
     import cma
     import pathos
 
-    np.random.seed(init_seed or self.fdict['seed'])
+    np.random.seed(seed or self.fdict['seed'])
 
     if isinstance(seeds, int):
         if burnin:
@@ -1020,7 +1020,7 @@ def cmaes2(self, p0=None, sigma=None, pop_size=None, seeds=3, init_seed=None, st
     return x_max_scaled
 
 
-def cmaes(self, p0=None, sigma=None, pop_size=None, seeds=3, init_seed=None, linear=None, lprob_seed=None, use_cloudpickle=False, ncores=None, update_freq=None, verbose=True, debug=False, **args):
+def cmaes(self, p0=None, sigma=None, pop_size=None, seeds=3, seed=None, linear=None, lprob_seed=None, use_cloudpickle=False, ncores=None, update_freq=None, verbose=True, debug=False, **args):
     """Find mode using CMA-ES from grgrlib.
 
     Parameters
@@ -1034,7 +1034,7 @@ def cmaes(self, p0=None, sigma=None, pop_size=None, seeds=3, init_seed=None, lin
     import pathos
     from grgrlib.optimize import cmaes as fmin
 
-    np.random.seed(init_seed or self.fdict['seed'])
+    np.random.seed(seed or self.fdict['seed'])
 
     if isinstance(seeds, int):
         seeds = np.random.randint(2**32-2, size=seeds)
@@ -1042,11 +1042,11 @@ def cmaes(self, p0=None, sigma=None, pop_size=None, seeds=3, init_seed=None, lin
     ncores = pathos.multiprocessing.cpu_count()
 
     bnd = np.array(self.fdict['prior_bounds'])
-    p0 = get_par(self, 'prior_mean', full=False, asdict=False) if p0 is None else p0
+    p0 = get_par(self, 'adj_prior_mean', full=False, asdict=False) if p0 is None else p0
     p0 = (p0 - bnd[0])/(bnd[1] - bnd[0])
 
     sigma = sigma or .25
-    pop_size = pop_size or ncores*np.ceil(len(p0)/ncores)
+    # pop_size = pop_size or ncores*np.ceil(len(p0)/ncores)
 
     if not use_cloudpickle:
         global lprob_global

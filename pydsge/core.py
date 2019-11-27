@@ -342,6 +342,9 @@ def get_par(self, dummy=None, parname=None, asdict=True, full=True, roundto=5, n
             par_cand = self.par_fix[self.prior_arg]
         elif dummy == 'prior_mean':
             par_cand = [self.prior[pp][-2] for pp in self.prior.keys()]
+        elif dummy == 'adj_prior_mean':
+            ## adjust for prior[pp][-2] not beeing the actual mean for inv_gamma_dynare
+            par_cand = [self.prior[pp][-2]*10**(self.prior[pp][3] == 'inv_gamma_dynare') for pp in self.prior.keys()]
         elif dummy == 'init':
             par_cand = self.fdict['init_value']
             for i in range(self.ndim):
