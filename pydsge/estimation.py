@@ -682,7 +682,7 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
             prnttup = '[mcmc:]'.ljust(15, ' ') + "Summary from last %s of %s iterations" % (update_freq, cnt)
 
             if temp < 1:
-                prnttup += ' with temp of %s' %np.round(temp, 3)
+                prnttup += ' with temp of %s%%' %(np.round(temp, 6)*100)
 
             if self.description is not None:
                 prnttup += ' (%s)' %str(self.description)
@@ -756,7 +756,7 @@ def tmcmc(self, ntemps, nsteps, nwalks, update_freq=False, tempscale=2, verbose=
     for tmp in np.linspace(0,1,ntemps)**tempscale:
 
         if tmp:
-            print('[tmcmc:]'.ljust(15, ' ') + "Increasing temperature to %s%%." %np.round(tmp, 6)*100)
+            print('[tmcmc:]'.ljust(15, ' ') + "Increasing temperature to %s%%." %np.round(100*tmp, 3))
 
 
         self.mcmc(p0=pars, nsteps=nsteps, nwalks=nwalks, temp=tmp, update_freq=update_freq, verbose=verbose, backend=False, **mcmc_args)
