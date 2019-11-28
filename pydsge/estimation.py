@@ -574,7 +574,7 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
     return xsw
 
 
-def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=False, seed=None, ncores=None, backend=True, linear=None, distr_init_chains=False, resume=False, update_freq=None, lprob_seed=None, use_cloudpickle=False, verbose=False, debug=False):
+def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=False, seed=None, ncores=None, backend=True, linear=None, distr_init_chains=False, resume=False, update_freq=None, lprob_seed=None, biject=False, use_cloudpickle=False, verbose=False, debug=False):
 
     import pathos
     import emcee
@@ -625,6 +625,20 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
     if 'description' in self.fdict.keys():
         self.description = self.fdict['description']
 
+    def bjfunc(x):
+
+        if not biject:
+            return x
+
+        x = 1/(1 + np.exp(x))
+        return (bnd[1] - bnd[0])*x + bnd[0]
+
+    def rjfunc(x):
+        if not biject:
+            return x
+        x = (x - bnd[0])/(bnd[1] - bnd[0])
+        return np.log(1/x - 1)
+
     # globals are *evil*
     if not use_cloudpickle:
         global lprob_global
@@ -636,15 +650,19 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
     if isinstance(temp, bool) and not temp:
         temp = 1
 
-    def lprob(par): return lprob_global(par, linear, verbose, temp, lprob_seed or 'vec')
+    def lprob(par): return lprob_global(par, linear, verbose, temp, lprob_seed or 'set')
+
+    bnd = np.array(self.fdict['prior_bounds'])
+
+    lprob_scaled = lambda x: lprob(bjfunc(x))
 
     loc_pool = pathos.pools.ProcessPool(ncores)
     loc_pool.clear()
 
     if debug:
-        sampler = emcee.EnsembleSampler(nwalks, self.ndim, lprob)
+        sampler = emcee.EnsembleSampler(nwalks, self.ndim, lprob_scaled)
     else:
-        sampler = emcee.EnsembleSampler(nwalks, self.ndim, lprob, moves=moves, pool=loc_pool, backend=backend)
+        sampler = emcee.EnsembleSampler(nwalks, self.ndim, lprob_scaled, moves=moves, pool=loc_pool, backend=backend)
 
     self.sampler = sampler
     self.temp = temp
@@ -657,6 +675,8 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
         p0 = get_par(self, 'prior_mean', asdict=False, full=False, nsample=nwalks, verbose=verbose)
     else:
         p0 = get_par(self, 'best', asdict=False, full=False, nsample=nwalks, verbose=verbose)
+
+    p0 = rjfunc(p0) if biject else p0
 
     if not verbose:
         np.warnings.filterwarnings('ignore')
@@ -702,7 +722,7 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
             dev_sign = '>' if dev_tau > .01 else '<'
 
 
-            self.mcmc_summary(tune=update_freq, calc_mdd=False, calc_ll_stats=True, out=lambda x: report(str(x)))
+            self.mcmc_summary(chain=bjfunc(sample), tune=update_freq, calc_mdd=False, calc_ll_stats=True, out=lambda x: report(str(x)))
 
             report("Convergence stats: tau is in (%s,%s) (%s%s) and change is %s (%s0.01)." % (
                 min_tau, max_tau, tau_sign, cnt/50, dev_tau.round(3), dev_sign))
@@ -729,7 +749,7 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
 
     arg_max = log_probs.argmax()
     mode_f = log_probs.flat[arg_max]
-    mode_x = chain[arg_max].flatten()
+    mode_x = bjfunc(chain[arg_max].flatten())
 
     self.fdict['mcmc_mode_x'] = mode_x
     self.fdict['mcmc_mode_f'] = mode_f
@@ -1046,6 +1066,7 @@ def cmaes(self, p0=None, sigma=None, pop_size=None, seeds=3, seed=None, linear=N
     p0 = (p0 - bnd[0])/(bnd[1] - bnd[0])
 
     sigma = sigma or .2
+    verb_disp = np.ceil(update_freq/pop_size) if update_freq is not None and pop_size is not None else None
     # pop_size = pop_size or ncores*np.ceil(len(p0)/ncores)
 
     if not use_cloudpickle:
@@ -1072,7 +1093,8 @@ def cmaes(self, p0=None, sigma=None, pop_size=None, seeds=3, seed=None, linear=N
     for s in seeds:
 
         np.random.seed(s)
-        res = fmin(lprob_scaled, p0, sigma, popsize=pop_size, verb_disp=int(update_freq/pop_size), pool=pool, **args)
+        res = fmin(lprob_scaled, p0, sigma, popsize=pop_size, verb_disp=verb_disp
+                   , pool=pool, **args)
 
         x_scaled = res[0] * (bnd[1] - bnd[0]) + bnd[0]
         f_hist.append(-res[1])
