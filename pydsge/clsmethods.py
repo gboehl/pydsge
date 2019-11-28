@@ -209,6 +209,8 @@ def mcmc_summary(self, chain=None, mc_type=None, tune=None, calc_mdd=True, calc_
         raise AttributeError('[summary:]'.ljust(
             15, ' ') + "No chain to be found...")
 
+    chain = self.bjfunc(chain)
+
     if tune is None:
         tune = self.get_tune
 
@@ -386,6 +388,27 @@ def box_check(self, par=None):
     return 
 
 
+def bjfunc(self, x):
+
+    bnd = np.array(self.fdict['prior_bounds'])
+
+    if not self.fdict['biject']:
+        return x
+
+    x = 1/(1 + np.exp(x))
+    return (bnd[1] - bnd[0])*x + bnd[0]
+
+def rjfunc(self, x):
+    bnd = np.array(self.fdict['prior_bounds'])
+
+    if not self.fdict['biject']:
+        return x
+
+    x = (x - bnd[0])/(bnd[1] - bnd[0])
+    return np.log(1/x - 1)
+
+
+
 DSGE.save = save_meta
 DSGE.cmaes_summary = cmaes_summary
 DSGE.swarm_summary = swarm_summary
@@ -397,6 +420,8 @@ DSGE.get_data = get_data
 DSGE.get_tune = get_tune
 DSGE.obs = calc_obs
 DSGE.box_check = box_check
+DSGE.rjfunc = rjfunc
+DSGE.bjfunc = bjfunc
 # from core & tools:
 DSGE.get_par = get_par
 DSGE.set_par = set_par

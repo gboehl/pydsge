@@ -625,19 +625,7 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
     if 'description' in self.fdict.keys():
         self.description = self.fdict['description']
 
-    def bjfunc(x):
-
-        if not biject:
-            return x
-
-        x = 1/(1 + np.exp(x))
-        return (bnd[1] - bnd[0])*x + bnd[0]
-
-    def rjfunc(x):
-        if not biject:
-            return x
-        x = (x - bnd[0])/(bnd[1] - bnd[0])
-        return np.log(1/x - 1)
+    self.fdict['biject'] = biject
 
     # globals are *evil*
     if not use_cloudpickle:
@@ -653,6 +641,20 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
     def lprob(par): return lprob_global(par, linear, verbose, temp, lprob_seed or 'set')
 
     bnd = np.array(self.fdict['prior_bounds'])
+
+    def bjfunc(x):
+
+        if not biject:
+            return x
+
+        x = 1/(1 + np.exp(x))
+        return (bnd[1] - bnd[0])*x + bnd[0]
+
+    def rjfunc(x):
+        if not biject:
+            return x
+        x = (x - bnd[0])/(bnd[1] - bnd[0])
+        return np.log(1/x - 1)
 
     lprob_scaled = lambda x: lprob(bjfunc(x))
 
