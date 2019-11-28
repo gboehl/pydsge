@@ -73,7 +73,8 @@ def get_chain(self, get_acceptance_fraction=False, mc_type=None, backend_file=No
         except:
             return reader.accepted / reader.iteration
 
-    return reader.get_chain(flat=flat)
+    chain = reader.get_chain(flat=flat)
+    return self.bjfunc(chain)
 
 
 def get_log_prob(self, mc_type=None, backend_file=None, flat=None):
@@ -208,8 +209,6 @@ def mcmc_summary(self, chain=None, mc_type=None, tune=None, calc_mdd=True, calc_
     except AttributeError:
         raise AttributeError('[summary:]'.ljust(
             15, ' ') + "No chain to be found...")
-
-    chain = self.bjfunc(chain)
 
     if tune is None:
         tune = self.get_tune
@@ -397,6 +396,7 @@ def bjfunc(self, x):
 
     x = 1/(1 + np.exp(x))
     return (bnd[1] - bnd[0])*x + bnd[0]
+
 
 def rjfunc(self, x):
     bnd = np.array(self.fdict['prior_bounds'])
