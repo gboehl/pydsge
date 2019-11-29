@@ -1089,8 +1089,12 @@ def cmaes(self, p0=None, sigma=None, pop_size=None, seeds=3, seed=None, linear=N
 
     print('[cma-es:]'.ljust(15, ' ') + 'Starting mode search over %s seeds...' %(seeds if isinstance(seeds, int) else len(seeds)))
 
-    f_hist = []
-    x_hist = []
+    try:
+        hist = self.fdict['cmaes_history']
+        f_hist, x_hist = list(hist[0]), list(hist[1])
+    except KeyError:
+        f_hist = []
+        x_hist = []
     
     for s in seeds:
 
