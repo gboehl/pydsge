@@ -967,7 +967,7 @@ def cmaes2(self, p0=None, sigma=None, pop_size=None, seeds=3, seed=None, stagtol
         lprob_dump = cpickle.dumps(self.lprob)
         lprob_global = cpickle.loads(lprob_dump)
 
-    def lprob(par): return lprob_global(par, linear=linear, lprob_seed=lprob_seed or 'rand')
+    def lprob(par): return lprob_global(par, linear=linear, lprob_seed=lprob_seed or 'set')
     lprob_scaled = lambda x: -lprob((bnd[1] - bnd[0])*x + bnd[0])
     nhandler = None if lprob_seed == 'set' else cma.NoiseHandler(len(p0), parallel=True)
 
@@ -1078,7 +1078,7 @@ def cmaes(self, p0=None, sigma=None, pop_size=None, seeds=3, seed=None, linear=N
         lprob_dump = cpickle.dumps(self.lprob)
         lprob_global = cpickle.loads(lprob_dump)
 
-    def lprob(par): return lprob_global(par, linear=linear, lprob_seed=lprob_seed or 'rand')
+    def lprob(par): return lprob_global(par, linear=linear, lprob_seed=lprob_seed or 'set')
 
     lprob_scaled = lambda x: -lprob((bnd[1] - bnd[0])*x + bnd[0])
 
@@ -1101,13 +1101,15 @@ def cmaes(self, p0=None, sigma=None, pop_size=None, seeds=3, seed=None, linear=N
         x_scaled = res[0] * (bnd[1] - bnd[0]) + bnd[0]
         f_hist.append(-res[1])
         x_hist.append(x_scaled)
-
+        
         if -res[1] < f_max:
             print('[cma-es:]'.ljust(15, ' ') + 'Current solution of %s rejected at seed %s.' %(np.round(-res[1], 4), s))
 
         else:
             f_max = -res[1]
             x_max_scaled = x_scaled
+            # reinject solution
+            p0 = res[0]
             if verbose:
                 print('[cma-es:]'.ljust(15, ' ') + 'Updating best solution to %s at seed %s.' %(np.round(f_max, 4), s))
 
