@@ -1067,7 +1067,7 @@ def cmaes(self, p0=None, sigma=None, pop_size=None, seeds=3, seed=None, linear=N
     p0 = get_par(self, 'adj_prior_mean', full=False, asdict=False) if p0 is None else p0
     p0 = (p0 - bnd[0])/(bnd[1] - bnd[0])
 
-    sigma = sigma or .2
+    sigma = sigma or .25
     verb_disp = np.ceil(update_freq/pop_size) if update_freq is not None and pop_size is not None else None
     # pop_size = pop_size or ncores*np.ceil(len(p0)/ncores)
 
@@ -1129,9 +1129,7 @@ def cmaes(self, p0=None, sigma=None, pop_size=None, seeds=3, seed=None, linear=N
     self.fdict['cmaes_history'] = f_hist, x_hist, seeds
 
     if 'mode_f' in self.fdict.keys() and f_max < self.fdict['mode_f']:
-        if done:
-            print('[swarms:]'.ljust(
-                15, ' ') + " New mode of %s is below old mode of %s. Rejecting..." % (f_max, self.fdict['mode_f']))
+        print('[cmaes:]'.ljust(15, ' ') + " New mode of %s is below old mode of %s. Rejecting..." % (f_max, self.fdict['mode_f']))
     else:
         self.fdict['mode_x'] = x_max_scaled
         self.fdict['mode_f'] = f_max
