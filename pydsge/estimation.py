@@ -967,7 +967,7 @@ def cmaes2(self, p0=None, sigma=None, pop_size=None, seeds=3, seed=None, stagtol
         lprob_dump = cpickle.dumps(self.lprob)
         lprob_global = cpickle.loads(lprob_dump)
 
-    def lprob(par): return lprob_global(par, linear=linear, lprob_seed=lprob_seed or 'rand')
+    def lprob(par): return lprob_global(par, linear=linear, lprob_seed=lprob_seed or 'set')
     lprob_scaled = lambda x: -lprob((bnd[1] - bnd[0])*x + bnd[0])
     nhandler = None if lprob_seed == 'set' else cma.NoiseHandler(len(p0), parallel=True)
 
@@ -1078,7 +1078,7 @@ def cmaes(self, p0=None, sigma=None, pop_size=None, seeds=3, seed=None, linear=N
         lprob_dump = cpickle.dumps(self.lprob)
         lprob_global = cpickle.loads(lprob_dump)
 
-    def lprob(par): return lprob_global(par, linear=linear, lprob_seed=lprob_seed or 'rand')
+    def lprob(par): return lprob_global(par, linear=linear, lprob_seed=lprob_seed or 'set')
 
     lprob_scaled = lambda x: -lprob((bnd[1] - bnd[0])*x + bnd[0])
 
@@ -1089,8 +1089,12 @@ def cmaes(self, p0=None, sigma=None, pop_size=None, seeds=3, seed=None, linear=N
 
     print('[cma-es:]'.ljust(15, ' ') + 'Starting mode search over %s seeds...' %(seeds if isinstance(seeds, int) else len(seeds)))
 
-    f_hist = []
-    x_hist = []
+    try:
+        hist = self.fdict['cmaes_history']
+        f_hist, x_hist = list(hist[0]), list(hist[1])
+    except KeyError:
+        f_hist = []
+        x_hist = []
     
     for s in seeds:
 
@@ -1108,6 +1112,8 @@ def cmaes(self, p0=None, sigma=None, pop_size=None, seeds=3, seed=None, linear=N
         else:
             f_max = -res[1]
             x_max_scaled = x_scaled
+            # reinject
+            p0 = res[0]
             if verbose:
                 print('[cma-es:]'.ljust(15, ' ') + 'Updating best solution to %s at seed %s.' %(np.round(f_max, 4), s))
 
