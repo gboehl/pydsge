@@ -416,6 +416,20 @@ def rjfunc(self, x):
     return np.log(1/x - 1)
 
 
+def sample_box(self, dim0, dim1=None, bounds=None, lp_rule=None, verbose=False):
+    """Sample from a hypercube
+    """
+    import chaospy
+
+    bnd = bounds or np.array(self.fdict['prior_bounds'])
+    dim1 = dim1 or self.ndim
+    rule = lp_rule or 'S'
+
+    res = chaospy.Uniform(0, 1).sample(size=(dim0, dim1), rule=rule)
+    res = (bnd[1] - bnd[0])*res + bnd[0]
+
+    return res
+
 
 DSGE.save = save_meta
 DSGE.cmaes_summary = cmaes_summary
@@ -430,6 +444,7 @@ DSGE.obs = calc_obs
 DSGE.box_check = box_check
 DSGE.rjfunc = rjfunc
 DSGE.bjfunc = bjfunc
+DSGE.sample_box = sample_box
 # from core & tools:
 DSGE.get_par = get_par
 DSGE.set_par = set_par
