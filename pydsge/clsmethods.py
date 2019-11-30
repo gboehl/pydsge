@@ -220,7 +220,7 @@ def mcmc_summary(self, chain=None, mc_type=None, tune=None, calc_mdd=True, calc_
         out(res.round(3))
 
         if calc_mdd:
-            out('Marginal data density:' + str(mdd(self).round(4)).rjust(16))
+            out('Marginal data density:' + str(mdd(self, tune=tune).round(4)).rjust(16))
         if calc_ll_stats:
 
             chain = chain[-tune:]
@@ -320,7 +320,7 @@ def lprob(self, par, linear=None, verbose=False):
     return self.lprob(par, linear=linear, verbose=verbose)
 
 
-def mdd(self, mode_f=None, inv_hess=None, verbose=False):
+def mdd(self, mode_f=None, inv_hess=None, tune=None, verbose=False):
     """Approximate the marginal data density useing the LaPlace method.
     `inv_hess` can be a matrix or the method string in ('hess', 'cov') telling me how to Approximate the inverse Hessian
     """
@@ -347,7 +347,9 @@ def mdd(self, mode_f=None, inv_hess=None, verbose=False):
 
     elif inv_hess is None:
 
-        chain = self.get_chain()[-self.get_tune:]
+        tune = tune or self.get_tune
+
+        chain = self.get_chain()[-tune:]
         chain = chain.reshape(-1, chain.shape[-1])
         inv_hess = np.cov(chain.T)
 
@@ -391,7 +393,10 @@ def bjfunc(self, x):
 
     bnd = np.array(self.fdict['prior_bounds'])
 
-    if hasattr(self, 'biject') and not self.fdict['biject']:
+    if not 'biject' in self.fdict.keys():
+        return x
+
+    if not self.fdict['biject']:
         return x
 
     x = 1/(1 + np.exp(x))
@@ -401,7 +406,10 @@ def bjfunc(self, x):
 def rjfunc(self, x):
     bnd = np.array(self.fdict['prior_bounds'])
 
-    if hasattr(self, 'biject') and not self.fdict['biject']:
+    if not 'biject' in self.fdict.keys():
+        return x
+
+    if not self.fdict['biject']:
         return x
 
     x = (x - bnd[0])/(bnd[1] - bnd[0])

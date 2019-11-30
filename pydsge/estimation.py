@@ -126,13 +126,15 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
                         raise AttributeError('[estimation:]'.ljust(
                             15, ' ') + 'Missmatch between linearity choice (filter vs. lprob)')
                     # these max vals should be sufficient given we're dealing with stochastic linearization
-                    self.get_sys(par=par_active_lst, l_max=3, k_max=16, reduce_sys=True, verbose=verbose > 3)
+                    self.get_sys(par=par_active_lst, l_max=3, k_max=16,
+                                 reduce_sys=True, verbose=verbose > 3)
                     self.filter.Q = self.QQ(self.par) @ self.QQ(self.par)
                 else:
                     if not self.filter.name == 'KalmanFilter':
                         raise AttributeError('[estimation:]'.ljust(
                             15, ' ') + 'Missmatch between linearity choice (filter vs. lprob)')
-                    self.get_sys(par=par_active_lst, l_max=1, k_max=0, reduce_sys=True, verbose=verbose > 3)
+                    self.get_sys(par=par_active_lst, l_max=1, k_max=0,
+                                 reduce_sys=True, verbose=verbose > 3)
                     self.filter.F = self.linear_representation
                     self.filter.H = self.hx
 
@@ -184,15 +186,17 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
             st = time.time()
 
         if lprob_seed in ('vec', 'rand'):
-            seed_loc = sum(p // 10**(int(np.log(abs(p))/np.log(10))-9) for p in par)
+            seed_loc = sum(p // 10**(int(np.log(abs(p))/np.log(10))-9)
+                           for p in par)
             if lprob_seed == 'rand':
-                seed_loc += np.random.randint(2**32-2) 
+                seed_loc += np.random.randint(2**32-2)
             seed_loc = int(seed_loc) % (2**32 - 1)
 
         elif lprob_seed == 'set':
             seed_loc = seed
         else:
-            raise NotImplementedError("`lprob_seed` must be one of `('vec', 'rand', 'set')`.")
+            raise NotImplementedError(
+                "`lprob_seed` must be one of `('vec', 'rand', 'set')`.")
 
         ll = llike(par, linear, verbose, seed_loc)*temp if temp else 0
 
@@ -203,15 +207,15 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
 
         if verbose:
             print('[lprob:]'.ljust(15, ' ') + "Sample took %ss, ll is %s, temp is %s." %
-                  (np.round(time.time() - st, 3), np.round(ll, 4), np.round(temp,3)))
+                  (np.round(time.time() - st, 3), np.round(ll, 4), np.round(temp, 3)))
 
         return ll
 
-    ## old and evil way, kept for reference
+    # old and evil way, kept for reference
     global lprob_global
     lprob_global = lprob
 
-    ## make functions accessible
+    # make functions accessible
     self.lprob = lprob
     self.lprior = lprior
     self.llike = llike
@@ -248,7 +252,7 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
     import pygmo as pg
     from grgrlib.core import GPP
 
-    ## get the maximum generation len of all algos for nlopt methods
+    # get the maximum generation len of all algos for nlopt methods
     if isinstance(nlopt, bool) and nlopt:
         maxalgogenlen = 1
         for algo in algos:
@@ -258,7 +262,6 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
                 maxalgogenlen = max(maxalgogenlen, genlen)
 
         nlopt = maxalgogenlen*pop_size
-
 
     if crit_mem is not None:
 
@@ -589,8 +592,7 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
 
     self.tune = tune
     if tune is None:
-        # self.tune = int(nsteps*1/5.)
-        self.tune = int(nsteps*2/5.)
+        self.tune = int(nsteps*1/5.)
 
     if update_freq is None:
         update_freq = int(nsteps/5.)
@@ -638,15 +640,14 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
     if isinstance(temp, bool) and not temp:
         temp = 1
 
-    def lprob(par): return lprob_global(par, linear, verbose, temp, lprob_seed or 'set')
+    def lprob(par): return lprob_global(
+        par, linear, verbose, temp, lprob_seed or 'set')
 
     bnd = np.array(self.fdict['prior_bounds'])
 
     def bjfunc(x):
-
         if not biject:
             return x
-
         x = 1/(1 + np.exp(x))
         return (bnd[1] - bnd[0])*x + bnd[0]
 
@@ -656,7 +657,7 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
         x = (x - bnd[0])/(bnd[1] - bnd[0])
         return np.log(1/x - 1)
 
-    lprob_scaled = lambda x: lprob(bjfunc(x))
+    def lprob_scaled(x): return lprob(bjfunc(x))
 
     loc_pool = pathos.pools.ProcessPool(ncores)
     loc_pool.clear()
@@ -664,7 +665,8 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
     if debug:
         sampler = emcee.EnsembleSampler(nwalks, self.ndim, lprob_scaled)
     else:
-        sampler = emcee.EnsembleSampler(nwalks, self.ndim, lprob_scaled, moves=moves, pool=loc_pool, backend=backend)
+        sampler = emcee.EnsembleSampler(
+            nwalks, self.ndim, lprob_scaled, moves=moves, pool=loc_pool, backend=backend)
 
     self.sampler = sampler
     self.temp = temp
@@ -674,9 +676,11 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
     elif resume:
         p0 = sampler.get_last_sample()
     elif temp < 1:
-        p0 = get_par(self, 'prior_mean', asdict=False, full=False, nsample=nwalks, verbose=verbose)
+        p0 = get_par(self, 'prior_mean', asdict=False,
+                     full=False, nsample=nwalks, verbose=verbose)
     else:
-        p0 = get_par(self, 'best', asdict=False, full=False, nsample=nwalks, verbose=verbose)
+        p0 = get_par(self, 'best', asdict=False, full=False,
+                     nsample=nwalks, verbose=verbose)
 
     p0 = rjfunc(p0) if biject else p0
 
@@ -698,17 +702,19 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
         if not verbose:
             lls = list(result)[1]
             maf = np.mean(sampler.acceptance_fraction[-update_freq:])*100
-            pbar.set_description('[ll/MAF:%s(%1.0e)/%1.0f%%]' % (str(np.max(lls))[:7], np.std(lls), maf))
+            pbar.set_description('[ll/MAF:%s(%1.0e)/%1.0f%%]' %
+                                 (str(np.max(lls))[:7], np.std(lls), maf))
 
         if cnt and update_freq and not cnt % update_freq:
 
-            prnttup = '[mcmc:]'.ljust(15, ' ') + "Summary from last %s of %s iterations" % (update_freq, cnt)
+            prnttup = '[mcmc:]'.ljust(
+                15, ' ') + "Summary from last %s of %s iterations" % (update_freq, cnt)
 
             if temp < 1:
-                prnttup += ' with temp of %s%%' %(np.round(temp, 6)*100)
+                prnttup += ' with temp of %s%%' % (np.round(temp, 6)*100)
 
             if self.description is not None:
-                prnttup += ' (%s)' %str(self.description)
+                prnttup += ' (%s)' % str(self.description)
 
             prnttup += ':'
 
@@ -724,8 +730,8 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
             tau_sign = '>' if max_tau > cnt/50 else '<'
             dev_sign = '>' if dev_tau > .01 else '<'
 
-
-            self.mcmc_summary(chain=bjfunc(sample), tune=update_freq, calc_mdd=False, calc_ll_stats=True, out=lambda x: report(str(x)))
+            self.mcmc_summary(chain=bjfunc(sample), tune=update_freq,
+                              calc_mdd=False, calc_ll_stats=True, out=lambda x: report(str(x)))
 
             report("Convergence stats: tau is in (%s,%s) (%s%s) and change is %s (%s0.01)." % (
                 min_tau, max_tau, tau_sign, cnt/50, dev_tau.round(3), dev_sign))
@@ -774,20 +780,23 @@ def tmcmc(self, ntemps, nsteps, nwalks, update_freq=False, tempscale=2, verbose=
     """Run Tempered Ensemble MCMC
     """
 
-    pars = get_par(self, 'prior_mean', asdict=False, full=False, nsample=nwalks, verbose=verbose)
+    pars = get_par(self, 'prior_mean', asdict=False,
+                   full=False, nsample=nwalks, verbose=verbose)
 
-    for tmp in np.linspace(0,1,ntemps)**tempscale:
+    for tmp in np.linspace(0, 1, ntemps)**tempscale:
 
         if tmp:
-            print('[tmcmc:]'.ljust(15, ' ') + "Increasing temperature to %s%%." %np.round(100*tmp, 3))
+            print('[tmcmc:]'.ljust(15, ' ') +
+                  "Increasing temperature to %s%%." % np.round(100*tmp, 3))
 
-
-        self.mcmc(p0=pars, nsteps=nsteps, nwalks=nwalks, temp=tmp, update_freq=update_freq, verbose=verbose, backend=False, **mcmc_args)
+        self.mcmc(p0=pars, nsteps=nsteps, nwalks=nwalks, temp=tmp,
+                  update_freq=update_freq, verbose=verbose, backend=False, **mcmc_args)
 
         pars = self.get_chain()[-1]
         self.temp = tmp
 
-        self.mcmc_summary(tune=int(nsteps/10), calc_mdd=False, calc_ll_stats=True)
+        self.mcmc_summary(tune=int(nsteps/10),
+                          calc_mdd=False, calc_ll_stats=True)
 
     return pars
 
@@ -852,7 +861,8 @@ def kdes(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
         # should work, but not tested
         p0 = self.fdict['kdes_chain'][-1]
     else:
-        p0 = get_par(self, 'best', asdict=False, nsample=nwalks, verbose=verbose)
+        p0 = get_par(self, 'best', asdict=False,
+                     nsample=nwalks, verbose=verbose)
 
     if not verbose:
         np.warnings.filterwarnings('ignore')
@@ -946,20 +956,21 @@ def cmaes2(self, p0=None, sigma=None, pop_size=None, seeds=3, seed=None, stagtol
     ncores = pathos.multiprocessing.cpu_count()
 
     bnd = np.array(self.fdict['prior_bounds'])
-    p0 = get_par(self, 'prior_mean', full=False, asdict=False) if p0 is None else p0
+    p0 = get_par(self, 'prior_mean', full=False,
+                 asdict=False) if p0 is None else p0
     p0 = (p0 - bnd[0])/(bnd[1] - bnd[0])
     sigma = sigma or .2
 
     pop_size = pop_size or ncores*np.ceil(len(p0)/ncores)
 
-    opt_dict = { 
-        'popsize': ncores if burnin else pop_size, 
-        'tolstagnation': stagtol, 
-        'tolfun': ftol, 
-        'tolx': xtol, 
-        'bounds': [0,1], 
+    opt_dict = {
+        'popsize': ncores if burnin else pop_size,
+        'tolstagnation': stagtol,
+        'tolfun': ftol,
+        'tolx': xtol,
+        'bounds': [0, 1],
         'verb_disp': 2000,
-        'verbose': verbose }
+        'verbose': verbose}
 
     if not use_cloudpickle:
         global lprob_global
@@ -968,9 +979,12 @@ def cmaes2(self, p0=None, sigma=None, pop_size=None, seeds=3, seed=None, stagtol
         lprob_dump = cpickle.dumps(self.lprob)
         lprob_global = cpickle.loads(lprob_dump)
 
-    def lprob(par): return lprob_global(par, linear=linear, lprob_seed=lprob_seed or 'set')
-    lprob_scaled = lambda x: -lprob((bnd[1] - bnd[0])*x + bnd[0])
-    nhandler = None if lprob_seed == 'set' else cma.NoiseHandler(len(p0), parallel=True)
+    def lprob(par): return lprob_global(
+        par, linear=linear, lprob_seed=lprob_seed or 'set')
+
+    def lprob_scaled(x): return -lprob((bnd[1] - bnd[0])*x + bnd[0])
+    nhandler = None if lprob_seed == 'set' else cma.NoiseHandler(
+        len(p0), parallel=True)
 
     if not debug:
         pool = pathos.pools.ProcessPool(ncores)
@@ -982,19 +996,21 @@ def cmaes2(self, p0=None, sigma=None, pop_size=None, seeds=3, seed=None, stagtol
     if not debug and verbose < 2:
         np.warnings.filterwarnings('ignore')
 
-    lprob_pooled = lambda X: list(mapper(lprob_scaled, list(X)))
+    def lprob_pooled(X): return list(mapper(lprob_scaled, list(X)))
 
     f_max = -np.inf
 
-    print('[cma-es:]'.ljust(15, ' ') + 'Starting mode search over %s seeds...' %(seeds if isinstance(seeds, int) else len(seeds)))
+    print('[cma-es:]'.ljust(15, ' ') + 'Starting mode search over %s seeds...' %
+          (seeds if isinstance(seeds, int) else len(seeds)))
 
     f_hist = []
     x_hist = []
-    
+
     for s in seeds:
 
         opt_dict['seed'] = s
-        res = cma.fmin(None, p0, sigma, parallel_objective=lprob_pooled, options=opt_dict, noise_handler=nhandler, callback=cma_callback)
+        res = cma.fmin(None, p0, sigma, parallel_objective=lprob_pooled,
+                       options=opt_dict, noise_handler=nhandler, callback=cma_callback)
 
         repair = res[-2].boundary_handler.repair
         x_scaled = res[0] * (bnd[1] - bnd[0]) + bnd[0]
@@ -1004,16 +1020,19 @@ def cmaes2(self, p0=None, sigma=None, pop_size=None, seeds=3, seed=None, stagtol
         check_bnd = np.bitwise_or(res[0] < 1e-3, res[0] > 1-1e-3)
 
         if -res[1] < f_max:
-            print('[cma-es:]'.ljust(15, ' ') + 'Current solution of %s rejected at seed %s.' %(np.round(-res[1], 4), s))
+            print('[cma-es:]'.ljust(15, ' ') +
+                  'Current solution of %s rejected at seed %s.' % (np.round(-res[1], 4), s))
 
         elif check_bnd.any():
-            print('[cma-es:]'.ljust(15, ' ') + 'Current solution of %s rejected at seed %s because %s is at the bound.' %(np.round(-res[1], 4), s, np.array(self.prior_names)[check_bnd]))
+            print('[cma-es:]'.ljust(15, ' ') + 'Current solution of %s rejected at seed %s because %s is at the bound.' %
+                  (np.round(-res[1], 4), s, np.array(self.prior_names)[check_bnd]))
 
         else:
             f_max = -res[1]
             x_max_scaled = x_scaled
             if verbose:
-                print('[cma-es:]'.ljust(15, ' ') + 'Updating best solution to %s at seed %s.' %(np.round(f_max, 4), s))
+                print('[cma-es:]'.ljust(15, ' ') +
+                      'Updating best solution to %s at seed %s.' % (np.round(f_max, 4), s))
 
         if verbose:
             from .clsmethods import cmaes_summary
@@ -1065,11 +1084,13 @@ def cmaes(self, p0=None, sigma=None, pop_size=None, seeds=3, seed=None, linear=N
     ncores = pathos.multiprocessing.cpu_count()
 
     bnd = np.array(self.fdict['prior_bounds'])
-    p0 = get_par(self, 'adj_prior_mean', full=False, asdict=False) if p0 is None else p0
+    p0 = get_par(self, 'adj_prior_mean', full=False,
+                 asdict=False) if p0 is None else p0
     p0 = (p0 - bnd[0])/(bnd[1] - bnd[0])
 
     sigma = sigma or .25
-    verb_disp = np.ceil(update_freq/pop_size) if update_freq is not None and pop_size is not None else None
+    verb_disp = np.ceil(
+        update_freq/pop_size) if update_freq is not None and pop_size is not None else None
     # pop_size = pop_size or ncores*np.ceil(len(p0)/ncores)
 
     if not use_cloudpickle:
@@ -1079,16 +1100,18 @@ def cmaes(self, p0=None, sigma=None, pop_size=None, seeds=3, seed=None, linear=N
         lprob_dump = cpickle.dumps(self.lprob)
         lprob_global = cpickle.loads(lprob_dump)
 
-    def lprob(par): return lprob_global(par, linear=linear, lprob_seed=lprob_seed or 'set')
+    def lprob(par): return lprob_global(
+        par, linear=linear, lprob_seed=lprob_seed or 'set')
 
-    lprob_scaled = lambda x: -lprob((bnd[1] - bnd[0])*x + bnd[0])
+    def lprob_scaled(x): return -lprob((bnd[1] - bnd[0])*x + bnd[0])
 
     pool = pathos.pools.ProcessPool(ncores)
     pool.clear()
 
     f_max = -np.inf
 
-    print('[cma-es:]'.ljust(15, ' ') + 'Starting mode search over %s seeds...' %(seeds if isinstance(seeds, int) else len(seeds)))
+    print('[cma-es:]'.ljust(15, ' ') + 'Starting mode search over %s seeds...' %
+          (seeds if isinstance(seeds, int) else len(seeds)))
 
     try:
         hist = self.fdict['cmaes_history']
@@ -1096,19 +1119,20 @@ def cmaes(self, p0=None, sigma=None, pop_size=None, seeds=3, seed=None, linear=N
     except KeyError:
         f_hist = []
         x_hist = []
-    
+
     for s in seeds:
 
         np.random.seed(s)
-        res = fmin(lprob_scaled, p0, sigma, popsize=pop_size, verb_disp=verb_disp
-                   , pool=pool, **args)
+        res = fmin(lprob_scaled, p0, sigma, popsize=pop_size,
+                   verb_disp=verb_disp, pool=pool, **args)
 
         x_scaled = res[0] * (bnd[1] - bnd[0]) + bnd[0]
         f_hist.append(-res[1])
         x_hist.append(x_scaled)
-        
+
         if -res[1] < f_max:
-            print('[cma-es:]'.ljust(15, ' ') + 'Current solution of %s rejected at seed %s.' %(np.round(-res[1], 4), s))
+            print('[cma-es:]'.ljust(15, ' ') +
+                  'Current solution of %s rejected at seed %s.' % (np.round(-res[1], 4), s))
 
         else:
             f_max = -res[1]
@@ -1116,7 +1140,8 @@ def cmaes(self, p0=None, sigma=None, pop_size=None, seeds=3, seed=None, linear=N
             # reinject solution
             p0 = res[0]
             if verbose:
-                print('[cma-es:]'.ljust(15, ' ') + 'Updating best solution to %s at seed %s.' %(np.round(f_max, 4), s))
+                print('[cma-es:]'.ljust(15, ' ') +
+                      'Updating best solution to %s at seed %s.' % (np.round(f_max, 4), s))
 
         if verbose:
             from .clsmethods import cmaes_summary
@@ -1130,7 +1155,8 @@ def cmaes(self, p0=None, sigma=None, pop_size=None, seeds=3, seed=None, linear=N
     self.fdict['cmaes_history'] = f_hist, x_hist, seeds
 
     if 'mode_f' in self.fdict.keys() and f_max < self.fdict['mode_f']:
-        print('[cmaes:]'.ljust(15, ' ') + " New mode of %s is below old mode of %s. Rejecting..." % (f_max, self.fdict['mode_f']))
+        print('[cmaes:]'.ljust(15, ' ') + " New mode of %s is below old mode of %s. Rejecting..." %
+              (f_max, self.fdict['mode_f']))
     else:
         self.fdict['mode_x'] = x_max_scaled
         self.fdict['mode_f'] = f_max
@@ -1138,4 +1164,3 @@ def cmaes(self, p0=None, sigma=None, pop_size=None, seeds=3, seed=None, linear=N
     pool.close()
 
     return x_max_scaled
-
