@@ -696,8 +696,9 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
         cnt = sampler.iteration
 
         if not verbose:
-            pbar.set_description('[MAF: %s]' % (
-                np.mean(sampler.acceptance_fraction[-update_freq:]).round(3)))
+            lls = list(result)[1]
+            maf = np.mean(sampler.acceptance_fraction[-update_freq:])*100
+            pbar.set_description('[ll/MAF:%s(%1.0e)/%1.0f%%]' % (str(np.max(lls))[:7], np.std(lls), maf))
 
         if cnt and update_freq and not cnt % update_freq:
 

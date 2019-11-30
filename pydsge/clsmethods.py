@@ -391,7 +391,7 @@ def bjfunc(self, x):
 
     bnd = np.array(self.fdict['prior_bounds'])
 
-    if not self.fdict['biject']:
+    if hasattr(self, 'biject') and not self.fdict['biject']:
         return x
 
     x = 1/(1 + np.exp(x))
@@ -401,7 +401,7 @@ def bjfunc(self, x):
 def rjfunc(self, x):
     bnd = np.array(self.fdict['prior_bounds'])
 
-    if not self.fdict['biject']:
+    if hasattr(self, 'biject') and not self.fdict['biject']:
         return x
 
     x = (x - bnd[0])/(bnd[1] - bnd[0])
