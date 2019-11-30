@@ -10,7 +10,7 @@ from .core import get_par
 import tqdm
 
 
-def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=False, constr_data=False, verbose=True, **filterargs):
+def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=False, dispatch=False, constr_data=False, verbose=True, **filterargs):
     """Initializes the tools necessary for estimation
 
     ...
@@ -98,7 +98,7 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, dispatch=Fals
 
     self.ndim = len(prior.keys())
 
-    if 'frozen_prior' not in self.fdict.keys():
+    if 'frozen_prior' not in self.fdict.keys() or eval_priors:
 
         pfrozen, pinitv, bounds = get_prior(prior)
         self.fdict['frozen_prior'] = pfrozen
