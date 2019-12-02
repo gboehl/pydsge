@@ -305,7 +305,7 @@ def get_data(self=None, csv=None, sep=None, start=None, end=None):
         import cloudpickle as cpickle
         self.data = d
         self.fdict['data'] = cpickle.dumps(d)
-        self.fdict['obs'] = self.obs
+        self.fdict['obs'] = self.observables
 
     return d
 

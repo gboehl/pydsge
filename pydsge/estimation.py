@@ -577,7 +577,7 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
     return xsw
 
 
-def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=False, seed=None, ncores=None, backend=True, linear=None, distr_init_chains=False, resume=False, update_freq=None, lprob_seed=None, biject=False, use_cloudpickle=False, report=None, verbose=False, debug=False, **samplerargs):
+def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=False, seed=None, ncores=None, backend=True, linear=None, distr_init_chains=False, resume=False, append=False, update_freq=None, lprob_seed=None, biject=False, use_cloudpickle=False, report=None, verbose=False, debug=False, **samplerargs):
 
     import pathos
     import emcee
@@ -663,7 +663,7 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
 
         backend = emcee.backends.HDFBackend(self.backend_file)
 
-        if not resume:
+        if not (resume or append):
             backend.reset(nwalks, self.ndim)
     else:
         backend = None
@@ -800,7 +800,7 @@ def tmcmc(self, nsteps, nwalks, ntemps, target, update_freq=False, verbose=False
         pbar.set_description("[tmcmc: %s°" % np.round(100*tmp, 3))
 
         self.mcmc(p0=pars, nsteps=nsteps, nwalks=nwalks, temp=tmp,
-                  update_freq=update_freq, verbose=verbose, backend=False, report=pbar.write, **mcmc_args)
+                  update_freq=update_freq, verbose=verbose, append=i, report=pbar.write, **mcmc_args)
 
         pars = self.get_chain()[-1]
         lprobs = self.get_log_prob()[-1]
