@@ -291,8 +291,7 @@ def get_data(self=None, csv=None, sep=None, start=None, end=None):
     d.index = dates
 
     if self is not None:
-        self.obs = [str(o) for o in self['observables']]
-        d = d[self.obs]
+        d = d[self.observables]
 
     if start is not None:
         start = str(start)

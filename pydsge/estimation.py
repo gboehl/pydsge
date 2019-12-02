@@ -577,7 +577,7 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
     return xsw
 
 
-def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=False, seed=None, ncores=None, backend=True, linear=None, distr_init_chains=False, resume=False, update_freq=None, lprob_seed=None, biject=False, use_cloudpickle=False, verbose=False, debug=False):
+def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=False, seed=None, ncores=None, backend=True, linear=None, distr_init_chains=False, resume=False, update_freq=None, lprob_seed=None, biject=False, use_cloudpickle=False, report=None, verbose=False, debug=False, **samplerargs):
 
     import pathos
     import emcee
@@ -603,26 +603,6 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
     if linear is None:
         linear = self.filter.name == 'KalmanFilter'
 
-    if backend:
-        if isinstance(backend, str):
-            self.backend_file = backend
-        if 'backend_file' in self.fdict.keys():
-            self.backend_file = str(self.fdict['backend_file'])
-        else:
-            self.backend_file = self.path + self.name + '_sampler.h5'
-
-        backend = emcee.backends.HDFBackend(self.backend_file)
-
-        if not resume:
-            backend.reset(nwalks, self.ndim)
-    else:
-        backend = None
-
-    if nwalks is None:
-        if resume:
-            nwalks = backend.get_chain().shape[1]
-        else:
-            nwalks = 100
 
     if 'description' in self.fdict.keys():
         self.description = self.fdict['description']
@@ -662,17 +642,8 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
     loc_pool = pathos.pools.ProcessPool(ncores)
     loc_pool.clear()
 
-    if debug:
-        sampler = emcee.EnsembleSampler(nwalks, self.ndim, lprob_scaled)
-    else:
-        sampler = emcee.EnsembleSampler(
-            nwalks, self.ndim, lprob_scaled, moves=moves, pool=loc_pool, backend=backend)
-
-    self.sampler = sampler
-    self.temp = temp
-
     if p0 is not None:
-        pass
+        nwalks = p0.shape[0]
     elif resume:
         p0 = sampler.get_last_sample()
     elif temp < 1:
@@ -682,20 +653,47 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
         p0 = get_par(self, 'best', asdict=False, full=False,
                      nsample=nwalks, verbose=verbose)
 
+    if backend:
+        if isinstance(backend, str):
+            self.backend_file = backend
+        if 'backend_file' in self.fdict.keys():
+            self.backend_file = str(self.fdict['backend_file'])
+        else:
+            self.backend_file = self.path + self.name + '_sampler.h5'
+
+        backend = emcee.backends.HDFBackend(self.backend_file)
+
+        if not resume:
+            backend.reset(nwalks, self.ndim)
+    else:
+        backend = None
+
+    if resume:
+        nwalks = backend.get_chain().shape[1]
+
+    if debug:
+        sampler = emcee.EnsembleSampler(nwalks, self.ndim, lprob_scaled)
+    else:
+        sampler = emcee.EnsembleSampler(
+            nwalks, self.ndim, lprob_scaled, moves=moves, pool=loc_pool, backend=backend)
+
+    self.sampler = sampler
+    self.temp = temp
+
     p0 = rjfunc(p0) if biject else p0
 
     if not verbose:
         np.warnings.filterwarnings('ignore')
 
     if verbose > 2:
-        report = print
+        report = report or print
     else:
         pbar = tqdm.tqdm(total=nsteps, unit='sample(s)', dynamic_ncols=True)
-        report = pbar.write
+        report = report or pbar.write
 
     old_tau = np.inf
 
-    for result in sampler.sample(p0, iterations=nsteps):
+    for result in sampler.sample(p0, iterations=nsteps, **samplerargs):
 
         cnt = sampler.iteration
 
@@ -749,9 +747,6 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
     if not verbose:
         np.warnings.filterwarnings('default')
 
-    print("mean acceptance fraction: {0:.3f}".format(
-        np.mean(sampler.acceptance_fraction)))
-
     log_probs = sampler.get_log_prob()[-self.tune:]
     chain = sampler.get_chain()[-self.tune:]
     chain = chain.reshape(-1, chain.shape[-1])
@@ -776,27 +771,56 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
     return
 
 
-def tmcmc(self, ntemps, nsteps, nwalks, update_freq=False, tempscale=2, verbose=False, **mcmc_args):
+def tmcmc(self, nsteps, nwalks, ntemps, target, update_freq=False, verbose=False, **mcmc_args):
     """Run Tempered Ensemble MCMC
+
+    Parameters
+    ----------
+    ntemps : int
+    target : float
+    nsteps : float
     """
 
     pars = get_par(self, 'prior_mean', asdict=False,
                    full=False, nsample=nwalks, verbose=verbose)
 
-    for tmp in np.linspace(0, 1, ntemps)**tempscale:
+    # initialize with prior
+    pbar = tqdm.tqdm(total=ntemps, unit='temp(s)', dynamic_ncols=True)
+    tmp = 0
+
+    for i in range(ntemps):
+
+        if tmp >= 1:
+            pbar.write('[tmcmc:]'.ljust(15, ' ') + "Increasing temperature to %s°. Too hot! I'm out..." % np.round(100*tmp, 3))
+            continue
 
         if tmp:
-            print('[tmcmc:]'.ljust(15, ' ') +
-                  "Increasing temperature to %s%%." % np.round(100*tmp, 3))
+            pbar.write('[tmcmc:]'.ljust(15, ' ') +
+                  "Increasing temperature to %s°, aiming @ %4.3f." % (np.round(100*tmp, 3), aim))
+        pbar.set_description("[tmcmc: %s°" % np.round(100*tmp, 3))
 
         self.mcmc(p0=pars, nsteps=nsteps, nwalks=nwalks, temp=tmp,
-                  update_freq=update_freq, verbose=verbose, backend=False, **mcmc_args)
+                  update_freq=update_freq, verbose=verbose, backend=False, report=pbar.write, **mcmc_args)
 
         pars = self.get_chain()[-1]
+        lprobs = self.get_log_prob()[-1]
         self.temp = tmp
 
         self.mcmc_summary(tune=int(nsteps/10),
                           calc_mdd=False, calc_ll_stats=True)
+
+        pbar.update()
+
+        # update tmp
+        x = pars[lprobs.argmax()]
+        ll = self.lprob(x)
+        lp = self.lprior(x)
+        lx = ll - lp
+
+        tmp = tmp*(ntemps-i-1)/(ntemps-i) + (target - lp)/(ntemps-i)/lx
+        aim = lp + tmp*lx
+
+    pbar.close()
 
     return pars
 
@@ -1089,7 +1113,7 @@ def cmaes(self, p0=None, sigma=None, pop_size=None, seeds=3, seed=None, linear=N
     p0 = (p0 - bnd[0])/(bnd[1] - bnd[0])
 
     sigma = sigma or .25
-    verb_disp = np.ceil(
+    verbosity = np.ceil(
         update_freq/pop_size) if update_freq is not None and pop_size is not None else None
     # pop_size = pop_size or ncores*np.ceil(len(p0)/ncores)
 
@@ -1124,7 +1148,7 @@ def cmaes(self, p0=None, sigma=None, pop_size=None, seeds=3, seed=None, linear=N
 
         np.random.seed(s)
         res = fmin(lprob_scaled, p0, sigma, popsize=pop_size,
-                   verb_disp=verb_disp, pool=pool, **args)
+                   verbosity=verbosity, mapper=pool.imap, **args)
 
         x_scaled = res[0] * (bnd[1] - bnd[0]) + bnd[0]
         f_hist.append(-res[1])
@@ -1163,4 +1187,4 @@ def cmaes(self, p0=None, sigma=None, pop_size=None, seeds=3, seed=None, linear=N
 
     pool.close()
 
-    return x_max_scaled
+    return f_max, x_max_scaled
