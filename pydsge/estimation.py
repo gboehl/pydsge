@@ -603,7 +603,6 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
     if linear is None:
         linear = self.filter.name == 'KalmanFilter'
 
-
     if 'description' in self.fdict.keys():
         self.description = self.fdict['description']
 
@@ -784,23 +783,31 @@ def tmcmc(self, nsteps, nwalks, ntemps, target, update_freq=False, verbose=False
     pars = get_par(self, 'prior_mean', asdict=False,
                    full=False, nsample=nwalks, verbose=verbose)
 
+    update_freq = update_freq if update_freq <= nsteps else False
+
     # initialize with prior
     pbar = tqdm.tqdm(total=ntemps, unit='temp(s)', dynamic_ncols=True)
+    sweat = False
     tmp = 0
 
     for i in range(ntemps):
 
         if tmp >= 1:
-            pbar.write('[tmcmc:]'.ljust(15, ' ') + "Increasing temperature to %s°. Too hot! I'm out..." % np.round(100*tmp, 3))
+            # print only once
+            if not sweat:
+                pbar.write('[tmcmc:]'.ljust(
+                    15, ' ') + "Increasing temperature to %s°. Too hot! I'm out..." % np.round(100*tmp, 3))
+            sweat = True
+            # skip for loop to exit
             continue
 
         if tmp:
             pbar.write('[tmcmc:]'.ljust(15, ' ') +
-                  "Increasing temperature to %s°, aiming @ %4.3f." % (np.round(100*tmp, 3), aim))
+                       "Increasing temperature to %s°, aiming @ %4.3f." % (np.round(100*tmp, 3), aim))
         pbar.set_description("[tmcmc: %s°" % np.round(100*tmp, 3))
 
-        self.mcmc(p0=pars, nsteps=nsteps, nwalks=nwalks, temp=tmp,
-                  update_freq=update_freq, verbose=verbose, append=i, report=pbar.write, **mcmc_args)
+        self.mcmc(p0=pars, nsteps=nsteps, nwalks=nwalks, temp=tmp, update_freq=update_freq,
+                  verbose=verbose, append=i, report=pbar.write, **mcmc_args)
 
         pars = self.get_chain()[-1]
         lprobs = self.get_log_prob()[-1]
