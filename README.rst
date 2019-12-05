@@ -18,9 +18,9 @@ Outline
 
 There is some `preliminary documentation <https://pydsge.readthedocs.io/en/latest/index.html>`_ out there.
 
-- Installation Guide
-- Getting Started
-- Module Documentation
+- `Installation Guide <https://pydsge.readthedocs.io/en/latest/installation_guide.html>`_
+- `Getting Started <https://pydsge.readthedocs.io/en/latest/getting_started.html>`_
+- `Module Documentation <https://pydsge.readthedocs.io/en/latest/modules.html>`_
 
 
 Parser
