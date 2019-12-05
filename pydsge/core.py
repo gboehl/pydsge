@@ -289,7 +289,7 @@ def prior_draw(self, nsample, seed=None, ncores=None, verbose=False):
     return map2arr(pmap_sim)
 
 
-def get_par(self, dummy=None, parname=None, asdict=True, full=True, roundto=5, nsample=1, seed=None, ncores=None, verbose=False):
+def get_par(self, dummy=None, parname=None, asdict=True, full=None, roundto=5, nsample=1, seed=None, ncores=None, verbose=False):
     """Get parameters. Tries to figure out what you want. 
 
     Parameters
@@ -312,6 +312,8 @@ def get_par(self, dummy=None, parname=None, asdict=True, full=True, roundto=5, n
     array or dict
         Numpy array of parameters or dict of parameters
     """
+
+    full = full if full is not None else asdict
 
     if not hasattr(self, 'par'):
         get_sys(self, verbose=verbose)
@@ -412,7 +414,7 @@ def set_par(self, dummy, setpar=None, par=None, roundto=5, autocompile=True, ver
             par = self.par.copy() if hasattr(self, 'par') else self.par_fix.copy()
             par[self.prior_arg] = dummy
         else:
-            par = get_par(self, dummy=dummy, parname=None, asdict=False, verbose=verbose)
+            par = get_par(self, dummy=dummy, parname=None, asdict=False, full=True, verbose=verbose)
 
     elif dummy in pars_str:
         if par is None:

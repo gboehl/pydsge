@@ -1,22 +1,11 @@
 #!/bin/python
 # -*- coding: utf-8 -*-
 
-import emcee
 import numpy as np
 import pandas as pd
-from .parser import DSGE
 from .stats import summary, pmdm_report
-from .engine import func_dispatch
-from .core import *
-from .tools import *
-from .filtering import *
-from .estimation import *
-from .modesearch import pmdm, nlopt
-from .plots import posteriorplot, traceplot, swarm_rank, swarm_champ, swarm_plot
-from .processing import *
 
 
-@property
 def get_tune(self):
 
     if hasattr(self, 'tune'):
@@ -49,23 +38,19 @@ def calc_obs(self, states, covs=None):
     return iv95_obs, iv95
 
 
-def get_chain(self, get_acceptance_fraction=False, mc_type=None, backend_file=None, flat=None):
+def get_chain(self, get_acceptance_fraction=False, get_log_prob=False, backend_file=None, flat=None):
 
-    if backend_file:
-        reader = emcee.backends.HDFBackend(backend_file)
-
-    else:
+    if not backend_file:
         if hasattr(self, 'sampler'):
             reader = self.sampler
+        elif 'backend_file' in self.fdict.keys():
+            backend_file = str(self.fdict['backend_file'])
         else:
-            if hasattr(self, 'backend_file'):
-                backend_file = self.backend_file
-            elif 'backend_file' in self.fdict.keys():
-                backend_file = str(self.fdict['backend_file'])
-            else:
-                raise AttributeError(
-                    "Neither a backend nor a sampler could be found.")
-            reader = emcee.backends.HDFBackend(backend_file)
+            backend_file = os.path.join(self.path, self.name+'_sampler.h5')
+
+    if backend_file:
+        import emcee
+        reader = emcee.backends.HDFBackend(backend_file)
 
     if get_acceptance_fraction:
         try:
@@ -73,26 +58,19 @@ def get_chain(self, get_acceptance_fraction=False, mc_type=None, backend_file=No
         except:
             return reader.accepted / reader.iteration
 
+    if get_log_prob:
+        return reader.get_log_prob(flat=flat)
+
     chain = reader.get_chain(flat=flat)
     return self.bjfunc(chain)
 
 
-def get_log_prob(self, mc_type=None, backend_file=None, flat=None):
+def get_log_prob(self, **args):
+    """Get the log likelihoods in the chain
+    """
 
-    if backend_file is None:
-
-        if hasattr(self, 'sampler'):
-            return self.sampler.get_log_prob(flat=flat)
-
-        if 'backend_file' in self.fdict.keys():
-            backend_file = str(self.fdict['backend_file'])
-        else:
-            raise AttributeError(
-                "Neither a backend nor a sampler could be found.")
-
-    reader = emcee.backends.HDFBackend(backend_file)
-
-    return reader.get_log_prob(flat=flat)
+    # just a wrapper
+    return get_chain(self, get_log_prob=False, **args)
 
 
 def write_yaml(self, filename):
@@ -112,17 +90,9 @@ def write_yaml(self, filename):
 
 def save_meta(self, filename=None, verbose=True):
 
-    if filename is None:
-        if hasattr(self, 'path') and hasattr(self, 'name'):
-            filename = self.path + self.name + '_meta'
-        elif hasattr(self, 'path') and hasattr(self, 'mod_name'):
-            filename = self.path + self.mod_name + '_meta'
-        elif 'dfile' in self.fdict.keys():
-            filename = self.fdict['dfile']
-        else:
-            raise KeyError("'filename' must be given.")
-    else:
-        self.fdict['dfile'] = filename
+    import os
+
+    filename = filename or os.path.join(self.path, self.name + '_meta')
 
     objs = 'description', 'backend_file', 'tune', 'name'
 
@@ -142,18 +112,6 @@ def save_meta(self, filename=None, verbose=True):
     return
 
 
-def set_path(self, path):
-
-    import os
-
-    if not path[-1] == os.sep:
-        path = path + os.sep
-
-    self.path = path
-
-    return
-
-
 def traceplot_m(self, chain=None, **args):
 
     if chain is None:
@@ -162,16 +120,16 @@ def traceplot_m(self, chain=None, **args):
             args['tune'] = int(chain.shape[0]/5)
         else:
             chain = self.get_chain()
-            args['tune'] = self.get_tune
+            args['tune'] = get_tune(self)
 
     return traceplot(chain, varnames=self.fdict['prior_names'], **args)
 
 
-def posteriorplot_m(self, mc_type=None, **args):
+def posteriorplot_m(self, **args):
 
-    tune = self.get_tune
+    tune = get_tune(self)
 
-    return posteriorplot(self.get_chain(mc_type=mc_type), varnames=self.fdict['prior_names'], tune=tune, **args)
+    return posteriorplot(self.get_chain(), varnames=self.fdict['prior_names'], tune=tune, **args)
 
 
 def cmaes_summary(self, data=None, verbose=True):
@@ -202,16 +160,16 @@ def swarm_summary(self, verbose=True, **args):
     return res
 
 
-def mcmc_summary(self, chain=None, mc_type=None, tune=None, calc_mdd=True, calc_ll_stats=False, calc_maf=True, out=print, verbose=True, **args):
+def mcmc_summary(self, chain=None, tune=None, calc_mdd=True, calc_ll_stats=False, calc_maf=True, out=print, verbose=True, **args):
 
     try:
-        chain = self.get_chain(mc_type) if chain is None else chain
+        chain = self.get_chain() if chain is None else chain
     except AttributeError:
         raise AttributeError('[summary:]'.ljust(
             15, ' ') + "No chain to be found...")
 
     if tune is None:
-        tune = self.get_tune
+        tune = get_tune(self)
 
     res = summary(chain, self['__data__']['estimation']['prior'], tune=tune, **args)
 
@@ -260,7 +218,7 @@ def info_m(self, verbose=True, **args):
 
     try:
         cshp = self.get_chain().shape
-        tune = self.get_tune
+        tune = get_tune(self)
         res += 'Parameters: %s\n' % cshp[2]
         res += 'Chains: %s\n' % cshp[1]
         res += 'Last %s of %s samples\n' % (tune, cshp[0])
@@ -273,25 +231,33 @@ def info_m(self, verbose=True, **args):
     return res
 
 
-def get_data(self=None, csv=None, sep=None, start=None, end=None):
+def load_data(self, df, start=None, end=None):
+    """Load and prepare data
+    ...
+    This function takes a provided `pandas.DataFrame`, reads out the observables as they are defined in the YAML-file, and ajusts it regarding the `start` and `end` keywords. Using a `pandas.DatetimeIndex` as index of the DataFrame is strongly encuraged as it can be very powerful, but not necessary.
 
-    if csv[-4:] != '.csv' or csv is None:
-        raise TypeError('data format must be `.csv`.')
+    Parameters
+    ----------
+    df : pandas.DataFrame
+    start : index (optional)
+    end : index (optional)
 
-    d = pd.read_csv(csv, sep=sep).dropna()
+    Returns
+    -------
+    pandas.DataFrame
+
+    """
+
+    if not isinstance(df, pd.DataFrame):
+        raise TypeError('Type of input data must be a `pandas.DataFrame`.')
 
     if self is not None:
         for o in self['observables']:
-            if str(o) not in d.keys():
+            if str(o) not in df.keys():
                 raise KeyError('%s is not in the data!' % o)
 
-    dates = pd.date_range(
-        str(int(d['year'][0])), periods=d.shape[0], freq='Q')
-
-    d.index = dates
-
     if self is not None:
-        d = d[self.observables]
+        d = df[self.observables]
 
     if start is not None:
         start = str(start)
@@ -301,11 +267,10 @@ def get_data(self=None, csv=None, sep=None, start=None, end=None):
 
     d = d.loc[start:end]
 
-    if self is not None:
-        import cloudpickle as cpickle
-        self.data = d
-        self.fdict['data'] = cpickle.dumps(d)
-        self.fdict['obs'] = self.observables
+    import cloudpickle as cpickle
+    self.data = d
+    self.fdict['data'] = cpickle.dumps(d)
+    self.fdict['obs'] = self.observables
 
     return d
 
@@ -346,7 +311,7 @@ def mdd(self, mode_f=None, inv_hess=None, tune=None, verbose=False):
 
     elif inv_hess is None:
 
-        tune = tune or self.get_tune
+        tune = tune or get_tune(self)
 
         chain = self.get_chain()[-tune:]
         chain = chain.reshape(-1, chain.shape[-1])
@@ -430,6 +395,15 @@ def sample_box(self, dim0, dim1=None, bounds=None, lp_rule=None, verbose=False):
     return res
 
 
+from .parser import DSGE
+from .processing import *
+from .core import *
+from .tools import *
+from .filtering import *
+from .estimation import *
+from .modesearch import pmdm, nlopt
+from .plots import posteriorplot, traceplot, swarm_rank, swarm_champ, swarm_plot
+
 DSGE.save = save_meta
 DSGE.cmaes_summary = cmaes_summary
 DSGE.swarm_summary = swarm_summary
@@ -437,8 +411,8 @@ DSGE.mcmc_summary = mcmc_summary
 DSGE.info = info_m
 DSGE.pmdm_report = pmdm_report
 DSGE.mdd = mdd
-DSGE.get_data = get_data
-DSGE.get_tune = get_tune
+DSGE.get_data = load_data
+DSGE.load_data = load_data
 DSGE.obs = calc_obs
 DSGE.box_check = box_check
 DSGE.rjfunc = rjfunc
@@ -447,7 +421,6 @@ DSGE.sample_box = sample_box
 # from core & tools:
 DSGE.get_par = get_par
 DSGE.set_par = set_par
-DSGE.func_dispatch = func_dispatch
 DSGE.get_sys = get_sys
 DSGE.t_func = t_func
 DSGE.o_func = o_func
@@ -455,7 +428,7 @@ DSGE.get_eps = get_eps
 DSGE.irfs = irfs
 DSGE.simulate = simulate
 DSGE.linear_representation = linear_representation
-DSGE.simulate_series = simulate_series
+DSGE.simulate_ts = simulate_ts
 # from estimation:
 DSGE.swarms = swarms
 DSGE.cmaes = cmaes
@@ -472,7 +445,6 @@ DSGE.nlopt = nlopt
 # from filter:
 DSGE.create_filter = create_filter
 DSGE.run_filter = run_filter
-DSGE.get_ll = get_ll
 # from plot:
 DSGE.traceplot = traceplot_m
 DSGE.posteriorplot = posteriorplot_m
@@ -480,7 +452,6 @@ DSGE.swarm_champ = swarm_champ
 DSGE.swarm_plot = swarm_plot
 DSGE.swarm_rank = swarm_rank
 # from others:
-DSGE.set_path = set_path
 DSGE.get_chain = get_chain
 DSGE.get_log_prob = get_log_prob
 DSGE.extract = extract

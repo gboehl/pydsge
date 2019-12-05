@@ -1,5 +1,5 @@
-Documentation
-==================
+Module Documentation
+====================
 
 ``pydsge.DSGE``
 ------------------

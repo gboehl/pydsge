@@ -6,6 +6,7 @@ import pandas as pd
 import os
 import time
 from .stats import get_prior, mc_mean, summary
+from .filtering import get_ll
 from .core import get_par
 import tqdm
 
@@ -81,7 +82,7 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
             15, ' ') + "`filter.R` not in `fdict`.")
 
     # dry run before the fun beginns
-    if np.isinf(self.get_ll(constr_data=constr_data, verbose=verbose > 3, dispatch=dispatch)):
+    if np.isinf(get_ll(self,constr_data=constr_data, verbose=verbose > 3, dispatch=dispatch)):
         raise ValueError('[estimation:]'.ljust(
             15, ' ') + 'likelihood of initial values is zero.')
 
@@ -141,7 +142,7 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
                     CO = self.SIG @ self.QQ(self.par)
                     self.filter.Q = CO @ CO.T
 
-                ll = self.get_ll(constr_data=constr_data,
+                ll = get_ll(self,constr_data=constr_data,
                                  verbose=verbose > 3, dispatch=dispatch)
 
                 np.random.set_state(random_state)
@@ -641,31 +642,38 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
     loc_pool = pathos.pools.ProcessPool(ncores)
     loc_pool.clear()
 
-    if p0 is not None:
-        nwalks = p0.shape[0]
-    elif resume:
-        p0 = sampler.get_last_sample()
-    elif temp < 1:
-        p0 = get_par(self, 'prior_mean', asdict=False,
-                     full=False, nsample=nwalks, verbose=verbose)
-    else:
-        p0 = get_par(self, 'best', asdict=False, full=False,
-                     nsample=nwalks, verbose=verbose)
+
+    if p0 is None:
+        if resume:
+            p0 = sampler.get_last_sample()
+        elif temp < 1:
+            p0 = get_par(self, 'prior_mean', asdict=False, full=False, nsample=nwalks, verbose=verbose)
+        else:
+            p0 = get_par(self, 'best', asdict=False, full=False, nsample=nwalks, verbose=verbose)
 
     if backend:
-        if isinstance(backend, str):
-            self.backend_file = backend
-        if 'backend_file' in self.fdict.keys():
-            self.backend_file = str(self.fdict['backend_file'])
-        else:
-            self.backend_file = self.path + self.name + '_sampler.h5'
 
-        backend = emcee.backends.HDFBackend(self.backend_file)
+        if isinstance(backend, str):
+            # backend_file will only be loaded later if explicitely defined
+            self.fdict['backend_file'] = backend
+
+        try:
+            backend = self.fdict['backend_file']
+        except KeyError:
+            # this is the default case
+            backend = os.path.join(self.path, self.name+'_sampler.h5')
+
+        backend = emcee.backends.HDFBackend(backend)
 
         if not (resume or append):
             backend.reset(nwalks, self.ndim)
     else:
         backend = None
+
+    if p0 is not None:
+        assert not resume
+        assert p0.ndim > 1
+        nwalks = p0.shape[0] 
 
     if resume:
         nwalks = backend.get_chain().shape[1]
@@ -679,8 +687,6 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
     self.sampler = sampler
     self.temp = temp
 
-    p0 = rjfunc(p0) if biject else p0
-
     if not verbose:
         np.warnings.filterwarnings('ignore')
 
@@ -690,6 +696,7 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
         pbar = tqdm.tqdm(total=nsteps, unit='sample(s)', dynamic_ncols=True)
         report = report or pbar.write
 
+    p0 = rjfunc(p0) if biject else p0
     old_tau = np.inf
 
     for result in sampler.sample(p0, iterations=nsteps, **samplerargs):
@@ -764,8 +771,6 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
         else:
             self.fdict['mode_x'] = mode_x
             self.fdict['mode_f'] = mode_f
-
-    self.sampler = sampler
 
     return
 
@@ -892,8 +897,7 @@ def kdes(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, ncores=N
         # should work, but not tested
         p0 = self.fdict['kdes_chain'][-1]
     else:
-        p0 = get_par(self, 'best', asdict=False,
-                     nsample=nwalks, verbose=verbose)
+        p0 = get_par(self, 'best', asdict=False, full=True, nsample=nwalks, verbose=verbose)
 
     if not verbose:
         np.warnings.filterwarnings('ignore')

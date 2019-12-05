@@ -14,50 +14,8 @@ from .symbols import Variable, Equation, Shock, Parameter, TSymbol
 from sympy.matrices import Matrix, zeros
 
 
-
 class DSGE(dict):
     """Base class. Every model is an instance of the DSGE class and inherents its methods.
-
-    Examples
-    --------
-
-    Let us import, parse and load the example model:
-
-    .. code::
-
-        from pydsge import DSGE, example
-        mod = DSGE.read(example)
-
-    If you would want to parse your own `*.yaml` model, you could easily do that by:
-
-    .. code::
-
-        yaml_path = "/full/path/to/your/model.yaml"
-        mod = DSGE.read(yaml_path)
-
-    The `mod` object is now an instance of the DSGE class. 
-    Lets load the calibrated parameters from the file (they are loaded by default anyways, but for educative purposes...) and instantize the transition function:
-
-    .. code::
-
-        par = mod.set_par('calib')
-        mod.get_sys(par, reduce_sys=False, verbose=True)
-
-    Let us use this to simulate a series of impulse responses:
-
-    .. code::
-
-        shock_list = ('e_u', 5, 1) # (name, size, period)
-        X1, (L1, K1) = mod.irfs(shock_list, verbose=True)
-
-    Nice. For details see the `irfs` function. Lets plot it using the `grgrlib` plot function:
-
-    .. code::
-
-        from grgrlib import pplot
-        pplot(X1)
-
-    So far! 
     """
 
     def __init__(self, *kargs, **kwargs):
@@ -139,10 +97,6 @@ class DSGE(dict):
     @property
     def const_eq(self):
         return self['const_eq']
-
-    @property
-    def fvars(self):
-        return self['fvars']
     # <-
 
     @property
@@ -410,10 +364,12 @@ class DSGE(dict):
 
             pmodel.fdict = {}
             pmodel.fdict['yaml_raw'] = mtxt
-            pmodel.path = os.path.dirname(mfile) + os.sep
+            # pmodel.path = os.path.dirname(mfile) + os.sep
 
             pmodel_dump = cpickle.dumps(pmodel)
             pmodel.fdict['model_dump'] = pmodel_dump
+            pmodel.name = pmodel.mod_name
+            pmodel.path = os.path.dirname(mfile)
 
             processed_raw_model = deepcopy(pmodel)
 
@@ -429,14 +385,14 @@ class DSGE(dict):
         return pmodel
 
     @classmethod
-    def load(cls, dfile, verbose=False):
+    def load(cls, npzfile, verbose=False):
 
         global processed_raw_model
 
         if verbose:
             st = time.time()
 
-        fdict = dict(np.load(dfile, allow_pickle=True))
+        fdict = dict(np.load(npzfile, allow_pickle=True))
 
         mtxt = str(fdict['yaml_raw'])
 
@@ -455,8 +411,9 @@ class DSGE(dict):
 
         pmodel.fdict = fdict
         pmodel.name = str(fdict['name'])
-        pmodel.path = os.path.dirname(dfile) + os.sep
-        pmodel.fdict['dfile'] = dfile
+        pmodel.path = os.path.dirname(npzfile)
+        # pmodel.path = os.path.dirname(npzfile) + os.sep
+        # pmodel.fdict['dfile'] = npzfile
 
         try:
             pmodel.data = cpickle.loads(fdict['data'])

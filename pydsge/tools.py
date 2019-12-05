@@ -182,7 +182,7 @@ def simulate(self, eps=None, mask=None, state=None, linear=False, verbose=False)
     return X, np.expand_dims(K, 2), superflag
 
 
-def simulate_series(self, T=1e3, cov=None, verbose=False):
+def simulate_ts(self, T=1e3, cov=None, verbose=False):
 
     import scipy.stats as ss
 

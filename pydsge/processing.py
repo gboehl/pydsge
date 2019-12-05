@@ -8,6 +8,7 @@ import tqdm
 import numpy as np
 # import cloudpickle as cpickle
 import dill as cpickle
+from .clsmethods import get_tune
 
 
 @property
@@ -97,7 +98,7 @@ def get_sample(self, source=None, k=1, seed=None, ncores=None, verbose=False):
         import random
 
         random.seed(seed)
-        sample = self.get_chain()[-self.get_tune:]
+        sample = self.get_chain()[-get_tune(self):]
         sample = sample.reshape(-1, sample.shape[-1])
         sample = random.choices(sample, k=k)
 

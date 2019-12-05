@@ -101,7 +101,8 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, co
         dispatch = self.filter.name == 'ParticleFilter'
 
     if dispatch:
-        t_func_jit, o_func_jit, get_eps_jit = self.func_dispatch(full=True)
+        from .engine import func_dispatch
+        t_func_jit, o_func_jit, get_eps_jit = func_dispatch(self, full=True)
         self.filter.t_func = t_func_jit
         self.filter.o_func = o_func_jit
         self.filter.get_eps = get_eps_jit
