@@ -151,14 +151,14 @@ Here, `a=2e-1`. As one last thing before running the filter, we would like to se
 
     FX = mod.run_filter(verbose=True, smoother=True)
 
-``smoother=True`` also directly runs the TEnKF-RTS-Smoother. `FX` now contains the states. Lets have a look:
+``smoother=True`` also directly runs the TEnKF-RTS-Smoother. ``FX`` now contains the states. Lets have a look:
 
 .. code-block:: python
 
     pplot(FX, mod.data.index, labels=mod.vv)
 
 We can also have a look at the implied observables. The function ``mod.obs()``
-is the observation function, implemented to work on particle clouds (such as `FX`):
+is the observation function, implemented to work on particle clouds (such as ``FX``):
 
 .. code-block:: python
 

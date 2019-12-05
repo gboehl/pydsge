@@ -15,7 +15,7 @@ Windows users probably use anaconda and can do
 
    conda install -c anaconda git
 
-in the conda shell `as they kindly tell us here <https://anaconda.org/anaconda/git>`_. Otherwise you can probably get it `here <https://git-scm.com/download/win>`.
+in the conda shell `as they kindly tell us here <https://anaconda.org/anaconda/git>`_. Otherwise you can probably get it `here <https://git-scm.com/download/win>`_.
 
 Then you can simply do
 
@@ -25,7 +25,7 @@ Then you can simply do
    pip install git+https://github.com/gboehl/econsieve
    pip install git+https://github.com/gboehl/pydsge
 
-Maybe you'd have to use `pip3` instead. If you run it and it complains about missing packages, please let me know so that I can update the `setup.py`!
+Maybe you'd have to use ``pip3`` instead. If you run it and it complains about missing packages, please let me know so that I can update the `setup.py`!
 
 
 Installation with ``pip`` (simple)
