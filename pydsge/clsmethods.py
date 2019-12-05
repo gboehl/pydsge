@@ -70,7 +70,7 @@ def get_log_prob(self, **args):
     """
 
     # just a wrapper
-    return get_chain(self, get_log_prob=False, **args)
+    return get_chain(self, get_log_prob=True, **args)
 
 
 def write_yaml(self, filename):

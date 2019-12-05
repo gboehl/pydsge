@@ -1,7 +1,7 @@
 Getting Started
 ===============
 
-This section gives an overview over parsing, simulating and filtering models using **pydsge**. It also explains how to load and process data from an estimation.
+This section gives an overview over parsing, simulating and filtering models using **pydsge**. It also explains how to load and process data from an estimation. Because the package is updated very frequently (find the history of latest commits `here <https://github.com/gboehl/pydsge/commits/master>`_) I recommend pulling and reinstalling whenever something is not working right.
 
 Parsing & simulating
 --------------------

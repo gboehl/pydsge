@@ -808,8 +808,8 @@ def tmcmc(self, nsteps, nwalks, ntemps, target, scale=1, update_freq=False, verb
 
         if tmp:
             pbar.write('[tmcmc:]'.ljust(15, ' ') +
-                       "Increasing temperature to %s°, aiming @ %4.3f." % (np.round(100*tmp**scale, 3), aim))
-        pbar.set_description("[tmcmc: %s°" % np.round(100*tmp**scale, 3))
+                       "Increasing temperature to %2.5f°, aiming @ %4.3f." % (100*tmp**scale, aim))
+        pbar.set_description("[tmcmc: %2.3f°" % (100*tmp**scale))
 
         self.mcmc(p0=pars, nsteps=nsteps, nwalks=nwalks, temp=tmp**scale, update_freq=update_freq,
                   verbose=verbose, append=i, report=pbar.write, **mcmc_args)
