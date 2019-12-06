@@ -199,7 +199,7 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, verbose=Fal
     return 
 
 
-def prior_draw(self, nsample, seed=None, test_lprob=False, verbose=False):
+def prior_sample(self, nsample, seed=None, test_lprob=False, verbose=False):
     """Draw parameters from prior. Drawn parameters have a finite likelihood.
 
     Parameters
@@ -220,8 +220,7 @@ def prior_draw(self, nsample, seed=None, test_lprob=False, verbose=False):
         seed = 0
 
     if verbose:
-        print('[prior_draw:]'.ljust(15, ' ') +
-              'Drawing from the pior and checking likelihood.')
+        print('[prior_sample:]'.ljust(15, ' ') + 'sampling from the pior...')
 
     reduce_sys = self.fdict['reduce_sys'].copy()
 
@@ -236,42 +235,43 @@ def prior_draw(self, nsample, seed=None, test_lprob=False, verbose=False):
     def runner(locseed):
 
         np.random.seed(seed+locseed)
-        draw_prob = -np.inf
+        done = False
+        no = 0
 
-        while np.isinf(draw_prob):
+        while not done:
+            no += 1
             with np.warnings.catch_warnings(record=False):
                 try:
                     np.warnings.filterwarnings('error')
-                    rst = np.random.randint(np.iinfo(np.int64).max, dtype=np.int64)
-                    pdraw = [pl.rvs(random_state=rst+sn)
-                             for sn,pl in enumerate(frozen_prior)]
-                    draw_prob = lprob(pdraw, None, verbose)
-                except:
-                    pass
+                    rst = np.random.randint(32**2-2)
+                    pdraw = [pl.rvs(random_state=rst+sn) for sn,pl in enumerate(frozen_prior)]
 
-        return pdraw
+                    if test_lprob:
+                        draw_prob = lprob(pdraw, None, verbose)
+                        done = not np.isinf(draw_prob)
+                    else:
+                        pdraw = mod.get_par(pdraw, asdict=False, full=True)
+                        mod.get_sys(par=pdraw,reduce_sys=True)
+                        done = True
 
-    if ncores is None:
-        ncores = pathos.multiprocessing.cpu_count()
+                except Exception as e:
+                    if verbose:
+                        print(str(no)+' - '+str(e)+':')
 
-    mapper = map
-    if ncores > 1:
-        loc_pool = pathos.pools.ProcessPool(ncores)
-        loc_pool.clear()
-        mapper = loc_pool.imap
+        return pdraw, no
 
-    print('[get_cand:]'.ljust(15, ' ') + 'Sampling parameters from prior...')
-    pmap_sim = tqdm.tqdm(mapper(
-        runner, range(nsample)), total=nsample)
+    if verbose:
+        print('[prior_sample:]'.ljust(15, ' ') + 'sampling from the pior...')
 
-    ## to circumvent mem overflow
-    if ncores > 1:
-        loc_pool.close()
-        loc_pool.join()
+    pmap_sim = tqdm.tqdm(self.mapper(runner, range(nsample)), total=nsample)
+
+    draws, nos = map2arr(pmap_sim)
 
     if not reduce_sys:
-        print('hier!')
         self.get_sys(reduce_sys=False, verbose=verbose > 1)
+
+    if verbose:
+        print('[prior_sample:]'.ljust(15, ' ') + 'sampling done. %2.3f%% of the prior are either indetermined or explosive.' %(sum(nos)/(nsample+nos)))
 
     return map2arr(pmap_sim)
 
