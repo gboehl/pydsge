@@ -2,7 +2,7 @@
 Installation Guide
 ==================
 
-So lets see how to get you all set up. As long as this is still much work in progress, I'll not upload this to `PyPI <https://pypi.org/>`_. You have two choices: installing "by hand", or using the `git` command. I strongly recommend using `git` as it facilitates updates and the like. This is the handy way.
+So lets see how to get you all set up. As long as this is still much work in progress, I'll not upload this to `PyPI <https://pypi.org/>`_. You have two choices: installing "by hand", or using the ``git`` command. I strongly recommend using ``git`` as it facilitates updates and the like. This is the handy way.
 
 Installation with ``pip`` (elegant via ``git``\ )
 -------------------------------------------------------
@@ -42,3 +42,15 @@ The simplest way is to clone the repository and then from within the cloned fold
 .. code-block:: bash
 
    pip3 install .
+
+
+Updating
+--------
+
+The package is updated very frequently (find the history of latest commits `here <https://github.com/gboehl/pydsge/commits/master>`_) I recommend pulling and reinstalling whenever something is not working right. Best thing you also upgrade the other packages as you are at it:
+
+.. code-block:: bash
+
+   pip install --upgrade git+https://github.com/gboehl/grgrlib
+   pip install --upgrade git+https://github.com/gboehl/econsieve
+   pip install --upgrade git+https://github.com/gboehl/pydsge
