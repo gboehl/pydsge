@@ -199,15 +199,13 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, verbose=Fal
     return 
 
 
-def prior_draw(self, nsample, seed=None, ncores=None, verbose=False):
+def prior_draw(self, nsample, seed=None, test_lprob=False, verbose=False):
     """Draw parameters from prior. Drawn parameters have a finite likelihood.
 
     Parameters
     ----------
     nsample : int
         Size of the prior sample
-    ncores : int
-        Number of cores used for prior sampling. Defaults to the number of available processors
 
     Returns
     -------
@@ -215,10 +213,7 @@ def prior_draw(self, nsample, seed=None, ncores=None, verbose=False):
         Numpy array of parameters
     """
 
-    import pathos
-    import warnings
     import tqdm
-    import cloudpickle as cpickle
     from grgrlib import map2arr
 
     if seed is None:
@@ -228,22 +223,14 @@ def prior_draw(self, nsample, seed=None, ncores=None, verbose=False):
         print('[prior_draw:]'.ljust(15, ' ') +
               'Drawing from the pior and checking likelihood.')
 
-    print('[prior_draw:]'.ljust(15, ' ') + '... is in emergency mode. Parallelization is disabled :(')
-    ncores = 0
-
     reduce_sys = self.fdict['reduce_sys'].copy()
-    if not self.fdict['reduce_sys']:
+
+    if not reduce_sys:
         self.get_sys(reduce_sys=True, verbose=verbose > 1)
-        self.prep_estim(load_R=True, verbose=verbose > 1)
 
     if not hasattr(self, 'ndim'):
         self.prep_estim(load_R=True, verbose=verbose)
 
-    if ncores > 1:
-        lprob_dump = cpickle.dumps(self.lprob)
-        lprob = cpickle.loads(lprob_dump)
-    else:
-        lprob = self.lprob
     frozen_prior = self.fdict['frozen_prior']
 
     def runner(locseed):
@@ -252,7 +239,7 @@ def prior_draw(self, nsample, seed=None, ncores=None, verbose=False):
         draw_prob = -np.inf
 
         while np.isinf(draw_prob):
-            with warnings.catch_warnings(record=False):
+            with np.warnings.catch_warnings(record=False):
                 try:
                     np.warnings.filterwarnings('error')
                     rst = np.random.randint(np.iinfo(np.int64).max, dtype=np.int64)

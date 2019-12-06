@@ -400,8 +400,9 @@ from .processing import *
 from .core import *
 from .tools import *
 from .filtering import *
-from .estimation import *
-from .modesearch import pmdm, nlopt
+from .estimation import prep_estim
+from .modesearch import pmdm, nlopt, cmaes, cmaes2, swarms
+from .mcmc import mcmc, kdes, tmcmc
 from .plots import posteriorplot, traceplot, swarm_rank, swarm_champ, swarm_plot
 
 DSGE.save = save_meta
