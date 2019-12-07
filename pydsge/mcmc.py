@@ -198,68 +198,6 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
     return
 
 
-def tmcmc(self, nsteps, nwalks, ntemps, target, scale=1, update_freq=False, verbose=False, **mcmc_args):
-    """Run Tempered Ensemble MCMC
-
-    Parameters
-    ----------
-    ntemps : int
-    target : float
-    nsteps : float
-    """
-
-    pars = get_par(self, 'prior_mean', asdict=False,
-                   full=False, nsample=nwalks, verbose=verbose)
-
-    update_freq = update_freq if update_freq <= nsteps else False
-
-    # initialize with prior
-    pbar = tqdm.tqdm(total=ntemps, unit='temp(s)', dynamic_ncols=True)
-    sweat = False
-    tmp = 0
-
-    for i in range(ntemps):
-
-        if tmp >= 1:
-            # print only once
-            if not sweat:
-                pbar.write('[tmcmc:]'.ljust(
-                    15, ' ') + "Increasing temperature to %s°. Too hot! I'm out..." % np.round(100*tmp**scale, 3))
-            sweat = True
-            # skip for loop to exit
-            continue
-
-        if tmp:
-            pbar.write('[tmcmc:]'.ljust(15, ' ') +
-                       "Increasing temperature to %2.5f°, aiming @ %4.3f." % (100*tmp**scale, aim))
-        pbar.set_description("[tmcmc: %2.3f°" % (100*tmp**scale))
-
-        self.mcmc(p0=pars, nsteps=nsteps, nwalks=nwalks, temp=tmp**scale, update_freq=update_freq,
-                  verbose=verbose, append=i, report=pbar.write, **mcmc_args)
-
-        pars = self.get_chain()[-1]
-        lprobs = self.get_log_prob()[-1]
-        self.temp = tmp**scale
-
-        self.mcmc_summary(tune=int(nsteps/10),
-                          calc_mdd=False, calc_ll_stats=True)
-
-        pbar.update()
-
-        # update tmp
-        x = pars[lprobs.argmax()]
-        ll = self.lprob(x)
-        lp = self.lprior(x)
-        lx = ll - lp
-
-        tmp = tmp*(ntemps-i-1)/(ntemps-i) + (target - lp)/(ntemps-i)/lx
-        aim = lp + lx*tmp**scale
-
-    pbar.close()
-
-    return pars
-
-
 def kdes(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, linear=None, resume=False, verbose=False, debug=False):
 
     import pathos
@@ -387,3 +325,64 @@ def kdes(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, linear=N
 
     return
 
+
+def tmcmc(self, nsteps, nwalks, ntemps, target, update_freq=False, verbose=False, **mcmc_args):
+    """Run Tempered Ensemble MCMC
+
+    Parameters
+    ----------
+    ntemps : int
+    target : float
+    nsteps : float
+    """
+
+    pars = get_par(self, 'prior_mean', asdict=False,
+                   full=False, nsample=nwalks, verbose=verbose)
+
+    update_freq = update_freq if update_freq <= nsteps else False
+
+    # initialize with prior
+    pbar = tqdm.tqdm(total=ntemps, unit='temp(s)', dynamic_ncols=True)
+    sweat = False
+    tmp = 0
+
+    for i in range(ntemps):
+
+        if tmp >= 1:
+            # print only once
+            if not sweat:
+                pbar.write('[tmcmc:]'.ljust(
+                    15, ' ') + "Increasing temperature to %s°. Too hot! I'm out..." % np.round(100*tmp, 3))
+            sweat = True
+            # skip for loop to exit
+            continue
+
+        if tmp:
+            pbar.write('[tmcmc:]'.ljust(15, ' ') +
+                       "Increasing temperature to %2.5f°, aiming @ %4.3f." % (100*tmp, aim))
+        pbar.set_description("[tmcmc: %2.3f°" % (100*tmp))
+
+        self.mcmc(p0=pars, nsteps=nsteps, nwalks=nwalks, temp=tmp, update_freq=update_freq,
+                  verbose=verbose, append=i, report=pbar.write, **mcmc_args)
+
+        pars = self.get_chain()[-1]
+        lprobs = self.get_log_prob()[-1]
+        self.temp = tmp
+
+        self.mcmc_summary(tune=int(nsteps/10),
+                          calc_mdd=False, calc_ll_stats=True)
+
+        pbar.update()
+
+        # update tmp
+        x = pars[lprobs.argmax()]
+        ll = self.lprob(x)
+        lp = self.lprior(x)
+        lx = ll - lp
+
+        tmp = tmp*(ntemps-i-1)/(ntemps-i) + (target - lp)/(ntemps-i)/lx
+        aim = lp + lx*tmp
+
+    pbar.close()
+
+    return pars

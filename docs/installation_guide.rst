@@ -47,7 +47,7 @@ The simplest way is to clone the repository and then from within the cloned fold
 Updating
 --------
 
-The package is updated very frequently (find the history of latest commits `here <https://github.com/gboehl/pydsge/commits/master>`_) I recommend pulling and reinstalling whenever something is not working right. Best thing you also upgrade the other packages as you are at it:
+The package is updated very frequently (find the history of latest commits `here <https://github.com/gboehl/pydsge/commits/master>`_). I hence recommend pulling and reinstalling whenever something is not working right. Best thing you also upgrade the other packages as you are at it:
 
 .. code-block:: bash
 
