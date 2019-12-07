@@ -5,7 +5,7 @@
 
    readme
    installation_guide
-   getting_started
+   getting_started.ipynb
    modules
    indices
 
