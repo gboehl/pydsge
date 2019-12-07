@@ -4,7 +4,7 @@
 import numpy as np
 import pandas as pd
 import time
-from grgrlib import fast0
+from grgrlib import fast0, map2arr
 from .engine import boehlgorithm
 from decimal import Decimal
 
@@ -55,7 +55,7 @@ def get_eps(self, x, xp):
     return (x - self.t_func(xp)[0]) @ self.SIG
 
 
-def irfs(self, shocklist, T=30, linear=False, verbose=False):
+def irfs(self, shocklist, pars=None, T=30, linear=False, verbose=False):
     """Simulate impulse responses
 
     Parameters
@@ -72,51 +72,63 @@ def irfs(self, shocklist, T=30, linear=False, verbose=False):
         The simulated series as a pandas.DataFrame object and the expected durations at the constraint
     """
 
-    st_vec = np.zeros(len(self.vv))
-
-    X = np.empty((T, len(self.vv)))
-    K = np.empty(T)
-    L = np.empty(T)
-
-    superflag = False
-
     if isinstance(shocklist, tuple):
         shocklist = [shocklist,]
 
     st = time.time()
 
-    for t in range(T):
+    def irfs_runner(par):
 
-        shk_vec = np.zeros(len(self.shocks))
-        for vec in shocklist:
-            if vec[2] == t:
+        if np.any(par):
+            self.set_par(par, autocompile=False)
 
-                shock = vec[0]
-                shocksize = vec[1]
+        st_vec = np.zeros(len(self.vv))
 
-                shock_arg = self.shocks.index(shock)
-                shk_vec[shock_arg] = shocksize
+        X = np.empty((T, len(self.vv)))
+        K = np.empty(T)
+        L = np.empty(T)
 
-                shk_process = (self.SIG @ shk_vec).nonzero()
+        superflag = False
 
-        st_vec, (l, k), flag = self.t_func(
-            st_vec, shk_vec, linear=linear, return_k=True)
+        for t in range(T):
 
-        superflag |= flag
+            shk_vec = np.zeros(len(self.shocks))
+            for vec in shocklist:
+                if vec[2] == t:
 
-        X[t,:] = st_vec
-        L[t] = l
-        K[t] = k
+                    shock = vec[0]
+                    shocksize = vec[1]
 
-    X = pd.DataFrame(X, columns=self.vv)
+                    shock_arg = self.shocks.index(shock)
+                    shk_vec[shock_arg] = shocksize
 
-    if superflag:
+                    shk_process = (self.SIG @ shk_vec).nonzero()
+
+            st_vec, (l, k), flag = self.t_func(
+                st_vec, shk_vec, linear=linear, return_k=True)
+
+            superflag |= flag
+
+            X[t,:] = st_vec
+            L[t] = l
+            K[t] = k
+
+
+        return X, K, L, superflag
+
+    if np.any(pars):
+        res = self.mapper(irfs_runner, pars)
+        X, K, L, flag = map2arr(res)
+    else:
+        X, K, L, flag = irfs_runner(pars)
+        X = pd.DataFrame(X, columns=self.vv) 
+
+    if np.any(flag):
         print('[irfs:]'.ljust(15, ' ') +
-              ' No rational expectations solution found.')
+              ' no rational expectations solution found at least once.')
 
     if verbose:
-        print('[irfs:]'.ljust(15, ' ')+'Simulation took ',
-              np.round((time.time() - st), 5), ' seconds.')
+        print('[irfs:]'.ljust(15, ' ') + ' simulation took ', np.round((time.time() - st), 5), ' seconds.')
 
     return X, (K, L)
 

@@ -50,7 +50,7 @@ def get_chain(self, get_acceptance_fraction=False, get_log_prob=False, backend_f
 
     if backend_file:
         import emcee
-        reader = emcee.backends.HDFBackend(backend_file)
+        reader = emcee.backends.HDFBackend(backend_file, read_only=True)
 
     if get_acceptance_fraction:
         try:
@@ -394,6 +394,14 @@ def sample_box(self, dim0, dim1=None, bounds=None, lp_rule=None, verbose=False):
 
     return res
 
+@property
+def mapper(self):
+
+    if hasattr(self, 'pool'):
+        return self.pool.imap
+    else:
+        return map
+
 
 from .parser import DSGE
 from .processing import *
@@ -406,6 +414,7 @@ from .mcmc import mcmc, kdes, tmcmc
 from .plots import posteriorplot, traceplot, swarm_rank, swarm_champ, swarm_plot
 
 DSGE.save = save_meta
+DSGE.mapper = mapper
 DSGE.cmaes_summary = cmaes_summary
 DSGE.swarm_summary = swarm_summary
 DSGE.mcmc_summary = mcmc_summary

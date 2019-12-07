@@ -12,7 +12,7 @@ from .filtering import get_ll
 from .core import get_par
 
 
-def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=False, dispatch=False, constr_data=False, verbose=True, **filterargs):
+def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=False, dispatch=False, constr_data=False, ncores=None, verbose=True, **filterargs):
     """Initializes the tools necessary for estimation
 
     ...
@@ -213,30 +213,13 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
 
         return ll
 
-    # to make lprob serializable using the dark'n'evil hack below
-    global lprob_global
-    lprob_global = lprob
-
     # make functions accessible
     self.lprob = lprob
     self.lprior = lprior
     self.llike = llike
 
-    # self.pool = pathos.pools.ProcessPool(ncores)
-    self.pool = pathos.pools.ProcessPool()
-    self.pool.clear()
-    self.mapper = self.pool.imap
-
-
-def lprob_serializable():
-    """Dirty hack that transforms the non-serializable function to a serializable one
-    ...
-    Don't try that at home!
-    """
-
-    global lprob_global
-
-    def sfunc(*args, **kwargs):
-        return lprob_global(*args, **kwargs)
-
-    return sfunc
+    if ncores is None or ncores:
+        self.pool = pathos.pools.ProcessPool(ncores)
+        self.pool.clear()
+    else:
+        self.pool = None

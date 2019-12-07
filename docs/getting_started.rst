@@ -13,7 +13,7 @@ Let us first import the base class and the example model:
     from pydsge import DSGE, example
     yaml_file, data_file = example
 
-The `example` here is nothing than a tuple containing the paths to two files. The first file to the example model file (as a string):
+The ``example`` here is nothing than a tuple containing the paths to two files. The first file to the example model file (as a string):
 
 .. code-block:: python
 
@@ -72,10 +72,35 @@ Nice. For details see the ``irfs`` function. Lets plot it using the ``pplot`` pl
     from grgrlib import pplot
     pplot(X1)
 
+Btw, the ``L1, K1`` arrays contain the series of expected durations to/at the ZLB.
+
 
 Sample from prior
 ^^^^^^^^^^^^^^^^^
-[TBD]
+
+Now lets assume that you have specified priors and wanted to know how flexible your model is in terms of impulse responses. The ``get_par`` function also allows sampling from the prior:
+
+.. code-block:: python
+
+    par0 = mod.get_par('prior', nsample=50, verbose=True)
+    print(par0.shape)
+
+.. code::
+
+    (50, 11)
+
+This is an array with 50 samples of the 10-dimensional parameter vector. 
+If you allow for ``verbose=True`` (which is the default) the function will also tell you how much of your prior is not implicitely trunkated by indetermined or explosive regions. 
+
+Lets feed these parameters ``par0`` into our ``irfs()`` and plot it:
+
+.. code-block:: python
+
+    X1, (L1, K1) = mod.irfs(shock_list, par0, verbose=True)
+    pplot(X1, labels=mod.vv)
+
+This gives you an idea on how tight your priors are. 
+
 
 Filtering & smoothing
 ---------------------

@@ -199,7 +199,7 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, verbose=Fal
     return 
 
 
-def prior_sample(self, nsample, seed=None, test_lprob=False, verbose=False):
+def prior_sampler(self, nsample, seed=None, test_lprob=False, verbose=True):
     """Draw parameters from prior. Drawn parameters have a finite likelihood.
 
     Parameters
@@ -214,23 +214,33 @@ def prior_sample(self, nsample, seed=None, test_lprob=False, verbose=False):
     """
 
     import tqdm
-    from grgrlib import map2arr
+    from grgrlib import map2arr, serializer
 
     if seed is None:
         seed = 0
 
-    if verbose:
-        print('[prior_sample:]'.ljust(15, ' ') + 'sampling from the pior...')
-
-    reduce_sys = self.fdict['reduce_sys'].copy()
+    reduce_sys = np.copy(self.fdict['reduce_sys'])
 
     if not reduce_sys:
         self.get_sys(reduce_sys=True, verbose=verbose > 1)
 
-    if not hasattr(self, 'ndim'):
-        self.prep_estim(load_R=True, verbose=verbose)
+    if test_lprob and not hasattr(self, 'ndim'):
+        self.prep_estim(load_R=True, verbose=verbose > 2)
 
-    frozen_prior = self.fdict['frozen_prior']
+    if not 'frozen_prior' in self.fdict.keys():
+        from .stats import get_prior
+        self.fdict['frozen_prior'] = get_prior(self.prior)[0]
+
+    frozen_prior = self.fdict['frozen_prior'] 
+
+    if not hasattr(self, 'mapper'):
+        self.mapper = map
+
+    if hasattr(self, 'pool'):
+        self.pool.clear()
+
+    get_par = serializer(self.get_par)
+    get_sys = serializer(self.get_sys)
 
     def runner(locseed):
 
@@ -239,7 +249,9 @@ def prior_sample(self, nsample, seed=None, test_lprob=False, verbose=False):
         no = 0
 
         while not done:
+
             no += 1
+
             with np.warnings.catch_warnings(record=False):
                 try:
                     np.warnings.filterwarnings('error')
@@ -247,23 +259,24 @@ def prior_sample(self, nsample, seed=None, test_lprob=False, verbose=False):
                     pdraw = [pl.rvs(random_state=rst+sn) for sn,pl in enumerate(frozen_prior)]
 
                     if test_lprob:
-                        draw_prob = lprob(pdraw, None, verbose)
+                        draw_prob = lprob(pdraw, None, verbose > 1)
                         done = not np.isinf(draw_prob)
                     else:
-                        pdraw = mod.get_par(pdraw, asdict=False, full=True)
-                        mod.get_sys(par=pdraw,reduce_sys=True)
+                        pdraw_full = get_par(pdraw, asdict=False, full=True)
+                        get_sys(par=pdraw_full,reduce_sys=True)
                         done = True
 
                 except Exception as e:
-                    if verbose:
-                        print(str(no)+' - '+str(e)+':')
+                    if verbose > 1:
+                        print(str(e)+'(%s) ' %no)
 
         return pdraw, no
 
-    if verbose:
-        print('[prior_sample:]'.ljust(15, ' ') + 'sampling from the pior...')
+    if verbose > 1:
+        print('[prior_sample:]'.ljust(15, ' ') + ' sampling from the pior...')
 
-    pmap_sim = tqdm.tqdm(self.mapper(runner, range(nsample)), total=nsample)
+    wrapper = tqdm.tqdm if verbose < 2 else (lambda x,**kwarg: x) 
+    pmap_sim = wrapper(self.mapper(runner, range(nsample)), total=nsample)
 
     draws, nos = map2arr(pmap_sim)
 
@@ -271,9 +284,9 @@ def prior_sample(self, nsample, seed=None, test_lprob=False, verbose=False):
         self.get_sys(reduce_sys=False, verbose=verbose > 1)
 
     if verbose:
-        print('[prior_sample:]'.ljust(15, ' ') + 'sampling done. %2.3f%% of the prior are either indetermined or explosive.' %(sum(nos)/(nsample+nos)))
+        print('[prior_sample:]'.ljust(15, ' ') + ' sampling done. %2.2f%% of the prior are either indetermined or explosive.' %(100*(sum(nos)-nsample)/nsample))
 
-    return map2arr(pmap_sim)
+    return draws
 
 
 def get_par(self, dummy=None, parname=None, asdict=True, full=None, roundto=5, nsample=1, seed=None, ncores=None, verbose=False):
@@ -324,7 +337,7 @@ def get_par(self, dummy=None, parname=None, asdict=True, full=None, roundto=5, n
             except:
                 par_cand = get_par(self, 'init', asdict=False, full=False)
         elif dummy == 'prior':
-            return prior_draw(self, nsample, seed, ncores, verbose)
+            return prior_sampler(self, nsample, seed, False, verbose)
         elif dummy == 'mode':
             par_cand = self.fdict['mode_x']
         elif dummy == 'calib':
@@ -388,9 +401,6 @@ def set_par(self, dummy, setpar=None, par=None, roundto=5, autocompile=True, ver
         If true, already defines the system and prprocesses matrics. (default: True)
     """
 
-    # if not hasattr(self, 'par'):
-    # get_sys(self, verbose=verbose)
-
     pfnames, pffunc = self.parafunc
     pars_str = [str(p) for p in self.parameters]
 
@@ -398,7 +408,7 @@ def set_par(self, dummy, setpar=None, par=None, roundto=5, autocompile=True, ver
         if len(dummy) == len(self.par_fix):
             par = dummy
         elif len(dummy) == len(self.prior_arg):
-            par = self.par.copy() if hasattr(self, 'par') else self.par_fix.copy()
+            par = np.copy(self.par) if hasattr(self, 'par') else np.copy(self.par_fix)
             par[self.prior_arg] = dummy
         else:
             par = get_par(self, dummy=dummy, parname=None, asdict=False, full=True, verbose=verbose)

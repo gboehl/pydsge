@@ -7,7 +7,6 @@ import tqdm
 import numpy as np
 from .core import get_par
 from .stats import summary, pmdm_report
-from .estimation import lprob_serializable
 
 
 class PMDM(object):
@@ -762,6 +761,7 @@ def cmaes(self, p0=None, sigma=None, pop_size=None, seeds=3, seed=None, linear=N
     """
 
     from grgrlib.optimize import cmaes as fmin
+    from grgrlib.core import serializer
 
     np.random.seed(seed or self.fdict['seed'])
 
@@ -777,7 +777,7 @@ def cmaes(self, p0=None, sigma=None, pop_size=None, seeds=3, seed=None, linear=N
     verbosity = np.ceil(
         update_freq/pop_size) if update_freq is not None and pop_size is not None else None
 
-    lprob_global = lprob_serializable()
+    lprob_global = serializer(self.lprob)
 
     def lprob(par): return lprob_global(
         par, linear=linear, lprob_seed=lprob_seed or 'set')

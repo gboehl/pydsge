@@ -8,7 +8,6 @@ import pathos
 import time
 import tqdm
 from .core import get_par
-from .estimation import lprob_serializable
 
 
 def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=False, seed=None, backend=True, linear=None, resume=False, append=False, update_freq=None, lprob_seed=None, biject=False, report=None, verbose=False, debug=False, **samplerargs):
@@ -39,7 +38,9 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
 
     self.fdict['biject'] = biject
 
-    lprob_global = lprob_serializable()
+    from grgrlib.core import serializer
+
+    lprob_global = serializer(self.lprob)
 
     if isinstance(temp, bool) and not temp:
         temp = 1
@@ -93,7 +94,10 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
         if not (resume or append):
             if not nwalks:
                 raise TypeError("If neither `resume`, `append` or `p0` is given I need to know the number of walkers (`nwalks`).")
-            backend.reset(nwalks, self.ndim)
+            try:
+                backend.reset(nwalks, self.ndim)
+            except KeyError as e:
+                raise KeyError(str(e) + '. Your `*.h5` file is likeli to be damaged...')
     else:
         backend = None
 
@@ -326,7 +330,7 @@ def kdes(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, linear=N
     return
 
 
-def tmcmc(self, nsteps, nwalks, ntemps, target, update_freq=False, verbose=False, **mcmc_args):
+def tmcmc(self, nsteps, nwalks, ntemps, target, update_freq=False, verbose=True, **mcmc_args):
     """Run Tempered Ensemble MCMC
 
     Parameters
@@ -336,15 +340,24 @@ def tmcmc(self, nsteps, nwalks, ntemps, target, update_freq=False, verbose=False
     nsteps : float
     """
 
-    pars = get_par(self, 'prior_mean', asdict=False,
-                   full=False, nsample=nwalks, verbose=verbose)
+    from grgrlib.core import map2arr
+    from .core import prior_sampler
 
     update_freq = update_freq if update_freq <= nsteps else False
 
-    # initialize with prior
+    # sample pars from prior
+    pars = prior_sampler(self, nwalks, test_lprob=False, verbose=verbose)
+
+    x = get_par(self, 'prior_mean', asdict=False, full=False, verbose=verbose > 1)
+
+    ll = self.lprob(x)
+    lp = self.lprior(x)
+
+    tmp = (target - lp)/(ll - lp)/ntemps
+    aim = lp + (ll-lp)*tmp
+
     pbar = tqdm.tqdm(total=ntemps, unit='temp(s)', dynamic_ncols=True)
     sweat = False
-    tmp = 0
 
     for i in range(ntemps):
 
@@ -357,31 +370,28 @@ def tmcmc(self, nsteps, nwalks, ntemps, target, update_freq=False, verbose=False
             # skip for loop to exit
             continue
 
-        if tmp:
-            pbar.write('[tmcmc:]'.ljust(15, ' ') +
-                       "Increasing temperature to %2.5f°, aiming @ %4.3f." % (100*tmp, aim))
+        pbar.write('[tmcmc:]'.ljust(15, ' ') + "Increasing temperature to %2.5f°, aiming @ %4.3f." % (100*tmp, aim))
         pbar.set_description("[tmcmc: %2.3f°" % (100*tmp))
 
-        self.mcmc(p0=pars, nsteps=nsteps, nwalks=nwalks, temp=tmp, update_freq=update_freq,
-                  verbose=verbose, append=i, report=pbar.write, **mcmc_args)
+        self.mcmc(p0=pars, nsteps=nsteps, temp=tmp, update_freq=update_freq,
+                  verbose=verbose>1, append=i, report=pbar.write, **mcmc_args)
 
-        pars = self.get_chain()[-1]
-        lprobs = self.get_log_prob()[-1]
         self.temp = tmp
-
         self.mcmc_summary(tune=int(nsteps/10),
                           calc_mdd=False, calc_ll_stats=True)
 
         pbar.update()
 
+        pars = self.get_chain()[-1]
+        lprobs_adj = self.get_log_prob()[-1]
+
         # update tmp
-        x = pars[lprobs.argmax()]
+        x = pars[lprobs_adj.argmax()]
         ll = self.lprob(x)
         lp = self.lprior(x)
-        lx = ll - lp
 
-        tmp = tmp*(ntemps-i-1)/(ntemps-i) + (target - lp)/(ntemps-i)/lx
-        aim = lp + lx*tmp
+        tmp = tmp*(ntemps-i-1)/(ntemps-i) + (target - lp)/(ntemps-i)/(ll - lp)
+        aim = lp + (ll - lp)*tmp
 
     pbar.close()
 
