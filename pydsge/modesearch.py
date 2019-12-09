@@ -749,7 +749,7 @@ def cmaes2(self, p0=None, sigma=None, pop_size=None, seeds=3, seed=None, stagtol
     return f_max, x_max_scaled
 
 
-def cmaes(self, p0=None, sigma=None, pop_size=None, seeds=3, seed=None, linear=None, lprob_seed=None, update_freq=None, verbose=True, debug=False, **args):
+def cmaes(self, p0=None, sigma=None, pop_size=None, restart_factor=2, seeds=3, seed=None, linear=None, lprob_seed=None, update_freq=None, verbose=True, debug=False, **args):
     """Find mode using CMA-ES from grgrlib.
 
     Parameters
@@ -822,9 +822,12 @@ def cmaes(self, p0=None, sigma=None, pop_size=None, seeds=3, seed=None, linear=N
                 print('[cma-es:]'.ljust(15, ' ') +
                       'Updating best solution to %s at seed %s.' % (np.round(f_max, 4), s))
 
+        # apply restart_factor
+        pop_size *= restart_factor
+
         if verbose:
-            from .clsmethods import cmaes_summary
-            cmaes_summary(self, data=(f_hist, x_hist))
+            from .clsmethods import mode_summary
+            mode_summary(self, data=(f_hist, x_hist))
             print('')
 
     np.warnings.filterwarnings('default')

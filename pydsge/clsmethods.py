@@ -1,6 +1,15 @@
 #!/bin/python
 # -*- coding: utf-8 -*-
 
+from .plots import posteriorplot, traceplot, swarm_rank, swarm_champ, swarm_plot
+from .mcmc import mcmc, kdes, tmcmc
+from .modesearch import pmdm, nlopt, cmaes, cmaes2, swarms
+from .estimation import prep_estim
+from .filtering import *
+from .tools import *
+from .core import *
+from .processing import *
+from .parser import DSGE
 import numpy as np
 import pandas as pd
 from .stats import summary, pmdm_report
@@ -132,15 +141,23 @@ def posteriorplot_m(self, **args):
     return posteriorplot(self.get_chain(), varnames=self.fdict['prior_names'], tune=tune, **args)
 
 
-def cmaes_summary(self, data=None, verbose=True):
+def mode_summary(self, data_cmaes=None, verbose=True):
 
-    data = data or self.fdict['cmaes_history']
+    data_cmaes = data_cmaes or self.fdict['cmaes_history']
 
-    f, x = data[:2]
+    f_cmaes, x_cmaes = data_cmaes[:2]
 
     df_inp = {}
-    for s, p in enumerate(x):
-        df_inp['run %s: mode' %s] = list(p) + [f[s]]
+
+    try:
+        df_inp['mcmc: mode'] = list(
+            self.fdict['mcmc_mode_x']) + [float(self.fdict['mcmc_mode_f'])]
+    except KeyError:
+        pass
+
+    for s, p in enumerate(x_cmaes):
+        df_inp['run %s: mode' % s] = list(p) + [f_cmaes[s]]
+
     df = pd.DataFrame(df_inp)
     df.index = self.prior_names + ['loglike']
 
@@ -148,6 +165,7 @@ def cmaes_summary(self, data=None, verbose=True):
         print(df.round(3))
 
     return df
+
 
 def swarm_summary(self, verbose=True, **args):
 
@@ -171,14 +189,16 @@ def mcmc_summary(self, chain=None, tune=None, calc_mdd=True, calc_ll_stats=False
     if tune is None:
         tune = get_tune(self)
 
-    res = summary(chain, self['__data__']['estimation']['prior'], tune=tune, **args)
+    res = summary(chain, self['__data__']['estimation']
+                  ['prior'], tune=tune, **args)
 
     if verbose:
 
         out(res.round(3))
 
         if calc_mdd:
-            out('Marginal data density:' + str(mdd(self, tune=tune).round(4)).rjust(16))
+            out('Marginal data density:' +
+                str(mdd(self, tune=tune).round(4)).rjust(16))
         if calc_ll_stats:
 
             chain = chain[-tune:]
@@ -188,15 +208,19 @@ def mcmc_summary(self, chain=None, tune=None, calc_mdd=True, calc_ll_stats=False
             par_lprob = chain[lprobs.argmax()]
             max_lprob = lprobs.max()
             max_lprior = self.lprior(list(par_lprob))
-            max_llike = (max_lprob - max_lprior) / self.temp if self.temp else np.nan
+            max_llike = (max_lprob - max_lprior) / \
+                self.temp if self.temp else np.nan
 
             out('Max posterior density:' + str(np.round(max_lprob, 4)).rjust(16))
-            out('Corresponding likelihood:' + str(np.round(max_llike, 4)).rjust(13))
-            out('Corresponding prior density:' + str(np.round(max_lprior,4)).rjust(10))
+            out('Corresponding likelihood:' +
+                str(np.round(max_llike, 4)).rjust(13))
+            out('Corresponding prior density:' +
+                str(np.round(max_lprior, 4)).rjust(10))
         if calc_maf:
 
             acs = get_chain(self, get_acceptance_fraction=True)[-tune:]
-            out('Mean acceptance fraction:' + str(np.mean(acs).round(3)).rjust(13))
+            out('Mean acceptance fraction:' +
+                str(np.mean(acs).round(3)).rjust(13))
 
     return res
 
@@ -345,12 +369,14 @@ def box_check(self, par=None):
         lb, ub = self.fdict['prior_bounds']
 
         if par[i] < lb[i]:
-            print('[box_check:]'.ljust(15, ' ') + 'Parameter %s of %s lower than lb of %s.' %(name, par[i].round(5), lb[i]))
+            print('[box_check:]'.ljust(
+                15, ' ') + 'Parameter %s of %s lower than lb of %s.' % (name, par[i].round(5), lb[i]))
 
         if par[i] > ub[i]:
-            print('[box_check:]'.ljust(15, ' ') + 'Parameter %s of %s higher than ub of %s.' %(name, par[i].round(5), ub[i])) 
+            print('[box_check:]'.ljust(
+                15, ' ') + 'Parameter %s of %s higher than ub of %s.' % (name, par[i].round(5), ub[i]))
 
-    return 
+    return
 
 
 def bjfunc(self, x):
@@ -394,6 +420,7 @@ def sample_box(self, dim0, dim1=None, bounds=None, lp_rule=None, verbose=False):
 
     return res
 
+
 @property
 def mapper(self):
 
@@ -403,19 +430,9 @@ def mapper(self):
         return map
 
 
-from .parser import DSGE
-from .processing import *
-from .core import *
-from .tools import *
-from .filtering import *
-from .estimation import prep_estim
-from .modesearch import pmdm, nlopt, cmaes, cmaes2, swarms
-from .mcmc import mcmc, kdes, tmcmc
-from .plots import posteriorplot, traceplot, swarm_rank, swarm_champ, swarm_plot
-
 DSGE.save = save_meta
 DSGE.mapper = mapper
-DSGE.cmaes_summary = cmaes_summary
+DSGE.mode_summary = mode_summary
 DSGE.swarm_summary = swarm_summary
 DSGE.mcmc_summary = mcmc_summary
 DSGE.info = info_m
