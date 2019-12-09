@@ -1,15 +1,6 @@
 #!/bin/python
 # -*- coding: utf-8 -*-
 
-from .processing import *
-from .core import *
-from .tools import *
-from .filtering import *
-from .estimation import prep_estim
-from .modesearch import pmdm, nlopt, cmaes, cmaes2, swarms
-from .mcmc import mcmc, kdes, tmcmc
-from .plots import posteriorplot, traceplot, swarm_rank, swarm_champ, swarm_plot
-from .parser import DSGE
 import numpy as np
 import pandas as pd
 from .stats import summary, pmdm_report
@@ -428,6 +419,17 @@ def mapper(self):
         return self.pool.imap
     else:
         return map
+
+
+from .processing import *
+from .core import *
+from .tools import *
+from .filtering import *
+from .estimation import prep_estim
+from .modesearch import pmdm, nlopt, cmaes, cmaes2, swarms
+from .mcmc import mcmc, kdes, tmcmc
+from .plots import posteriorplot, traceplot, swarm_rank, swarm_champ, swarm_plot
+from .parser import DSGE
 
 
 DSGE.save = save_meta
