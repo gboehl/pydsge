@@ -123,7 +123,7 @@ def irfs(self, shocklist, pars=None, T=30, linear=False, verbose=False):
         X, K, L, flag = irfs_runner(pars)
         X = pd.DataFrame(X, columns=self.vv) 
 
-    if np.any(flag) and verbose > 1:
+    if np.any(flag) and verbose:
         print('[irfs:]'.ljust(15, ' ') +
               ' no rational expectations solution found at least once.')
 

@@ -55,8 +55,8 @@ def _hpd_df(x, alpha):
     return pd.DataFrame(hpd_vals, columns=cnames)
 
 
-def summary(store, priors, bounds=None, tune=None, alpha=0.1, top=None, show_prior=True, min_col=80):
-    # in parts stolen from pymc3 because it looks really nice
+def summary(store, priors, bounds=None, tune=None, alpha=0.1, top=None, show_prior=True, min_col=86):
+    # inspired by pymc3 because it looks really nice
 
     try:
         with os.popen('stty size', 'r') as rows_cols:
