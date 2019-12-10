@@ -722,8 +722,8 @@ def cmaes2(self, p0=None, sigma=None, pop_size=None, seeds=3, seed=None, stagtol
                       'Updating best solution to %s at seed %s.' % (np.round(f_max, 4), s))
 
         if verbose:
-            from .clsmethods import cmaes_summary
-            cmaes_summary(self, data=(f_hist, x_hist))
+            from .clsmethods import mode_summary
+            mode_summary(self, data_cmaes=(f_hist, x_hist))
             print('')
 
         opt_dict['popsize'] = pop_size
@@ -827,7 +827,7 @@ def cmaes(self, p0=None, sigma=None, pop_size=None, restart_factor=2, seeds=3, s
 
         if verbose:
             from .clsmethods import mode_summary
-            mode_summary(self, data=(f_hist, x_hist))
+            mode_summary(self, data_cmaes=(f_hist, x_hist))
             print('')
 
     np.warnings.filterwarnings('default')
