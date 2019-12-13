@@ -307,17 +307,15 @@ class DSGE(dict):
 
         # print(context['lamp_p'])
         checker = np.zeros_like(self['other_para'], dtype=bool)
+
         while ~checker.all():
             for i, p in enumerate(self['other_para']):
-                try:
-                    ss[str(p)] = eval(str(self['para_func'][p.name]), context)
-                    context[str(p)] = ss[str(p)]
-                    checker[i] = True
-                except NameError as e:
-                    for pfp in self['para_func'][p.name]:
-                        if pfp not in self['para_func'].keys():
-                            raise NameError(e)
-                    ss[str(p)] = eval(str(0), context)
+                if not checker[i]:
+                    try:
+                        ss[str(p)] = eval(str(self['para_func'][p.name]), context)
+                        checker[i] = True
+                    except NameError as e:
+                        ss[str(p)] = np.exp(1)
                     context[str(p)] = ss[str(p)]
 
         DD = DD.subs(subs_dict)
