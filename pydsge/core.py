@@ -44,6 +44,7 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, verbose=Fal
     self.fdict['reduce_sys'] = reduce_sys
 
     par = self.p0() if par is None else list(par)
+    par = self.get_full_par(par)
 
     if not self.const_var:
         raise NotImplementedError('Pakage is only meant to work with OBCs')
@@ -124,10 +125,10 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, verbose=Fal
     N = nl.inv(P2) @ M2
     A = nl.inv(P2) @ (M2 + np.outer(c1, b2))
 
-    ## rounding here must correspond to the rounding in re_bc
+    # rounding here must correspond to the rounding in re_bc
     # if sum(eig(A).round(8) >= 1) != len(vv_x3):
     # if sum(eig(A).round(8) < 1) != len(vv_v):
-        # raise ValueError('B-K condition *not* satisfied.')
+    # raise ValueError('B-K condition *not* satisfied.')
 
     dim_x = len(vv_x3)
     OME = re_bc(A, dim_x)
@@ -192,11 +193,11 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, verbose=Fal
 
     preprocess(self, l_max, k_max, verbose)
 
-    test = self.precalc_mat[0][1,0,1]
+    test = self.precalc_mat[0][1, 0, 1]
     if (eig(test[-test.shape[1]:]) > 1).any():
         raise ValueError('Explosive dynamics detected.')
 
-    return 
+    return
 
 
 def prior_sampler(self, nsample, seed=None, test_lprob=False, verbose=True):
@@ -231,7 +232,7 @@ def prior_sampler(self, nsample, seed=None, test_lprob=False, verbose=True):
         from .stats import get_prior
         self.fdict['frozen_prior'] = get_prior(self.prior)[0]
 
-    frozen_prior = self.fdict['frozen_prior'] 
+    frozen_prior = self.fdict['frozen_prior']
 
     if not hasattr(self, 'mapper'):
         self.mapper = map
@@ -256,26 +257,27 @@ def prior_sampler(self, nsample, seed=None, test_lprob=False, verbose=True):
                 try:
                     np.warnings.filterwarnings('error')
                     rst = np.random.randint(32**2-2)
-                    pdraw = [pl.rvs(random_state=rst+sn) for sn,pl in enumerate(frozen_prior)]
+                    pdraw = [pl.rvs(random_state=rst+sn)
+                             for sn, pl in enumerate(frozen_prior)]
 
                     if test_lprob:
                         draw_prob = lprob(pdraw, None, verbose > 1)
                         done = not np.isinf(draw_prob)
                     else:
                         pdraw_full = get_par(pdraw, asdict=False, full=True)
-                        get_sys(par=pdraw_full,reduce_sys=True)
+                        get_sys(par=pdraw_full, reduce_sys=True)
                         done = True
 
                 except Exception as e:
                     if verbose > 1:
-                        print(str(e)+'(%s) ' %no)
+                        print(str(e)+'(%s) ' % no)
 
         return pdraw, no
 
     if verbose > 1:
         print('[prior_sample:]'.ljust(15, ' ') + ' sampling from the pior...')
 
-    wrapper = tqdm.tqdm if verbose < 2 else (lambda x,**kwarg: x) 
+    wrapper = tqdm.tqdm if verbose < 2 else (lambda x, **kwarg: x)
     pmap_sim = wrapper(self.mapper(runner, range(nsample)), total=nsample)
 
     draws, nos = map2arr(pmap_sim)
@@ -284,7 +286,8 @@ def prior_sampler(self, nsample, seed=None, test_lprob=False, verbose=True):
         self.get_sys(reduce_sys=False, verbose=verbose > 1)
 
     if verbose:
-        print('[prior_sample:]'.ljust(15, ' ') + ' sampling done. %2.2f%% of the prior are either indetermined or explosive.' %(100*(sum(nos)-nsample)/nsample))
+        print('[prior_sample:]'.ljust(
+            15, ' ') + ' sampling done. %2.2f%% of the prior are either indetermined or explosive.' % (100*(sum(nos)-nsample)/nsample))
 
     return draws
 
@@ -345,8 +348,9 @@ def get_par(self, dummy=None, parname=None, asdict=True, full=None, roundto=5, n
         elif dummy == 'prior_mean':
             par_cand = [self.prior[pp][-2] for pp in self.prior.keys()]
         elif dummy == 'adj_prior_mean':
-            ## adjust for prior[pp][-2] not beeing the actual mean for inv_gamma_dynare
-            par_cand = [self.prior[pp][-2]*10**(self.prior[pp][3] == 'inv_gamma_dynare') for pp in self.prior.keys()]
+            # adjust for prior[pp][-2] not beeing the actual mean for inv_gamma_dynare
+            par_cand = [self.prior[pp][-2]*10 **
+                        (self.prior[pp][3] == 'inv_gamma_dynare') for pp in self.prior.keys()]
         elif dummy == 'init':
             par_cand = self.fdict['init_value']
             for i in range(self.ndim):
@@ -408,10 +412,12 @@ def set_par(self, dummy, setpar=None, par=None, roundto=5, autocompile=True, ver
         if len(dummy) == len(self.par_fix):
             par = dummy
         elif len(dummy) == len(self.prior_arg):
-            par = np.copy(self.par) if hasattr(self, 'par') else np.copy(self.par_fix)
+            par = np.copy(self.par) if hasattr(
+                self, 'par') else np.copy(self.par_fix)
             par[self.prior_arg] = dummy
         else:
-            par = get_par(self, dummy=dummy, parname=None, asdict=False, full=True, verbose=verbose)
+            par = get_par(self, dummy=dummy, parname=None,
+                          asdict=False, full=True, verbose=verbose)
 
     elif dummy in pars_str:
         if par is None:

@@ -60,18 +60,18 @@ class DSGE(dict):
             # self['perturb_eq'] = []
             # sub_dict = dict()
             # sub_dict.update({v: Variable(v.name+'ss')*sympy.exp(v)
-                             # for v in self['make_log']})
+            # for v in self['make_log']})
             # sub_dict.update({v(-1): Variable(v.name+'ss') *
-                             # sympy.exp(v(-1)) for v in self['make_log']})
+            # sympy.exp(v(-1)) for v in self['make_log']})
             # sub_dict.update({v(1): Variable(v.name+'ss')*sympy.exp(v(1))
-                             # for v in self['make_log']})
+            # for v in self['make_log']})
 
             # for eq in self.equations:
-                # peq = eq.subs(sub_dict)
-                # self['perturb_eq'].append(peq)
+            # peq = eq.subs(sub_dict)
+            # self['perturb_eq'].append(peq)
 
             # self['ss_ordering'] = [Variable(v.name+'ss')
-                                   # for v in self['make_log']]
+            # for v in self['make_log']]
 
         # else:
             # self['perturb_eq'] = self['equations']
@@ -153,9 +153,10 @@ class DSGE(dict):
         nvars = []
         for v in self['var_ordering']:
             if v in nvars:
-                print('[DSGE.read:]'.ljust(15, ' ') + 'Warning: variable `%s` defined twice.' %v)
+                print('[DSGE.read:]'.ljust(15, ' ') +
+                      'Warning: variable `%s` defined twice.' % v)
             else:
-                nvars.append(v) 
+                nvars.append(v)
         self['var_ordering'] = nvars
 
         vlist = self['var_ordering'] + self['fvars']
@@ -267,18 +268,18 @@ class DSGE(dict):
         # context['log'] = sympy.log
         # context['sqrt'] = sympy.sqrt
 
-        ## standard functions
+        # standard functions
         context['exp'] = implemented_function('exp', np.exp)
         context['log'] = implemented_function('log', np.log)
         context['sqrt'] = implemented_function('sqrt', np.sqrt)
 
-        ## distributions
+        # distributions
         context['normpdf'] = implemented_function('normpdf', sst.norm.pdf)
         context['normcdf'] = implemented_function('normcdf', sst.norm.cdf)
         context['normppf'] = implemented_function('normppf', sst.norm.ppf)
         context['norminv'] = context['normppf']
 
-        ## things defined in *_funcs.py
+        # things defined in *_funcs.py
         if os.path.exists(self.func_file):
             import importlib.util as iu
             import inspect
@@ -287,7 +288,8 @@ class DSGE(dict):
             module = iu.module_from_spec(spec)
             spec.loader.exec_module(module)
 
-            funcs_list = [o for o in inspect.getmembers(module) if inspect.isfunction(o[1])]
+            funcs_list = [o for o in inspect.getmembers(
+                module) if inspect.isfunction(o[1])]
 
             for func in funcs_list:
                 context[func[0]] = implemented_function(func[0], func[1])
@@ -312,11 +314,12 @@ class DSGE(dict):
             for i, p in enumerate(self['other_para']):
                 if not checker[i]:
                     try:
-                        ss[str(p)] = eval(str(self['para_func'][p.name]), context)
-                        checker[i] = True
+                        ss[str(p)] = eval(
+                            str(self['para_func'][p.name]), context)
                         context[str(p)] = ss[str(p)]
+                        checker[i] = True
                     except NameError as e:
-                        pass 
+                        pass
 
         # print(context)
         # DD = DD.subs(subs_dict)
@@ -343,13 +346,26 @@ class DSGE(dict):
         psi = lambdify([self.parameters], [ss[str(px)]
                                            for px in self['other_para']])  # , modules=context_f)
 
-        def add_para_func(f):
-            def wrapped_f(px):
-                return f(px + psi(px))
-            return wrapped_f
+        # def add_para_func(f):
+        # def wrapped_f(px):
+        # return f(px + psi(px))
+        # return wrapped_f
 
+        # disable this
+        def add_para_func(f):
+            return f
+
+        def get_full_par(px):
+            return px + psi(px)
+
+        # for legacy reasons (backward compatibility of self.parafunc)
+        def get_pfunc(px):
+            return px[-len(self['other_para']):]
+
+        self.get_full_par = get_full_par
+        # self.parafunc = [p.name for p in self['other_para']], psi
+        self.parafunc = [p.name for p in self['other_para']], get_pfunc
         self.PSI = add_para_func(PSI)
-        self.parafunc = [p.name for p in self['other_para']], psi
 
         self.DD = add_para_func(DD)
         self.ZZ = add_para_func(ZZ)
@@ -585,11 +601,11 @@ class DSGE(dict):
         # all_shocks_pre = [list(eq.atoms(Shock)) for eq in equations]
 
         # for s in shk_ordering:
-            # max_lag = min(
-                # [i.date for i in it(all_shocks_pre) if i.name == s.name])
-            # for t in np.arange(max_lag, 1):
-                # subs_dict = {s(t): s(t-1)}
-                # equations = [eq.subs(subs_dict) for eq in equations]
+        # max_lag = min(
+        # [i.date for i in it(all_shocks_pre) if i.name == s.name])
+        # for t in np.arange(max_lag, 1):
+        # subs_dict = {s(t): s(t-1)}
+        # equations = [eq.subs(subs_dict) for eq in equations]
 
         max_lead_exo = dict.fromkeys(shk_ordering)
         max_lag_exo = dict.fromkeys(shk_ordering)
@@ -613,7 +629,8 @@ class DSGE(dict):
                 equations.append(Equation(var_s, s))
 
                 subs1 = [s(-i) for i in np.arange(1, abs(max_lag_exo[s])+1)]
-                subs2 = [var_s(-i-1) for i in np.arange(1, abs(max_lag_exo[s])+1)]
+                subs2 = [var_s(-i-1)
+                         for i in np.arange(1, abs(max_lag_exo[s])+1)]
                 subs_dict = dict(zip(subs1, subs2))
                 equations = [eq.subs(subs_dict) for eq in equations]
 
@@ -657,16 +674,15 @@ class DSGE(dict):
                 var_l = Variable(v.name + "_LEAD" + str(i-1))
 
                 var_l_1 = v(+1)
-                ## i > 2 can not be handled by method anyways
+                # i > 2 can not be handled by method anyways
                 # if i == 2:
-                    # var_l_1 = v(+1)
+                # var_l_1 = v(+1)
                 # else:
-                    # var_l_1 = Variable(v.name + "_LEAD" + str(i-2), date=+1)
+                # var_l_1 = Variable(v.name + "_LEAD" + str(i-2), date=+1)
 
                 subs_dict[Variable(v.name, date=+i)] = var_l(+1)
                 var_ordering.append(var_l)
                 equations.append(Equation(var_l, var_l_1))
-
 
         equations = [eq.subs(subs_dict) for eq in equations]
 
