@@ -8,6 +8,8 @@ import itertools
 import sympy
 import time
 import numpy as np
+import scipy.stats as sst
+import scipy.optimize as sso
 import cloudpickle as cpickle
 from copy import deepcopy
 from .symbols import Variable, Equation, Shock, Parameter, TSymbol
@@ -54,25 +56,26 @@ class DSGE(dict):
                 Equation(fv(-1) - lag_fv - self['re_errors'][i], 0))
             i += 1
 
-        if 'make_log' in self.keys():
-            self['perturb_eq'] = []
-            sub_dict = dict()
-            sub_dict.update({v: Variable(v.name+'ss')*sympy.exp(v)
-                             for v in self['make_log']})
-            sub_dict.update({v(-1): Variable(v.name+'ss') *
-                             sympy.exp(v(-1)) for v in self['make_log']})
-            sub_dict.update({v(1): Variable(v.name+'ss')*sympy.exp(v(1))
-                             for v in self['make_log']})
+        # if 'make_log' in self.keys():
+            # self['perturb_eq'] = []
+            # sub_dict = dict()
+            # sub_dict.update({v: Variable(v.name+'ss')*sympy.exp(v)
+                             # for v in self['make_log']})
+            # sub_dict.update({v(-1): Variable(v.name+'ss') *
+                             # sympy.exp(v(-1)) for v in self['make_log']})
+            # sub_dict.update({v(1): Variable(v.name+'ss')*sympy.exp(v(1))
+                             # for v in self['make_log']})
 
-            for eq in self.equations:
-                peq = eq.subs(sub_dict)
-                self['perturb_eq'].append(peq)
+            # for eq in self.equations:
+                # peq = eq.subs(sub_dict)
+                # self['perturb_eq'].append(peq)
 
-            self['ss_ordering'] = [Variable(v.name+'ss')
-                                   for v in self['make_log']]
+            # self['ss_ordering'] = [Variable(v.name+'ss')
+                                   # for v in self['make_log']]
 
-        else:
-            self['perturb_eq'] = self['equations']
+        # else:
+            # self['perturb_eq'] = self['equations']
+        self['perturb_eq'] = self['equations']
 
         context = {}
 
@@ -144,7 +147,17 @@ class DSGE(dict):
 
     def get_matrices(self, matrix_format='numeric'):
 
-        from sympy.utilities.lambdify import lambdify
+        from sympy.utilities.lambdify import lambdify, implemented_function
+
+        # check for uniqueness
+        nvars = []
+        for v in self['var_ordering']:
+            if v in nvars:
+                print('[DSGE.read:]'.ljust(15, ' ') + 'Warning: variable `%s` defined twice.' %v)
+            else:
+                nvars.append(v) 
+        self['var_ordering'] = nvars
+
         vlist = self['var_ordering'] + self['fvars']
         llist = [l(-1) for l in self['var_ordering']] + self['fvars_lagged']
 
@@ -250,18 +263,44 @@ class DSGE(dict):
         from collections import OrderedDict
         subs_dict = []
         context = dict([(p.name, p) for p in self.parameters])
-        context['exp'] = sympy.exp
-        context['log'] = sympy.log
-        context['sqrt'] = sympy.sqrt
-        context_f = {}
-        context_f['exp'] = np.exp
+        # context['exp'] = sympy.exp
+        # context['log'] = sympy.log
+        # context['sqrt'] = sympy.sqrt
+
+        ## standard functions
+        context['exp'] = implemented_function('exp', np.exp)
+        context['log'] = implemented_function('log', np.log)
+        context['sqrt'] = implemented_function('sqrt', np.sqrt)
+
+        ## distributions
+        context['normpdf'] = implemented_function('normpdf', sst.norm.pdf)
+        context['normcdf'] = implemented_function('normcdf', sst.norm.cdf)
+        context['normppf'] = implemented_function('normppf', sst.norm.ppf)
+        context['norminv'] = context['normppf']
+
+        ## things defined in *_funcs.py
+        if os.path.exists(self.func_file):
+            import importlib.util as iu
+            import inspect
+
+            spec = iu.spec_from_file_location("module", self.func_file)
+            module = iu.module_from_spec(spec)
+            spec.loader.exec_module(module)
+
+            funcs_list = [o for o in inspect.getmembers(module) if inspect.isfunction(o[1])]
+
+            for func in funcs_list:
+                context[func[0]] = implemented_function(func[0], func[1])
+
+        # context_f = {}
+        # context_f['exp'] = np.exp
         if 'helper_func' in self['__data__']['declarations']:
             from imp import load_source
             f = self['__data__']['declarations']['helper_func']['file']
             module = load_source('helper_func', f)
             for n in self['__data__']['declarations']['helper_func']['names']:
                 context[n] = sympy.Function(n)  # getattr(module, n)
-                context_f[n] = getattr(module, n)
+                # context_f[n] = getattr(module, n)
         #import sys
         # sys.stdout.flush()
         ss = {}
@@ -360,7 +399,10 @@ class DSGE(dict):
             pmodel = deepcopy(processed_raw_model)
 
         else:
-            pmodel = cls.parse(mtxt)
+
+            func_file = mfile[:-5] + '_funcs.py'
+
+            pmodel = cls.parse(mtxt, func_file)
 
             pmodel.fdict = {}
             pmodel.fdict['yaml_raw'] = mtxt
@@ -431,7 +473,7 @@ class DSGE(dict):
         return pmodel
 
     @classmethod
-    def parse(cls, mtxt):
+    def parse(cls, mtxt, ffile):
         """
 
         """
@@ -710,6 +752,8 @@ class DSGE(dict):
         }
 
         model = cls(**model_dict)
+
+        model.func_file = ffile
 
         model.get_matrices()
 

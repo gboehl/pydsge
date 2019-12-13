@@ -34,7 +34,7 @@ def t_func(self, state, noise=None, return_flag=True, return_k=False, linear=Fal
 
     if verbose:
         print('[t_func:]'.ljust(15, ' ') +
-              ' Transition function took %.2Es.' % Decimal(time.time() - st))
+              'Transition function took %.2Es.' % Decimal(time.time() - st))
 
     if return_k:
         return newstate, (l, k), flag
@@ -124,11 +124,10 @@ def irfs(self, shocklist, pars=None, T=30, linear=False, verbose=False):
         X = pd.DataFrame(X, columns=self.vv) 
 
     if np.any(flag) and verbose:
-        print('[irfs:]'.ljust(15, ' ') +
-              ' no rational expectations solution found at least once.')
+        print('[irfs:]'.ljust(15, ' ') + 'No rational expectations solution found at least once.')
 
     if verbose:
-        print('[irfs:]'.ljust(15, ' ') + ' simulation took ', np.round((time.time() - st), 5), ' seconds.')
+        print('[irfs:]'.ljust(15, ' ') + 'Simulation took ', np.round((time.time() - st), 5), ' seconds.')
 
     return X, (K, L)
 
@@ -189,7 +188,7 @@ def simulate(self, eps=None, mask=None, state=None, linear=False, verbose=False)
 
     if superflag and verbose:
         print('[simulate:]'.ljust(
-            15, ' ')+' No rational expectations solution found.')
+            15, ' ')+'No rational expectations solution found.')
 
     return X, np.expand_dims(K, 2), superflag
 
@@ -213,6 +212,6 @@ def simulate_ts(self, T=1e3, cov=None, verbose=False):
 
         if verbose and flag:
             print('[irfs:]'.ljust(15, ' ') +
-                  ' No rational expectations solution found.')
+                  'No rational expectations solution found.')
 
     return np.array(states), np.array(Ks)

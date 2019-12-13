@@ -10,7 +10,7 @@ import tqdm
 from .core import get_par
 
 
-def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=False, seed=None, backend=True, linear=None, resume=False, append=False, update_freq=None, lprob_seed=None, biject=False, report=None, verbose=False, debug=False, **samplerargs):
+def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=False, seed=None, backend=True, suffix=None, linear=None, resume=False, append=False, update_freq=None, lprob_seed=None, biject=False, report=None, verbose=False, debug=False, **samplerargs):
 
     import pathos
     import emcee
@@ -80,14 +80,14 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
     if backend:
 
         if isinstance(backend, str):
-            # backend_file will only be loaded later if explicitely defined
+            # backend_file will only be loaded later if explicitely defined before
             self.fdict['backend_file'] = backend
-
         try:
             backend = self.fdict['backend_file']
         except KeyError:
             # this is the default case
-            backend = os.path.join(self.path, self.name+'_sampler.h5')
+            suffix = str(suffix) if suffix else '_sampler.h5'
+            backend = os.path.join(self.path, self.name+suffix)
 
         backend = emcee.backends.HDFBackend(backend)
 

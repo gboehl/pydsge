@@ -7,7 +7,7 @@ setup(
         author_email='admin@gregorboehl.com',
         description='Solve, filter and estimate DSGE models with occasionaly binding constraints',
         packages = find_packages(),
-        package_data={'pydsge': ["dfi.yaml", "tsdata.csv"]},
+        package_data={'pydsge': ["examples/*"]},
         install_requires=[
             'emcee',
             'numba',
@@ -18,7 +18,6 @@ setup(
             'sympy',
             'tqdm',
             'pyaml',
-            # 'pygmo',
             'grgrlib',
             'cloudpickle',
          ],

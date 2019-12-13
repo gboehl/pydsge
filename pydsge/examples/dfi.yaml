@@ -82,16 +82,23 @@ calibration:
     sig_z   : .3
     sig_r   : .3
     psi     : 0.3
-    nub     : -0.1
+    nub     : 0.1
     y_mean  : 0.35
     pi_mean : 0.5
     elb_level: .07
 
   parafunc:
+
+    # parameters that are functions of other parameters
+    # the following functions are supported by default: exp, log, sqrt, normpdf, normcdf, normppf (=norminv)
+    # additionally you can define arbitary functions in a *_funcs.py file. This file must be in the same directory as the *.yaml file and have the same name
+    # example: the correponding file to this model ('dfi.yaml') must be called 'dfi_funcs.py'. It here defines the (trivial) function "calc_nu"
+    # the *_funcs.py file does not need to be present if you dont' need it
+
     kappa   : (1-theta)*(1-beta*theta)/theta
-    nu      : nub/(1-nub)
     eta     : (sigma + psi + nub)/(1-nub)
-    x_bar   : -1/beta + elb_level
+    nu      : calc_nu(nub) # calc nu is an external function defined in dfi_funcs.py
+    x_bar   : -1/beta + elb_level # x_bar *must* be present either as a parameter or parafunc
 
   covariances:
     e_z: sig_z

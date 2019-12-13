@@ -823,7 +823,8 @@ def cmaes(self, p0=None, sigma=None, pop_size=None, restart_factor=2, seeds=3, s
                       'Updating best solution to %s at seed %s.' % (np.round(f_max, 4), s))
 
         # apply restart_factor
-        pop_size *= restart_factor
+        if pop_size:
+            pop_size *= restart_factor
 
         if verbose:
             from .clsmethods import mode_summary

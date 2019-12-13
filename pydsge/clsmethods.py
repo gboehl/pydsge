@@ -420,6 +420,22 @@ def mapper(self):
     else:
         return map
 
+def get_sample(self, size, chain=None):
+    """Get a (preferably recent) sample from the chain
+    """
+
+    chain = None or self.get_chain()
+    clen, nwalks, npar = chain.shape
+    recent = int(np.ceil(60 / nwalks))
+
+    if recent > clen:
+        raise Exception("Requested sample size is larger than chain")
+
+    sample = chain[:,-recent,:].reshape(-1, npar)
+    res = np.random.choice(np.arange(recent*nwalks), size, False)
+
+    return sample[res]
+
 
 from .processing import *
 from .core import *
@@ -447,6 +463,7 @@ DSGE.box_check = box_check
 DSGE.rjfunc = rjfunc
 DSGE.bjfunc = bjfunc
 DSGE.sample_box = sample_box
+DSGE.get_sample = get_sample
 # from core & tools:
 DSGE.get_par = get_par
 DSGE.set_par = set_par

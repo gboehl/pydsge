@@ -29,7 +29,7 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
         Random seed. Defaults to 0
     dispatch : bool, optional
         Whether to use a dispatcher to create jitted transition and observation functions. Defaults to False.
-    dispatch : bool, optional
+    constr_data : bool, optional
         Whether to apply the constraint to the data as well. Defaults to False.
     verbose : bool/int, optional
         Whether display messages:
