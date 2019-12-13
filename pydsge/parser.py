@@ -163,7 +163,7 @@ class DSGE(dict):
 
         slist = self['shk_ordering']
 
-        subs_dict = dict()
+        subs_dict = {}
 
         eq_cond = self['perturb_eq'] + self['re_errors_eq']
 
@@ -261,7 +261,7 @@ class DSGE(dict):
 
         # print ""
         from collections import OrderedDict
-        subs_dict = []
+        # subs_dict = []
         context = dict([(p.name, p) for p in self.parameters])
         # context['exp'] = sympy.exp
         # context['log'] = sympy.log
@@ -294,12 +294,12 @@ class DSGE(dict):
 
         # context_f = {}
         # context_f['exp'] = np.exp
-        if 'helper_func' in self['__data__']['declarations']:
-            from imp import load_source
-            f = self['__data__']['declarations']['helper_func']['file']
-            module = load_source('helper_func', f)
-            for n in self['__data__']['declarations']['helper_func']['names']:
-                context[n] = sympy.Function(n)  # getattr(module, n)
+        # if 'helper_func' in self['__data__']['declarations']:
+            # from imp import load_source
+            # f = self['__data__']['declarations']['helper_func']['file']
+            # module = load_source('helper_func', f)
+            # for n in self['__data__']['declarations']['helper_func']['names']:
+                # context[n] = sympy.Function(n)  # getattr(module, n)
                 # context_f[n] = getattr(module, n)
         #import sys
         # sys.stdout.flush()
@@ -314,12 +314,13 @@ class DSGE(dict):
                     try:
                         ss[str(p)] = eval(str(self['para_func'][p.name]), context)
                         checker[i] = True
+                        context[str(p)] = ss[str(p)]
                     except NameError as e:
-                        ss[str(p)] = np.exp(1)
-                    context[str(p)] = ss[str(p)]
+                        pass 
 
-        DD = DD.subs(subs_dict)
-        ZZ = ZZ.subs(subs_dict)
+        # print(context)
+        # DD = DD.subs(subs_dict)
+        # ZZ = ZZ.subs(subs_dict)
 
         DD = lambdify([self.parameters+self['other_para']], DD)
         ZZ = lambdify([self.parameters+self['other_para']], ZZ)
@@ -359,8 +360,8 @@ class DSGE(dict):
         self.bb = add_para_func(bb)
         # <-
 
-        QQ = self['covariance'].subs(subs_dict)
-        HH = self['measurement_errors'].subs(subs_dict)
+        # QQ = self['covariance'].subs(subs_dict)
+        # HH = self['measurement_errors'].subs(subs_dict)
 
         QQ = lambdify([self.parameters+self['other_para']], self['covariance'])
         HH = lambdify([self.parameters+self['other_para']],
@@ -631,7 +632,7 @@ class DSGE(dict):
 
         # ------------------------------------------------------------
         # arbitrary lags/leads of exogenous shocks
-        subs_dict = dict()
+        subs_dict = {}
         old_var = var_ordering[:]
 
         for v in old_var:
