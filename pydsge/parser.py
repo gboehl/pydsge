@@ -15,6 +15,8 @@ from copy import deepcopy
 from .symbols import Variable, Equation, Shock, Parameter, TSymbol
 from sympy.matrices import Matrix, zeros
 
+    
+
 
 class DSGE(dict):
     """Base class. Every model is an instance of the DSGE class and inherents its methods.
@@ -268,16 +270,31 @@ class DSGE(dict):
         # context['log'] = sympy.log
         # context['sqrt'] = sympy.sqrt
 
+        sol_dict = {}
+        def ctf_reducer(f):
+            """hack to reduce the calls-to-function
+            """
+
+            def reducer(*x):
+                try:
+                    return sol_dict[f,x]
+                except KeyError:
+                    res = f(*x)
+                    sol_dict[f,x] = res
+                    return res
+
+            return reducer
+
         # standard functions
         context['exp'] = implemented_function('exp', np.exp)
         context['log'] = implemented_function('log', np.log)
         context['sqrt'] = implemented_function('sqrt', np.sqrt)
 
         # distributions
-        context['normpdf'] = implemented_function('normpdf', sst.norm.pdf)
-        context['normcdf'] = implemented_function('normcdf', sst.norm.cdf)
-        context['normppf'] = implemented_function('normppf', sst.norm.ppf)
-        context['norminv'] = context['normppf']
+        context['normpdf'] = implemented_function('normpdf', ctf_reducer(sst.norm.pdf))
+        context['normcdf'] = implemented_function('normcdf', ctf_reducer(sst.norm.cdf))
+        context['normppf'] = implemented_function('normppf', ctf_reducer(sst.norm.ppf))
+        context['norminv'] = implemented_function('norminv', ctf_reducer(sst.norm.ppf))
 
         # things defined in *_funcs.py
         if os.path.exists(self.func_file):
@@ -292,7 +309,7 @@ class DSGE(dict):
                 module) if inspect.isfunction(o[1])]
 
             for func in funcs_list:
-                context[func[0]] = implemented_function(func[0], func[1])
+                context[func[0]] = implemented_function(func[0], ctf_reducer(func[1]))
 
         # context_f = {}
         # context_f['exp'] = np.exp
