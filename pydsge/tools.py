@@ -102,8 +102,6 @@ def irfs(self, shocklist, pars=None, T=30, linear=False, verbose=False):
                     shock_arg = self.shocks.index(shock)
                     shk_vec[shock_arg] = shocksize
 
-                    shk_process = (self.SIG @ shk_vec).nonzero()
-
             st_vec, (l, k), flag = self.t_func(
                 st_vec, shk_vec, linear=linear, return_k=True)
 
