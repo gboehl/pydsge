@@ -326,8 +326,13 @@ class DSGE(dict):
 
         # print(context['lamp_p'])
         checker = np.zeros_like(self['other_para'], dtype=bool)
+        suc_loop = True
 
         while ~checker.all():
+
+            # raise if loop was unsuccessful
+            raise_error = not suc_loop
+            suc_loop = False # set to check if any progress in loop
             for i, p in enumerate(self['other_para']):
                 if not checker[i]:
                     try:
@@ -335,8 +340,14 @@ class DSGE(dict):
                             str(self['para_func'][p.name]), context)
                         context[str(p)] = ss[str(p)]
                         checker[i] = True
+                        suc_loop = True # loop was successful
                     except NameError as e:
-                        pass
+                        if raise_error:
+                            if not os.path.exists(self.func_file):
+                                fname = os.path.basename(self.func_file)
+                                error_msg = str(e) + ' (info: a file named `%s` was not found)' %fname
+                            raise NameError(error_msg)
+
 
         # print(context)
         # DD = DD.subs(subs_dict)
