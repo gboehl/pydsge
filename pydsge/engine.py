@@ -10,7 +10,7 @@ from numba import njit
 aca = np.ascontiguousarray
 
 
-@njit(nogil=True, cache=True)
+@njit(cache=True, fastmath=True)
 def preprocess_jit(vals, l_max, k_max):
 
     # these must be the real max values, not only the size of the matrices
@@ -100,19 +100,19 @@ def preprocess(self, l_max, k_max, verbose):
             15, ' ')+'Preproceccing finished within %ss.' % np.round((time.time() - st), 3))
 
 
-@njit(nogil=True, cache=True)
+@njit(fastmath=True, cache=True)
 def LL_jit(l, k, s, v, mat, term):
 
     return mat[l, k, s] @ v + term[l, k, s]
 
 
-@njit(nogil=True, cache=True)
+@njit(fastmath=True, cache=True)
 def bLL_jit(l, k, s, v, mat, term):
 
     return mat[l, k, s] @ v + term[l, k, s]
 
 
-@njit(nogil=True, cache=True)
+@njit(fastmath=True, cache=True)
 def boehlgorithm_jit(N, A, J, cx, b, x_bar, v, mat, term, bmat, bterm, max_cnt):
 
     l_max = mat.shape[0] - 1
@@ -152,7 +152,7 @@ def boehlgorithm_jit(N, A, J, cx, b, x_bar, v, mat, term, bmat, bterm, max_cnt):
     return v_new, (l, k), flag
 
 
-@njit(nogil=True, cache=True)
+@njit(fastmath=True, cache=True)
 def bruite_wrapper(b, x_bar, v, mat, term):
 
     l_max = mat.shape[0] - 1
