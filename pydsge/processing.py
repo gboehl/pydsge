@@ -142,7 +142,7 @@ def sampled_extract(self, source=None, k=1, seed=None, ncores=None, verbose=Fals
         self.set_par(par, autocompile=False)
         self.get_sys(self.par, l_max=3, k_max=16, verbose=verbose > 1)
 
-        self.filter.Q = self.QQ(self.par) @ self.QQ(self.par)
+        self.filter.Q = self.QQ(self.ppar) @ self.QQ(self.ppar)
 
         FX = self.run_filter(verbose=False)
 

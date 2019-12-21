@@ -196,7 +196,7 @@ def simulate_ts(self, T=1e3, cov=None, verbose=False):
     import scipy.stats as ss
 
     if cov is None:
-        cov = self.QQ(self.par)
+        cov = self.QQ(self.ppar)
 
     st_vec = np.zeros(len(self.vv))
 

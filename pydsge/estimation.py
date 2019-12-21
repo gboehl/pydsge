@@ -130,7 +130,7 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
                     # these max vals should be sufficient given we're dealing with stochastic linearization
                     self.get_sys(par=par_active_lst, l_max=3, k_max=16,
                                  reduce_sys=True, verbose=verbose > 3)
-                    self.filter.Q = self.QQ(self.par) @ self.QQ(self.par)
+                    self.filter.Q = self.QQ(self.ppar) @ self.QQ(self.ppar)
                 else:
                     if not self.filter.name == 'KalmanFilter':
                         raise AttributeError('[estimation:]'.ljust(
@@ -140,7 +140,7 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
                     self.filter.F = self.linear_representation
                     self.filter.H = self.hx
 
-                    CO = self.SIG @ self.QQ(self.par)
+                    CO = self.SIG @ self.QQ(self.ppar)
                     self.filter.Q = CO @ CO.T
 
                 ll = get_ll(self,constr_data=constr_data,

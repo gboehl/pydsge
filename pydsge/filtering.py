@@ -58,8 +58,8 @@ def create_filter(self, P=None, R=None, N=None, ftype=None, seed=None, **fargs):
     if R is not None:
         f.R = R
 
-    f.eps_cov = self.QQ(self.par)
-    f.Q = self.QQ(self.par) @ self.QQ(self.par)
+    f.eps_cov = self.QQ(self.ppar)
+    f.Q = self.QQ(self.ppar) @ self.QQ(self.ppar)
 
     if ftype in ('KalmanFilter', 'KF'):
         CO = self.SIG @ f.eps_cov

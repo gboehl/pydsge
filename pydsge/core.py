@@ -44,7 +44,7 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, verbose=Fal
     self.fdict['reduce_sys'] = reduce_sys
 
     par = self.p0() if par is None else list(par)
-    par = self.get_full_par(par)
+    ppar = self.get_full_par(par) # parsed par
 
     if not self.const_var:
         raise NotImplementedError('Pakage is only meant to work with OBCs')
@@ -56,16 +56,16 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, verbose=Fal
 
     # obtain matrices from pydsge
     # this could be further accelerated by getting them directly from the equations in pydsge
-    AA = self.AA(par)              # forward
-    BB = self.BB(par)              # contemp
-    CC = self.CC(par)              # backward
-    bb = self.bb(par).flatten()    # constraint
+    AA = self.AA(ppar)              # forward
+    BB = self.BB(ppar)              # contemp
+    CC = self.CC(ppar)              # backward
+    bb = self.bb(ppar).flatten()    # constraint
 
     # the special case in which the constraint is just a cut-off of another variable requires
     b = bb.astype(float)
 
     # define transition shocks -> state
-    D = self.PSI(par)
+    D = self.PSI(ppar)
 
     # mask those vars that are either forward looking or part of the constraint
     in_x = ~fast0(AA, 0) | ~fast0(b[:dim_v])
@@ -116,7 +116,7 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, verbose=Fal
         x_bar = par[[p.name for p in self.parameters].index('x_bar')]
     elif 'x_bar' in self.parafunc[0]:
         pf = self.parafunc
-        x_bar = pf[1](par)[pf[0].index('x_bar')]
+        x_bar = pf[1](ppar)[pf[0].index('x_bar')]
     else:
         print("Parameter `x_bar` (maximum value of the constraint) not specified. Assuming x_bar = -1 for now.")
         x_bar = -1
@@ -148,7 +148,7 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, verbose=Fal
     bb1 = b2[:dim_x]
 
     out_msk = fast0(N, 0) & fast0(A, 0) & fast0(b2) & fast0(cx)
-    out_msk[-len(vv_v):] = out_msk[-len(vv_v):] & fast0(self.ZZ(par), 0)
+    out_msk[-len(vv_v):] = out_msk[-len(vv_v):] & fast0(self.ZZ(ppar), 0)
     # store those that are/could be reduced
     self.out_msk = out_msk[-len(vv_v):].copy()
 
@@ -175,8 +175,9 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, verbose=Fal
     self.dim_v = len(self.vv)
 
     self.par = par
+    self.ppar = ppar
 
-    self.hx = self.ZZ(par)[:, ~s_out_msk], self.DD(par).squeeze()
+    self.hx = self.ZZ(ppar)[:, ~s_out_msk], self.DD(ppar).squeeze()
     self.obs_arg = np.where(self.hx[0])[1]
 
     N2 = N[~out_msk][:, ~out_msk]
