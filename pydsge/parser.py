@@ -445,11 +445,16 @@ class DSGE(dict):
 
             func_file = mfile[:-5] + '_funcs.py'
 
+
             pmodel = cls.parse(mtxt, func_file)
 
             pmodel.fdict = {}
             pmodel.fdict['yaml_raw'] = mtxt
-            # pmodel.path = os.path.dirname(mfile) + os.sep
+
+            if os.path.exists(func_file):
+                ff = open(func_file)
+                ftxt = ff.read()
+                pmodel.fdict['ffile_raw'] = ftxt
 
             pmodel_dump = cpickle.dumps(pmodel)
             pmodel.fdict['model_dump'] = pmodel_dump
@@ -492,7 +497,24 @@ class DSGE(dict):
             if use_cached:
                 pmodel = deepcopy(processed_raw_model)
             else:
-                pmodel = cls.parse(mtxt)
+                import tempfile
+
+                try:
+                    # cumbersome: load the text of the *_funcs file, write it to a temporary file, just to use it as a module
+                    ftxt = fdict['ffile_raw']
+                    tfile = tempfile.NamedTemporaryFile('w')
+                    tfile.write(ftxt)
+                    ffile = tfile.name
+                except KeyError:
+                    ffile = None
+                    
+                pmodel = cls.parse(mtxt, ffile)
+
+                try:
+                    tfile.close()
+                    os.unlink(tfile.name)
+                except:
+                    pass
 
         pmodel.fdict = fdict
         pmodel.name = str(fdict['name'])
