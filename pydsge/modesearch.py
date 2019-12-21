@@ -749,7 +749,7 @@ def cmaes2(self, p0=None, sigma=None, pop_size=None, seeds=3, seed=None, stagtol
     return f_max, x_max_scaled
 
 
-def cmaes(self, p0=None, sigma=None, pop_size=None, restart_factor=2, seeds=3, seed=None, linear=None, lprob_seed=None, update_freq=None, verbose=True, debug=False, **args):
+def cmaes(self, p0=None, sigma=None, pop_size=None, restart_factor=2, seeds=3, seed=None, linear=None, lprob_seed=None, update_freq=1000, verbose=True, debug=False, **args):
     """Find mode using CMA-ES from grgrlib.
 
     Parameters
@@ -774,8 +774,6 @@ def cmaes(self, p0=None, sigma=None, pop_size=None, restart_factor=2, seeds=3, s
     p0 = (p0 - bnd[0])/(bnd[1] - bnd[0])
 
     sigma = sigma or .25
-    verbosity = np.ceil(
-        update_freq/pop_size) if update_freq is not None and pop_size is not None else None
 
     lprob_global = serializer(self.lprob)
 
@@ -800,6 +798,8 @@ def cmaes(self, p0=None, sigma=None, pop_size=None, restart_factor=2, seeds=3, s
         x_hist = []
 
     for s in seeds:
+
+        verbosity = np.ceil(update_freq/pop_size) if update_freq is not None and pop_size is not None else None
 
         np.random.seed(s)
         res = fmin(lprob_scaled, p0, sigma, popsize=pop_size,
