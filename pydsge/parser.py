@@ -297,7 +297,7 @@ class DSGE(dict):
         context['norminv'] = implemented_function('norminv', ctf_reducer(sst.norm.ppf))
 
         # things defined in *_funcs.py
-        if os.path.exists(self.func_file):
+        if self.func_file and os.path.exists(self.func_file):
             import importlib.util as iu
             import inspect
 
@@ -343,9 +343,10 @@ class DSGE(dict):
                         suc_loop = True # loop was successful
                     except NameError as e:
                         if raise_error:
+                            error_msg = str(e)
                             if not os.path.exists(self.func_file):
                                 fname = os.path.basename(self.func_file)
-                                error_msg = str(e) + ' (info: a file named `%s` was not found)' %fname
+                                error_msg += ' (info: a file named `%s` was not found)' %fname
                             raise NameError(error_msg)
 
 
@@ -501,12 +502,13 @@ class DSGE(dict):
 
                 try:
                     # cumbersome: load the text of the *_funcs file, write it to a temporary file, just to use it as a module
-                    ftxt = fdict['ffile_raw']
-                    tfile = tempfile.NamedTemporaryFile('w')
+                    ftxt = str(fdict['ffile_raw'])
+                    tfile = tempfile.NamedTemporaryFile('w', suffix='.py', delete=False)
                     tfile.write(ftxt)
+                    tfile.close()
                     ffile = tfile.name
                 except KeyError:
-                    ffile = None
+                    ffile = ''
                     
                 pmodel = cls.parse(mtxt, ffile)
 

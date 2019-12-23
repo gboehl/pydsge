@@ -71,11 +71,13 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
         if resume:
             p0 = sampler.get_last_sample()
         elif temp < 1:
-            p0 = get_par(self, 'prior_mean', asdict=False, full=False, nsample=nwalks, verbose=verbose)
+            p0 = get_par(self, 'prior_mean', asdict=False,
+                         full=False, nsample=nwalks, verbose=verbose)
         else:
-            p0 = get_par(self, 'best', asdict=False, full=False, nsample=nwalks, verbose=verbose)
+            p0 = get_par(self, 'best', asdict=False, full=False,
+                         nsample=nwalks, verbose=verbose)
     elif not resume:
-        nwalks = p0.shape[0] 
+        nwalks = p0.shape[0]
 
     if backend:
 
@@ -93,11 +95,13 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
 
         if not (resume or append):
             if not nwalks:
-                raise TypeError("If neither `resume`, `append` or `p0` is given I need to know the number of walkers (`nwalks`).")
+                raise TypeError(
+                    "If neither `resume`, `append` or `p0` is given I need to know the number of walkers (`nwalks`).")
             try:
                 backend.reset(nwalks, self.ndim)
             except KeyError as e:
-                raise KeyError(str(e) + '. Your `*.h5` file is likeli to be damaged...')
+                raise KeyError(
+                    str(e) + '. Your `*.h5` file is likeli to be damaged...')
     else:
         backend = None
 
@@ -260,7 +264,8 @@ def kdes(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, linear=N
         # should work, but not tested
         p0 = self.fdict['kdes_chain'][-1]
     else:
-        p0 = get_par(self, 'best', asdict=False, full=True, nsample=nwalks, verbose=verbose)
+        p0 = get_par(self, 'best', asdict=False, full=True,
+                     nsample=nwalks, verbose=verbose)
 
     if not verbose:
         np.warnings.filterwarnings('ignore')
@@ -348,18 +353,24 @@ def tmcmc(self, nsteps, nwalks, ntemps, target, update_freq=False, verbose=True,
     # sample pars from prior
     pars = prior_sampler(self, nwalks, test_lprob=False, verbose=verbose)
 
-    x = get_par(self, 'prior_mean', asdict=False, full=False, verbose=verbose > 1)
-
-    ll = self.lprob(x)
-    lp = self.lprior(x)
-
-    tmp = (target - lp)/(ll - lp)/ntemps
-    aim = lp + (ll-lp)*tmp
+    x = get_par(self, 'prior_mean', asdict=False,
+                full=False, verbose=verbose > 1)
 
     pbar = tqdm.tqdm(total=ntemps, unit='temp(s)', dynamic_ncols=True)
     sweat = False
+    tmp = 0
 
     for i in range(ntemps):
+
+        # update tmp
+        ll = self.lprob(x)
+        # treat first temperature increases extra carefully...
+        lp = min(self.lprior(x), 0)
+        li = ll - lp
+
+        # tmp = (target - lp)/li
+        tmp = tmp*(ntemps-i-1)/(ntemps-i) + (target - lp)/(ntemps-i)/(ll - lp)
+        aim = lp + (ll - lp)*tmp
 
         if tmp >= 1:
             # print only once
@@ -370,11 +381,12 @@ def tmcmc(self, nsteps, nwalks, ntemps, target, update_freq=False, verbose=True,
             # skip for loop to exit
             continue
 
-        pbar.write('[tmcmc:]'.ljust(15, ' ') + "Increasing temperature to %2.5f°, aiming @ %4.3f." % (100*tmp, aim))
+        pbar.write('[tmcmc:]'.ljust(
+            15, ' ') + "Increasing temperature to %2.5f°, aiming @ %4.3f." % (100*tmp, aim))
         pbar.set_description("[tmcmc: %2.3f°" % (100*tmp))
 
         self.mcmc(p0=pars, nsteps=nsteps, temp=tmp, update_freq=update_freq,
-                  verbose=verbose>1, append=i, report=pbar.write, **mcmc_args)
+                  verbose=verbose > 1, append=i, report=pbar.write, **mcmc_args)
 
         self.temp = tmp
         self.mcmc_summary(tune=int(nsteps/10),
@@ -384,14 +396,7 @@ def tmcmc(self, nsteps, nwalks, ntemps, target, update_freq=False, verbose=True,
 
         pars = self.get_chain()[-1]
         lprobs_adj = self.get_log_prob()[-1]
-
-        # update tmp
         x = pars[lprobs_adj.argmax()]
-        ll = self.lprob(x)
-        lp = self.lprior(x)
-
-        tmp = tmp*(ntemps-i-1)/(ntemps-i) + (target - lp)/(ntemps-i)/(ll - lp)
-        aim = lp + (ll - lp)*tmp
 
     pbar.close()
 
