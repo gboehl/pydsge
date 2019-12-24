@@ -67,10 +67,8 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
     if self.pool:
         self.pool.clear()
 
-    if p0 is None:
-        if resume:
-            p0 = sampler.get_last_sample()
-        elif temp < 1:
+    if p0 is None and not resume:
+        if temp < 1:
             p0 = get_par(self, 'prior_mean', asdict=False,
                          full=False, nsample=nwalks, verbose=verbose)
         else:
@@ -114,6 +112,9 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
         sampler = emcee.EnsembleSampler(
             nwalks, self.ndim, lprob_scaled, moves=moves, pool=self.pool, backend=backend)
 
+    if resume:
+        p0 = sampler.get_last_sample()
+
     self.sampler = sampler
     self.temp = temp
 
@@ -128,10 +129,11 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
 
     p0 = rjfunc(p0) if biject else p0
     old_tau = np.inf
+    cnt = 0
 
     for result in sampler.sample(p0, iterations=nsteps, **samplerargs):
 
-        cnt = sampler.iteration
+        # cnt = sampler.iteration
 
         if not verbose:
             lls = list(result)[1]
@@ -161,14 +163,14 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
             max_tau = np.max(tau).round(2)
             dev_tau = np.max(np.abs(old_tau - tau)/tau)
 
-            tau_sign = '>' if max_tau > cnt/50 else '<'
+            tau_sign = '>' if max_tau > sampler.iteration/50 else '<'
             dev_sign = '>' if dev_tau > .01 else '<'
 
             self.mcmc_summary(chain=bjfunc(sample), tune=update_freq,
                               calc_mdd=False, calc_ll_stats=True, out=lambda x: report(str(x)))
 
             report("Convergence stats: tau is in (%s,%s) (%s%s) and change is %s (%s0.01)." % (
-                min_tau, max_tau, tau_sign, cnt/50, dev_tau.round(3), dev_sign))
+                min_tau, max_tau, tau_sign, sampler.iteration/50, dev_tau.round(3), dev_sign))
 
         if cnt and update_freq and not (cnt+1) % update_freq:
             sample = sampler.get_chain()
@@ -176,6 +178,8 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
 
         if not verbose:
             pbar.update(1)
+
+        cnt += 1
 
     pbar.close()
     if self.pool:
@@ -366,7 +370,7 @@ def tmcmc(self, nsteps, nwalks, ntemps, target, update_freq=False, verbose=True,
         ll = self.lprob(x)
         # treat first temperature increases extra carefully...
         lp = min(self.lprior(x), 0)
-        li = ll - lp
+        # li = ll - lp
 
         # tmp = (target - lp)/li
         tmp = tmp*(ntemps-i-1)/(ntemps-i) + (target - lp)/(ntemps-i)/(ll - lp)
@@ -378,7 +382,7 @@ def tmcmc(self, nsteps, nwalks, ntemps, target, update_freq=False, verbose=True,
                 pbar.write('[tmcmc:]'.ljust(
                     15, ' ') + "Increasing temperature to %s°. Too hot! I'm out..." % np.round(100*tmp, 3))
             sweat = True
-            # skip for loop to exit
+            # skip for-loop to exit
             continue
 
         pbar.write('[tmcmc:]'.ljust(

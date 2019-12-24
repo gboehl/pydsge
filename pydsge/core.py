@@ -201,12 +201,12 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, verbose=Fal
     return
 
 
-def prior_sampler(self, nsample, seed=None, test_lprob=False, verbose=True):
+def prior_sampler(self, nsamples, seed=None, test_lprob=False, verbose=True):
     """Draw parameters from prior. Drawn parameters have a finite likelihood.
 
     Parameters
     ----------
-    nsample : int
+    nsamples : int
         Size of the prior sample
 
     Returns
@@ -279,7 +279,7 @@ def prior_sampler(self, nsample, seed=None, test_lprob=False, verbose=True):
         print('[prior_sample:]'.ljust(15, ' ') + ' sampling from the pior...')
 
     wrapper = tqdm.tqdm if verbose < 2 else (lambda x, **kwarg: x)
-    pmap_sim = wrapper(self.mapper(runner, range(nsample)), total=nsample)
+    pmap_sim = wrapper(self.mapper(runner, range(nsamples)), total=nsamples)
 
     draws, nos = map2arr(pmap_sim)
 
@@ -288,12 +288,12 @@ def prior_sampler(self, nsample, seed=None, test_lprob=False, verbose=True):
 
     if verbose:
         print('[prior_sample:]'.ljust(
-            15, ' ') + ' sampling done. %2.2f%% of the prior are either indetermined or explosive.' % (100*(sum(nos)-nsample)/nsample))
+            15, ' ') + ' sampling done. %2.2f%% of the prior are either indetermined or explosive.' % (100*(sum(nos)-nsamples)/nsamples))
 
     return draws
 
 
-def get_par(self, dummy=None, parname=None, asdict=True, full=None, roundto=5, nsample=1, seed=None, ncores=None, verbose=False):
+def get_par(self, dummy=None, parname=None, asdict=True, full=None, roundto=5, nsamples=1, seed=None, ncores=None, verbose=False):
     """Get parameters. Tries to figure out what you want. 
 
     Parameters
@@ -306,7 +306,7 @@ def get_par(self, dummy=None, parname=None, asdict=True, full=None, roundto=5, n
         Returns a dict of the values if `True` (default) and an array otherwise.
     full : bool, optional
         Whether to return all parameters or the estimated ones only. (default: True)
-    nsample : int, optional
+    nsamples : int, optional
         Size of the prior sample
     ncores : int, optional
         Number of cores used for prior sampling. Defaults to the number of available processors
@@ -341,7 +341,10 @@ def get_par(self, dummy=None, parname=None, asdict=True, full=None, roundto=5, n
             except:
                 par_cand = get_par(self, 'init', asdict=False, full=False)
         elif dummy == 'prior':
-            return prior_sampler(self, nsample, seed, False, verbose)
+            return prior_sampler(self, nsamples, seed, False, verbose)
+        elif dummy == 'posterior':
+            # return posterior_sampler(self, nsamples, seed, False, verbose)
+            pass
         elif dummy == 'mode':
             par_cand = self.fdict['mode_x']
         elif dummy == 'calib':
@@ -385,8 +388,8 @@ def get_par(self, dummy=None, parname=None, asdict=True, full=None, roundto=5, n
     if asdict:
         return dict(zip(np.array(pars_str)[self.prior_arg], np.round(par_cand, roundto)))
 
-    if nsample > 1:
-        par_cand = par_cand*(1 + 1e-3*np.random.randn(nsample, len(par_cand)))
+    if nsamples > 1:
+        par_cand = par_cand*(1 + 1e-3*np.random.randn(nsamples, len(par_cand)))
 
     return par_cand
 
