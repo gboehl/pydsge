@@ -1,6 +1,15 @@
 #!/bin/python
 # -*- coding: utf-8 -*-
 
+from .parser import DSGE
+from .plots import posteriorplot, traceplot, swarm_rank, swarm_champ, swarm_plot
+from .mcmc import mcmc, kdes, tmcmc
+from .modesearch import pmdm, nlopt, cmaes, cmaes2, swarms
+from .filtering import *
+from .estimation import prep_estim
+from .tools import *
+from .core import *
+import os
 import numpy as np
 import pandas as pd
 from .stats import summary, pmdm_report
@@ -49,6 +58,11 @@ def get_chain(self, get_acceptance_fraction=False, get_log_prob=False, backend_f
             backend_file = os.path.join(self.path, self.name+'_sampler.h5')
 
     if backend_file:
+
+        if not os.path.exists(backend_file):
+            raise NameError(
+                "A backend file named `%s` could not be found." % backend_file)
+
         import emcee
         reader = emcee.backends.HDFBackend(backend_file, read_only=True)
 
@@ -62,13 +76,13 @@ def get_chain(self, get_acceptance_fraction=False, get_log_prob=False, backend_f
         return reader.get_log_prob(flat=flat)
 
     chain = reader.get_chain(flat=flat)
+
     return self.bjfunc(chain)
 
 
 def get_log_prob(self, **args):
     """Get the log likelihoods in the chain
     """
-
     # just a wrapper
     return get_chain(self, get_log_prob=True, **args)
 
@@ -218,17 +232,23 @@ def mcmc_summary(self, chain=None, tune=None, calc_mdd=True, calc_ll_stats=False
 
 def info_m(self, verbose=True, **args):
 
-    if hasattr(self, 'name'):
+    try:
         name = self.name
-    else:
+    except AttributeError:
         name = self.fdict['name']
 
-    if hasattr(self, 'description'):
+    try:
         description = self.description
-    else:
+    except AttributeError:
         description = self.fdict['description']
 
+    try:
+        dtime = str(self.fdict['datetime'])
+    except KeyError:
+        dtime = ''
+
     res = 'Title: %s\n' % name
+    res += 'Date: %s\n' % dtime if dtime else ''
     res += 'Description: %s\n' % description
 
     try:
@@ -420,6 +440,7 @@ def mapper(self):
     else:
         return map
 
+
 def get_sample(self, size, chain=None):
     """Get a (preferably recent) sample from the chain
     """
@@ -431,21 +452,20 @@ def get_sample(self, size, chain=None):
     if recent > clen:
         raise Exception("Requested sample size is larger than chain")
 
-    sample = chain[:,-recent,:].reshape(-1, npar)
+    sample = chain[:, -recent, :].reshape(-1, npar)
     res = np.random.choice(np.arange(recent*nwalks), size, False)
 
     return sample[res]
 
 
-from .processing import *
-from .core import *
-from .tools import *
-from .filtering import *
-from .estimation import prep_estim
-from .modesearch import pmdm, nlopt, cmaes, cmaes2, swarms
-from .mcmc import mcmc, kdes, tmcmc
-from .plots import posteriorplot, traceplot, swarm_rank, swarm_champ, swarm_plot
-from .parser import DSGE
+def create_pool(self, ncores=None):
+
+    import pathos
+
+    self.pool = pathos.pools.ProcessPool(ncores)
+    self.pool.clear()
+
+    return self.pool
 
 
 DSGE.save = save_meta
@@ -464,6 +484,7 @@ DSGE.rjfunc = rjfunc
 DSGE.bjfunc = bjfunc
 DSGE.sample_box = sample_box
 DSGE.get_sample = get_sample
+DSGE.create_pool = create_pool
 # from core & tools:
 DSGE.get_par = get_par
 DSGE.set_par = set_par
@@ -484,6 +505,7 @@ DSGE.tmcmc = tmcmc
 DSGE.kdes = kdes
 DSGE.kombine = kdes
 DSGE.prep_estim = prep_estim
+DSGE.load_estim = prep_estim
 DSGE.lprob = lprob
 # from modesearch:
 DSGE.pmdm = pmdm
@@ -503,6 +525,4 @@ DSGE.get_log_prob = get_log_prob
 DSGE.extract = extract
 DSGE.create_obs_cov = create_obs_cov
 DSGE.mask = mask
-DSGE.sampled_extract = sampled_extract
-DSGE.sampled_sim = sampled_sim
-DSGE.sampled_irfs = sampled_irfs
+DSGE.load_eps = load_eps

@@ -165,7 +165,7 @@ def traceplot(trace, varnames, tune, figsize=None,
                 ax[i, 1].plot(range(auxtune, width), d[auxtune:],
                               c='maroon', alpha=0.045)
                 ax[i, 1].plot([auxtune, auxtune], [np.mean(d_stream, 1)[auxtune] - np.std(d_stream, 1)[auxtune]*3,
-                                             np.mean(d_stream, 1)[auxtune] + np.std(d_stream, 1)[auxtune]*3], '--', alpha=.4, color='k')
+                                                   np.mean(d_stream, 1)[auxtune] + np.std(d_stream, 1)[auxtune]*3], '--', alpha=.4, color='k')
 
             else:
                 i95s = np.percentile(d_stream, [2.5, 97.5], axis=1)
@@ -181,12 +181,13 @@ def traceplot(trace, varnames, tune, figsize=None,
                     range(0, auxtune+1), *i66s[:, :auxtune+1], lw=0, alpha=.3, color='C1')
                 ax[i, 1].fill_between(
                     range(auxtune, width), *i66s[:, auxtune:], lw=0, alpha=.4, color='C1')
-                ax[i, 1].plot(range(auxtune, width),   means[auxtune:], lw=2, c='C0')
+                ax[i, 1].plot(range(auxtune, width),
+                              means[auxtune:], lw=2, c='C0')
                 ax[i, 1].plot(range(0, auxtune+1),
                               means[:auxtune+1], lw=2, c='C0', alpha=.5)
 
                 ax[i, 1].plot([auxtune, auxtune], [np.mean(d_stream, 1)[auxtune] - np.std(d_stream, 1)[auxtune]*3,
-                                             np.mean(d_stream, 1)[auxtune] + np.std(d_stream, 1)[auxtune]*3],
+                                                   np.mean(d_stream, 1)[auxtune] + np.std(d_stream, 1)[auxtune]*3],
                               '--', alpha=.4, color='k')
 
             ax[i, 0].set_ylabel("Frequency")

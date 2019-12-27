@@ -114,15 +114,16 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, co
 
     if self.filter.name == 'KalmanFilter':
 
-        res, cov, ll = self.filter.batch_filter(self.Z)
+        res, covs, ll = self.filter.batch_filter(self.Z)
 
         if get_ll:
             res = ll
 
         if smoother:
-            res, cov, _, _ = self.filter.rts_smoother(res, cov, inv=np.linalg.pinv)
+            res, covs, _, _ = self.filter.rts_smoother(
+                res, covs, inv=np.linalg.pinv)
 
-        self.cov = cov
+        self.covs = covs
 
     elif self.filter.name == 'ParticleFilter':
 
@@ -164,18 +165,81 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, co
     return res
 
 
-def extract(self, precalc=True, verbose=True, **npasargs):
+def extract(self, sample=None, nsamples=1, precalc=True, seed=0, store_path=None, verbose=True, **npasargs):
+    """Extract the timeseries of (smoothed) shocks.
 
-    if precalc:
-        get_eps = self.filter.get_eps
-    else:
-        get_eps = None
+    Parameters
+    ----------
+    sample : array, optional
+        Provide one or several parameter vectors used for which the smoothed shocks are calculated (default is the current `self.par`)
+    nsamples : int, optional
+        Number of `npas`-draws for each element in `sample`. Defaults to 1
 
-    means, cov, res, flag = self.filter.npas(
-        get_eps=get_eps, verbose=verbose, **npasargs)
+    Returns
+    -------
+    tuple
+        The result(s)
+    """
 
-    self.means = means
-    self.cov = cov
-    self.res = res
+    import tqdm
+    import os
+    from grgrlib.core import map2arr, serializer
 
-    return means, cov, res, flag
+    if np.ndim(sample) <= 1:
+        sample = [sample]
+
+    sample = [(x, y) for x in sample for y in range(nsamples)]
+
+    run_filter = serializer(self.run_filter)
+    set_par = serializer(self.set_par)
+    npas = serializer(self.filter.npas)
+    filter_get_eps = serializer(self.filter.get_eps)
+
+    def runner(arg):
+
+        par, seed_loc = arg
+
+        if par is not None:
+            set_par(par, autocompile=False)
+
+        run_filter(verbose=False)
+
+        if precalc:
+            get_eps = filter_get_eps
+        else:
+            get_eps = None
+
+        means, covs, resid, flags = npas(
+            get_eps=get_eps, verbose=verbose, seed=seed_loc, nsamples=1, **npasargs)
+
+        return means[0], covs, resid[0], flags
+
+    wrap = tqdm.tqdm if verbose else (lambda x, **kwarg: x)
+
+    res = wrap(self.mapper(runner, sample), unit=' sample(s)',
+               total=len(sample), dynamic_ncols=True)
+
+    means, covs, resid, flags = map2arr(res)
+
+    edict = {'pars': [s[0] for s in sample],
+             'means': means,
+             'covs': covs,
+             'resid': resid,
+             'flags': flags}
+
+    if store_path:
+
+        if not isinstance(store_path, str):
+            store_path = self.name + '_eps'
+
+        if store_path[-4] == '.npz':
+            store_path = store_path[-4]
+
+        if not os.path.isabs(store_path):
+            store_path = os.path.join(self.path, store_path)
+
+        np.savez(store_path, **edict)
+
+    self.eps_dict = edict
+
+    return edict

@@ -1,6 +1,7 @@
 #!/bin/python
 # -*- coding: utf-8 -*-
 
+import os
 import numpy as np
 import pandas as pd
 import time
@@ -73,7 +74,7 @@ def irfs(self, shocklist, pars=None, T=30, linear=False, verbose=False):
     """
 
     if isinstance(shocklist, tuple):
-        shocklist = [shocklist,]
+        shocklist = [shocklist, ]
 
     st = time.time()
 
@@ -107,10 +108,9 @@ def irfs(self, shocklist, pars=None, T=30, linear=False, verbose=False):
 
             superflag |= flag
 
-            X[t,:] = st_vec
+            X[t, :] = st_vec
             L[t] = l
             K[t] = k
-
 
         return X, K, L, superflag
 
@@ -119,66 +119,110 @@ def irfs(self, shocklist, pars=None, T=30, linear=False, verbose=False):
         X, K, L, flag = map2arr(res)
     else:
         X, K, L, flag = irfs_runner(pars)
-        X = pd.DataFrame(X, columns=self.vv) 
+        X = pd.DataFrame(X, columns=self.vv)
 
     if np.any(flag) and verbose:
-        print('[irfs:]'.ljust(15, ' ') + 'No rational expectations solution found at least once.')
+        print('[irfs:]'.ljust(15, ' ') +
+              'No rational expectations solution found at least once.')
 
     if verbose:
-        print('[irfs:]'.ljust(15, ' ') + 'Simulation took ', np.round((time.time() - st), 5), ' seconds.')
+        print('[irfs:]'.ljust(15, ' ') + 'Simulation took ',
+              np.round((time.time() - st), 5), ' seconds.')
 
     return X, (K, L)
 
 
-def simulate(self, eps=None, mask=None, state=None, linear=False, verbose=False):
+@property
+def mask(self, verbose=False):
+
+    if verbose:
+        print('[mask:]'.ljust(15, ' ') + 'Shocks:', self.shocks)
+
+    msk = self.data.copy()
+    msk[:] = np.nan
+
+    try:
+        self.observables
+    except AttributeError:
+        self.get_sys(self.par, verbose=verbose)
+
+    return msk.rename(columns=dict(zip(self.observables, self.shocks)))[:-1]
+
+
+def load_eps(self, path=None):
+    """Load stored shock innovations
+    """
+
+    if path is None:
+        path = self.name + '_eps'
+
+    if path[-4] != '.npz':
+        path += '.npz'
+
+    if not os.path.isabs(path):
+        path = os.path.join(self.path, path)
+
+    return dict(np.load(path, allow_pickle=True))
+
+
+def simulate(self, source=None, mask=None, linear=False, verbose=False):
     """Simulate time series given a series of exogenous innovations.
 
     Parameters
     ----------
-        eps : array
-            Shock innovations of shape (T, n_eps)>
+        source : dict
+            Dict of `extract` results
         mask : array
             Mask for eps. Each non-None element will be replaced.
-        state : array
-            Inital state.
     """
+    from grgrlib.core import serializer
 
-    if eps is None:
-        eps = self.res.copy()
+    source = source or self.eps_dict
 
-    if mask is not None:
-        eps = np.where(np.isnan(mask), eps, mask*eps)
-
-    if state is None:
-        try:
-            state = self.means[0]
-        except:
-            state = np.zeros(len(self.vv))
-
-    X = [state]
-    K = [0]
-    L = [0]
-    superflag = False
+    sample = zip(source['pars'], source['resid'], [s[0]
+                                                   for s in source['means']])
 
     if verbose:
         st = time.time()
 
-    for eps_t in eps:
+    set_par = serializer(self.set_par)
+    t_func = serializer(self.t_func)
 
-        state, (l, k), flag = self.t_func(
-            state, noise=eps_t, return_k=True, linear=linear)
+    def runner(arg):
 
-        superflag |= flag
+        superflag = False
+        par, eps, state = arg
 
-        X.append(state)
-        K.append(k)
-        L.append(l)
+        if mask is not None:
+            eps = np.where(np.isnan(mask), eps, np.array(mask)*eps)
 
-    X = np.array(X)
-    K = np.array(K)
-    L = np.array(L)
+        set_par(par)
 
-    self.simulated_X = X
+        X = [state]
+        K = []
+
+        for eps_t in eps:
+
+            state, (l, k), flag = t_func(
+                state, noise=eps_t, return_k=True, linear=linear)
+
+            superflag |= flag
+
+            X.append(state)
+            K.append(k)
+
+        X = np.array(X)
+        K = np.array(K)
+
+        return X, np.expand_dims(K, 2), superflag
+
+    wrap = tqdm.tqdm if verbose else (lambda x, **kwarg: x)
+
+    res = wrap(self.mapper(runner, sample), unit=' sample(s)',
+               total=len(source['pars']), dynamic_ncols=True)
+
+    res = map2arr(res)
+    superflag = res[-1].any()
 
     if verbose:
         print('[simulate:]'.ljust(15, ' ')+'Simulation took ',
@@ -188,10 +232,12 @@ def simulate(self, eps=None, mask=None, state=None, linear=False, verbose=False)
         print('[simulate:]'.ljust(
             15, ' ')+'No rational expectations solution found.')
 
-    return X, np.expand_dims(K, 2), superflag
+    return res
 
 
 def simulate_ts(self, T=1e3, cov=None, verbose=False):
+    """Simulate a random time series (probably not up-to-date)
+    """
 
     import scipy.stats as ss
 

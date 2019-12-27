@@ -82,12 +82,12 @@ def summary(store, priors, bounds=None, tune=None, alpha=0.1, top=None, show_pri
     def sss(x):
         return pd.Series(mode(x.flatten()), name='mode'),
 
-    funcs = [ 
+    funcs = [
         lambda x: pd.Series(np.mean(x), name='mean'),
         lambda x: pd.Series(np.std(x), name='sd'),
         lambda x: pd.Series(mode(x.flatten()), name='mode'),
         lambda x: _hpd_df(x, alpha),
-        lambda x: pd.Series(mc_error(x), name='mc_error') ]
+        lambda x: pd.Series(mc_error(x), name='mc_error')]
 
     var_dfs = []
     for i, var in enumerate(priors):

@@ -44,7 +44,7 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, verbose=Fal
     self.fdict['reduce_sys'] = reduce_sys
 
     par = self.p0() if par is None else list(par)
-    ppar = self.get_full_par(par) # parsed par
+    ppar = self.get_full_par(par)  # parsed par
 
     if not self.const_var:
         raise NotImplementedError('Pakage is only meant to work with OBCs')
@@ -201,7 +201,31 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, verbose=Fal
     return
 
 
-def prior_sampler(self, nsamples, seed=None, test_lprob=False, verbose=True):
+def posterior_sampler(self, nsamples, seed=0, verbose=True):
+    """Draw parameters from the posterior.
+
+    Parameters
+    ----------
+    nsamples : int
+        Size of the sample
+
+    Returns
+    -------
+    array
+        Numpy array of parameters
+    """
+    import random
+    from .clsmethods import get_tune
+
+    random.seed(seed)
+    sample = self.get_chain()[-get_tune(self):]
+    sample = sample.reshape(-1, sample.shape[-1])
+    sample = random.choices(sample, k=nsamples)
+
+    return sample
+
+
+def prior_sampler(self, nsamples, seed=0, test_lprob=False, verbose=True):
     """Draw parameters from prior. Drawn parameters have a finite likelihood.
 
     Parameters
@@ -217,9 +241,6 @@ def prior_sampler(self, nsamples, seed=None, test_lprob=False, verbose=True):
 
     import tqdm
     from grgrlib import map2arr, serializer
-
-    if seed is None:
-        seed = 0
 
     reduce_sys = np.copy(self.fdict['reduce_sys'])
 
@@ -293,7 +314,7 @@ def prior_sampler(self, nsamples, seed=None, test_lprob=False, verbose=True):
     return draws
 
 
-def get_par(self, dummy=None, parname=None, asdict=True, full=None, roundto=5, nsamples=1, seed=None, ncores=None, verbose=False):
+def get_par(self, dummy=None, parname=None, asdict=True, full=None, roundto=5, nsamples=1, verbose=False, **args):
     """Get parameters. Tries to figure out what you want. 
 
     Parameters
@@ -308,8 +329,6 @@ def get_par(self, dummy=None, parname=None, asdict=True, full=None, roundto=5, n
         Whether to return all parameters or the estimated ones only. (default: True)
     nsamples : int, optional
         Size of the prior sample
-    ncores : int, optional
-        Number of cores used for prior sampling. Defaults to the number of available processors
 
     Returns
     -------
@@ -341,10 +360,9 @@ def get_par(self, dummy=None, parname=None, asdict=True, full=None, roundto=5, n
             except:
                 par_cand = get_par(self, 'init', asdict=False, full=False)
         elif dummy == 'prior':
-            return prior_sampler(self, nsamples, seed, False, verbose)
+            return prior_sampler(self, nsamples=nsamples, verbose=verbose, **args)
         elif dummy == 'posterior':
-            # return posterior_sampler(self, nsamples, seed, False, verbose)
-            pass
+            return posterior_sampler(self, nsamples=nsamples, verbose=verbose, **args)
         elif dummy == 'mode':
             par_cand = self.fdict['mode_x']
         elif dummy == 'calib':
@@ -439,6 +457,9 @@ def set_par(self, dummy, setpar=None, par=None, roundto=5, autocompile=True, ver
         raise SyntaxError("Parameter '%s' does not exist." % parname)
 
     get_sys(self, par=list(par), verbose=verbose)
+
+    if hasattr(self, 'filter'):
+        self.filter.Q = self.QQ(self.ppar) @ self.QQ(self.ppar)
 
     if verbose:
         pdict = dict(zip(pars_str, np.round(self.par, roundto)))

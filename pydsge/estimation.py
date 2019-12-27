@@ -7,9 +7,11 @@ import os
 import pathos
 import time
 import tqdm
+from datetime import datetime
 from .stats import get_prior
 from .filtering import get_ll
 from .core import get_par
+from .clsmethods import create_pool
 
 
 def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=False, dispatch=False, constr_data=False, ncores=None, verbose=True, **filterargs):
@@ -67,6 +69,7 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
     self.fdict['linear'] = linear
     self.fdict['seed'] = seed
     self.fdict['constr_data'] = constr_data
+    self.fdict['datetime'] = str(datetime.now())
 
     self.Z = np.array(self.data)
 
@@ -83,7 +86,7 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
             15, ' ') + "`filter.R` not in `fdict`.")
 
     # dry run before the fun beginns
-    if np.isinf(get_ll(self,constr_data=constr_data, verbose=verbose > 3, dispatch=dispatch)):
+    if np.isinf(get_ll(self, constr_data=constr_data, verbose=verbose > 3, dispatch=dispatch)):
         raise ValueError('[estimation:]'.ljust(
             15, ' ') + 'likelihood of initial values is zero.')
 
@@ -143,8 +146,8 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
                     CO = self.SIG @ self.QQ(self.ppar)
                     self.filter.Q = CO @ CO.T
 
-                ll = get_ll(self,constr_data=constr_data,
-                                 verbose=verbose > 3, dispatch=dispatch)
+                ll = get_ll(self, constr_data=constr_data,
+                            verbose=verbose > 3, dispatch=dispatch)
 
                 np.random.set_state(random_state)
                 return ll
@@ -219,7 +222,8 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
     self.llike = llike
 
     if ncores is None or ncores:
-        self.pool = pathos.pools.ProcessPool(ncores)
-        self.pool.clear()
+        create_pool(self, ncores)
     else:
         self.pool = None
+
+    return

@@ -15,8 +15,6 @@ from copy import deepcopy
 from .symbols import Variable, Equation, Shock, Parameter, TSymbol
 from sympy.matrices import Matrix, zeros
 
-    
-
 
 class DSGE(dict):
     """Base class. Every model is an instance of the DSGE class and inherents its methods.
@@ -271,16 +269,17 @@ class DSGE(dict):
         # context['sqrt'] = sympy.sqrt
 
         sol_dict = {}
+
         def ctf_reducer(f):
             """hack to reduce the calls-to-function
             """
 
             def reducer(*x):
                 try:
-                    return sol_dict[f,x]
+                    return sol_dict[f, x]
                 except KeyError:
                     res = f(*x)
-                    sol_dict[f,x] = res
+                    sol_dict[f, x] = res
                     return res
 
             return reducer
@@ -291,10 +290,14 @@ class DSGE(dict):
         context['sqrt'] = implemented_function('sqrt', np.sqrt)
 
         # distributions
-        context['normpdf'] = implemented_function('normpdf', ctf_reducer(sst.norm.pdf))
-        context['normcdf'] = implemented_function('normcdf', ctf_reducer(sst.norm.cdf))
-        context['normppf'] = implemented_function('normppf', ctf_reducer(sst.norm.ppf))
-        context['norminv'] = implemented_function('norminv', ctf_reducer(sst.norm.ppf))
+        context['normpdf'] = implemented_function(
+            'normpdf', ctf_reducer(sst.norm.pdf))
+        context['normcdf'] = implemented_function(
+            'normcdf', ctf_reducer(sst.norm.cdf))
+        context['normppf'] = implemented_function(
+            'normppf', ctf_reducer(sst.norm.ppf))
+        context['norminv'] = implemented_function(
+            'norminv', ctf_reducer(sst.norm.ppf))
 
         # things defined in *_funcs.py
         if self.func_file and os.path.exists(self.func_file):
@@ -309,7 +312,8 @@ class DSGE(dict):
                 module) if inspect.isfunction(o[1])]
 
             for func in funcs_list:
-                context[func[0]] = implemented_function(func[0], ctf_reducer(func[1]))
+                context[func[0]] = implemented_function(
+                    func[0], ctf_reducer(func[1]))
 
         # context_f = {}
         # context_f['exp'] = np.exp
@@ -332,7 +336,7 @@ class DSGE(dict):
 
             # raise if loop was unsuccessful
             raise_error = not suc_loop
-            suc_loop = False # set to check if any progress in loop
+            suc_loop = False  # set to check if any progress in loop
             for i, p in enumerate(self['other_para']):
                 if not checker[i]:
                     try:
@@ -340,15 +344,14 @@ class DSGE(dict):
                             str(self['para_func'][p.name]), context)
                         context[str(p)] = ss[str(p)]
                         checker[i] = True
-                        suc_loop = True # loop was successful
+                        suc_loop = True  # loop was successful
                     except NameError as e:
                         if raise_error:
                             error_msg = str(e)
                             if not os.path.exists(self.func_file):
                                 fname = os.path.basename(self.func_file)
-                                error_msg += ' (info: a file named `%s` was not found)' %fname
+                                error_msg += ' (info: a file named `%s` was not found)' % fname
                             raise NameError(error_msg)
-
 
         # print(context)
         # DD = DD.subs(subs_dict)
@@ -446,7 +449,6 @@ class DSGE(dict):
 
             func_file = mfile[:-5] + '_funcs.py'
 
-
             pmodel = cls.parse(mtxt, func_file)
 
             pmodel.fdict = {}
@@ -503,13 +505,14 @@ class DSGE(dict):
                 try:
                     # cumbersome: load the text of the *_funcs file, write it to a temporary file, just to use it as a module
                     ftxt = str(fdict['ffile_raw'])
-                    tfile = tempfile.NamedTemporaryFile('w', suffix='.py', delete=False)
+                    tfile = tempfile.NamedTemporaryFile(
+                        'w', suffix='.py', delete=False)
                     tfile.write(ftxt)
                     tfile.close()
                     ffile = tfile.name
                 except KeyError:
                     ffile = ''
-                    
+
                 pmodel = cls.parse(mtxt, ffile)
 
                 try:

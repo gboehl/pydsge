@@ -616,7 +616,6 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
     return xsw
 
 
-
 def cmaes2(self, p0=None, sigma=None, pop_size=None, seeds=3, seed=None, stagtol=150, ftol=5e-4, xtol=2e-4, burnin=False, linear=None, lprob_seed=None, use_cloudpickle=False, ncores=None, cma_callback=None, verbose=True, debug=False):
     """Find mode using CMA-ES from pycma.
 
@@ -799,7 +798,8 @@ def cmaes(self, p0=None, sigma=None, pop_size=None, restart_factor=2, seeds=3, s
 
     for s in seeds:
 
-        verbosity = np.ceil(update_freq/pop_size) if update_freq is not None and pop_size is not None else None
+        verbosity = np.ceil(
+            update_freq/pop_size) if update_freq is not None and pop_size is not None else None
 
         np.random.seed(s)
         res = fmin(lprob_scaled, p0, sigma, popsize=pop_size,
