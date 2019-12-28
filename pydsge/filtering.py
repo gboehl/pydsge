@@ -210,7 +210,7 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, store_path=None
             get_eps = None
 
         means, covs, resid, flags = npas(
-            get_eps=get_eps, verbose=verbose, seed=seed_loc, nsamples=1, **npasargs)
+            get_eps=get_eps, verbose=verbose-1, seed=seed_loc, nsamples=1, **npasargs)
 
         return means[0], covs, resid[0], flags
 

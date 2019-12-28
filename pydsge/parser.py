@@ -489,9 +489,11 @@ class DSGE(dict):
 
         mtxt = str(fdict['yaml_raw'])
 
-        if not force_parse and 'model_dump' in fdict.keys():
+        try:
+            if force_parse:
+                raise Exception
             pmodel = cpickle.loads(fdict['model_dump'])
-        else:
+        except:
             use_cached = False
 
             if 'processed_raw_model' in globals():
