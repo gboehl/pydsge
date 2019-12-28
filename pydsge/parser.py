@@ -478,7 +478,7 @@ class DSGE(dict):
         return pmodel
 
     @classmethod
-    def load(cls, npzfile, verbose=False):
+    def load(cls, npzfile, force_parse=False, verbose=False):
 
         global processed_raw_model
 
@@ -489,9 +489,9 @@ class DSGE(dict):
 
         mtxt = str(fdict['yaml_raw'])
 
-        try:
+        if not force_parse and 'model_dump' in fdict.keys():
             pmodel = cpickle.loads(fdict['model_dump'])
-        except:
+        else:
             use_cached = False
 
             if 'processed_raw_model' in globals():

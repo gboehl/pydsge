@@ -6,7 +6,6 @@ from .plots import posteriorplot, traceplot, swarm_rank, swarm_champ, swarm_plot
 from .mcmc import mcmc, kdes, tmcmc
 from .modesearch import pmdm, nlopt, cmaes, cmaes2, swarms
 from .filtering import *
-from .estimation import prep_estim
 from .tools import *
 from .core import *
 import os
@@ -319,7 +318,7 @@ def lprob(self, par, linear=None, verbose=False):
     return self.lprob(par, linear=linear, verbose=verbose)
 
 
-def mdd(self, mode_f=None, inv_hess=None, tune=None, verbose=False):
+def mdd(self, chain=None, mode_f=None, inv_hess=None, tune=None, verbose=False):
     """Approximate the marginal data density useing the LaPlace method.
     `inv_hess` can be a matrix or the method string in ('hess', 'cov') telling me how to Approximate the inverse Hessian
     """
@@ -346,10 +345,11 @@ def mdd(self, mode_f=None, inv_hess=None, tune=None, verbose=False):
 
     elif inv_hess is None:
 
-        tune = tune or get_tune(self)
+        if chain is None:
+            tune = tune or get_tune(self)
+            chain = self.get_chain()[-tune:]
+            chain = chain.reshape(-1, chain.shape[-1])
 
-        chain = self.get_chain()[-tune:]
-        chain = chain.reshape(-1, chain.shape[-1])
         inv_hess = np.cov(chain.T)
 
     ndim = len(self.fdict['prior_names'])
@@ -468,6 +468,10 @@ def create_pool(self, ncores=None):
     return self.pool
 
 
+from .estimation import prep_estim
+
+
+DSGE.get_tune = get_tune
 DSGE.save = save_meta
 DSGE.mapper = mapper
 DSGE.mode_summary = mode_summary
