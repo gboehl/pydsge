@@ -322,3 +322,43 @@ def pmdm_report(self, x_max, res_max, n=np.inf, printfunc=print):
     printfunc('')
 
     return
+
+
+def variance_decomposition(self, eps, states, pars=None):
+    """Calculates the generalized forecasting error variance decomposition (GFEVD, Lanne & Nyberg)
+    """
+
+    ## exclude pars lateron
+    sample = zip(eps, states, pars)
+
+    gis = np.empty((len(self.shocks), len(self.vv)))
+    for e in self.shocks:
+
+        ei = self.shocks.index(e)
+
+        for s in sample:
+            shocks = [e, s[0][ei], 0]
+            # disable parallelization in irfs
+            irfs = self.irfs(shocklist, pars=sample[2], T=1, state=s[1])
+            state = self.t_func(s[1])
+            gis[ei] += (irfs - state)**2
+
+    gis /= np.sum(gis, axis=0)
+
+    return gis
+
+
+def historic_decomposition(self, eps):
+    """Calculates the historic decomposition, based on the normalization
+    """
+    # this takes the eps as necessary input (hence, only works for a mean or a median)
+    # NOTE: potentially add posterior_median & posterior_mean to get/set_par
+    # set_par is assumed to be done before
+    # first, calculate (L,K). Obtain the linear LOM (for each period)
+    # then iterate over the periods and add the contribution of each shock to a preallocated vector
+    # return this vector
+    pass
+
+
+
+

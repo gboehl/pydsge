@@ -146,10 +146,8 @@ def posteriorplot_m(self, **args):
 
 
 def mode_summary(self, data_cmaes=None, verbose=True):
-
-    data_cmaes = data_cmaes or self.fdict['cmaes_history']
-
-    f_cmaes, x_cmaes = data_cmaes[:2]
+    """Create a summary of the different results for the mode
+    """
 
     df_inp = {}
 
@@ -159,8 +157,14 @@ def mode_summary(self, data_cmaes=None, verbose=True):
     except KeyError:
         pass
 
-    for s, p in enumerate(x_cmaes):
-        df_inp['run %s: mode' % s] = list(p) + [f_cmaes[s]]
+    try:
+        data_cmaes = data_cmaes or self.fdict['cmaes_history']
+        f_cmaes, x_cmaes = data_cmaes[:2]
+
+        for s, p in enumerate(x_cmaes):
+            df_inp['run %s: mode' % s] = list(p) + [f_cmaes[s]]
+    except KeyError:
+        pass
 
     df = pd.DataFrame(df_inp)
     df.index = self.prior_names + ['loglike']
@@ -256,7 +260,7 @@ def info_m(self, verbose=True, **args):
         res += 'Parameters: %s\n' % cshp[2]
         res += 'Chains: %s\n' % cshp[1]
         res += 'Last %s of %s samples\n' % (tune, cshp[0])
-    except AttributeError:
+    except (AttributeError, KeyError):
         pass
 
     if verbose:

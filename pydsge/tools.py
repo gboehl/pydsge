@@ -56,7 +56,7 @@ def get_eps(self, x, xp):
     return (x - self.t_func(xp)[0]) @ self.SIG
 
 
-def irfs(self, shocklist, pars=None, T=30, linear=False, verbose=False):
+def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, verbose=False):
     """Simulate impulse responses
 
     Parameters
@@ -83,7 +83,7 @@ def irfs(self, shocklist, pars=None, T=30, linear=False, verbose=False):
         if np.any(par):
             self.set_par(par, autocompile=False)
 
-        st_vec = np.zeros(len(self.vv))
+        st_vec = state or np.zeros(len(self.vv))
 
         X = np.empty((T, len(self.vv)))
         K = np.empty(T)
@@ -200,6 +200,7 @@ def simulate(self, source=None, mask=None, linear=False, verbose=False):
 
         X = [state]
         K = []
+        L = []
 
         for eps_t in eps:
 
@@ -209,12 +210,14 @@ def simulate(self, source=None, mask=None, linear=False, verbose=False):
             superflag |= flag
 
             X.append(state)
+            L.append(l)
             K.append(k)
 
         X = np.array(X)
+        L = np.array(L)
         K = np.array(K)
 
-        return X, np.expand_dims(K, 2), superflag
+        return X, (L,K), superflag
 
     wrap = tqdm.tqdm if verbose else (lambda x, **kwarg: x)
 
