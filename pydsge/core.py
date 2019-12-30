@@ -264,6 +264,7 @@ def prior_sampler(self, nsamples, seed=0, test_lprob=False, verbose=True):
 
     get_par = serializer(self.get_par)
     get_sys = serializer(self.get_sys)
+    lprob = serializer(self.lprob) if test_lprob else None
 
     def runner(locseed):
 
