@@ -828,6 +828,10 @@ def cmaes(self, p0=None, sigma=None, pop_size=None, restart_factor=2, seeds=3, s
 
         if verbose:
             from .clsmethods import mode_summary
+
+            if self.description is not None:
+                print('[cma-es:]'.ljust(15, ' ') +
+                      'Searching %s (%s)' %(self.name, self.description))
             mode_summary(self, data_cmaes=(f_hist, x_hist))
             print('')
 

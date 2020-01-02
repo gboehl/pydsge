@@ -165,7 +165,7 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, co
     return res
 
 
-def extract(self, sample=None, nsamples=1, precalc=True, seed=0, store_path=None, verbose=True, **npasargs):
+def extract(self, sample=None, nsamples=1, precalc=True, seed=0, store_path=None, verbose=True, debug=False, **npasargs):
     """Extract the timeseries of (smoothed) shocks.
 
     Parameters
@@ -184,6 +184,8 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, store_path=None
     import tqdm
     import os
     from grgrlib.core import map2arr, serializer
+
+    self.debug = debug
 
     if np.ndim(sample) <= 1:
         sample = [sample]
@@ -209,16 +211,20 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, store_path=None
         else:
             get_eps = None
 
-        means, covs, resid, flags = npas(
-            get_eps=get_eps, verbose=verbose-1, seed=seed_loc, nsamples=1, **npasargs)
+        for natt in range(4):
+            try:
+                means, covs, resid, flags = npas(get_eps=get_eps, verbose=verbose-1, seed=seed_loc, nsamples=1, **npasargs)
 
-        return means[0], covs, resid[0], flags
+                return means[0], covs, resid[0], flags
+            except:
+                if natt < 3:
+                    pass
+                else:
+                    raise
+
 
     wrap = tqdm.tqdm if verbose else (lambda x, **kwarg: x)
-
-    res = wrap(self.mapper(runner, sample), unit=' sample(s)',
-               total=len(sample), dynamic_ncols=True)
-
+    res = wrap(self.mapper(runner, sample), unit=' sample(s)', total=len(sample), dynamic_ncols=True)
     means, covs, resid, flags = map2arr(res)
 
     edict = {'pars': [s[0] for s in sample],

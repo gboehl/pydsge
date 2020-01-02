@@ -256,9 +256,6 @@ def prior_sampler(self, nsamples, seed=0, test_lprob=False, verbose=True):
 
     frozen_prior = self.fdict['frozen_prior']
 
-    if not hasattr(self, 'mapper'):
-        self.mapper = map
-
     if hasattr(self, 'pool'):
         self.pool.clear()
 
@@ -279,7 +276,7 @@ def prior_sampler(self, nsamples, seed=0, test_lprob=False, verbose=True):
             with np.warnings.catch_warnings(record=False):
                 try:
                     np.warnings.filterwarnings('error')
-                    rst = np.random.randint(32**2-2)
+                    rst = np.random.randint(2**32-2)
                     pdraw = [pl.rvs(random_state=rst+sn)
                              for sn, pl in enumerate(frozen_prior)]
 

@@ -107,9 +107,9 @@ def LL_jit(l, k, s, v, mat, term):
 
 
 @njit(nogil=True, cache=True)
-def bLL_jit(l, k, s, v, mat, term):
+def bLL_jit(l, k, s, v, bmat, bterm):
 
-    return mat[l, k, s] @ v + term[l, k, s]
+    return bmat[l, k, s] @ v + bterm[l, k, s]
 
 
 @njit(nogil=True, cache=True)

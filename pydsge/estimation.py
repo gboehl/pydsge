@@ -14,7 +14,7 @@ from .core import get_par
 from .clsmethods import create_pool
 
 
-def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=False, dispatch=False, constr_data=False, ncores=None, verbose=True, **filterargs):
+def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=False, dispatch=False, constr_data=False, ncores=None, verbose=True, debug=False, **filterargs):
     """Initializes the tools necessary for estimation
 
     ...
@@ -71,6 +71,7 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
     self.fdict['constr_data'] = constr_data
     self.fdict['datetime'] = str(datetime.now())
 
+    self.debug = debug
     self.Z = np.array(self.data)
 
     if not hasattr(self, 'sys') or not hasattr(self, 'precalc_mat'):
@@ -91,8 +92,8 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
             15, ' ') + 'likelihood of initial values is zero.')
 
     if verbose:
-        print('[estimation:]'.ljust(15, ' ') + 'Model operational. %s states, %s observables.' %
-              (len(self.vv), len(self.observables)))
+        print('[estimation:]'.ljust(15, ' ') + 'Model operational. %s states, %s observables, %s data points.' %
+              (len(self.vv), len(self.observables), len(self.data)))
 
     prior = self.prior
     par_fix = self.par_fix.copy()
@@ -177,7 +178,7 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
 
     linear_pa = linear
 
-    def lprob(par, linear=None, verbose=verbose, temp=1, lprob_seed='set'):
+    def lprob(par, linear=None, verbose=verbose > 1, temp=1, lprob_seed='set'):
 
         lp = lprior(par)
 

@@ -339,7 +339,7 @@ def kdes(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, linear=N
     return
 
 
-def tmcmc(self, nsteps, nwalks, ntemps, target, update_freq=False, verbose=True, **mcmc_args):
+def tmcmc(self, nsteps, nwalks, ntemps, target, update_freq=False, test_lprob=False, verbose=True, **mcmc_args):
     """Run Tempered Ensemble MCMC
 
     Parameters
@@ -355,7 +355,7 @@ def tmcmc(self, nsteps, nwalks, ntemps, target, update_freq=False, verbose=True,
     update_freq = update_freq if update_freq <= nsteps else False
 
     # sample pars from prior
-    pars = prior_sampler(self, nwalks, test_lprob=True, verbose=verbose)
+    pars = prior_sampler(self, nwalks, test_lprob=test_lprob, verbose=verbose)
 
     x = get_par(self, 'prior_mean', asdict=False,
                 full=False, verbose=verbose > 1)

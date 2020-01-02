@@ -36,7 +36,6 @@ def calc_min_interval(x, alpha):
         return None, None
 
     else:
-
         min_idx = np.argmin(interval_width)
         hdi_min = x[min_idx]
         hdi_max = x[min_idx + interval_idx_inc]
@@ -324,41 +323,96 @@ def pmdm_report(self, x_max, res_max, n=np.inf, printfunc=print):
     return
 
 
-def variance_decomposition(self, eps, states, pars=None):
+def gfevd(self, eps_dict, verbose=True):
     """Calculates the generalized forecasting error variance decomposition (GFEVD, Lanne & Nyberg)
+
+    Parameters
+    ----------
+    eps : array or dict
+    states : array, optional
+    pars : array, optional
+    verbose : bool
     """
 
-    ## exclude pars lateron
-    sample = zip(eps, states, pars)
+    states = eps_dict['means']
+    pars = eps_dict['pars']
+    resids = eps_dict['resid']
 
-    gis = np.empty((len(self.shocks), len(self.vv)))
-    for e in self.shocks:
+    if np.ndim(resids) > 2:
+        resids = resids.reshape(-1, resids.shape[-1])
+    if np.ndim(states) > 2:
+        states = states.reshape(-1, states.shape[-1])
+    if np.ndim(pars) > 2:
+        pars = pars.reshape(-1, pars.shape[-1])
 
-        ei = self.shocks.index(e)
+    sample = zip(resids, states, pars)
 
-        for s in sample:
-            shocks = [e, s[0][ei], 0]
-            # disable parallelization in irfs
-            irfs = self.irfs(shocklist, pars=sample[2], T=1, state=s[1])
-            state = self.t_func(s[1])
+    gis = np.zeros((len(self.shocks), len(self.vv)))
+    for s in sample:
+
+        if s[2] is not None:
+            self.set_par(s[2])
+
+        for e in self.shocks:
+
+            ei = self.shocks.index(e)
+            shock = (e, s[0][ei], 0)
+
+            irfs = self.irfs(shock, T=1, state=s[1])[0]
+            state = self.t_func(s[1])[0]
             gis[ei] += (irfs - state)**2
 
     gis /= np.sum(gis, axis=0)
 
-    return gis
+    vd = pd.DataFrame(gis, index=self.shocks, columns=self.vv)
+
+    if verbose:
+        print(vd.round(3))
+
+    return vd
 
 
-def historic_decomposition(self, eps):
-    """Calculates the historic decomposition, based on the normalization
+def historic_decomposition(self, eps_dict):
+    """Calculates the historic decomposition, based on normalized counterfactuals
     """
-    # this takes the eps as necessary input (hence, only works for a mean or a median)
-    # NOTE: potentially add posterior_median & posterior_mean to get/set_par
-    # set_par is assumed to be done before
-    # first, calculate (L,K). Obtain the linear LOM (for each period)
-    # then iterate over the periods and add the contribution of each shock to a preallocated vector
-    # return this vector
-    pass
 
+    states = eps_dict['means']
+    pars = eps_dict['pars']
+    resids = eps_dict['resid']
 
+    nsamples = pars.shape[0]
+    hc = np.empty((nsamples, len(self.data), len(self.shocks), len(self.vv)))
 
+    for i in range(nsamples):
 
+        self.set_par(pars[i])
+
+        mat, term, bmat, bterm = self.precalc_mat
+        N, A, J, cx, b, x_bar = self.sys
+
+        state = states[i][0]
+
+        hc[i, 0, :, :] = state
+
+        for t, resid in enumerate(resids[i]):
+            newstate, (l,k), _ = self.t_func(state, resid, return_k=True)
+
+            if k:
+                v = state + self.SIG @ resid
+                acon = bmat[l, k, 1] @ v + bterm[l, k, 1] # absolute contibution
+
+            state = newstate
+
+            ## for each shock:
+            for s in range(len(self.shocks)):
+                eps = np.zeros(len(self.shocks))
+                eps[s] = resid[s]
+                v = hc[i,t-1,s] + self.SIG @ eps
+
+                hc[i,t+1,s,:] = (mat[l, k, 1] @ v)[J.shape[0]:]
+
+                if k:
+                    rcon = bmat[l, k, 1] @ v + bterm[l, k, 1] 
+                    hc[i,t+1,s,:] += rcon/acon*term[l, k, 1][J.shape[0]:] # proportional to relative contribution to constaint spell duration
+
+    return hc

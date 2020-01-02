@@ -1,6 +1,10 @@
 #!/bin/python
 # -*- coding: utf-8 -*-
 
+import os
+import numpy as np
+import pandas as pd
+from .stats import summary, pmdm_report, gfevd, historic_decomposition
 from .parser import DSGE
 from .plots import posteriorplot, traceplot, swarm_rank, swarm_champ, swarm_plot
 from .mcmc import mcmc, kdes, tmcmc
@@ -8,10 +12,6 @@ from .modesearch import pmdm, nlopt, cmaes, cmaes2, swarms
 from .filtering import *
 from .tools import *
 from .core import *
-import os
-import numpy as np
-import pandas as pd
-from .stats import summary, pmdm_report
 
 
 def get_tune(self):
@@ -439,7 +439,7 @@ def sample_box(self, dim0, dim1=None, bounds=None, lp_rule=None, verbose=False):
 @property
 def mapper(self):
 
-    if hasattr(self, 'pool'):
+    if hasattr(self, 'pool') and not self.debug:
         return self.pool.imap
     else:
         return map
@@ -534,3 +534,5 @@ DSGE.extract = extract
 DSGE.create_obs_cov = create_obs_cov
 DSGE.mask = mask
 DSGE.load_eps = load_eps
+DSGE.gfevd = gfevd
+DSGE.historic_decomposition = historic_decomposition

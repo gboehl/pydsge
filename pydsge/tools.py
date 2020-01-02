@@ -83,7 +83,7 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, verbose=Fal
         if np.any(par):
             self.set_par(par, autocompile=False)
 
-        st_vec = state or np.zeros(len(self.vv))
+        st_vec = state if state is not None else np.zeros(len(self.vv))
 
         X = np.empty((T, len(self.vv)))
         K = np.empty(T)
@@ -114,7 +114,7 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, verbose=Fal
 
         return X, K, L, superflag
 
-    if np.any(pars):
+    if pars and len(pars) > 1:
         res = self.mapper(irfs_runner, pars)
         X, K, L, flag = map2arr(res)
     else:
