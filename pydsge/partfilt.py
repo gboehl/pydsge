@@ -8,14 +8,14 @@ from numba import njit, prange
 
 
 @njit(parallel=True)
-def logpdf_jit(x, get_eps, locs, L, logdet, dim):
+def logpdf_jit(x, get_eps_lin, locs, L, logdet, dim):
 
     HALFLOG2PI = 0.5 * np.log(np.pi)
 
     res = np.empty(locs.shape[0])
 
     for i in prange(locs.shape[0]):
-        z = np.linalg.solve(L, get_eps(x, locs[i]).T)
+        z = np.linalg.solve(L, get_eps_lin(x, locs[i]).T)
         res[i] = - 0.5 * np.sum(z**2) - logdet - dim * HALFLOG2PI
 
     return res
@@ -36,10 +36,10 @@ def rvs_jit(state, func, L, size, dim, dim_v):
 
 
 class StochTFunc(particles.distributions.ProbDist):
-    def __init__(self, t_func, get_eps, state, cov):
+    def __init__(self, t_func, get_eps_lin, state, cov):
 
         self.t_func = t_func
-        self.get_eps = get_eps
+        self.get_eps_lin = get_eps_lin
         self.state = state
         self.cov = cov
 
@@ -62,7 +62,7 @@ class StochTFunc(particles.distributions.ProbDist):
         return self.state.shape[1]
 
     def logpdf(self, x):
-        return logpdf_jit(x, self.get_eps, self.state, self.L, self.halflogdetcor, self.dim)
+        return logpdf_jit(x, self.get_eps_lin, self.state, self.L, self.halflogdetcor, self.dim)
 
     def rvs(self, size=1):
         return rvs_jit(self.state, self.t_func, self.L, size, self.dim, self.nstates)
@@ -70,11 +70,11 @@ class StochTFunc(particles.distributions.ProbDist):
 
 class DSGESSM(ssm.StateSpaceModel):
 
-    def __init__(self, t_func, obs_func, get_eps, init_cov, t_cov, obs_cov, x=None):
+    def __init__(self, t_func, obs_func, get_eps_lin, init_cov, t_cov, obs_cov, x=None):
 
         self.t_func = t_func
         self.obs_func = obs_func
-        self.get_eps = get_eps
+        self.get_eps_lin = get_eps_lin
 
         self.init_x = 0. if x is None else x
 
@@ -88,7 +88,7 @@ class DSGESSM(ssm.StateSpaceModel):
 
     def PX(self, t, xp):
         # Distribution of X_t given X_{t-1}=xp (p=past)
-        return StochTFunc(t_func=self.t_func, get_eps=self.get_eps, state=xp, cov=self.t_cov)
+        return StochTFunc(t_func=self.t_func, get_eps_lin=self.get_eps_lin, state=xp, cov=self.t_cov)
 
     def PY(self, t, xp, x):
         # Distribution of Y_t given X_t=x (and possibly X_{t-1}=xp)
@@ -116,13 +116,13 @@ class ParticleFilter(object):
 
         self.t_func = dummy
         self.o_func = dummy
-        self.get_eps = dummy
+        self.get_eps_lin = dummy
 
         self.auxiliary_bootstrap = auxiliary_bootstrap
 
     @property
     def ss_mod(self):
-        return DSGESSM(self.t_func, self.o_func, self.get_eps, self.P, self.Q, self.R)
+        return DSGESSM(self.t_func, self.o_func, self.get_eps_lin, self.P, self.Q, self.R)
 
     @property
     def fk_mod(self):

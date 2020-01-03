@@ -395,24 +395,71 @@ def historic_decomposition(self, eps_dict):
         hc[i, 0, :, :] = state
 
         for t, resid in enumerate(resids[i]):
-            newstate, (l,k), _ = self.t_func(state, resid, return_k=True)
+            newstate, (l, k), _ = self.t_func(state, resid, return_k=True)
 
             if k:
                 v = state + self.SIG @ resid
-                acon = bmat[l, k, 1] @ v + bterm[l, k, 1] # absolute contibution
+                acon = bmat[l, k, 1] @ v + \
+                    bterm[l, k, 1]  # absolute contibution
 
             state = newstate
 
-            ## for each shock:
+            # for each shock:
             for s in range(len(self.shocks)):
                 eps = np.zeros(len(self.shocks))
                 eps[s] = resid[s]
-                v = hc[i,t-1,s] + self.SIG @ eps
+                v = hc[i, t-1, s] + self.SIG @ eps
 
-                hc[i,t+1,s,:] = (mat[l, k, 1] @ v)[J.shape[0]:]
+                hc[i, t+1, s, :] = (mat[l, k, 1] @ v)[J.shape[0]:]
 
                 if k:
-                    rcon = bmat[l, k, 1] @ v + bterm[l, k, 1] 
-                    hc[i,t+1,s,:] += rcon/acon*term[l, k, 1][J.shape[0]:] # proportional to relative contribution to constaint spell duration
+                    rcon = bmat[l, k, 1] @ v + bterm[l, k, 1]
+                    # proportional to relative contribution to constaint spell duration
+                    hc[i, t+1, s, :] += rcon/acon*term[l, k, 1][J.shape[0]:]
 
     return hc
+
+
+def mdd(self, chain=None, mode_f=None, inv_hess=None, tune=None, verbose=False):
+    """Approximate the marginal data density useing the LaPlace method.
+    `inv_hess` can be a matrix or the method string in ('hess', 'cov') telling me how to Approximate the inverse Hessian
+    """
+
+    if verbose:
+        st = time.time()
+
+    if mode_f is None:
+        mode_f = self.fdict['mode_f']
+
+    if inv_hess == 'hess':
+
+        import numdifftools as nd
+
+        np.warnings.filterwarnings('ignore')
+        hh = nd.Hessian(func)(self.fdict['mode_x'])
+        np.warnings.filterwarnings('default')
+
+        if np.isnan(hh).any():
+            raise ValueError('[mdd:]'.ljust(
+                15, ' ') + "Option `hess` is experimental and did not return a usable hessian matrix.")
+
+        inv_hess = np.linalg.inv(hh)
+
+    elif inv_hess is None:
+
+        if chain is None:
+            tune = tune or get_tune(self)
+            chain = self.get_chain()[-tune:]
+            chain = chain.reshape(-1, chain.shape[-1])
+
+        inv_hess = np.cov(chain.T)
+
+    ndim = len(self.fdict['prior_names'])
+    log_det_inv_hess = np.log(np.linalg.det(inv_hess))
+    mdd = .5*ndim*np.log(2*np.pi) + .5*log_det_inv_hess + mode_f
+
+    if verbose:
+        print('[mdd:]'.ljust(15, ' ') + "Calculation took %s. The marginal data density is %s." %
+              (timeprint(time.time()-st), mdd.round(4)))
+
+    return mdd

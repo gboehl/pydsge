@@ -1,6 +1,9 @@
 #!/bin/python
 # -*- coding: utf-8 -*-
 
+"""contains functions related to simulating the mode
+"""
+
 import os
 import numpy as np
 import pandas as pd
@@ -52,8 +55,28 @@ def o_func(self, state):
     return state @ self.hx[0].T + self.hx[1]
 
 
-def get_eps(self, x, xp):
-    return (x - self.t_func(xp)[0]) @ self.SIG
+def calc_obs(self, states, covs=None):
+    """Get observables from state representation
+
+    Parameters
+    ----------
+    states : array
+    covs : array, optional
+        Series of covariance matrices. If provided, 95% intervals will be calculated.
+    """
+
+    if covs is None:
+        return states @ self.hx[0].T + self.hx[1]
+
+    var = np.diagonal(covs, axis1=1, axis2=2)
+    std = np.sqrt(var)
+    iv95 = np.stack((states - 1.96*std, states, states + 1.96*std))
+
+    obs = (self.hx[0] @ states.T).T + self.hx[1]
+    std_obs = (self.hx[0] @ std.T).T
+    iv95_obs = np.stack((obs - 1.96*std_obs, obs, obs + 1.96*std_obs))
+
+    return iv95_obs, iv95
 
 
 def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, verbose=False):
@@ -149,22 +172,6 @@ def mask(self, verbose=False):
     return msk.rename(columns=dict(zip(self.observables, self.shocks)))[:-1]
 
 
-def load_eps(self, path=None):
-    """Load stored shock innovations
-    """
-
-    if path is None:
-        path = self.name + '_eps'
-
-    if path[-4] != '.npz':
-        path += '.npz'
-
-    if not os.path.isabs(path):
-        path = os.path.join(self.path, path)
-
-    return dict(np.load(path, allow_pickle=True))
-
-
 def simulate(self, source=None, mask=None, linear=False, verbose=False):
     """Simulate time series given a series of exogenous innovations.
 
@@ -217,7 +224,7 @@ def simulate(self, source=None, mask=None, linear=False, verbose=False):
         L = np.array(L)
         K = np.array(K)
 
-        return X, (L,K), superflag
+        return X, (L, K), superflag
 
     wrap = tqdm.tqdm if verbose else (lambda x, **kwarg: x)
 

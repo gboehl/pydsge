@@ -110,7 +110,7 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, co
     else:
         self.filter.t_func = self.t_func
         self.filter.o_func = self.o_func
-        self.filter.get_eps = self.get_eps
+        self.filter.get_eps = self.get_eps_lin
 
     if self.filter.name == 'KalmanFilter':
 
@@ -185,7 +185,7 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, store_path=None
     import os
     from grgrlib.core import map2arr, serializer
 
-    self.debug = debug
+    self.debug |= debug
 
     if np.ndim(sample) <= 1:
         sample = [sample]
@@ -202,18 +202,16 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, store_path=None
         par, seed_loc = arg
 
         if par is not None:
-            set_par(par, autocompile=False)
+            set_par(par)
 
         run_filter(verbose=False)
 
-        if precalc:
-            get_eps = filter_get_eps
-        else:
-            get_eps = None
+        get_eps = filter_get_eps if precalc else None
 
         for natt in range(4):
             try:
-                means, covs, resid, flags = npas(get_eps=get_eps, verbose=verbose-1, seed=seed_loc, nsamples=1, **npasargs)
+                means, covs, resid, flags = npas(
+                    get_eps=get_eps, verbose=verbose-1, seed=seed_loc, nsamples=1, **npasargs)
 
                 return means[0], covs, resid[0], flags
             except:
@@ -222,9 +220,9 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, store_path=None
                 else:
                     raise
 
-
     wrap = tqdm.tqdm if verbose else (lambda x, **kwarg: x)
-    res = wrap(self.mapper(runner, sample), unit=' sample(s)', total=len(sample), dynamic_ncols=True)
+    res = wrap(self.mapper(runner, sample), unit=' sample(s)',
+               total=len(sample), dynamic_ncols=True)
     means, covs, resid, flags = map2arr(res)
 
     edict = {'pars': [s[0] for s in sample],

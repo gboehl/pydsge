@@ -1,6 +1,9 @@
 #!/bin/python
 # -*- coding: utf-8 -*-
 
+"""contains functions related to (re)compiling the model with different parameters
+"""
+
 from grgrlib import fast0, eig, re_bc
 import numpy as np
 import numpy.linalg as nl
@@ -214,6 +217,7 @@ def posterior_sampler(self, nsamples, seed=0, verbose=True):
     array
         Numpy array of parameters
     """
+
     import random
     from .clsmethods import get_tune
 
@@ -223,6 +227,24 @@ def posterior_sampler(self, nsamples, seed=0, verbose=True):
     sample = random.choices(sample, k=nsamples)
 
     return sample
+
+
+def sample_box(self, dim0, dim1=None, bounds=None, lp_rule=None, verbose=False):
+    """Sample from a hypercube
+    """
+
+    # TODO: include in get_par
+
+    import chaospy
+
+    bnd = bounds or np.array(self.fdict['prior_bounds'])
+    dim1 = dim1 or self.ndim
+    rule = lp_rule or 'S'
+
+    res = chaospy.Uniform(0, 1).sample(size=(dim0, dim1), rule=rule)
+    res = (bnd[1] - bnd[0])*res + bnd[0]
+
+    return res
 
 
 def prior_sampler(self, nsamples, seed=0, test_lprob=False, verbose=True):

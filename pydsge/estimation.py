@@ -11,7 +11,6 @@ from datetime import datetime
 from .stats import get_prior
 from .filtering import get_ll
 from .core import get_par
-from .clsmethods import create_pool
 
 
 def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=False, dispatch=False, constr_data=False, ncores=None, verbose=True, debug=False, **filterargs):
@@ -226,5 +225,51 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
         create_pool(self, ncores)
     else:
         self.pool = None
+
+    return
+
+
+def create_pool(self, ncores=None):
+
+    import pathos
+
+    self.pool = pathos.pools.ProcessPool(ncores)
+    self.pool.clear()
+
+    return self.pool
+
+
+@property
+def mapper(self):
+
+    if hasattr(self, 'pool') and not self.debug:
+        return self.pool.imap
+    else:
+        return map
+
+
+def box_check(self, par=None):
+    """Check if parameterset lies outside the box constraints
+
+    Parameters
+    ----------
+    par : array or list, optional
+        The parameter set to check
+    """
+
+    if par is None:
+        par = self.par
+
+    for i, name in enumerate(self.fdict['prior_names']):
+
+        lb, ub = self.fdict['prior_bounds']
+
+        if par[i] < lb[i]:
+            print('[box_check:]'.ljust(
+                15, ' ') + 'Parameter %s of %s lower than lb of %s.' % (name, par[i].round(5), lb[i]))
+
+        if par[i] > ub[i]:
+            print('[box_check:]'.ljust(
+                15, ' ') + 'Parameter %s of %s higher than ub of %s.' % (name, par[i].round(5), ub[i]))
 
     return
