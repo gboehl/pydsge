@@ -225,6 +225,9 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, store_path=None
                total=len(sample), dynamic_ncols=True)
     means, covs, resid, flags = map2arr(res)
 
+    if self.pool:
+        self.pool.close()
+
     edict = {'pars': [s[0] for s in sample],
              'means': means,
              'covs': covs,

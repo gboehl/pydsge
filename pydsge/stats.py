@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import warnings
 import os
+import tqdm
 import scipy.stats as ss
 import scipy.optimize as so
 from scipy.special import gammaln
@@ -323,32 +324,38 @@ def pmdm_report(self, x_max, res_max, n=np.inf, printfunc=print):
     return
 
 
-def gfevd(self, eps_dict, verbose=True):
+def gfevd(self, eps_dict, nsample=None, verbose=True):
     """Calculates the generalized forecasting error variance decomposition (GFEVD, Lanne & Nyberg)
 
     Parameters
     ----------
     eps : array or dict
-    states : array, optional
-    pars : array, optional
-    verbose : bool
+    nsample : int, optional
+        Sample size. Defaults to everything exposed to the function.
+    verbose : bool, optional
     """
 
-    states = eps_dict['means']
+    states = eps_dict['means'][:,:-1,:]
     pars = eps_dict['pars']
     resids = eps_dict['resid']
 
     if np.ndim(resids) > 2:
+        pars = pars.repeat(resids.shape[1], axis=0)
+    if np.ndim(resids) > 2:
         resids = resids.reshape(-1, resids.shape[-1])
     if np.ndim(states) > 2:
         states = states.reshape(-1, states.shape[-1])
-    if np.ndim(pars) > 2:
-        pars = pars.reshape(-1, pars.shape[-1])
 
-    sample = zip(resids, states, pars)
+    nsample = nsample or resids.shape[0]
+    numbers = np.arange(resids.shape[0])
+    draw = np.random.choice(numbers, nsample, replace=False)
 
+    sample = zip(resids[draw], states[draw], pars[draw])
     gis = np.zeros((len(self.shocks), len(self.vv)))
-    for s in sample:
+
+    wrap = tqdm.tqdm if verbose else (lambda x, **kwarg: x)
+
+    for s in wrap(sample, total=nsample, unit='draws', dynamic_ncols=True):
 
         if s[2] is not None:
             self.set_par(s[2])
@@ -366,7 +373,7 @@ def gfevd(self, eps_dict, verbose=True):
 
     vd = pd.DataFrame(gis, index=self.shocks, columns=self.vv)
 
-    if verbose:
+    if verbose > 1:
         print(vd.round(3))
 
     return vd

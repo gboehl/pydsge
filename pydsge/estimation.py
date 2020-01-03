@@ -229,9 +229,25 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
     return
 
 
-def create_pool(self, ncores=None):
+def create_pool(self, ncores=None, threadpool_limit=1):
+    """Creates a reusable pool
+
+    Parameters
+    ----------
+
+    ncores : int, optional
+        Number of cores. Defaults to pathos' default, which is the number of cores.
+    threadpool_limit : int, optional
+        Number of threads that numpy uses independently of pathos. Only used if `threadpoolctl` is installed. Defaults to one.
+    """
 
     import pathos
+
+    try:
+        from threadpoolctl import threadpool_limits
+        threadpool_limits(limits=threadpool_limit)
+    except ImportError:
+        print('[create_pool:]'.ljust(15, ' ') + "Could not import package `threadpoolctl` to limit numpy multithreading. This might reduce multiprocessing performance.")
 
     self.pool = pathos.pools.ProcessPool(ncores)
     self.pool.clear()
