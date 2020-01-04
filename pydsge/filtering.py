@@ -228,15 +228,17 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, verbose=True, d
         if par is not None:
             set_par(par)
 
-        run_filter(verbose=verbose - 2)
+        res = run_filter(verbose=verbose - 2)
 
         if fname == 'KalmanFilter':
-            X = self.X.copy()
-            for t,x in enumerate(zip(self.X[:-1], self.X[1:])):
+            # X = self.X.copy()
+            X = res[0].copy()
+            # for t,x in enumerate(zip(self.X[:-1], self.X[1:])):
+            for t,x in enumerate(zip(res[0][:-1], res[0][1:])):
                 resid = filter_get_eps(x[1],X[0])
                 X[t+1] =  t_func(X[t], resid)[0]
 
-            return X, self.covs, resid, 0
+            return X, res[1], resid, 0
 
         get_eps = filter_get_eps if precalc else None
 
