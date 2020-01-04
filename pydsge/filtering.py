@@ -213,10 +213,11 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, verbose=True, d
         self.debug |= debug
 
         npas = serializer(self.filter.npas)
-        filter_get_eps = serializer(self.filter.get_eps)
 
+    filter_get_eps = serializer(self.filter.get_eps)
     set_par = serializer(self.set_par)
     run_filter = serializer(self.run_filter)
+    t_func = serializer(self.t_func)
 
     sample = [(x, y) for x in sample for y in range(nsamples)]
 
@@ -232,8 +233,8 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, verbose=True, d
         if fname == 'KalmanFilter':
             X = self.X.copy()
             for t,x in enumerate(zip(self.X[:-1], self.X[1:])):
-                resid = self.filter.get_eps(x[1],X[0])
-                X[t+1] =  self.t_func(X[t], resid)[0]
+                resid = filter_get_eps(x[1],X[0])
+                X[t+1] =  t_func(X[t], resid)[0]
 
             return X, self.covs, resid, 0
 
