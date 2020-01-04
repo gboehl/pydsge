@@ -165,7 +165,7 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, co
     return res
 
 
-def extract(self, sample=None, nsamples=1, precalc=True, seed=0, store_path=None, verbose=True, debug=False, **npasargs):
+def extract(self, sample=None, nsamples=1, precalc=True, seed=0, verbose=True, debug=False, **npasargs):
     """Extract the timeseries of (smoothed) shocks.
 
     Parameters
@@ -233,20 +233,5 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, store_path=None
              'covs': covs,
              'resid': resid,
              'flags': flags}
-
-    if store_path:
-
-        if not isinstance(store_path, str):
-            store_path = self.name + '_eps'
-
-        if store_path[-4] == '.npz':
-            store_path = store_path[-4]
-
-        if not os.path.isabs(store_path):
-            store_path = os.path.join(self.path, store_path)
-
-        np.savez(store_path, **edict)
-
-    self.eps_dict = edict
 
     return edict

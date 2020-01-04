@@ -106,12 +106,34 @@ def save_meta(self, filename=None, verbose=True):
     return
 
 
-def load_eps(self, path=None):
-    """Load stored shock innovations
+def save_rdict(self, rdict, path=None, suffix=''):
+    """Save dictionary of results
+
+    The idea is to keep meta data (the model, setup, ...) and the results obtained (chains, smoothed residuals, ...) separate. 
+    """
+
+    if not isinstance(path, str):
+        path = self.name + '_res'
+
+    if path[-4] == '.npz':
+        path = path[-4]
+
+    if not os.path.isabs(path):
+        path = os.path.join(self.path, path)
+
+    np.savez(path + suffix, **rdict)
+
+    return
+
+
+def load_rdict(self, path=None, suffix=''):
+    """Load stored dictionary of results
+
+    The idea is to keep meta data (the model, setup, ...) and the results obtained (chains, smoothed residuals, ...) separate. `save_rdict` suggests some standard conventions.
     """
 
     if path is None:
-        path = self.name + '_eps'
+        path = self.name + '_res'
 
     if path[-4] != '.npz':
         path += '.npz'
@@ -119,7 +141,7 @@ def load_eps(self, path=None):
     if not os.path.isabs(path):
         path = os.path.join(self.path, path)
 
-    return dict(np.load(path, allow_pickle=True))
+    return dict(np.load(path + suffix, allow_pickle=True))
 
 
 def traceplot_m(self, chain=None, **args):
@@ -412,6 +434,7 @@ DSGE.get_log_prob = get_log_prob
 DSGE.extract = extract
 DSGE.create_obs_cov = create_obs_cov
 DSGE.mask = mask
-DSGE.load_eps = load_eps
+DSGE.load_rdict = load_rdict
+DSGE.save_rdict = save_rdict
 DSGE.gfevd = gfevd
 DSGE.historic_decomposition = historic_decomposition
