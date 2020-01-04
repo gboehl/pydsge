@@ -101,12 +101,12 @@ def save_meta(self, filename=None, verbose=True):
     np.savez(filename, **self.fdict)
 
     if verbose:
-        print("'Metadata saved as '%s'" % filename)
+        print('[save_meta:]'.ljust(15, ' ') + "Metadata saved as '%s'" % filename)
 
     return
 
 
-def save_rdict(self, rdict, path=None, suffix=''):
+def save_rdict(self, rdict, path=None, suffix='', verbose=True):
     """Save dictionary of results
 
     The idea is to keep meta data (the model, setup, ...) and the results obtained (chains, smoothed residuals, ...) separate. 
@@ -123,6 +123,8 @@ def save_rdict(self, rdict, path=None, suffix=''):
 
     np.savez(path + suffix, **rdict)
 
+    if verbose:
+        print('[save_rdict:]'.ljust(15, ' ') + "Results saved as '%s'" % path)
     return
 
 

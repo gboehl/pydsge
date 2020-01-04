@@ -20,7 +20,14 @@ def create_filter(self, P=None, R=None, N=None, ftype=None, seed=None, **fargs):
 
     self.Z = np.array(self.data)
 
-    if ftype == 'KalmanFilter' or ftype == 'KF':
+    if ftype == 'KalmanFilter':
+        ftype = 'KF'
+    if ftype == 'ParticleFilter':
+        ftype = 'PF'
+    if ftype == 'AuxiliaryParticleFilter':
+        ftype = 'APF'
+
+    if ftype == 'KF':
 
         from econsieve import KalmanFilter
 
@@ -28,18 +35,19 @@ def create_filter(self, P=None, R=None, N=None, ftype=None, seed=None, **fargs):
         f.F = self.linear_representation
         f.H = self.hx
 
-    elif ftype in ('PF', 'APF', 'ParticleFilter', 'AuxiliaryParticleFilter'):
+    elif ftype in ('PF', 'APF'):
 
         from .partfilt import ParticleFilter
 
         if N is None:
             N = 10000
 
-        aux_bs = ftype in ('AuxiliaryParticleFilter', 'APF')
+        aux_bs = ftype == 'APF'
         f = ParticleFilter(N=N, dim_x=len(self.vv),
                            dim_z=self.ny, auxiliary_bootstrap=aux_bs)
 
     else:
+        ftype = 'TEnKF'
 
         from econsieve import TEnKF
 
@@ -61,7 +69,7 @@ def create_filter(self, P=None, R=None, N=None, ftype=None, seed=None, **fargs):
     f.eps_cov = self.QQ(self.ppar)
     f.Q = self.QQ(self.ppar) @ self.QQ(self.ppar)
 
-    if ftype in ('KalmanFilter', 'KF'):
+    if ftype == 'KF':
         CO = self.SIG @ f.eps_cov
         f.Q = CO @ CO.T
 
@@ -131,7 +139,7 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, co
 
         if smoother:
 
-            if verbose:
+            if verbose > 0:
                 print('[run_filter:]'.ljust(
                     15, ' ')+'Filtering done after %s seconds, starting smoothing...' % np.round(time.time()-st, 3))
 
@@ -142,7 +150,7 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, co
     else:
 
         res = self.filter.batch_filter(
-            self.Z, calc_ll=get_ll, store=smoother, verbose=verbose)
+            self.Z, calc_ll=get_ll, store=smoother, verbose=verbose > 0)
 
         if smoother:
             res = self.filter.rts_smoother(res, rcond=rcond)
@@ -152,13 +160,13 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, co
             res = -np.inf
         self.ll = res
 
-        if verbose:
+        if verbose > 0:
             print('[run_filter:]'.ljust(15, ' ')+'Filtering done in %s. Likelihood is %s.' %
                   (timeprint(time.time()-st, 3), res))
     else:
         self.X = res
 
-        if verbose:
+        if verbose > 0:
             print('[run_filter:]'.ljust(15, ' ')+'Filtering done in %s.' %
                   timeprint(time.time()-st, 3))
 
@@ -185,17 +193,32 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, verbose=True, d
     import os
     from grgrlib.core import map2arr, serializer
 
-    self.debug |= debug
-
     if np.ndim(sample) <= 1:
         sample = [sample]
 
-    sample = [(x, y) for x in sample for y in range(nsamples)]
+    fname = self.filter.name
+    verbose = verbose or 9*debug
 
-    run_filter = serializer(self.run_filter)
+    if fname == 'ParticleFilter':
+        raise NotImplementedError
+
+    if fname == 'KalmanFilter':
+        if nsamples > 1:
+            print('[extract:]'.ljust(15, ' ')+'Setting `nsamples` to 1 as the linear filter is deterministic.')
+        nsamples = 1
+        debug = not hasattr(self, 'debug') or self.debug
+        self.debug = True
+
+    else:
+        self.debug |= debug
+
+        npas = serializer(self.filter.npas)
+        filter_get_eps = serializer(self.filter.get_eps)
+
     set_par = serializer(self.set_par)
-    npas = serializer(self.filter.npas)
-    filter_get_eps = serializer(self.filter.get_eps)
+    run_filter = serializer(self.run_filter)
+
+    sample = [(x, y) for x in sample for y in range(nsamples)]
 
     def runner(arg):
 
@@ -204,7 +227,15 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, verbose=True, d
         if par is not None:
             set_par(par)
 
-        run_filter(verbose=False)
+        run_filter(verbose=verbose - 2)
+
+        if fname == 'KalmanFilter':
+            X = self.X.copy()
+            for t,x in enumerate(zip(self.X[:-1], self.X[1:])):
+                resid = self.filter.get_eps(x[1],X[0])
+                X[t+1] =  self.t_func(X[t], resid)[0]
+
+            return X, self.covs, resid, 0
 
         get_eps = filter_get_eps if precalc else None
 
@@ -225,10 +256,15 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, verbose=True, d
                total=len(sample), dynamic_ncols=True)
     means, covs, resid, flags = map2arr(res)
 
-    if self.pool:
-        self.pool.close()
+    if fname == 'KalmanFilter':
+        self.debug = debug
 
-    edict = {'pars': [s[0] for s in sample],
+    try:
+        self.pool.close()
+    except AttributeError:
+        pass
+
+    edict = {'pars': np.array([s[0] for s in sample]),
              'means': means,
              'covs': covs,
              'resid': resid,

@@ -3,6 +3,8 @@
 
 import os
 from .clsmethods import DSGE
+from pandas.plotting import register_matplotlib_converters
+register_matplotlib_converters()
 
 pth = os.path.dirname(__file__)
 

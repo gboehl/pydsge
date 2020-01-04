@@ -479,7 +479,18 @@ def set_par(self, dummy, setpar=None, par=None, roundto=5, autocompile=True, ver
     get_sys(self, par=list(par), verbose=verbose)
 
     if hasattr(self, 'filter'):
-        self.filter.Q = self.QQ(self.ppar) @ self.QQ(self.ppar)
+
+        self.filter.eps_cov = self.QQ(self.ppar)
+
+        if self.filter.name == 'KalmanFilter':
+            CO = self.SIG @ self.filter.eps_cov
+            Q = CO @ CO.T
+        elif self.filter.name == 'ParticleFilter':
+            raise NotADirectoryError
+        else:
+            Q = self.QQ(self.ppar) @ self.QQ(self.ppar)
+
+        self.filter.Q = Q
 
     if verbose:
         pdict = dict(zip(pars_str, np.round(self.par, roundto)))

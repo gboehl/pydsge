@@ -324,7 +324,7 @@ def pmdm_report(self, x_max, res_max, n=np.inf, printfunc=print):
     return
 
 
-def gfevd(self, eps_dict, nsample=None, verbose=True):
+def gfevd(self, eps_dict, nsample=None, linear=False, verbose=True):
     """Calculates the generalized forecasting error variance decomposition (GFEVD, Lanne & Nyberg)
 
     Parameters
@@ -365,8 +365,8 @@ def gfevd(self, eps_dict, nsample=None, verbose=True):
             ei = self.shocks.index(e)
             shock = (e, s[0][ei], 0)
 
-            irfs = self.irfs(shock, T=1, state=s[1])[0]
-            state = self.t_func(s[1])[0]
+            irfs = self.irfs(shock, T=1, state=s[1], linear=linear)[0]
+            state = self.t_func(s[1], linear=linear)[0]
             gis[ei] += (irfs - state)**2
 
     gis /= np.sum(gis, axis=0)
