@@ -47,7 +47,7 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, verbose=Fal
     self.fdict['reduce_sys'] = reduce_sys
 
     par = self.p0() if par is None else list(par)
-    ppar = self.get_full_par(par)  # parsed par
+    ppar = self.compile(par)  # parsed par
 
     if not self.const_var:
         raise NotImplementedError('Pakage is only meant to work with OBCs')
@@ -119,7 +119,7 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, verbose=Fal
         x_bar = par[[p.name for p in self.parameters].index('x_bar')]
     elif 'x_bar' in self.parafunc[0]:
         pf = self.parafunc
-        x_bar = pf[1](ppar)[pf[0].index('x_bar')]
+        x_bar = pf[1](par)[pf[0].index('x_bar')]
     else:
         print("Parameter `x_bar` (maximum value of the constraint) not specified. Assuming x_bar = -1 for now.")
         x_bar = -1
@@ -328,8 +328,11 @@ def prior_sampler(self, nsamples, seed=0, test_lprob=False, verbose=True):
         self.get_sys(reduce_sys=False, verbose=verbose > 1)
 
     if verbose:
+        smess = ''
+        if test_lprob:
+            smess = 'of zero likelihood, '
         print('[prior_sample:]'.ljust(
-            15, ' ') + ' sampling done. %2.2f%% of the prior are either indetermined or explosive.' % (100*(sum(nos)-nsamples)/nsamples))
+            15, ' ') + ' sampling done. %2.2f%% of the prior are either %s indetermined or explosive.' % (100*(sum(nos)-nsamples)/nsamples,smess))
 
     return draws
 

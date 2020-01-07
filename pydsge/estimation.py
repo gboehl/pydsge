@@ -131,6 +131,7 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
                         raise AttributeError('[estimation:]'.ljust(
                             15, ' ') + 'Missmatch between linearity choice (filter vs. lprob)')
                     # these max vals should be sufficient given we're dealing with stochastic linearization
+                    ## the get_sys and following part replicates call to set_par, redundant
                     self.get_sys(par=par_active_lst, l_max=3, k_max=16,
                                  reduce_sys=True, verbose=verbose > 3)
                     self.filter.Q = self.QQ(self.ppar) @ self.QQ(self.ppar)
@@ -138,11 +139,9 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
                     if not self.filter.name == 'KalmanFilter':
                         raise AttributeError('[estimation:]'.ljust(
                             15, ' ') + 'Missmatch between linearity choice (filter vs. lprob)')
+                    ## the get_sys and following part replicates call to set_par, redundant
                     self.get_sys(par=par_active_lst, l_max=1, k_max=0,
                                  reduce_sys=True, verbose=verbose > 3)
-                    self.filter.F = self.linear_representation
-                    self.filter.H = self.hx
-
                     CO = self.SIG @ self.QQ(self.ppar)
                     self.filter.Q = CO @ CO.T
 

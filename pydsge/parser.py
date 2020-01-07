@@ -387,16 +387,12 @@ class DSGE(dict):
         def add_para_func(f):
             return f
 
-        def get_full_par(px):
+        def full_compile(px):
             return px + psi(px)
 
-        # for legacy reasons (backward compatibility of self.parafunc)
-        def get_pfunc(px):
-            return px[-len(self['other_para']):]
-
-        self.get_full_par = get_full_par
-        # self.parafunc = [p.name for p in self['other_para']], psi
-        self.parafunc = [p.name for p in self['other_para']], get_pfunc
+        self.compile = full_compile
+        self.parafunc = [p.name for p in self['other_para']], psi
+        self.psi = psi
         self.PSI = add_para_func(PSI)
 
         self.DD = add_para_func(DD)
