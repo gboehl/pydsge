@@ -15,12 +15,12 @@ from .core import get_sys, get_par, set_par
 from .estimation import *
 
 
-def get_eps_lin(self, x, xp):
+def get_eps_lin(self, x, xp, rcond=1e-14):
     """Get filter-implied (smoothed) shocks for linear model
     """
 
     A = self.lin_t_func
-    return np.linalg.pinv(self.SIG) @ (np.linalg.pinv(A)@x - xp)
+    return np.linalg.pinv(self.SIG, rcond) @ (np.linalg.pinv(A, rcond)@x - xp)
 
 
 def get_tune(self):
