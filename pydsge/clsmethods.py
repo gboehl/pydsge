@@ -16,7 +16,11 @@ from .estimation import *
 
 
 def get_eps_lin(self, x, xp):
-    return (x - self.t_func(xp)[0]) @ self.SIG
+    """Get filter-implied (smoothed) shocks for linear model
+    """
+
+    A = self.lin_t_func
+    return np.linalg.pinv(self.SIG) @ (np.linalg.pinv(A)@x - xp)
 
 
 def get_tune(self):
@@ -410,10 +414,11 @@ DSGE.get_sys = get_sys
 # from tools
 DSGE.t_func = t_func
 DSGE.o_func = o_func
+DSGE.lin_t_func = lin_t_func
+DSGE.lin_o_func = lin_o_func
 DSGE.get_eps_lin = get_eps_lin
 DSGE.irfs = irfs
 DSGE.simulate = simulate
-DSGE.linear_representation = linear_representation
 DSGE.simulate_ts = simulate_ts
 # from mcmc
 DSGE.mcmc = mcmc

@@ -14,7 +14,7 @@ from decimal import Decimal
 
 
 @property
-def linear_representation(self):
+def lin_t_func(self):
     """Get a linear representation of the system under the current parameters
     """
     from .core import get_sys
@@ -23,6 +23,13 @@ def linear_representation(self):
     dim_x = self.sys[2].shape[0]
 
     return mat[1, 0, 1][dim_x:]
+
+
+@property
+def lin_o_func(self):
+    """Get a linear representation of the observation function under the current parameters
+    """
+    return self.hx
 
 
 def t_func(self, state, noise=None, return_flag=True, return_k=False, linear=False, verbose=False):

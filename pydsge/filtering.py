@@ -32,8 +32,6 @@ def create_filter(self, P=None, R=None, N=None, ftype=None, seed=None, **fargs):
         from econsieve import KalmanFilter
 
         f = KalmanFilter(dim_x=len(self.vv), dim_z=self.ny)
-        f.F = self.linear_representation
-        f.H = self.hx
 
     elif ftype in ('PF', 'APF'):
 
@@ -105,33 +103,33 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, co
     else:
         self.Z = np.array(self.data)
 
-    if dispatch is None:
-        dispatch = self.filter.name == 'ParticleFilter'
-
-    if dispatch:
+    # assign latest transition & observation functions (of parameters)
+    if self.filter.name == 'KalmanFilter':
+        self.filter.F = self.lin_t_func
+        self.filter.H = self.lin_o_func
+    elif dispatch or self.filter.name == 'ParticleFilter':
         from .engine import func_dispatch
         t_func_jit, o_func_jit, get_eps_jit = func_dispatch(self, full=True)
         self.filter.t_func = t_func_jit
         self.filter.o_func = o_func_jit
         self.filter.get_eps = get_eps_jit
-
     else:
         self.filter.t_func = self.t_func
         self.filter.o_func = self.o_func
-        self.filter.get_eps = self.get_eps_lin
+    self.filter.get_eps = self.get_eps_lin
 
     if self.filter.name == 'KalmanFilter':
 
-        res, covs, ll = self.filter.batch_filter(self.Z)
+        means, covs, ll = self.filter.batch_filter(self.Z)
+        res = (means, covs)
 
         if get_ll:
             res = ll
 
         if smoother:
-            res, covs, _, _ = self.filter.rts_smoother(
-                res, covs, inv=np.linalg.pinv)
-
-        self.covs = covs
+            means, covs, _, _ = self.filter.rts_smoother(
+                means, covs, inv=np.linalg.pinv)
+            res = (means, covs)
 
     elif self.filter.name == 'ParticleFilter':
 
@@ -218,6 +216,7 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, verbose=True, d
     set_par = serializer(self.set_par)
     run_filter = serializer(self.run_filter)
     t_func = serializer(self.t_func)
+    edim = len(self.shocks)
 
     sample = [(x, y) for x in sample for y in range(nsamples)]
 
@@ -231,12 +230,15 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, verbose=True, d
         res = run_filter(verbose=verbose - 2)
 
         if fname == 'KalmanFilter':
-            X = res[0].copy()
-            for t,x in enumerate(zip(res[0][:-1], res[0][1:])):
-                resid = filter_get_eps(x[1],X[0])
-                X[t+1] =  t_func(X[t], resid)[0]
+            means, covs = res
+            res = means.copy()
+            resid = np.empty((means.shape[0]-1,edim))
 
-            return X, res[1], resid, 0
+            for t,x in enumerate(means[1:]):
+                resid[t] = filter_get_eps(x,res[t])
+                res[t+1] = t_func(res[t], resid[t], linear=True)[0]
+
+            return res, covs, resid, 0
 
         get_eps = filter_get_eps if precalc else None
 
