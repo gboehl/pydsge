@@ -453,8 +453,8 @@ def sort_nhd(hd):
 
     hmin = np.zeros_like(hd[0])
     hmax = np.zeros_like(hd[0])
-    hmaxt = hmax,
-    hmint = hmin,
+    hmaxt = ()
+    hmint = ()
 
     for h in hd:
         newmax = hmax + np.where(h > 0, h, 0)
