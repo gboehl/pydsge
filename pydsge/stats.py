@@ -324,7 +324,7 @@ def pmdm_report(self, x_max, res_max, n=np.inf, printfunc=print):
     return
 
 
-def gfevd(self, eps_dict, nsample=None, linear=False, verbose=True):
+def gfevd(self, eps_dict, horizon=1, nsample=None, linear=False, seed=0, verbose=True):
     """Calculates the generalized forecasting error variance decomposition (GFEVD, Lanne & Nyberg)
 
     Parameters
@@ -334,7 +334,8 @@ def gfevd(self, eps_dict, nsample=None, linear=False, verbose=True):
         Sample size. Defaults to everything exposed to the function.
     verbose : bool, optional
     """
-
+    np.random.seed(seed)
+    
     states = eps_dict['means'][:,:-1,:]
     pars = eps_dict['pars']
     resids = eps_dict['resid']
@@ -365,9 +366,9 @@ def gfevd(self, eps_dict, nsample=None, linear=False, verbose=True):
             ei = self.shocks.index(e)
             shock = (e, s[0][ei], 0)
 
-            irfs = self.irfs(shock, T=1, state=s[1], linear=linear)[0]
-            state = self.t_func(s[1], linear=linear)[0]
-            gis[ei] += (irfs - state)**2
+            irfs = self.irfs(shock, T=horizon, state=s[1], linear=linear)[0].to_numpy()[-1]
+            void = self.irfs((e, 0, 0), T=horizon, state=s[1], linear=linear)[0].to_numpy()[-1]
+            gis[ei] += (irfs - void)**2
 
     gis /= np.sum(gis, axis=0)
 
@@ -379,8 +380,8 @@ def gfevd(self, eps_dict, nsample=None, linear=False, verbose=True):
     return vd
 
 
-def historic_decomposition(self, eps_dict):
-    """Calculates the historic decomposition, based on normalized counterfactuals
+def nhd(self, eps_dict):
+    """Calculates the normalized historic decomposition, based on normalized counterfactuals
     """
 
     states = eps_dict['means']
@@ -388,7 +389,9 @@ def historic_decomposition(self, eps_dict):
     resids = eps_dict['resid']
 
     nsamples = pars.shape[0]
-    hc = np.empty((nsamples, len(self.data), len(self.shocks), len(self.vv)))
+    hc = np.empty((nsamples, len(self.shocks), len(self.data), len(self.vv)))
+    nstates = np.empty((nsamples, len(self.data), len(self.vv)))
+    rcons = np.empty(len(self.shocks))
 
     for i in range(nsamples):
 
@@ -399,32 +402,31 @@ def historic_decomposition(self, eps_dict):
 
         state = states[i][0]
 
-        hc[i, 0, :, :] = state
+        hc[i, :, 0] = state/len(self.shocks)
 
         for t, resid in enumerate(resids[i]):
-            newstate, (l, k), _ = self.t_func(state, resid, return_k=True)
-
-            if k:
-                v = state + self.SIG @ resid
-                acon = bmat[l, k, 1] @ v + \
-                    bterm[l, k, 1]  # absolute contibution
-
-            state = newstate
+            state, (l, k), _ = self.t_func(state, resid, return_k=True)
 
             # for each shock:
             for s in range(len(self.shocks)):
+
                 eps = np.zeros(len(self.shocks))
                 eps[s] = resid[s]
-                v = hc[i, t-1, s] + self.SIG @ eps
 
-                hc[i, t+1, s, :] = (mat[l, k, 1] @ v)[J.shape[0]:]
+                v = hc[i, s, t] + self.SIG @ eps
+                hc[i, s, t+1, :] = (mat[l, k, 1] @ v)[J.shape[0]:]
 
                 if k:
-                    rcon = bmat[l, k, 1] @ v + bterm[l, k, 1]
-                    # proportional to relative contribution to constaint spell duration
-                    hc[i, t+1, s, :] += rcon/acon*term[l, k, 1][J.shape[0]:]
+                    rcons[s] = np.maximum(bmat[l, k, 1] @ v + bterm[l, k, 1],0)
 
-    return hc
+            if k and rcons.sum():
+                for s in range(len(self.shocks)):
+                    # proportional to relative contribution to constaint spell duration
+                    hc[i, s, t+1, :] += rcons[s]/rcons.sum()*term[l, k, 1][J.shape[0]:]
+
+    # as a list of DataFrames
+    hd = [pd.DataFrame(h, index=self.data.index, columns=self.vv) for h in hc.mean(axis=0)]
+    return hd
 
 
 def mdd(self, chain=None, mode_f=None, inv_hess=None, tune=None, verbose=False):

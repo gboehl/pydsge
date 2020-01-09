@@ -473,11 +473,11 @@ def set_par(self, dummy, setpar=None, par=None, roundto=5, autocompile=True, ver
             npar[self.prior_arg] = par
             par = npar
         par[pars_str.index(dummy)] = setpar
-    elif parname in pfnames:
+    elif dummy in pfnames:
         raise SyntaxError(
             "Can not set parameter '%s' that is function of other parameters." % parname)
     else:
-        raise SyntaxError("Parameter '%s' does not exist." % parname)
+        raise SyntaxError("Parameter '%s' is not defined for this model." % parname)
 
     get_sys(self, par=list(par), verbose=verbose)
 
@@ -502,4 +502,4 @@ def set_par(self, dummy, setpar=None, par=None, roundto=5, autocompile=True, ver
         print('[set_ar:]'.ljust(15, ' ') +
               "Parameter(s):\n%s\n%s" % (pdict, pfdict))
 
-    return
+    return par

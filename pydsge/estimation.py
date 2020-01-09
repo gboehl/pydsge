@@ -13,7 +13,7 @@ from .filtering import get_ll
 from .core import get_par
 
 
-def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=False, dispatch=False, constr_data=False, ncores=None, verbose=True, debug=False, **filterargs):
+def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=False, dispatch=False, constr_data=False, ncores=None, reduce_sys=True, verbose=True, debug=False, **filterargs):
     """Initializes the tools necessary for estimation
 
     ...
@@ -74,7 +74,7 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
     self.Z = np.array(self.data)
 
     if not hasattr(self, 'sys') or not hasattr(self, 'precalc_mat'):
-        self.get_sys(reduce_sys=True, verbose=verbose > 3)
+        self.get_sys(reduce_sys=reduce_sys, verbose=verbose > 3)
 
     self.create_filter(
         N=N, ftype='KalmanFilter' if linear else None, **filterargs)
@@ -114,7 +114,7 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
         print('[estimation:]'.ljust(
             15, ' ') + '%s priors detected. Adding parameters to the prior distribution.' % self.ndim)
 
-    def llike(parameters, linear, verbose, seed):
+    def llike(parameters, par_fix, linear, verbose, seed):
 
         random_state = np.random.get_state()
         with warnings.catch_warnings(record=True):
@@ -176,7 +176,7 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
 
     linear_pa = linear
 
-    def lprob(par, linear=None, verbose=verbose > 1, temp=1, lprob_seed='set'):
+    def lprob(par, par_fix=par_fix, linear=None, verbose=verbose > 1, temp=1, lprob_seed='set'):
 
         lp = lprior(par)
 
@@ -202,7 +202,7 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
             raise NotImplementedError(
                 "`lprob_seed` must be one of `('vec', 'rand', 'set')`.")
 
-        ll = llike(par, linear, verbose, seed_loc)*temp if temp else 0
+        ll = llike(par, par_fix, linear, verbose, seed_loc)*temp if temp else 0
 
         if np.isinf(ll):
             return ll

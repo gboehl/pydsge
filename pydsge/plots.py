@@ -445,3 +445,23 @@ def swarm_rank(self, figsize=None, ax=None):
         return fig, ax
 
     return ax
+
+
+def sort_nhd(hd):
+    """Sort the normalized historical decomposition into negative and positive contributions
+    """
+
+    hmin = np.zeros_like(hd[0])
+    hmax = np.zeros_like(hd[0])
+    hmaxt = hmax,
+    hmint = hmin,
+
+    for h in hd:
+        newmax = hmax + np.where(h > 0, h, 0)
+        hmaxt += np.stack((hmax, newmax)),
+        newmin = hmin + np.where(h < 0, h, 0)
+        hmint += np.stack((hmin, newmin)),
+        hmin = newmin
+        hmax = newmax
+
+    return hmint, hmaxt

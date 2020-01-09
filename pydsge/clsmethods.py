@@ -5,7 +5,7 @@ import os
 import numpy as np
 import pandas as pd
 from .parser import DSGE
-from .stats import summary, gfevd, historic_decomposition, mdd
+from .stats import summary, gfevd, nhd, mdd
 from .plots import posteriorplot, traceplot
 from .mcmc import mcmc, tmcmc
 from .modesearch import cmaes
@@ -444,4 +444,4 @@ DSGE.mask = mask
 DSGE.load_rdict = load_rdict
 DSGE.save_rdict = save_rdict
 DSGE.gfevd = gfevd
-DSGE.historic_decomposition = historic_decomposition
+DSGE.nhd = nhd

@@ -3,6 +3,7 @@
 
 import os
 from .clsmethods import DSGE
+from .plots import sort_nhd
 from pandas.plotting import register_matplotlib_converters
 register_matplotlib_converters()
 
