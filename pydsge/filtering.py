@@ -197,7 +197,7 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
         sample = [sample]
 
     fname = self.filter.name
-    verbose = verbose or 9*debug
+    verbose = max(verbose, 9*debug)
 
     if fname == 'ParticleFilter':
         raise NotImplementedError
@@ -211,7 +211,6 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
 
     else:
         self.debug |= debug
-
         npas = serializer(self.filter.npas)
 
     filter_get_eps = serializer(self.filter.get_eps)
