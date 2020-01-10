@@ -303,7 +303,7 @@ def prior_sampler(self, nsamples, seed=0, test_lprob=False, verbose=True):
                              for sn, pl in enumerate(frozen_prior)]
 
                     if test_lprob:
-                        draw_prob = lprob(pdraw, None, verbose > 1)
+                        draw_prob = lprob(pdraw, linear=None, verbose=verbose > 1)
                         done = not np.isinf(draw_prob)
                     else:
                         pdraw_full = get_par(pdraw, asdict=False, full=True)

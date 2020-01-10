@@ -46,7 +46,7 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
         temp = 1
 
     def lprob(par): return lprob_global(
-        par, linear, verbose, temp, lprob_seed or 'set')
+        par, linear=linear, verbose=verbose, temp=temp, lprob_seed=lprob_seed or 'set')
 
     bnd = np.array(self.fdict['prior_bounds'])
 
@@ -339,7 +339,7 @@ def kdes(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, linear=N
     return
 
 
-def tmcmc(self, nsteps, nwalks, ntemps, target, update_freq=False, test_lprob=False, verbose=True, **mcmc_args):
+def tmcmc(self, nsteps, nwalks, ntemps, target, update_freq=False, test_lprob=False, verbose=True, debug=False, **mcmc_args):
     """Run Tempered Ensemble MCMC
 
     Parameters
@@ -355,7 +355,7 @@ def tmcmc(self, nsteps, nwalks, ntemps, target, update_freq=False, test_lprob=Fa
     update_freq = update_freq if update_freq <= nsteps else False
 
     # sample pars from prior
-    pars = prior_sampler(self, nwalks, test_lprob=test_lprob, verbose=verbose)
+    pars = prior_sampler(self, nwalks, test_lprob=test_lprob, verbose=max(verbose, 2*debug))
 
     x = get_par(self, 'prior_mean', asdict=False,
                 full=False, verbose=verbose > 1)
@@ -391,7 +391,7 @@ def tmcmc(self, nsteps, nwalks, ntemps, target, update_freq=False, test_lprob=Fa
         pbar.set_description("[tmcmc: %2.3f°" % (100*tmp))
 
         self.mcmc(p0=pars, nsteps=nsteps, temp=tmp, update_freq=update_freq,
-                  verbose=verbose > 1, append=i, report=pbar.write, **mcmc_args)
+                  verbose=verbose > 1, append=i, report=pbar.write, debug=debug, **mcmc_args)
 
         self.temp = tmp
         self.mcmc_summary(tune=int(nsteps/10),
