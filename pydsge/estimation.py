@@ -7,7 +7,6 @@ import os
 import pathos
 import time
 import tqdm
-from datetime import datetime
 from .stats import get_prior
 from .filtering import get_ll
 from .core import get_par
@@ -68,7 +67,6 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
     self.fdict['linear'] = linear
     self.fdict['seed'] = seed
     self.fdict['constr_data'] = constr_data
-    self.fdict['datetime'] = str(datetime.now())
 
     self.debug = debug
     self.Z = np.array(self.data)

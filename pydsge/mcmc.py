@@ -7,6 +7,7 @@ import os
 import pathos
 import time
 import tqdm
+from datetime import datetime
 from .core import get_par
 
 
@@ -196,16 +197,19 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
     mode_f = log_probs.flat[arg_max]
     mode_x = bjfunc(chain[arg_max].flatten())
 
-    self.fdict['mcmc_mode_x'] = mode_x
-    self.fdict['mcmc_mode_f'] = mode_f
-
     if temp == 1:
+
+        self.fdict['mcmc_mode_x'] = mode_x
+        self.fdict['mcmc_mode_f'] = mode_f
+
         if 'mode_f' in self.fdict.keys() and mode_f < self.fdict['mode_f']:
             print('[mcmc:]'.ljust(15, ' ') + "New mode of %s is below old mode of %s. Rejecting..." %
                   (mode_f, self.fdict['mode_f']))
         else:
             self.fdict['mode_x'] = mode_x
             self.fdict['mode_f'] = mode_f
+
+    self.fdict['datetime'] = str(datetime.now())
 
     return
 
@@ -335,6 +339,7 @@ def kdes(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, linear=N
         self.fdict['mode_f'] = mode_x
 
     self.sampler = sampler
+    self.fdict['datetime'] = str(datetime.now())
 
     return
 
@@ -404,5 +409,6 @@ def tmcmc(self, nsteps, nwalks, ntemps, target, update_freq=False, test_lprob=Fa
         x = pars[lprobs_adj.argmax()]
 
     pbar.close()
+    self.fdict['datetime'] = str(datetime.now())
 
     return pars
