@@ -171,7 +171,7 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, co
     return res
 
 
-def extract(self, sample=None, nsamples=1, precalc=True, seed=0, verbose=True, debug=False, **npasargs):
+def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, verbose=True, debug=False, **npasargs):
     """Extract the timeseries of (smoothed) shocks.
 
     Parameters
@@ -180,6 +180,8 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, verbose=True, d
         Provide one or several parameter vectors used for which the smoothed shocks are calculated (default is the current `self.par`)
     nsamples : int, optional
         Number of `npas`-draws for each element in `sample`. Defaults to 1
+    nattemps : int, optional
+        Number of attemps per sample to crunch the sample with a different seed. Defaults to 4
 
     Returns
     -------
@@ -242,7 +244,9 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, verbose=True, d
 
         get_eps = filter_get_eps if precalc else None
 
-        for natt in range(4):
+        for natt in range(nattemps):
+            np.random.seed(seed_loc)
+            seed_loc = np.random.randint(2**32-2)
             try:
                 means, covs, resid, flags = npas(
                     get_eps=get_eps, verbose=verbose-1, seed=seed_loc, nsamples=1, **npasargs)
