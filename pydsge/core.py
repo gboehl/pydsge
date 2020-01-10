@@ -337,7 +337,7 @@ def prior_sampler(self, nsamples, seed=0, test_lprob=False, verbose=True):
     return draws
 
 
-def get_par(self, dummy=None, parname=None, asdict=True, full=None, roundto=5, nsamples=1, verbose=False, **args):
+def get_par(self, dummy=None, parname=None, asdict=False, full=None, roundto=5, nsamples=1, verbose=False, **args):
     """Get parameters. Tries to figure out what you want. 
 
     Parameters

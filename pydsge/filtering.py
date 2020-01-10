@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+import pandas as pd
 from .core import time
 from grgrlib.core import timeprint
 from econsieve.stats import logpdf
@@ -193,6 +194,9 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
     import os
     from grgrlib.core import map2arr, serializer
 
+    if sample is None:
+        sample = self.par
+
     if np.ndim(sample) <= 1:
         sample = [sample]
 
@@ -257,7 +261,7 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
                 else:
                     raise
 
-    wrap = tqdm.tqdm if verbose else (lambda x, **kwarg: x)
+    wrap = tqdm.tqdm if (verbose and nsamples > 1) else (lambda x, **kwarg: x)
     res = wrap(self.mapper(runner, sample), unit=' sample(s)',
                total=len(sample), dynamic_ncols=True)
     means, covs, resid, flags = map2arr(res)
@@ -265,11 +269,14 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
     if fname == 'KalmanFilter':
         self.debug = debug
 
-    try:
-        self.pool.close()
-    except AttributeError:
-        pass
+    # try:
+        # self.pool.close()
+    # except AttributeError:
+        # pass
 
+    if means.shape[0] == 1:
+        means = pd.DataFrame(means[0], index=self.data.index, columns=self.vv)
+    
     edict = {'pars': np.array([s[0] for s in sample]),
              'means': means,
              'covs': covs,
