@@ -104,7 +104,8 @@ def save_meta(self, filename=None, verbose=True):
     np.savez(filename, **self.fdict)
 
     if verbose:
-        print('[save_meta:]'.ljust(15, ' ') + "Metadata saved as '%s'" % filename)
+        print('[save_meta:]'.ljust(15, ' ') +
+              "Metadata saved as '%s'" % filename)
 
     return
 
@@ -201,8 +202,8 @@ def mode_summary(self, data_cmaes=None, verbose=True):
 
 def swarm_summary(self, verbose=True, **args):
 
-    res = summary(store=self.fdict['swarms'], priors=self['__data__']
-                  ['estimation']['prior'], bounds=self.fdict['prior_bounds'], **args)
+    res = summary(self, store=self.fdict['swarms'],
+                  bounds=self.fdict['prior_bounds'], **args)
 
     if verbose:
         print(res.round(3))
@@ -218,11 +219,15 @@ def mcmc_summary(self, chain=None, tune=None, calc_mdd=True, calc_ll_stats=False
         raise AttributeError('[summary:]'.ljust(
             15, ' ') + "No chain to be found...")
 
-    if tune is None:
-        tune = get_tune(self)
+    tune = tune or get_tune(self)
 
-    res = summary(chain, self['__data__']['estimation']
-                  ['prior'], tune=tune, **args)
+    chain = chain[-tune:]
+    nchain = chain.reshape(-1, chain.shape[-1])
+    lprobs = self.get_log_prob()[-tune:]
+    lprobs = lprobs.reshape(-1, lprobs.shape[-1])
+    mode_x = nchain[lprobs.argmax()]
+
+    res = summary(self, chain, mode_x, **args)
 
     if verbose:
 
@@ -233,13 +238,8 @@ def mcmc_summary(self, chain=None, tune=None, calc_mdd=True, calc_ll_stats=False
                 str(mdd(self, tune=tune).round(4)).rjust(16))
         if calc_ll_stats:
 
-            chain = chain[-tune:]
-            chain = chain.reshape(-1, chain.shape[-1])
-            lprobs = self.sampler.get_log_prob()[-tune:]
-            lprobs = lprobs.reshape(-1, lprobs.shape[-1])
-            par_lprob = chain[lprobs.argmax()]
             max_lprob = lprobs.max()
-            max_lprior = self.lprior(list(par_lprob))
+            max_lprior = self.lprior(list(mode_x))
             max_llike = (max_lprob - max_lprior) / \
                 self.temp if self.temp else np.nan
 

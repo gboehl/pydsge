@@ -208,7 +208,8 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
 
     if fname == 'KalmanFilter':
         if nsamples > 1:
-            print('[extract:]'.ljust(15, ' ')+'Setting `nsamples` to 1 as the linear filter is deterministic.')
+            print('[extract:]'.ljust(
+                15, ' ')+'Setting `nsamples` to 1 as the linear filter is deterministic.')
         nsamples = 1
         debug = not hasattr(self, 'debug') or self.debug
         self.debug = True
@@ -232,15 +233,15 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
         if par is not None:
             set_par(par)
 
-        res = run_filter(verbose=verbose - 2)
+        res = run_filter(verbose=verbose-2)
 
         if fname == 'KalmanFilter':
             means, covs = res
             res = means.copy()
-            resid = np.empty((means.shape[0]-1,edim))
+            resid = np.empty((means.shape[0]-1, edim))
 
-            for t,x in enumerate(means[1:]):
-                resid[t] = filter_get_eps(x,res[t])
+            for t, x in enumerate(means[1:]):
+                resid[t] = filter_get_eps(x, res[t])
                 res[t+1] = t_func(res[t], resid[t], linear=True)[0]
 
             return res, covs, resid, 0
@@ -252,7 +253,7 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
             seed_loc = np.random.randint(2**32-2)
             try:
                 means, covs, resid, flags = npas(
-                    get_eps=get_eps, verbose=verbose-1, seed=seed_loc, nsamples=1, **npasargs)
+                    get_eps=get_eps, verbose=(len(sample) == 1) or (verbose-1), seed=seed_loc, nsamples=1, **npasargs)
 
                 return means[0], covs, resid[0], flags
             except:
@@ -261,7 +262,7 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
                 else:
                     raise
 
-    wrap = tqdm.tqdm if (verbose and nsamples > 1) else (lambda x, **kwarg: x)
+    wrap = tqdm.tqdm if (verbose and len(sample) > 1) else (lambda x, **kwarg: x)
     res = wrap(self.mapper(runner, sample), unit=' sample(s)',
                total=len(sample), dynamic_ncols=True)
     means, covs, resid, flags = map2arr(res)
@@ -269,14 +270,9 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
     if fname == 'KalmanFilter':
         self.debug = debug
 
-    # try:
-        # self.pool.close()
-    # except AttributeError:
-        # pass
-
     if means.shape[0] == 1:
         means = pd.DataFrame(means[0], index=self.data.index, columns=self.vv)
-    
+
     edict = {'pars': np.array([s[0] for s in sample]),
              'means': means,
              'covs': covs,

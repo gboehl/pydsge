@@ -360,7 +360,8 @@ def tmcmc(self, nsteps, nwalks, ntemps, target, update_freq=False, test_lprob=Fa
     update_freq = update_freq if update_freq <= nsteps else False
 
     # sample pars from prior
-    pars = prior_sampler(self, nwalks, test_lprob=test_lprob, verbose=max(verbose, 2*debug))
+    pars = prior_sampler(self, nwalks, test_lprob=test_lprob,
+                         verbose=max(verbose, 2*debug))
 
     x = get_par(self, 'prior_mean', asdict=False,
                 full=False, verbose=verbose > 1)
@@ -373,8 +374,7 @@ def tmcmc(self, nsteps, nwalks, ntemps, target, update_freq=False, test_lprob=Fa
 
         # update tmp
         ll = self.lprob(x)
-        # treat first temperature increases extra carefully...
-        lp = min(self.lprior(x), 0)
+        lp = self.lprior(x)
         # li = ll - lp
 
         # tmp = (target - lp)/li

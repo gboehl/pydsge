@@ -1,15 +1,16 @@
 #!/bin/python
 # -*- coding: utf-8 -*-
 
-import numpy as np
-import pandas as pd
 import warnings
 import os
+import time
 import tqdm
+import numpy as np
+import pandas as pd
 import scipy.stats as ss
 import scipy.optimize as so
 from scipy.special import gammaln
-from grgrlib.core import mode
+from grgrlib.core import mode, timeprint
 
 
 def mc_error(x):
@@ -55,8 +56,10 @@ def _hpd_df(x, alpha):
     return pd.DataFrame(hpd_vals, columns=cnames)
 
 
-def summary(store, priors, bounds=None, tune=None, alpha=0.1, top=None, show_prior=True, min_col=86):
+def summary(self, store, pmode=None, bounds=None, alpha=0.1, top=None, show_prior=True, min_col=86):
     # inspired by pymc3 because it looks really nice
+
+    priors = self['__data__']['estimation']['prior']
 
     try:
         with os.popen('stty size', 'r') as rows_cols:
@@ -79,15 +82,16 @@ def summary(store, priors, bounds=None, tune=None, alpha=0.1, top=None, show_pri
     f_bnd = [lambda x: pd.Series(x, name='lbound'),
              lambda x: pd.Series(x, name='ubound')]
 
-    def sss(x):
-        return pd.Series(mode(x.flatten()), name='mode'),
+    def mode_func(x, n): return pmode[n] if pmode is not None else mode(
+        x.flatten())
 
     funcs = [
-        lambda x: pd.Series(np.mean(x), name='mean'),
-        lambda x: pd.Series(np.std(x), name='sd'),
-        lambda x: pd.Series(mode(x.flatten()), name='mode'),
-        lambda x: _hpd_df(x, alpha),
-        lambda x: pd.Series(mc_error(x), name='mc_error')]
+        lambda x, n: pd.Series(np.mean(x), name='mean'),
+        lambda x, n: pd.Series(np.std(x), name='sd'),
+        lambda x, n: pd.Series(
+            mode_func(x, n), name='mode' if pmode is not None else 'marg.mode'),
+        lambda x, n: _hpd_df(x, alpha),
+        lambda x, n: pd.Series(mc_error(x), name='mc_error')]
 
     var_dfs = []
     for i, var in enumerate(priors):
@@ -106,8 +110,8 @@ def summary(store, priors, bounds=None, tune=None, alpha=0.1, top=None, show_pri
             [lst.append(pd.Series(s[i], name=n))
              for s, n in zip(xs[:top], ns[:top])]
         else:
-            vals = store[-tune:, :, i]
-            [lst.append(f(vals)) for f in funcs]
+            vals = store[:, :, i]
+            [lst.append(f(vals, i)) for f in funcs]
         var_df = pd.concat(lst, axis=1)
         var_df.index = [var]
         var_dfs.append(var_df)
@@ -335,8 +339,8 @@ def gfevd(self, eps_dict, horizon=1, nsample=None, linear=False, seed=0, verbose
     verbose : bool, optional
     """
     np.random.seed(seed)
-    
-    states = eps_dict['means'][:,:-1,:]
+
+    states = eps_dict['means'][:, :-1, :]
     pars = eps_dict['pars']
     resids = eps_dict['resid']
 
@@ -366,8 +370,10 @@ def gfevd(self, eps_dict, horizon=1, nsample=None, linear=False, seed=0, verbose
             ei = self.shocks.index(e)
             shock = (e, s[0][ei], 0)
 
-            irfs = self.irfs(shock, T=horizon, state=s[1], linear=linear)[0].to_numpy()[-1]
-            void = self.irfs((e, 0, 0), T=horizon, state=s[1], linear=linear)[0].to_numpy()[-1]
+            irfs = self.irfs(shock, T=horizon, state=s[1], linear=linear)[
+                0].to_numpy()[-1]
+            void = self.irfs((e, 0, 0), T=horizon, state=s[1], linear=linear)[
+                0].to_numpy()[-1]
             gis[ei] += (irfs - void)**2
 
     gis /= np.sum(gis, axis=0)
@@ -417,16 +423,19 @@ def nhd(self, eps_dict):
                 hc[i, s, t+1, :] = (mat[l, k, 1] @ v)[J.shape[0]:]
 
                 if k:
-                    rcons[s] = np.minimum(bmat[l, k, 1] @ v + bterm[l, k, 1],0)
+                    rcons[s] = np.minimum(
+                        bmat[l, k, 1] @ v + bterm[l, k, 1], 0)
 
             if k and rcons.sum():
                 for s in range(len(self.shocks)):
                     # proportional to relative contribution to constaint spell duration
-                    hc[i, s, t+1, :] += rcons[s]/rcons.sum()*term[l, k, 1][J.shape[0]:]
+                    hc[i, s, t+1, :] += rcons[s] / \
+                        rcons.sum()*term[l, k, 1][J.shape[0]:]
                     pass
 
     # as a list of DataFrames
-    hd = [pd.DataFrame(h, index=self.data.index, columns=self.vv) for h in hc.mean(axis=0)]
+    hd = [pd.DataFrame(h, index=self.data.index, columns=self.vv)
+          for h in hc.mean(axis=0)]
     return hd
 
 
@@ -434,6 +443,8 @@ def mdd(self, chain=None, mode_f=None, inv_hess=None, tune=None, verbose=False):
     """Approximate the marginal data density useing the LaPlace method.
     `inv_hess` can be a matrix or the method string in ('hess', 'cov') telling me how to Approximate the inverse Hessian
     """
+
+    from .clsmethods import get_tune
 
     if verbose:
         st = time.time()
@@ -473,3 +484,13 @@ def mdd(self, chain=None, mode_f=None, inv_hess=None, tune=None, verbose=False):
               (timeprint(time.time()-st), mdd.round(4)))
 
     return mdd
+
+
+def post_mean(self, chain=None, tune=None):
+    """Calculate the mean of the posterior distribution
+    """
+
+    tune = tune or self.get_tune()
+    chain = chain or self.get_chain()[-tune:]
+
+    return chain.reshape(-1, chain.shape[-1]).mean(axis=0)

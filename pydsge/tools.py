@@ -59,7 +59,13 @@ def o_func(self, state):
     """
     observation function
     """
-    return state @ self.hx[0].T + self.hx[1]
+
+    obs = state @ self.hx[0].T + self.hx[1]
+    if np.ndim(state) <= 1:
+        data = self.data.index if hasattr(self, 'data') else None
+        obs = pd.DataFrame(obs, index=data, columns=self.observables)
+
+    return obs
 
 
 def calc_obs(self, states, covs=None):
@@ -86,7 +92,7 @@ def calc_obs(self, states, covs=None):
     return iv95_obs, iv95
 
 
-def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, verbose=False):
+def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, verbose=True):
     """Simulate impulse responses
 
     Parameters
@@ -103,37 +109,49 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, verbose=Fal
         The simulated series as a pandas.DataFrame object and the expected durations at the constraint
     """
 
+    from grgrlib.core import serializer
+
     if isinstance(shocklist, tuple):
         shocklist = [shocklist, ]
 
     st = time.time()
+    set_par = serializer(self.set_par)
+    t_func = serializer(self.t_func)
+    shocks = self.shocks
+    nstates = len(self.vv)
 
     def irfs_runner(par):
 
-        if np.any(par):
-            self.set_par(par, autocompile=False)
-
-        st_vec = state if state is not None else np.zeros(len(self.vv))
-
-        X = np.empty((T, len(self.vv)))
+        X = np.empty((T, nstates))
         K = np.empty(T)
         L = np.empty(T)
+
+        if np.any(par):
+            try:
+                set_par(par, autocompile=False)
+            except ValueError:
+                X[:] = np.nan
+                K[:] = np.nan
+                L[:] = np.nan
+                return X, K, L, 4
+
+        st_vec = state if state is not None else np.zeros(nstates)
 
         superflag = False
 
         for t in range(T):
 
-            shk_vec = np.zeros(len(self.shocks))
+            shk_vec = np.zeros(len(shocks))
             for vec in shocklist:
                 if vec[2] == t:
 
                     shock = vec[0]
                     shocksize = vec[1]
 
-                    shock_arg = self.shocks.index(shock)
+                    shock_arg = shocks.index(shock)
                     shk_vec[shock_arg] = shocksize
 
-            st_vec, (l, k), flag = self.t_func(
+            st_vec, (l, k), flag = t_func(
                 st_vec, shk_vec, linear=linear, return_k=True)
 
             superflag |= flag
@@ -144,7 +162,7 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, verbose=Fal
 
         return X, K, L, superflag
 
-    if pars and len(pars) > 1:
+    if pars is not None and len(pars) > 1:
         res = self.mapper(irfs_runner, pars)
         X, K, L, flag = map2arr(res)
     else:
@@ -155,7 +173,7 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, verbose=Fal
         print('[irfs:]'.ljust(15, ' ') +
               'No rational expectations solution found at least once.')
 
-    if verbose:
+    if verbose > 1:
         print('[irfs:]'.ljust(15, ' ') + 'Simulation took ',
               np.round((time.time() - st), 5), ' seconds.')
 

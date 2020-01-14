@@ -9,6 +9,7 @@ import numpy as np
 import numpy.linalg as nl
 import time
 from .engine import preprocess
+from .stats import post_mean
 
 try:
     from numpy.core._exceptions import UFuncTypeError as ParafuncError
@@ -303,7 +304,8 @@ def prior_sampler(self, nsamples, seed=0, test_lprob=False, verbose=True):
                              for sn, pl in enumerate(frozen_prior)]
 
                     if test_lprob:
-                        draw_prob = lprob(pdraw, linear=None, verbose=verbose > 1)
+                        draw_prob = lprob(pdraw, linear=None,
+                                          verbose=verbose > 1)
                         done = not np.isinf(draw_prob)
                     else:
                         pdraw_full = get_par(pdraw, asdict=False, full=True)
@@ -332,7 +334,7 @@ def prior_sampler(self, nsamples, seed=0, test_lprob=False, verbose=True):
         if test_lprob:
             smess = 'of zero likelihood, '
         print('[prior_sample:]'.ljust(
-            15, ' ') + ' sampling done. %2.2f%% of the prior are either %s indetermined or explosive.' % (100*(sum(nos)-nsamples)/nsamples,smess))
+            15, ' ') + ' sampling done. %2.2f%% of the prior are either %s indetermined or explosive.' % (100*(sum(nos)-nsamples)/nsamples, smess))
 
     return draws
 
@@ -386,8 +388,12 @@ def get_par(self, dummy=None, parname=None, asdict=False, full=None, roundto=5, 
             return prior_sampler(self, nsamples=nsamples, verbose=verbose, **args)
         elif dummy == 'posterior':
             return posterior_sampler(self, nsamples=nsamples, verbose=verbose, **args)
+        elif dummy == 'posterior_mean' or dummy == 'post_mean':
+            par_cand = post_mean(self)
         elif dummy == 'mode':
             par_cand = self.fdict['mode_x']
+        elif dummy == 'mcmc_mode' or dummy == 'mode_mcmc':
+            par_cand = self.fdict['mcmc_mode_x']
         elif dummy == 'calib':
             par_cand = self.par_fix[self.prior_arg]
         elif dummy == 'prior_mean':
@@ -477,7 +483,8 @@ def set_par(self, dummy, setpar=None, par=None, roundto=5, autocompile=True, ver
         raise SyntaxError(
             "Can not set parameter '%s' that is function of other parameters." % parname)
     else:
-        raise SyntaxError("Parameter '%s' is not defined for this model." % parname)
+        raise SyntaxError(
+            "Parameter '%s' is not defined for this model." % parname)
 
     get_sys(self, par=list(par), verbose=verbose)
 
