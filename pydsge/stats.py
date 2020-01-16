@@ -328,13 +328,13 @@ def pmdm_report(self, x_max, res_max, n=np.inf, printfunc=print):
     return
 
 
-def gfevd(self, eps_dict, horizon=1, nsample=None, linear=False, seed=0, verbose=True):
+def gfevd(self, eps_dict, horizon=1, nsamples=None, linear=False, seed=0, verbose=True):
     """Calculates the generalized forecasting error variance decomposition (GFEVD, Lanne & Nyberg)
 
     Parameters
     ----------
     eps : array or dict
-    nsample : int, optional
+    nsamples : int, optional
         Sample size. Defaults to everything exposed to the function.
     verbose : bool, optional
     """
@@ -351,16 +351,16 @@ def gfevd(self, eps_dict, horizon=1, nsample=None, linear=False, seed=0, verbose
     if np.ndim(states) > 2:
         states = states.reshape(-1, states.shape[-1])
 
-    nsample = nsample or resids.shape[0]
+    nsamples = nsamples or resids.shape[0]
     numbers = np.arange(resids.shape[0])
-    draw = np.random.choice(numbers, nsample, replace=False)
+    draw = np.random.choice(numbers, nsamples, replace=False)
 
     sample = zip(resids[draw], states[draw], pars[draw])
     gis = np.zeros((len(self.shocks), len(self.vv)))
 
     wrap = tqdm.tqdm if verbose else (lambda x, **kwarg: x)
 
-    for s in wrap(sample, total=nsample, unit='draws', dynamic_ncols=True):
+    for s in wrap(sample, total=nsamples, unit='draws', dynamic_ncols=True):
 
         if s[2] is not None:
             self.set_par(s[2])
@@ -433,7 +433,7 @@ def nhd(self, eps_dict):
     # as a list of DataFrames
     hd = [pd.DataFrame(h, index=self.data.index, columns=self.vv)
           for h in hc.mean(axis=0)]
-    means = pd.DataFrame(eps_dict['means'], index=self.data.index, columns=self.vv)
+    means = pd.DataFrame(eps_dict['means'].mean(axis=0), index=self.data.index, columns=self.vv)
     return hd, means
 
 
