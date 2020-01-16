@@ -15,6 +15,12 @@ from .core import get_sys, get_par, set_par
 from .estimation import *
 
 
+def vix(self, *variables):
+    """Returns the indices of a list of variables
+    """
+    return [list(self.vv).index(v) for v in variables]
+
+
 def get_eps_lin(self, x, xp, rcond=1e-14):
     """Get filter-implied (smoothed) shocks for linear model
     """
@@ -390,6 +396,7 @@ def get_sample(self, size, chain=None):
     return sample[res]
 
 
+DSGE.vix = vix
 DSGE.get_tune = get_tune
 DSGE.save = save_meta
 DSGE.mapper = mapper
