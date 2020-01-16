@@ -436,7 +436,8 @@ def nhd(self, eps_dict):
     # as a list of DataFrames
     hd = [pd.DataFrame(h, index=self.data.index, columns=self.vv)
           for h in hc.mean(axis=0)]
-    return hd
+    means = pd.DataFrame(eps_dict['means'], index=self.data.index, columns=self.vv)
+    return hd, means
 
 
 def mdd(self, chain=None, mode_f=None, inv_hess=None, tune=None, verbose=False):

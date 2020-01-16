@@ -68,7 +68,7 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
     self.fdict['seed'] = seed
     self.fdict['constr_data'] = constr_data
 
-    self.debug = debug
+    self.debug |= debug
     self.Z = np.array(self.data)
 
     if not hasattr(self, 'sys') or not hasattr(self, 'precalc_mat'):

@@ -197,7 +197,7 @@ def mask(self, verbose=False):
     return msk.rename(columns=dict(zip(self.observables, self.shocks)))[:-1]
 
 
-def simulate(self, source=None, mask=None, linear=False, verbose=False):
+def simulate(self, source, mask=None, linear=False, verbose=False):
     """Simulate time series given a series of exogenous innovations.
 
     Parameters
@@ -208,8 +208,6 @@ def simulate(self, source=None, mask=None, linear=False, verbose=False):
             Mask for eps. Each non-None element will be replaced.
     """
     from grgrlib.core import serializer
-
-    source = source or self.eps_dict
 
     sample = zip(source['pars'], source['resid'], [s[0]
                                                    for s in source['means']])

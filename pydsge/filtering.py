@@ -222,6 +222,7 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
     set_par = serializer(self.set_par)
     run_filter = serializer(self.run_filter)
     t_func = serializer(self.t_func)
+    obs = serializer(self.obs)
     edim = len(self.shocks)
 
     sample = [(x, y) for x in sample for y in range(nsamples)]
@@ -244,7 +245,7 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
                 resid[t] = filter_get_eps(x, res[t])
                 res[t+1] = t_func(res[t], resid[t], linear=True)[0]
 
-            return res, covs, resid, 0
+            return res, obs(res), covs, resid, 0
 
         get_eps = filter_get_eps if precalc else None
 
@@ -255,7 +256,7 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
                 means, covs, resid, flags = npas(
                     get_eps=get_eps, verbose=(len(sample) == 1) or (verbose-1), seed=seed_loc, nsamples=1, **npasargs)
 
-                return means[0], covs, resid[0], flags
+                return means[0], obs(means[0]), covs, resid[0], flags
             except:
                 if natt < 3:
                     pass
@@ -265,7 +266,7 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
     wrap = tqdm.tqdm if (verbose and len(sample) > 1) else (lambda x, **kwarg: x)
     res = wrap(self.mapper(runner, sample), unit=' sample(s)',
                total=len(sample), dynamic_ncols=True)
-    means, covs, resid, flags = map2arr(res)
+    means, obs, covs, resid, flags = map2arr(res)
 
     if fname == 'KalmanFilter':
         self.debug = debug
@@ -275,6 +276,7 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
 
     edict = {'pars': np.array([s[0] for s in sample]),
              'means': means,
+             'obs': obs,
              'covs': covs,
              'resid': resid,
              'flags': flags}

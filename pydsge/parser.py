@@ -459,6 +459,7 @@ class DSGE(dict):
             pmodel.fdict['model_dump'] = pmodel_dump
             pmodel.name = pmodel.mod_name
             pmodel.path = os.path.dirname(mfile)
+            pmodel.debug = False
 
             processed_raw_model = deepcopy(pmodel)
 
@@ -522,8 +523,7 @@ class DSGE(dict):
         pmodel.fdict = fdict
         pmodel.name = str(fdict['name'])
         pmodel.path = os.path.dirname(npzfile)
-        # pmodel.path = os.path.dirname(npzfile) + os.sep
-        # pmodel.fdict['dfile'] = npzfile
+        pmodel.debug = False
 
         try:
             pmodel.data = cpickle.loads(fdict['data'])
