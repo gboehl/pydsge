@@ -423,15 +423,12 @@ def nhd(self, eps_dict):
                 hc[i, s, t+1, :] = (mat[l, k, 1] @ v)[J.shape[0]:]
 
                 if k:
-                    rcons[s] = np.minimum(
-                        bmat[l, k, 1] @ v + bterm[l, k, 1], 0)
+                    rcons[s] = bmat[l, k, 1] @ v
 
             if k and rcons.sum():
                 for s in range(len(self.shocks)):
                     # proportional to relative contribution to constaint spell duration
-                    hc[i, s, t+1, :] += rcons[s] / \
-                        rcons.sum()*term[l, k, 1][J.shape[0]:]
-                    pass
+                    hc[i, s, t+1, :] += rcons[s] / rcons.sum()*term[l, k, 1][J.shape[0]:]
 
     # as a list of DataFrames
     hd = [pd.DataFrame(h, index=self.data.index, columns=self.vv)
