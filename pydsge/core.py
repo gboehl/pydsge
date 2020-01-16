@@ -339,21 +339,33 @@ def prior_sampler(self, nsamples, seed=0, test_lprob=False, verbose=True):
     return draws
 
 
-def get_par(self, dummy=None, parname=None, asdict=False, full=None, roundto=5, nsamples=1, verbose=False, **args):
+def get_par(self, dummy=None, parname=None, asdict=False, full=None, nsamples=1, verbose=False, roundto=5, **args):
     """Get parameters. Tries to figure out what you want. 
 
     Parameters
     ----------
     dummy : str, optional
-        Can be one of {'mode', 'calib', 'prior_mean', 'init'} or a parameter name. 
+    Can be `None`, a parameter name, or one of {'calib', 'init', 'prior_mean', 'best', 'mode', 'mcmc_mode', 'post_mean', 'posterior_mean', 'prior', 'posterior'}. 
+    If `None`, returns the current parameters (default).
+    If a parameter name, this is equivalent to setting `parname`.
+    Otherwise, 'calib' will return the calibration in the main body of the *.yaml (`parameters`). 
+    'init' are the initial values (first column) in the `prior` section of the *.yaml.
+    'posterior_mean' and 'post_mean' are the same thing.
+    'prior' or 'posterior' will draw random samples. Obviously, 'posterior', 'mode' etc are only available if a posterior/chain exists.
     parname : str, optional
         Parameter name if you want to query a single parameter.
     asdict : bool, optional
-        Returns a dict of the values if `True` (default) and an array otherwise.
+        Returns a dict of the values if `True` and an array otherwise (default is `False`).
     full : bool, optional
-        Whether to return all parameters or the estimated ones only. (default: True)
+        Whether to return all parameters or the estimated ones only. (default: False unless asdict is True)
     nsamples : int, optional
-        Size of the prior sample
+        Size of the sample. Defaults to 1
+    verbose : bool, optional
+        Print additional output infmormation (default is `False`)
+    roundto : int, optional
+        Rounding of additional output if verbose, defaults to 5
+    args : various, optional
+        Auxilliary arguments passed on to a sampler
 
     Returns
     -------
@@ -441,19 +453,25 @@ def get_par(self, dummy=None, parname=None, asdict=False, full=None, roundto=5, 
     return par_cand
 
 
-def set_par(self, dummy, setpar=None, par=None, roundto=5, autocompile=True, verbose=False):
+def set_par(self, dummy, setpar=None, par=None, autocompile=True, verbose=False, roundto=5, **args):
     """Set the current parameter values.
+
+    In essence, this is a wrapper around `get_par` which also compiles the transition function with the desired parameters.
 
     Parameters
     ----------
     dummy : str or array
-        If an array, sets all parameters. If a string, `setpar` must be provided to define a value.
+        If an array, sets all parameters. If a string and a parameter name,`setpar` must be provided to define the value of this parameter. Otherwise, `dummy` is forwarded to `get_par` and the returning value(s) are set as parameters.
     setpar : float
         Parametervalue.
-    roundto : int
-        Define output precision. (default: 5)
     autocompile : bool
         If true, already defines the system and prprocesses matrics. (default: True)
+    verbose : bool
+        Whether to output more or less informative messages (defaults to False)
+    roundto : int
+        Define output precision if output is verbose. (default: 5)
+    args : keyword args
+        Keyword arguments forwarded to the `get_sys` call.
     """
 
     pfnames, pffunc = self.parafunc
@@ -486,7 +504,7 @@ def set_par(self, dummy, setpar=None, par=None, roundto=5, autocompile=True, ver
         raise SyntaxError(
             "Parameter '%s' is not defined for this model." % parname)
 
-    get_sys(self, par=list(par), verbose=verbose)
+    get_sys(self, par=list(par), verbose=verbose, **args)
 
     if hasattr(self, 'filter'):
 
