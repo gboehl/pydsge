@@ -18,6 +18,8 @@ from .estimation import *
 def vix(self, *variables):
     """Returns the indices of a list of variables
     """
+    if len(variables) == 1:
+        variables = variables[0]
     return [list(self.vv).index(v) for v in variables]
 
 

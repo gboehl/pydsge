@@ -265,7 +265,9 @@ def simulate(self, source, mask=None, linear=False, verbose=False):
         print('[simulate:]'.ljust(
             15, ' ')+'No rational expectations solution found.')
 
-    return res
+    X, LK, flags = res
+
+    return X, (LK[:,0,:], LK[:,1,:]), flags
 
 
 def simulate_ts(self, T=1e3, cov=None, verbose=False):
