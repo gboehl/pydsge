@@ -340,7 +340,11 @@ def gfevd(self, eps_dict, horizon=1, nsamples=None, linear=False, seed=0, verbos
     """
     np.random.seed(seed)
 
-    states = eps_dict['means'][:, :-1, :]
+    states = eps_dict['means']
+    if np.ndim(states) == 2:
+        states = np.expand_dims(states, 0)
+    states = states[:, :-1, :]
+
     pars = eps_dict['pars']
     resids = eps_dict['resid']
 
@@ -393,6 +397,8 @@ def nhd(self, eps_dict):
     states = eps_dict['means']
     pars = eps_dict['pars']
     resids = eps_dict['resid']
+    if np.ndim(states) == 2:
+        states = np.expand_dims(states, 0)
 
     nsamples = pars.shape[0]
     hc = np.empty((nsamples, len(self.shocks), len(self.data), len(self.vv)))
@@ -433,7 +439,8 @@ def nhd(self, eps_dict):
     # as a list of DataFrames
     hd = [pd.DataFrame(h, index=self.data.index, columns=self.vv)
           for h in hc.mean(axis=0)]
-    means = pd.DataFrame(eps_dict['means'].mean(axis=0), index=self.data.index, columns=self.vv)
+    means = pd.DataFrame(states.mean(axis=0), index=self.data.index, columns=self.vv)
+
     return hd, means
 
 

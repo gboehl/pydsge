@@ -351,6 +351,7 @@ def get_par(self, dummy=None, parname=None, asdict=False, full=None, nsamples=1,
     Otherwise, 'calib' will return the calibration in the main body of the *.yaml (`parameters`). 
     'init' are the initial values (first column) in the `prior` section of the *.yaml.
     'posterior_mean' and 'post_mean' are the same thing.
+    'posterior_mode', 'post_mode' and 'mcmc_mode' are the same thing.
     'prior' or 'posterior' will draw random samples. Obviously, 'posterior', 'mode' etc are only available if a posterior/chain exists.
     parname : str, optional
         Parameter name if you want to query a single parameter.
@@ -365,7 +366,7 @@ def get_par(self, dummy=None, parname=None, asdict=False, full=None, nsamples=1,
     roundto : int, optional
         Rounding of additional output if verbose, defaults to 5
     args : various, optional
-        Auxilliary arguments passed on to a sampler
+        Auxilliary arguments passed on to a sampler from prior/posterior
 
     Returns
     -------
@@ -404,7 +405,7 @@ def get_par(self, dummy=None, parname=None, asdict=False, full=None, nsamples=1,
             par_cand = post_mean(self)
         elif dummy == 'mode':
             par_cand = self.fdict['mode_x']
-        elif dummy == 'mcmc_mode' or dummy == 'mode_mcmc':
+        elif dummy in ('mcmc_mode', 'mode_mcmc', 'posterior_mode', 'post_mode'):
             par_cand = self.fdict['mcmc_mode_x']
         elif dummy == 'calib':
             par_cand = self.par_fix[self.prior_arg]
