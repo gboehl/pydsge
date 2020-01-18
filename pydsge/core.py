@@ -280,7 +280,8 @@ def prior_sampler(self, nsamples, seed=0, test_lprob=False, verbose=True):
     frozen_prior = self.fdict['frozen_prior']
 
     if hasattr(self, 'pool'):
-        self.pool.clear()
+        from .estimation import create_pool
+        create_pool(self)
 
     get_par = serializer(self.get_par)
     get_sys = serializer(self.get_sys)

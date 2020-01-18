@@ -774,6 +774,10 @@ def cmaes(self, p0=None, sigma=None, pop_size=None, restart_factor=2, seeds=3, s
 
     sigma = sigma or .25
 
+    if hasattr(self, 'pool'):
+        from .estimation import create_pool
+        create_pool(self)
+
     lprob_global = serializer(self.lprob)
 
     def lprob(par): return lprob_global(

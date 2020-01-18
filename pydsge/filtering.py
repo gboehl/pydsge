@@ -206,6 +206,10 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
     if fname == 'ParticleFilter':
         raise NotImplementedError
 
+    if hasattr(self, 'pool'):
+        from .estimation import create_pool
+        create_pool(self)
+
     if fname == 'KalmanFilter':
         if nsamples > 1:
             print('[extract:]'.ljust(

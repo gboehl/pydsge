@@ -41,6 +41,10 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
 
     from grgrlib.core import serializer
 
+    if hasattr(self, 'pool'):
+        from .estimation import create_pool
+        create_pool(self)
+
     lprob_global = serializer(self.lprob)
 
     if isinstance(temp, bool) and not temp:

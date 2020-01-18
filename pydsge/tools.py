@@ -10,7 +10,6 @@ import pandas as pd
 import time
 from grgrlib import fast0, map2arr
 from .engine import boehlgorithm
-from .estimation import create_pool
 from decimal import Decimal
 
 
@@ -115,7 +114,9 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, verbose=Tru
     if isinstance(shocklist, tuple):
         shocklist = [shocklist, ]
 
-    create_pool(self)
+    if hasattr(self, 'pool'):
+        from .estimation import create_pool
+        create_pool(self)
 
     st = time.time()
     set_par = serializer(self.set_par)
@@ -220,7 +221,9 @@ def simulate(self, source, mask=None, linear=False, debug=False, verbose=False):
 
     self.debug |= debug
 
-    create_pool(self)
+    if hasattr(self, 'pool'):
+        from .estimation import create_pool
+        create_pool(self)
 
     set_par = serializer(self.set_par)
     t_func = serializer(self.t_func)
