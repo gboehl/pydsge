@@ -454,7 +454,7 @@ def get_par(self, dummy=None, parname=None, asdict=False, full=None, nsamples=1,
     return par_cand
 
 
-def set_par(self, dummy, setpar=None, par=None, autocompile=True, verbose=False, roundto=5, **args):
+def set_par(self, dummy, setpar=None, par=None, verbose=False, roundto=5, **args):
     """Set the current parameter values.
 
     In essence, this is a wrapper around `get_par` which also compiles the transition function with the desired parameters.
@@ -465,8 +465,6 @@ def set_par(self, dummy, setpar=None, par=None, autocompile=True, verbose=False,
         If an array, sets all parameters. If a string and a parameter name,`setpar` must be provided to define the value of this parameter. Otherwise, `dummy` is forwarded to `get_par` and the returning value(s) are set as parameters.
     setpar : float
         Parametervalue.
-    autocompile : bool
-        If true, already defines the system and prprocesses matrics. (default: True)
     verbose : bool
         Whether to output more or less informative messages (defaults to False)
     roundto : int

@@ -10,6 +10,7 @@ import pandas as pd
 import time
 from grgrlib import fast0, map2arr
 from .engine import boehlgorithm
+from .estimation import create_pool
 from decimal import Decimal
 
 
@@ -114,6 +115,8 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, verbose=Tru
     if isinstance(shocklist, tuple):
         shocklist = [shocklist, ]
 
+    create_pool(self)
+
     st = time.time()
     set_par = serializer(self.set_par)
     t_func = serializer(self.t_func)
@@ -128,7 +131,7 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, verbose=Tru
 
         if np.any(par):
             try:
-                set_par(par, autocompile=False)
+                set_par(par)
             except ValueError:
                 X[:] = np.nan
                 K[:] = np.nan
@@ -197,7 +200,7 @@ def mask(self, verbose=False):
     return msk.rename(columns=dict(zip(self.observables, self.shocks)))[:-1]
 
 
-def simulate(self, source, mask=None, linear=False, verbose=False):
+def simulate(self, source, mask=None, linear=False, debug=False, verbose=False):
     """Simulate time series given a series of exogenous innovations.
 
     Parameters
@@ -214,6 +217,10 @@ def simulate(self, source, mask=None, linear=False, verbose=False):
 
     if verbose:
         st = time.time()
+
+    self.debug |= debug
+
+    create_pool(self)
 
     set_par = serializer(self.set_par)
     t_func = serializer(self.t_func)
