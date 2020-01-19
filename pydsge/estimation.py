@@ -191,8 +191,8 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
             seed_loc = sum(p // 10**(int(np.log(abs(p))/np.log(10))-9)
                            for p in par)
             if lprob_seed == 'rand':
-                seed_loc += np.random.randint(2**32-2)
-            seed_loc = int(seed_loc) % (2**32 - 1)
+                seed_loc += np.random.randint(2**31) # win explodes with 2**32
+            seed_loc = int(seed_loc) % (2**31) # win explodes with 2**32
 
         elif lprob_seed == 'set':
             seed_loc = seed

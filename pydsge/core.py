@@ -248,7 +248,7 @@ def sample_box(self, dim0, dim1=None, bounds=None, lp_rule=None, verbose=False):
     return res
 
 
-def prior_sampler(self, nsamples, seed=0, test_lprob=False, verbose=True):
+def prior_sampler(self, nsamples, seed=0, test_lprob=False, verbose=True, debug=False):
     """Draw parameters from prior. Drawn parameters have a finite likelihood.
 
     Parameters
@@ -278,6 +278,7 @@ def prior_sampler(self, nsamples, seed=0, test_lprob=False, verbose=True):
         self.fdict['frozen_prior'] = get_prior(self.prior)[0]
 
     frozen_prior = self.fdict['frozen_prior']
+    self.debug |= debug
 
     if hasattr(self, 'pool'):
         from .estimation import create_pool
@@ -300,7 +301,7 @@ def prior_sampler(self, nsamples, seed=0, test_lprob=False, verbose=True):
             with np.warnings.catch_warnings(record=False):
                 try:
                     np.warnings.filterwarnings('error')
-                    rst = np.random.randint(2**32-2)
+                    rst = np.random.randint(2**31) # win explodes with 2**32
                     pdraw = [pl.rvs(random_state=rst+sn)
                              for sn, pl in enumerate(frozen_prior)]
 

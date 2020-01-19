@@ -255,7 +255,7 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
 
         for natt in range(nattemps):
             np.random.seed(seed_loc)
-            seed_loc = np.random.randint(2**32-2)
+            seed_loc = np.random.randint(2**31) # win explodes with 2**32
             try:
                 means, covs, resid, flags = npas(
                     get_eps=get_eps, verbose=(len(sample) == 1) or (verbose-1), seed=seed_loc, nsamples=1, **npasargs)

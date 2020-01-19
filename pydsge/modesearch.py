@@ -637,7 +637,7 @@ def cmaes2(self, p0=None, sigma=None, pop_size=None, seeds=3, seed=None, stagtol
     if isinstance(seeds, int):
         if burnin:
             seeds += 1
-        seeds = np.random.randint(2**32-2, size=seeds)
+        seeds = np.random.randint(2**31, size=seeds) # win explodes with 2**32
 
     ncores = pathos.multiprocessing.cpu_count()
 
