@@ -243,6 +243,9 @@ def create_pool(self, ncores=None, threadpool_limit=None):
     if hasattr(self, 'pool'):
         ncores = ncores or self.pool.ncpus
         self.pool.close()
+    else:
+        ## pools should carry their count with them
+        ncores = ncores or pathos.multiprocessing.cpu_count()
 
     if threadpool_limit: 
         self.threadpool_limit = threadpool_limit

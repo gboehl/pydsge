@@ -444,25 +444,20 @@ def nhd(self, eps_dict):
     return hd, means
 
 
-def mdd(self, chain=None, mode_f=None, inv_hess=None, tune=None, verbose=False):
+def mdd_lp(chain, lprobs, calc_hess=False):
     """Approximate the marginal data density useing the LaPlace method.
-    `inv_hess` can be a matrix or the method string in ('hess', 'cov') telling me how to Approximate the inverse Hessian
     """
 
     from .clsmethods import get_tune
 
-    if verbose:
-        st = time.time()
+    mode_x = chain[lprobs.argmax()]
 
-    if mode_f is None:
-        mode_f = self.fdict['mode_f']
-
-    if inv_hess == 'hess':
+    if calc_hess:
 
         import numdifftools as nd
 
         np.warnings.filterwarnings('ignore')
-        hh = nd.Hessian(func)(self.fdict['mode_x'])
+        hh = nd.Hessian(func)(mode_x)
         np.warnings.filterwarnings('default')
 
         if np.isnan(hh).any():
@@ -471,22 +466,101 @@ def mdd(self, chain=None, mode_f=None, inv_hess=None, tune=None, verbose=False):
 
         inv_hess = np.linalg.inv(hh)
 
-    elif inv_hess is None:
-
-        if chain is None:
-            tune = tune or get_tune(self)
-            chain = self.get_chain()[-tune:]
-            chain = chain.reshape(-1, chain.shape[-1])
-
+    else:
         inv_hess = np.cov(chain.T)
 
-    ndim = len(self.fdict['prior_names'])
+    ndim = chain.shape[-1]
     log_det_inv_hess = np.log(np.linalg.det(inv_hess))
-    mdd = .5*ndim*np.log(2*np.pi) + .5*log_det_inv_hess + mode_f
+    mdd = .5*ndim*np.log(2*np.pi) + .5*log_det_inv_hess + lprobs.max()
+
+    return mdd
+
+
+def mdd_mhm(chain, lprobs, alpha=.05, pool=None, verbose=False, debug=False):
+    """Approximate the marginal data density useing modified harmonic mean.
+    """
+
+    from grgrlib.stats import logpdf
+
+    cmean = chain.mean(axis=0)
+    ccov = np.cov(chain.T)
+    cicov = np.linalg.inv(ccov)
+
+    nsamples = chain.shape[0]
+    ##
+    def runner(chunk):
+        ##
+        res = np.empty_like(chunk)
+        wrapper = tqdm.tqdm if verbose  else (lambda x, **kwarg: x)
+        ##
+        for i in wrapper(range(len(chunk))):
+            drv = chain[i]
+            drl = lprobs[i]
+            ##
+            if (drv - cmean) @ cicov @ (drv - cmean) < ss.chi2.ppf(1-alpha, df=chain.shape[-1]):
+                res[i] = logpdf(drv, cmean, ccov) - drl
+            else:
+                res[i] = -np.inf
+        return res
+
+    if pool and not debug:
+        if pool.ncpus is None:
+            import pathos
+            nbatches = pathos.multiprocessing.cpu_count()
+        else:
+            nbatches = pool.ncpus 
+
+        batches = pool.imap(runner, np.split(chain,nbatches))
+        mls = np.vstack(list(batches))
+    else:
+        mls = runner(chain)
+
+    maxllike = np.max(mls) # for numeric stability
+    imdd = np.log(np.mean(np.exp(mls-maxllike))) + maxllike
+
+    return -imdd
+
+
+def mdd(self, method='laplace', chain=None, lprobs=None, tune=None, verbose=False, **args):
+    """Approximate the marginal data density.
+
+    Parameters
+    ----------
+    method : str
+        The method used for the approximation. Can be either of 'laplace', 'mhm' (modified harmonic mean) or 'hess' (LaPlace approximation with the numerical approximation of the hessian; NOT FUNCTIONAL).
+    """
+
+    from .clsmethods import get_tune
 
     if verbose:
-        print('[mdd:]'.ljust(15, ' ') + "Calculation took %s. The marginal data density is %s." %
-              (timeprint(time.time()-st), mdd.round(4)))
+        st = time.time()
+
+    if chain is None:
+        tune = tune or get_tune(self)
+        chain = self.get_chain()[-tune:]
+        chain = chain.reshape(-1, chain.shape[-1])
+
+    if lprobs is None:
+        tune = tune or get_tune(self)
+        lprobs = self.get_log_prob()[-tune:]
+        lprobs = lprobs.flatten()
+
+    if method in ('laplace','lp'):
+        mstr = 'LaPlace approximation'
+        mdd = mdd_lp(chain, lprobs, calc_hess=False)
+    elif method == 'hess':
+        mstr = 'LaPlace approximation with hessian approximation'
+        mdd = mdd_lp(chain, lprobs, calc_hess=True)
+    elif method == 'mhm':
+        mstr = 'modified harmonic mean'
+        pool = self.pool if hasattr(self, 'pool') else None
+        mdd = mdd_mhm(chain, lprobs, pool=pool, verbose=verbose>1, **args)
+    else:
+        raise NotImplementedError('[mdd:]'.ljust(15, ' ') + "`method` must be one of `laplace`, `mhm` or `hess`.")
+
+    if verbose:
+        print('[mdd:]'.ljust(15, ' ') + "done after %s. Marginal data density according to %s is %s." %
+              (timeprint(time.time()-st), mstr, mdd.round(4)))
 
     return mdd
 
