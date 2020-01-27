@@ -17,7 +17,7 @@ except ModuleNotFoundError:
     ParafuncError = Exception
 
 
-def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, verbose=False):
+def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, ignore_tests=False, verbose=False):
     """Creates the transition function given a set of parameters. 
 
     If no parameters are given this will default to the calibration in the `yaml` file.
@@ -36,16 +36,14 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, verbose=Fal
 
     st = time.time()
 
-    if reduce_sys is None:
-        try:
-            reduce_sys = self.fdict['reduce_sys']
-        except KeyError:
-            reduce_sys = False
+    reduce_sys = reduce_sys or self.fdict.get('reduce_sys')
+    ignore_tests = ignore_tests or self.fdict.get('ignore_tests')
 
     l_max = 3 if l_max is None else l_max
     k_max = 17 if k_max is None else k_max
 
     self.fdict['reduce_sys'] = reduce_sys
+    self.fdict['ignore_tests'] = ignore_tests
 
     par = self.p0() if par is None else list(par)
     ppar = self.compile(par)  # parsed par
@@ -110,7 +108,7 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, verbose=Fal
     c1 = U.T @ c_M
 
     if not fast0(c1[s0], 2) or not fast0(U.T[s0] @ c_P, 2):
-        NotImplementedError(
+        raise NotImplementedError(
             'The system depends directly or indirectly on whether the constraint holds in the future or not.\n')
 
     # actual desingularization by iterating equations in M forward
@@ -129,10 +127,12 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, verbose=Fal
     N = nl.inv(P2) @ M2
     A = nl.inv(P2) @ (M2 + np.outer(c1, b2))
 
-    # rounding here must correspond to the rounding in re_bc
-    # if sum(eig(A).round(8) >= 1) != len(vv_x3):
-    # if sum(eig(A).round(8) < 1) != len(vv_v):
-    # raise ValueError('B-K condition *not* satisfied.')
+    # rounding here to allow for small numeric errors during SVD & inversion 
+    if not ignore_tests:
+        if sum(eig(A).round(3) < 1) > len(vv_v):
+            raise ValueError('B-K condition *not* satisfied (too many EV < 1).')
+        if sum(eig(A).round(3) >= 1) > len(vv_x3):
+            raise ValueError('B-K condition *not* satisfied (too many EV > 1).')
 
     dim_x = len(vv_x3)
     OME = re_bc(A, dim_x)
@@ -142,7 +142,7 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, verbose=Fal
         cx = nl.inv(P2) @ c1*x_bar
     except ParafuncError:
         raise SyntaxError(
-            "At least one parameter should rather be a function of parameters ('parafunc')...")
+            "At least one parameter should be a function of other parameters ('parafunc')...")
 
     # check condition:
     n1 = N[:dim_x, :dim_x]
@@ -193,13 +193,13 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, verbose=Fal
     self.sys = N2, A2, J2, cx[~out_msk], b2[~out_msk], x_bar
 
     if verbose:
-        print('[get_sys:]'.ljust(15, ' ')+'Creation of system matrices finished in %ss.'
+        print('[get_sys:]'.ljust(15, ' ')+' Creation of system matrices finished in %ss.'
               % np.round(time.time() - st, 3))
 
     preprocess(self, l_max, k_max, verbose)
 
     test = self.precalc_mat[0][1, 0, 1]
-    if (eig(test[-test.shape[1]:]) > 1).any():
+    if not ignore_tests and (eig(test[-test.shape[1]:]) > 1).any():
         raise ValueError('Explosive dynamics detected.')
 
     return
@@ -265,9 +265,9 @@ def prior_sampler(self, nsamples, seed=0, test_lprob=False, verbose=True, debug=
     import tqdm
     from grgrlib import map2arr, serializer
 
-    reduce_sys = np.copy(self.fdict['reduce_sys'])
+    store_reduce_sys = np.copy(self.fdict['reduce_sys'])
 
-    if not reduce_sys:
+    if not store_reduce_sys:
         self.get_sys(reduce_sys=True, verbose=verbose > 1)
 
     if test_lprob and not hasattr(self, 'ndim'):
@@ -321,14 +321,14 @@ def prior_sampler(self, nsamples, seed=0, test_lprob=False, verbose=True, debug=
         return pdraw, no
 
     if verbose > 1:
-        print('[prior_sample:]'.ljust(15, ' ') + ' sampling from the pior...')
+        print('[prior_sample:]'.ljust(15, ' ') + ' Sampling from the pior...')
 
     wrapper = tqdm.tqdm if verbose < 2 else (lambda x, **kwarg: x)
     pmap_sim = wrapper(self.mapper(runner, range(nsamples)), total=nsamples)
 
     draws, nos = map2arr(pmap_sim)
 
-    if not reduce_sys:
+    if not store_reduce_sys:
         self.get_sys(reduce_sys=False, verbose=verbose > 1)
 
     if verbose:
@@ -336,7 +336,7 @@ def prior_sampler(self, nsamples, seed=0, test_lprob=False, verbose=True, debug=
         if test_lprob:
             smess = 'of zero likelihood, '
         print('[prior_sample:]'.ljust(
-            15, ' ') + ' sampling done. %2.2f%% of the prior are either %s indetermined or explosive.' % (100*(sum(nos)-nsamples)/nsamples, smess))
+            15, ' ') + ' Sampling done. %2.2f%% of the prior are either %s indetermined or explosive.' % (100*(sum(nos)-nsamples)/nsamples, smess))
 
     return draws
 
@@ -389,16 +389,16 @@ def get_par(self, dummy=None, parname=None, asdict=False, full=None, nsamples=1,
             try:
                 par_cand = np.array(self.par)[self.prior_arg]
             except:
-                par_cand = get_par(self, 'best', asdict=False, full=False)
+                par_cand = get_par(self, 'best', asdict=False, full=False, verbose=verbose, **args)
         elif len(dummy) == len(self.par_fix):
             par_cand = dummy[self.prior_arg]
         elif len(dummy) == len(self.prior_arg):
             par_cand = dummy
         elif dummy == 'best':
             try:
-                par_cand = get_par(self, 'mode', asdict=False, full=False)
+                par_cand = get_par(self, 'mode', asdict=False, full=False, verbose=verbose, **args)
             except:
-                par_cand = get_par(self, 'init', asdict=False, full=False)
+                par_cand = get_par(self, 'init', asdict=False, full=False, verbose=verbose, **args)
         elif dummy == 'prior':
             return prior_sampler(self, nsamples=nsamples, verbose=verbose, **args)
         elif dummy == 'posterior':
@@ -423,11 +423,17 @@ def get_par(self, dummy=None, parname=None, asdict=False, full=None, nsamples=1,
                 if par_cand[i] is None:
                     par_cand[i] = self.par_fix[self.prior_arg][i]
         else:
-            return get_par(self, parname=dummy, full=full)
+            return get_par(self, parname=dummy, full=full, verbose=verbose, **args)
     elif parname in pars_str:
-        return self.par[pars_str.index(parname)]
+        p = self.par[pars_str.index(parname)]
+        if verbose:
+            print('[get_par:]'.ljust(15, ' ') + "%s = %s" % (parname, p))
+        return p
     elif parname in pfnames:
-        return pffunc(self.par)[pfnames.index(parname)]
+        p = pffunc(self.par)[pfnames.index(parname)]
+        if verbose:
+            print('[get_par:]'.ljust(15, ' ') + "%s = %s" % (parname, p))
+        return p
     elif dummy is not None:
         raise KeyError(
             "`which` must be in {'prior', 'mode', 'calib', 'prior_mean', 'init'")
@@ -449,6 +455,8 @@ def get_par(self, dummy=None, parname=None, asdict=False, full=None, nsamples=1,
 
     if asdict:
         return dict(zip(np.array(pars_str)[self.prior_arg], np.round(par_cand, roundto)))
+
+
 
     if nsamples > 1:
         par_cand = par_cand*(1 + 1e-3*np.random.randn(nsamples, len(par_cand)))
@@ -515,7 +523,7 @@ def set_par(self, dummy, setpar=None, par=None, verbose=False, roundto=5, **args
             CO = self.SIG @ self.filter.eps_cov
             Q = CO @ CO.T
         elif self.filter.name == 'ParticleFilter':
-            raise NotADirectoryError
+            raise NotImplementedError
         else:
             Q = self.QQ(self.ppar) @ self.QQ(self.ppar)
 
@@ -525,7 +533,7 @@ def set_par(self, dummy, setpar=None, par=None, verbose=False, roundto=5, **args
         pdict = dict(zip(pars_str, np.round(self.par, roundto)))
         pfdict = dict(zip(pfnames, np.round(pffunc(self.par), roundto)))
 
-        print('[set_ar:]'.ljust(15, ' ') +
-              "Parameter(s):\n%s\n%s" % (pdict, pfdict))
+        print('[set_par:]'.ljust(15, ' ') +
+              " Parameter(s):\n%s\n%s" % (pdict, pfdict))
 
-    return par
+    return get_par(self)

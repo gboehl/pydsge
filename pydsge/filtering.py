@@ -140,7 +140,7 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, co
 
             if verbose > 0:
                 print('[run_filter:]'.ljust(
-                    15, ' ')+'Filtering done after %s seconds, starting smoothing...' % np.round(time.time()-st, 3))
+                    15, ' ')+' Filtering done after %s seconds, starting smoothing...' % np.round(time.time()-st, 3))
 
             if isinstance(smoother, bool):
                 smoother = 10
@@ -160,13 +160,13 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, co
         self.ll = res
 
         if verbose > 0:
-            print('[run_filter:]'.ljust(15, ' ')+'Filtering done in %s. Likelihood is %s.' %
+            print('[run_filter:]'.ljust(15, ' ')+' Filtering done in %s. Likelihood is %s.' %
                   (timeprint(time.time()-st, 3), res))
     else:
         self.X = res
 
         if verbose > 0:
-            print('[run_filter:]'.ljust(15, ' ')+'Filtering done in %s.' %
+            print('[run_filter:]'.ljust(15, ' ')+' Filtering done in %s.' %
                   timeprint(time.time()-st, 3))
 
     return res
@@ -213,7 +213,7 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
     if fname == 'KalmanFilter':
         if nsamples > 1:
             print('[extract:]'.ljust(
-                15, ' ')+'Setting `nsamples` to 1 as the linear filter is deterministic.')
+                15, ' ')+' Setting `nsamples` to 1 as the linear filter is deterministic.')
         nsamples = 1
         debug = not hasattr(self, 'debug') or self.debug
         self.debug = True

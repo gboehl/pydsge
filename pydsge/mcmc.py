@@ -207,7 +207,7 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
         self.fdict['mcmc_mode_f'] = mode_f
 
         if 'mode_f' in self.fdict.keys() and mode_f < self.fdict['mode_f']:
-            print('[mcmc:]'.ljust(15, ' ') + "New mode of %s is below old mode of %s. Rejecting..." %
+            print('[mcmc:]'.ljust(15, ' ') + " New mode of %s is below old mode of %s. Rejecting..." %
                   (mode_f, self.fdict['mode_f']))
         else:
             self.fdict['mode_x'] = mode_x
@@ -336,7 +336,7 @@ def kdes(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, linear=N
     self.fdict['kombine_mode_f'] = mode_f
 
     if 'mode_f' in self.fdict.keys() and mode_f < self.fdict['mode_f']:
-        print('[kombine:]'.ljust(15, ' ') + "New mode of %s is below old mode of %s. Rejecting..." %
+        print('[kombine:]'.ljust(15, ' ') + " New mode of %s is below old mode of %s. Rejecting..." %
               (mode_f, self.fdict['mode_f']))
     else:
         self.fdict['mode_x'] = mode_x

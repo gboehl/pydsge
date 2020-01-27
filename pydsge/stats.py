@@ -390,6 +390,30 @@ def gfevd(self, eps_dict, horizon=1, nsamples=None, linear=False, seed=0, verbos
     return vd
 
 
+def mbcs_index(self, vd, verbose=True):
+    """This implements a main-business-cycle shock measure
+
+    Between 0 and 1, this indicates how well one single shock explains the business cycle dynamics
+    """
+
+    vvd = self.hx[0] @ vd.to_numpy().T
+
+    mbs = 0
+    for i in range(vvd.shape[0]):
+        ind = np.unravel_index(vvd.argmax(), vvd.shape)
+        vvd[ind] -= 1
+        mbs += np.sum(vvd[ind[0]]**2) + np.sum(vvd[:,ind[1]]**2) - vvd[ind]**2
+        vvd = np.delete(vvd, ind[0], 0)
+        vvd = np.delete(vvd, ind[1], 1)
+
+    mbs /= 2*(len(self.shocks) - 1)
+
+    if verbose:
+        print('[mbs_index:]'.ljust(15, ' ') + " MBS index is %s." %mbs.round(3))
+
+    return mbs
+
+
 def nhd(self, eps_dict):
     """Calculates the normalized historic decomposition, based on normalized counterfactuals
     """
