@@ -89,7 +89,7 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
             15, ' ') + 'likelihood of initial values is zero.')
 
     if verbose:
-        print('[estimation:]'.ljust(15, ' ') + 'Model operational. %s states, %s observables, %s data points.' %
+        print('[estimation:]'.ljust(15, ' ') + ' Model operational. %s states, %s observables, %s data points.' %
               (len(self.vv), len(self.observables), len(self.data)))
 
     prior = self.prior
@@ -110,7 +110,7 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
 
     if verbose:
         print('[estimation:]'.ljust(
-            15, ' ') + '%s priors detected. Adding parameters to the prior distribution.' % self.ndim)
+            15, ' ') + ' %s priors detected. Adding parameters to the prior distribution.' % self.ndim)
 
     def llike(parameters, par_fix, linear, verbose, seed):
 
@@ -155,7 +155,7 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
             except Exception as err:
                 if verbose:
                     print('[llike:]'.ljust(15, ' ') +
-                          'Failure. Error msg: %s' % err)
+                          ' Failure. Error msg: %s' % err)
                     if verbose > 1:
                         pardict = get_par(self, full=False)
                         print(pardict)
@@ -208,7 +208,7 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
         ll += lp
 
         if verbose:
-            print('[lprob:]'.ljust(15, ' ') + "Sample took %ss, ll is %s, temp is %s." %
+            print('[lprob:]'.ljust(15, ' ') + " Sample took %ss, ll is %s, temp is %s." %
                   (np.round(time.time() - st, 3), np.round(ll, 4), np.round(temp, 3)))
 
         return ll
@@ -257,7 +257,7 @@ def create_pool(self, ncores=None, threadpool_limit=None):
         threadpool_limits(limits=self.threadpool_limit)
     except ImportError:
         print('[create_pool:]'.ljust(
-            15, ' ') + "Could not import package `threadpoolctl` to limit numpy multithreading. This might reduce multiprocessing performance.")
+            15, ' ') + " Could not import package `threadpoolctl` to limit numpy multithreading. This might reduce multiprocessing performance.")
 
     self.pool = pathos.pools.ProcessPool(ncores)
     self.pool.clear()
@@ -292,10 +292,10 @@ def box_check(self, par=None):
 
         if par[i] < lb[i]:
             print('[box_check:]'.ljust(
-                15, ' ') + 'Parameter %s of %s lower than lb of %s.' % (name, par[i].round(5), lb[i]))
+                15, ' ') + ' Parameter %s of %s lower than lb of %s.' % (name, par[i].round(5), lb[i]))
 
         if par[i] > ub[i]:
             print('[box_check:]'.ljust(
-                15, ' ') + 'Parameter %s of %s higher than ub of %s.' % (name, par[i].round(5), ub[i]))
+                15, ' ') + ' Parameter %s of %s higher than ub of %s.' % (name, par[i].round(5), ub[i]))
 
     return

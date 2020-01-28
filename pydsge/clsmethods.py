@@ -5,7 +5,7 @@ import os
 import numpy as np
 import pandas as pd
 from .parser import DSGE
-from .stats import summary, gfevd, nhd, mdd
+from .stats import summary, gfevd, mbcs_index, nhd, mdd
 from .plots import posteriorplot, traceplot
 from .mcmc import mcmc, tmcmc
 from .modesearch import cmaes
@@ -113,7 +113,7 @@ def save_meta(self, filename=None, verbose=True):
 
     if verbose:
         print('[save_meta:]'.ljust(15, ' ') +
-              "Metadata saved as '%s'" % filename)
+              " Metadata saved as '%s'" % filename)
 
     return
 
@@ -136,7 +136,7 @@ def save_rdict(self, rdict, path=None, suffix='', verbose=True):
     np.savez(path + suffix, **rdict)
 
     if verbose:
-        print('[save_rdict:]'.ljust(15, ' ') + "Results saved as '%s'" % path)
+        print('[save_rdict:]'.ljust(15, ' ') + " Results saved as '%s'" % path)
     return
 
 
@@ -452,4 +452,5 @@ DSGE.mask = mask
 DSGE.load_rdict = load_rdict
 DSGE.save_rdict = save_rdict
 DSGE.gfevd = gfevd
+DSGE.mbcs_index = mbcs_index
 DSGE.nhd = nhd
