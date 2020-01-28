@@ -341,7 +341,7 @@ def prior_sampler(self, nsamples, seed=0, test_lprob=False, verbose=True, debug=
     return draws
 
 
-def get_par(self, dummy=None, parname=None, asdict=False, full=None, nsamples=1, verbose=False, roundto=5, **args):
+def get_par(self, dummy=None, npar=None, asdict=False, full=None, nsamples=1, verbose=False, roundto=5, **args):
     """Get parameters. Tries to figure out what you want. 
 
     Parameters
@@ -349,14 +349,11 @@ def get_par(self, dummy=None, parname=None, asdict=False, full=None, nsamples=1,
     dummy : str, optional
     Can be `None`, a parameter name, or one of {'calib', 'init', 'prior_mean', 'best', 'mode', 'mcmc_mode', 'post_mean', 'posterior_mean', 'prior', 'posterior'}. 
     If `None`, returns the current parameters (default).
-    If a parameter name, this is equivalent to setting `parname`.
     Otherwise, 'calib' will return the calibration in the main body of the *.yaml (`parameters`). 
     'init' are the initial values (first column) in the `prior` section of the *.yaml.
     'posterior_mean' and 'post_mean' are the same thing.
     'posterior_mode', 'post_mode' and 'mcmc_mode' are the same thing.
     'prior' or 'posterior' will draw random samples. Obviously, 'posterior', 'mode' etc are only available if a posterior/chain exists.
-    parname : str, optional
-        Parameter name if you want to query a single parameter.
     asdict : bool, optional
         Returns a dict of the values if `True` and an array otherwise (default is `False`).
     full : bool, optional
@@ -384,65 +381,65 @@ def get_par(self, dummy=None, parname=None, asdict=False, full=None, nsamples=1,
     pfnames, pffunc = self.parafunc
     pars_str = [str(p) for p in self.parameters]
 
-    if parname is None:
-        if dummy is None:
-            try:
-                par_cand = np.array(self.par)[self.prior_arg]
-            except:
-                par_cand = get_par(self, 'best', asdict=False, full=False, verbose=verbose, **args)
-        elif len(dummy) == len(self.par_fix):
-            par_cand = dummy[self.prior_arg]
-        elif len(dummy) == len(self.prior_arg):
-            par_cand = dummy
-        elif dummy == 'best':
-            try:
-                par_cand = get_par(self, 'mode', asdict=False, full=False, verbose=verbose, **args)
-            except:
-                par_cand = get_par(self, 'init', asdict=False, full=False, verbose=verbose, **args)
-        elif dummy == 'prior':
-            return prior_sampler(self, nsamples=nsamples, verbose=verbose, **args)
-        elif dummy == 'posterior':
-            return posterior_sampler(self, nsamples=nsamples, verbose=verbose, **args)
-        elif dummy == 'posterior_mean' or dummy == 'post_mean':
-            par_cand = post_mean(self)
-        elif dummy == 'mode':
-            par_cand = self.fdict['mode_x']
-        elif dummy in ('mcmc_mode', 'mode_mcmc', 'posterior_mode', 'post_mode'):
-            par_cand = self.fdict['mcmc_mode_x']
-        elif dummy == 'calib':
-            par_cand = self.par_fix[self.prior_arg]
-        elif dummy == 'prior_mean':
-            par_cand = [self.prior[pp][-2] for pp in self.prior.keys()]
-        elif dummy == 'adj_prior_mean':
-            # adjust for prior[pp][-2] not beeing the actual mean for inv_gamma_dynare
-            par_cand = [self.prior[pp][-2]*10 **
-                        (self.prior[pp][3] == 'inv_gamma_dynare') for pp in self.prior.keys()]
-        elif dummy == 'init':
-            par_cand = self.fdict['init_value']
-            for i in range(self.ndim):
-                if par_cand[i] is None:
-                    par_cand[i] = self.par_fix[self.prior_arg][i]
+    pars = np.array(self.par) if hasattr(self, 'par') else np.array(self.par_fix)
+    if npar is not None:
+        if len(npar) != len(self.par_fix):
+            pars[self.prior_arg] = npar
         else:
-            return get_par(self, parname=dummy, full=full, verbose=verbose, **args)
-    elif parname in pars_str:
-        p = self.par[pars_str.index(parname)]
+            pars = npar
+
+    if dummy is None:
+        try:
+            par_cand = np.array(pars)[self.prior_arg]
+        except:
+            par_cand = get_par(self, 'best', asdict=False, full=False, verbose=verbose, **args)
+    elif len(dummy) == len(self.par_fix):
+        par_cand = dummy[self.prior_arg]
+    elif len(dummy) == len(self.prior_arg):
+        par_cand = dummy
+    elif dummy in pars_str:
+        p = pars[pars_str.index(dummy)]
         if verbose:
-            print('[get_par:]'.ljust(15, ' ') + "%s = %s" % (parname, p))
+            print('[get_par:]'.ljust(15, ' ') + "%s = %s" % (dummy, p))
         return p
-    elif parname in pfnames:
-        p = pffunc(self.par)[pfnames.index(parname)]
+    elif dummy in pfnames:
+        p = pffunc(pars)[pfnames.index(dummy)]
         if verbose:
-            print('[get_par:]'.ljust(15, ' ') + "%s = %s" % (parname, p))
+            print('[get_par:]'.ljust(15, ' ') + "%s = %s" % (dummy, p))
         return p
-    elif dummy is not None:
-        raise KeyError(
-            "`which` must be in {'prior', 'mode', 'calib', 'prior_mean', 'init'")
+    elif dummy == 'best':
+        try:
+            par_cand = get_par(self, 'mode', asdict=False, full=False, verbose=verbose, **args)
+        except:
+            par_cand = get_par(self, 'init', asdict=False, full=False, verbose=verbose, **args)
+    elif dummy == 'prior':
+        return prior_sampler(self, nsamples=nsamples, verbose=verbose, **args)
+    elif dummy == 'posterior':
+        return posterior_sampler(self, nsamples=nsamples, verbose=verbose, **args)
+    elif dummy == 'posterior_mean' or dummy == 'post_mean':
+        par_cand = post_mean(self)
+    elif dummy == 'mode':
+        par_cand = self.fdict['mode_x']
+    elif dummy in ('mcmc_mode', 'mode_mcmc', 'posterior_mode', 'post_mode'):
+        par_cand = self.fdict['mcmc_mode_x']
+    elif dummy == 'calib':
+        par_cand = self.par_fix[self.prior_arg]
+    elif dummy == 'prior_mean':
+        par_cand = [self.prior[pp][-2] for pp in self.prior.keys()]
+    elif dummy == 'adj_prior_mean':
+        # adjust for prior[pp][-2] not beeing the actual mean for inv_gamma_dynare
+        par_cand = [self.prior[pp][-2]*10 **
+                    (self.prior[pp][3] == 'inv_gamma_dynare') for pp in self.prior.keys()]
+    elif dummy == 'init':
+        par_cand = self.fdict['init_value']
+        for i in range(self.ndim):
+            if par_cand[i] is None:
+                par_cand[i] = self.par_fix[self.prior_arg][i]
     else:
-        raise KeyError("Parameter '%s' does not exist." % parname)
+        raise KeyError("Parameter or parametrization '%s' does not exist." % dummy)
 
     if full:
-        par = self.par.copy() if hasattr(self, 'par') else self.par_fix.copy()
-        par = np.array(par)
+        par = np.array(pars)
         par[self.prior_arg] = par_cand
 
         if not asdict:
@@ -464,7 +461,7 @@ def get_par(self, dummy=None, parname=None, asdict=False, full=None, nsamples=1,
     return par_cand
 
 
-def set_par(self, dummy, setpar=None, par=None, verbose=False, roundto=5, **args):
+def set_par(self, dummy, setpar=None, npar=None, verbose=False, roundto=5, **args):
     """Set the current parameter values.
 
     In essence, this is a wrapper around `get_par` which also compiles the transition function with the desired parameters.
@@ -473,8 +470,10 @@ def set_par(self, dummy, setpar=None, par=None, verbose=False, roundto=5, **args
     ----------
     dummy : str or array
         If an array, sets all parameters. If a string and a parameter name,`setpar` must be provided to define the value of this parameter. Otherwise, `dummy` is forwarded to `get_par` and the returning value(s) are set as parameters.
-    setpar : float
-        Parametervalue.
+    setpar : float, optional
+        Parametervalue to be set. Of course, only if `dummy` is a parameter name.
+    npar : array, optional
+        Vector of parameters. If given, this vector will be altered and returnd without recompiling the model.
     verbose : bool
         Whether to output more or less informative messages (defaults to False)
     roundto : int
@@ -485,25 +484,19 @@ def set_par(self, dummy, setpar=None, par=None, verbose=False, roundto=5, **args
 
     pfnames, pffunc = self.parafunc
     pars_str = [str(p) for p in self.parameters]
+    par = np.array(self.par) if hasattr(self, 'par') else np.array(self.par_fix)
 
     if setpar is None:
         if len(dummy) == len(self.par_fix):
             par = dummy
         elif len(dummy) == len(self.prior_arg):
-            par = np.copy(self.par) if hasattr(
-                self, 'par') else np.copy(self.par_fix)
             par[self.prior_arg] = dummy
         else:
-            par = get_par(self, dummy=dummy, parname=None,
-                          asdict=False, full=True, verbose=verbose)
-
+            par = get_par(self, dummy=dummy, parname=None, asdict=False, full=True, verbose=verbose)
     elif dummy in pars_str:
-        if par is None:
-            par = self.par.copy() if hasattr(self, 'par') else self.par_fix.copy()
-        elif len(par) == len(self.prior_arg):
-            npar = self.par.copy() if hasattr(self, 'par') else self.par_fix.copy()
-            npar = np.array(npar)
-            npar[self.prior_arg] = par
+        if len(npar) == len(self.prior_arg):
+            par[self.prior_arg] = npar
+        else:
             par = npar
         par[pars_str.index(dummy)] = setpar
     elif dummy in pfnames:
@@ -513,6 +506,10 @@ def set_par(self, dummy, setpar=None, par=None, verbose=False, roundto=5, **args
         raise SyntaxError(
             "Parameter '%s' is not defined for this model." % parname)
 
+    if npar is not None:
+        return get_par(self, par)
+
+    # do compile model only if not vector is given that should be altered
     get_sys(self, par=list(par), verbose=verbose, **args)
 
     if hasattr(self, 'filter'):
