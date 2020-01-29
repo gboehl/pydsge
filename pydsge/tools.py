@@ -277,7 +277,7 @@ def simulate(self, source, mask=None, linear=False, debug=False, verbose=False):
 
     X, LK, flags = res
 
-    return X, (LK[:,0,:], LK[:,1,:]), flags
+    return X, (LK[:, 0, :], LK[:, 1, :]), flags
 
 
 def simulate_ts(self, T=1e3, cov=None, verbose=False):

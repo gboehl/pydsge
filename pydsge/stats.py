@@ -402,14 +402,15 @@ def mbcs_index(self, vd, verbose=True):
     for i in range(vvd.shape[0]):
         ind = np.unravel_index(vvd.argmax(), vvd.shape)
         vvd[ind] -= 1
-        mbs += np.sum(vvd[ind[0]]**2) + np.sum(vvd[:,ind[1]]**2) - vvd[ind]**2
+        mbs += np.sum(vvd[ind[0]]**2) + np.sum(vvd[:, ind[1]]**2) - vvd[ind]**2
         vvd = np.delete(vvd, ind[0], 0)
         vvd = np.delete(vvd, ind[1], 1)
 
     mbs /= 2*(len(self.shocks) - 1)
 
     if verbose:
-        print('[mbs_index:]'.ljust(15, ' ') + " MBS index is %s." %mbs.round(3))
+        print('[mbs_index:]'.ljust(15, ' ') +
+              " MBS index is %s." % mbs.round(3))
 
     return mbs
 
@@ -458,12 +459,14 @@ def nhd(self, eps_dict):
             if k and rcons.sum():
                 for s in range(len(self.shocks)):
                     # proportional to relative contribution to constaint spell duration
-                    hc[i, s, t+1, :] += rcons[s] / rcons.sum()*term[l, k, 1][J.shape[0]:]
+                    hc[i, s, t+1, :] += rcons[s] / \
+                        rcons.sum()*term[l, k, 1][J.shape[0]:]
 
     # as a list of DataFrames
     hd = [pd.DataFrame(h, index=self.data.index, columns=self.vv)
           for h in hc.mean(axis=0)]
-    means = pd.DataFrame(states.mean(axis=0), index=self.data.index, columns=self.vv)
+    means = pd.DataFrame(states.mean(
+        axis=0), index=self.data.index, columns=self.vv)
 
     return hd, means
 
@@ -512,10 +515,11 @@ def mdd_mhm(chain, lprobs, alpha=.05, pool=None, verbose=False, debug=False):
 
     nsamples = chain.shape[0]
     ##
+
     def runner(chunk):
         ##
         res = np.empty_like(chunk)
-        wrapper = tqdm.tqdm if verbose  else (lambda x, **kwarg: x)
+        wrapper = tqdm.tqdm if verbose else (lambda x, **kwarg: x)
         ##
         for i in wrapper(range(len(chunk))):
             drv = chain[i]
@@ -532,14 +536,14 @@ def mdd_mhm(chain, lprobs, alpha=.05, pool=None, verbose=False, debug=False):
             import pathos
             nbatches = pathos.multiprocessing.cpu_count()
         else:
-            nbatches = pool.ncpus 
+            nbatches = pool.ncpus
 
-        batches = pool.imap(runner, np.split(chain,nbatches))
+        batches = pool.imap(runner, np.split(chain, nbatches))
         mls = np.vstack(list(batches))
     else:
         mls = runner(chain)
 
-    maxllike = np.max(mls) # for numeric stability
+    maxllike = np.max(mls)  # for numeric stability
     imdd = np.log(np.mean(np.exp(mls-maxllike))) + maxllike
 
     return -imdd
@@ -569,7 +573,7 @@ def mdd(self, method='laplace', chain=None, lprobs=None, tune=None, verbose=Fals
         lprobs = self.get_log_prob()[-tune:]
         lprobs = lprobs.flatten()
 
-    if method in ('laplace','lp'):
+    if method in ('laplace', 'lp'):
         mstr = 'LaPlace approximation'
         mdd = mdd_lp(chain, lprobs, calc_hess=False)
     elif method == 'hess':
@@ -578,9 +582,10 @@ def mdd(self, method='laplace', chain=None, lprobs=None, tune=None, verbose=Fals
     elif method == 'mhm':
         mstr = 'modified harmonic mean'
         pool = self.pool if hasattr(self, 'pool') else None
-        mdd = mdd_mhm(chain, lprobs, pool=pool, verbose=verbose>1, **args)
+        mdd = mdd_mhm(chain, lprobs, pool=pool, verbose=verbose > 1, **args)
     else:
-        raise NotImplementedError('[mdd:]'.ljust(15, ' ') + "`method` must be one of `laplace`, `mhm` or `hess`.")
+        raise NotImplementedError('[mdd:]'.ljust(
+            15, ' ') + "`method` must be one of `laplace`, `mhm` or `hess`.")
 
     if verbose:
         print('[mdd:]'.ljust(15, ' ') + "done after %s. Marginal data density according to %s is %s." %

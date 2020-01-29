@@ -191,8 +191,8 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
             seed_loc = sum(p // 10**(int(np.log(abs(p))/np.log(10))-9)
                            for p in par)
             if lprob_seed == 'rand':
-                seed_loc += np.random.randint(2**31) # win explodes with 2**32
-            seed_loc = int(seed_loc) % (2**31) # win explodes with 2**32
+                seed_loc += np.random.randint(2**31)  # win explodes with 2**32
+            seed_loc = int(seed_loc) % (2**31)  # win explodes with 2**32
 
         elif lprob_seed == 'set':
             seed_loc = seed
@@ -244,10 +244,10 @@ def create_pool(self, ncores=None, threadpool_limit=None):
         ncores = ncores or self.pool.ncpus
         self.pool.close()
     else:
-        ## pools should carry their count with them
+        # pools should carry their count with them
         ncores = ncores or pathos.multiprocessing.cpu_count()
 
-    if threadpool_limit: 
+    if threadpool_limit:
         self.threadpool_limit = threadpool_limit
     elif not hasattr(self, 'threadpool_limit'):
         self.threadpool_limit = 1

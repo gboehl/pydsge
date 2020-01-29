@@ -255,7 +255,7 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
 
         for natt in range(nattemps):
             np.random.seed(seed_loc)
-            seed_loc = np.random.randint(2**31) # win explodes with 2**32
+            seed_loc = np.random.randint(2**31)  # win explodes with 2**32
             try:
                 means, covs, resid, flags = npas(
                     get_eps=get_eps, verbose=(len(sample) == 1) or (verbose-1), seed=seed_loc, nsamples=1, **npasargs)
@@ -267,7 +267,8 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
                 else:
                     raise
 
-    wrap = tqdm.tqdm if (verbose and len(sample) > 1) else (lambda x, **kwarg: x)
+    wrap = tqdm.tqdm if (verbose and len(sample) >
+                         1) else (lambda x, **kwarg: x)
     res = wrap(self.mapper(runner, sample), unit=' sample(s)',
                total=len(sample), dynamic_ncols=True)
     means, obs, covs, resid, flags = map2arr(res)

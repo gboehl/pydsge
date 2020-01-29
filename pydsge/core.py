@@ -127,12 +127,14 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, ignore_test
     N = nl.inv(P2) @ M2
     A = nl.inv(P2) @ (M2 + np.outer(c1, b2))
 
-    # rounding here to allow for small numeric errors during SVD & inversion 
+    # rounding here to allow for small numeric errors during SVD & inversion
     if not ignore_tests:
         if sum(eig(A).round(3) < 1) > len(vv_v):
-            raise ValueError('B-K condition *not* satisfied (too many EV < 1).')
+            raise ValueError(
+                'B-K condition *not* satisfied (too many EV < 1).')
         if sum(eig(A).round(3) >= 1) > len(vv_x3):
-            raise ValueError('B-K condition *not* satisfied (too many EV > 1).')
+            raise ValueError(
+                'B-K condition *not* satisfied (too many EV > 1).')
 
     dim_x = len(vv_x3)
     OME = re_bc(A, dim_x)
@@ -301,7 +303,7 @@ def prior_sampler(self, nsamples, seed=0, test_lprob=False, verbose=True, debug=
             with np.warnings.catch_warnings(record=False):
                 try:
                     np.warnings.filterwarnings('error')
-                    rst = np.random.randint(2**31) # win explodes with 2**32
+                    rst = np.random.randint(2**31)  # win explodes with 2**32
                     pdraw = [pl.rvs(random_state=rst+sn)
                              for sn, pl in enumerate(frozen_prior)]
 
@@ -381,7 +383,8 @@ def get_par(self, dummy=None, npar=None, asdict=False, full=None, nsamples=1, ve
     pfnames, pffunc = self.parafunc
     pars_str = [str(p) for p in self.parameters]
 
-    pars = np.array(self.par) if hasattr(self, 'par') else np.array(self.par_fix)
+    pars = np.array(self.par) if hasattr(
+        self, 'par') else np.array(self.par_fix)
     if npar is not None:
         if len(npar) != len(self.par_fix):
             pars[self.prior_arg] = npar
@@ -392,7 +395,8 @@ def get_par(self, dummy=None, npar=None, asdict=False, full=None, nsamples=1, ve
         try:
             par_cand = np.array(pars)[self.prior_arg]
         except:
-            par_cand = get_par(self, 'best', asdict=False, full=False, verbose=verbose, **args)
+            par_cand = get_par(self, 'best', asdict=False,
+                               full=False, verbose=verbose, **args)
     elif len(dummy) == len(self.par_fix):
         par_cand = dummy[self.prior_arg]
     elif len(dummy) == len(self.prior_arg):
@@ -409,9 +413,11 @@ def get_par(self, dummy=None, npar=None, asdict=False, full=None, nsamples=1, ve
         return p
     elif dummy == 'best':
         try:
-            par_cand = get_par(self, 'mode', asdict=False, full=False, verbose=verbose, **args)
+            par_cand = get_par(self, 'mode', asdict=False,
+                               full=False, verbose=verbose, **args)
         except:
-            par_cand = get_par(self, 'init', asdict=False, full=False, verbose=verbose, **args)
+            par_cand = get_par(self, 'init', asdict=False,
+                               full=False, verbose=verbose, **args)
     elif dummy == 'prior':
         return prior_sampler(self, nsamples=nsamples, verbose=verbose, **args)
     elif dummy == 'posterior':
@@ -436,7 +442,8 @@ def get_par(self, dummy=None, npar=None, asdict=False, full=None, nsamples=1, ve
             if par_cand[i] is None:
                 par_cand[i] = self.par_fix[self.prior_arg][i]
     else:
-        raise KeyError("Parameter or parametrization '%s' does not exist." % dummy)
+        raise KeyError(
+            "Parameter or parametrization '%s' does not exist." % dummy)
 
     if full:
         par = np.array(pars)
@@ -452,8 +459,6 @@ def get_par(self, dummy=None, npar=None, asdict=False, full=None, nsamples=1, ve
 
     if asdict:
         return dict(zip(np.array(pars_str)[self.prior_arg], np.round(par_cand, roundto)))
-
-
 
     if nsamples > 1:
         par_cand = par_cand*(1 + 1e-3*np.random.randn(nsamples, len(par_cand)))
@@ -484,7 +489,8 @@ def set_par(self, dummy, setpar=None, npar=None, verbose=False, roundto=5, **arg
 
     pfnames, pffunc = self.parafunc
     pars_str = [str(p) for p in self.parameters]
-    par = np.array(self.par) if hasattr(self, 'par') else np.array(self.par_fix)
+    par = np.array(self.par) if hasattr(
+        self, 'par') else np.array(self.par_fix)
 
     if setpar is None:
         if len(dummy) == len(self.par_fix):
@@ -492,9 +498,12 @@ def set_par(self, dummy, setpar=None, npar=None, verbose=False, roundto=5, **arg
         elif len(dummy) == len(self.prior_arg):
             par[self.prior_arg] = dummy
         else:
-            par = get_par(self, dummy=dummy, parname=None, asdict=False, full=True, verbose=verbose)
+            par = get_par(self, dummy=dummy, parname=None,
+                          asdict=False, full=True, verbose=verbose)
     elif dummy in pars_str:
-        if len(npar) == len(self.prior_arg):
+        if npar is None:
+            pass
+        elif len(npar) == len(self.prior_arg):
             par[self.prior_arg] = npar
         else:
             par = npar
