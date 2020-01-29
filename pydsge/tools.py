@@ -124,7 +124,7 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, verbose=Tru
     shocks = self.shocks
     nstates = len(self.vv)
 
-    def irfs_runner(par):
+    def runner(par):
 
         X = np.empty((T, nstates))
         K = np.empty(T)
@@ -166,11 +166,11 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, verbose=Tru
 
         return X, K, L, superflag
 
-    if pars is not None and len(pars) > 1:
-        res = self.mapper(irfs_runner, pars)
+    if pars is not None and np.ndim(pars) > 1:
+        res = self.mapper(runner, pars)
         X, K, L, flag = map2arr(res)
     else:
-        X, K, L, flag = irfs_runner(pars)
+        X, K, L, flag = runner(pars)
         X = pd.DataFrame(X, columns=self.vv)
 
     if np.any(flag) and verbose:
