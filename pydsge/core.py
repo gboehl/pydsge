@@ -494,7 +494,9 @@ def set_par(self, dummy, setpar=None, npar=None, verbose=False, roundto=5, **arg
         else:
             par = get_par(self, dummy=dummy, parname=None, asdict=False, full=True, verbose=verbose)
     elif dummy in pars_str:
-        if len(npar) == len(self.prior_arg):
+        if npar is None:
+            pass
+        elif len(npar) == len(self.prior_arg):
             par[self.prior_arg] = npar
         else:
             par = npar
