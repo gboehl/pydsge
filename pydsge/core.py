@@ -349,13 +349,17 @@ def get_par(self, dummy=None, npar=None, asdict=False, full=None, nsamples=1, ve
     Parameters
     ----------
     dummy : str, optional
-    Can be `None`, a parameter name, or one of {'calib', 'init', 'prior_mean', 'best', 'mode', 'mcmc_mode', 'post_mean', 'posterior_mean', 'prior', 'posterior'}. 
-    If `None`, returns the current parameters (default).
-    Otherwise, 'calib' will return the calibration in the main body of the *.yaml (`parameters`). 
-    'init' are the initial values (first column) in the `prior` section of the *.yaml.
-    'posterior_mean' and 'post_mean' are the same thing.
-    'posterior_mode', 'post_mode' and 'mcmc_mode' are the same thing.
-    'prior' or 'posterior' will draw random samples. Obviously, 'posterior', 'mode' etc are only available if a posterior/chain exists.
+        Can be `None`, a parameter name, or one of {'calib', 'init', 'prior_mean', 'best', 'mode', 'mcmc_mode', 'post_mean', 'posterior_mean', 'prior', 'posterior'}. 
+
+        If `None`, returns the current parameters (default).
+        'calib' will return the calibration in the main body of the *.yaml (`parameters`). 
+        'init' are the initial values (first column) in the `prior` section of the *.yaml.
+        'posterior_mean' and 'post_mean' are the same thing.
+        'posterior_mode', 'post_mode' and 'mcmc_mode' are the same thing.
+        'prior' or 'posterior' will draw random samples. Obviously, 'posterior', 'mode' etc are only available if a posterior/chain exists.
+
+        NOTE: calling get_par with 'calib' is the only way to recover the calibrated parameters that are not included in the prior (if you have changed them). All other options will work incrementially on potential previous edits of these parameters.
+
     asdict : bool, optional
         Returns a dict of the values if `True` and an array otherwise (default is `False`).
     full : bool, optional
@@ -429,7 +433,8 @@ def get_par(self, dummy=None, npar=None, asdict=False, full=None, nsamples=1, ve
     elif dummy in ('mcmc_mode', 'mode_mcmc', 'posterior_mode', 'post_mode'):
         par_cand = self.fdict['mcmc_mode_x']
     elif dummy == 'calib':
-        par_cand = self.par_fix[self.prior_arg]
+        pars = self.par_fix # ensure that ALL parameters are reset, not only those included in the prior
+        par_cand = self.par_fix[self.prior_arg].copy()
     elif dummy == 'prior_mean':
         par_cand = [self.prior[pp][-2] for pp in self.prior.keys()]
     elif dummy == 'adj_prior_mean':
@@ -478,7 +483,7 @@ def set_par(self, dummy, setpar=None, npar=None, verbose=False, roundto=5, **arg
     setpar : float, optional
         Parametervalue to be set. Of course, only if `dummy` is a parameter name.
     npar : array, optional
-        Vector of parameters. If given, this vector will be altered and returnd without recompiling the model.
+        Vector of parameters. If given, this vector will be altered and returnd without recompiling the model. THIS WILL ALTER THE PARAMTER WITHOUT MAKING A COPY!
     verbose : bool
         Whether to output more or less informative messages (defaults to False)
     roundto : int
