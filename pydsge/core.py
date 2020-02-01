@@ -36,8 +36,8 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, ignore_test
 
     st = time.time()
 
-    reduce_sys = reduce_sys or self.fdict.get('reduce_sys')
-    ignore_tests = ignore_tests or self.fdict.get('ignore_tests')
+    reduce_sys = reduce_sys if reduce_sys is not None else self.fdict.get('reduce_sys')
+    ignore_tests = ignore_tests if ignore_tests is not None else self.fdict.get('ignore_tests')
 
     l_max = 3 if l_max is None else l_max
     k_max = 17 if k_max is None else k_max
