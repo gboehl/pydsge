@@ -144,7 +144,7 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, ignore_test
         cx = nl.inv(P2) @ c1*x_bar
     except ParafuncError:
         raise SyntaxError(
-            "At least one parameter should be a function of other parameters ('parafunc')...")
+            "At least one parameter is a function of other parameters, and should be declared in `parafunc`.")
 
     # check condition:
     n1 = N[:dim_x, :dim_x]
@@ -439,8 +439,13 @@ def get_par(self, dummy=None, npar=None, asdict=False, full=None, nsamples=1, ve
         par_cand = [self.prior[pp][-2] for pp in self.prior.keys()]
     elif dummy == 'adj_prior_mean':
         # adjust for prior[pp][-2] not beeing the actual mean for inv_gamma_dynare
-        par_cand = [self.prior[pp][-2]*10 **
-                    (self.prior[pp][3] == 'inv_gamma_dynare') for pp in self.prior.keys()]
+        par_cand = []
+        for pp in self.prior.keys():
+            try:
+                poww = (self.prior[pp][3] == 'inv_gamma_dynare') 
+            except IndexError:
+                poww = 0
+            par_cand.append(self.prior[pp][-2]*10 ** poww)
     elif dummy == 'init':
         par_cand = self.fdict['init_value']
         for i in range(self.ndim):
@@ -515,10 +520,10 @@ def set_par(self, dummy, setpar=None, npar=None, verbose=False, roundto=5, **arg
         par[pars_str.index(dummy)] = setpar
     elif dummy in pfnames:
         raise SyntaxError(
-            "Can not set parameter '%s' that is function of other parameters." % parname)
+            "Can not set parameter '%s' that is a function of other parameters." % dummy)
     else:
         raise SyntaxError(
-            "Parameter '%s' is not defined for this model." % parname)
+            "Parameter '%s' is not defined for this model." % dummy)
 
     if npar is not None:
         return get_par(self, par)

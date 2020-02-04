@@ -9,7 +9,7 @@ import time
 import tqdm
 from .stats import get_prior
 from .filtering import get_ll
-from .core import get_par
+from .core import get_par, set_par
 
 
 def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=False, dispatch=False, constr_data=False, ncores=None, reduce_sys=True, verbose=True, debug=False, **filterargs):
@@ -72,7 +72,7 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
     self.Z = np.array(self.data)
 
     if not hasattr(self, 'sys') or not hasattr(self, 'precalc_mat'):
-        self.get_sys(reduce_sys=reduce_sys, verbose=verbose > 3)
+        set_par(self, 'prior_mean', reduce_sys=reduce_sys, verbose=verbose > 3)
 
     self.create_filter(
         N=N, ftype='KalmanFilter' if linear else None, **filterargs)

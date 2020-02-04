@@ -440,6 +440,7 @@ DSGE.cmaes = cmaes
 # from filter
 DSGE.create_filter = create_filter
 DSGE.run_filter = run_filter
+DSGE.get_ll = get_ll
 # from plot
 DSGE.traceplot = traceplot_m
 DSGE.posteriorplot = posteriorplot_m

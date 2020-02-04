@@ -222,11 +222,11 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
         self.debug |= debug
         npas = serializer(self.filter.npas)
 
-    filter_get_eps = serializer(self.filter.get_eps)
-    set_par = serializer(self.set_par)
     run_filter = serializer(self.run_filter)
+    set_par = serializer(self.set_par)
     t_func = serializer(self.t_func)
     obs = serializer(self.obs)
+    filter_get_eps = serializer(self.get_eps_lin)
     edim = len(self.shocks)
 
     sample = [(x, y) for x in sample for y in range(nsamples)]
