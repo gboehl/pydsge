@@ -251,12 +251,18 @@ def sample_box(self, dim0, dim1=None, bounds=None, lp_rule=None, verbose=False):
 
 
 def prior_sampler(self, nsamples, seed=0, test_lprob=False, verbose=True, debug=False):
-    """Draw parameters from prior. Drawn parameters have a finite likelihood.
+    """Draw parameters from prior. 
 
     Parameters
     ----------
     nsamples : int
         Size of the prior sample
+    seed : int, optional
+        Set the random seed (0 by default)
+    test_lprob : bool, optional
+        Whether to ensure that drawn parameters have a finite likelihood (False by default)
+    verbose : bool, optional
+    debug : bool, optional
 
     Returns
     -------
@@ -349,16 +355,16 @@ def get_par(self, dummy=None, npar=None, asdict=False, full=None, nsamples=1, ve
     Parameters
     ----------
     dummy : str, optional
-        Can be `None`, a parameter name, or one of {'calib', 'init', 'prior_mean', 'best', 'mode', 'mcmc_mode', 'post_mean', 'posterior_mean', 'prior', 'posterior'}. 
+        Can be `None`, a parameter name, a parameter set out of {'calib', 'init', 'prior_mean', 'best', 'mode', 'mcmc_mode', 'post_mean', 'posterior_mean'} or one of {'prior', 'post', 'posterior'}. 
 
         If `None`, returns the current parameters (default).
         'calib' will return the calibration in the main body of the *.yaml (`parameters`). 
         'init' are the initial values (first column) in the `prior` section of the *.yaml.
         'posterior_mean' and 'post_mean' are the same thing.
         'posterior_mode', 'post_mode' and 'mcmc_mode' are the same thing.
-        'prior' or 'posterior' will draw random samples. Obviously, 'posterior', 'mode' etc are only available if a posterior/chain exists.
+        'prior' or 'post'/'posterior' will draw random samples. Obviously, 'posterior', 'mode' etc are only available if a posterior/chain exists.
 
-        NOTE: calling get_par with 'calib' is the only way to recover the calibrated parameters that are not included in the prior (if you have changed them). All other options will work incrementially on potential previous edits of these parameters.
+        NOTE: calling get_par with a set of parameters is the only way to recover the calibrated parameters that are not included in the prior (if you have changed them). All other options will work incrementially on (potential) previous edits of these parameters.
 
     asdict : bool, optional
         Returns a dict of the values if `True` and an array otherwise (default is `False`).
@@ -423,22 +429,29 @@ def get_par(self, dummy=None, npar=None, asdict=False, full=None, nsamples=1, ve
             par_cand = get_par(self, 'init', asdict=False,
                                full=False, verbose=verbose, **args)
     elif dummy == 'prior':
-        return prior_sampler(self, nsamples=nsamples, verbose=verbose, **args)
-    elif dummy == 'posterior':
-        return posterior_sampler(self, nsamples=nsamples, verbose=verbose, **args)
+        pars = self.par_fix # ensure that ALL parameters are reset, not only those included in the prior
+        par_cand = prior_sampler(self, nsamples=nsamples, verbose=verbose, **args)
+    elif dummy in ('post','posterior'):
+        pars = self.par_fix # ensure that ALL parameters are reset, not only those included in the prior
+        par_cand = posterior_sampler(self, nsamples=nsamples, verbose=verbose, **args)
     elif dummy == 'posterior_mean' or dummy == 'post_mean':
+        pars = self.par_fix # ensure that ALL parameters are reset, not only those included in the prior
         par_cand = post_mean(self)
     elif dummy == 'mode':
+        pars = self.par_fix # ensure that ALL parameters are reset, not only those included in the prior
         par_cand = self.fdict['mode_x']
     elif dummy in ('mcmc_mode', 'mode_mcmc', 'posterior_mode', 'post_mode'):
+        pars = self.par_fix # ensure that ALL parameters are reset, not only those included in the prior
         par_cand = self.fdict['mcmc_mode_x']
     elif dummy == 'calib':
         pars = self.par_fix # ensure that ALL parameters are reset, not only those included in the prior
         par_cand = self.par_fix[self.prior_arg].copy()
     elif dummy == 'prior_mean':
+        pars = self.par_fix # ensure that ALL parameters are reset, not only those included in the prior
         par_cand = [self.prior[pp][-2] for pp in self.prior.keys()]
     elif dummy == 'adj_prior_mean':
         # adjust for prior[pp][-2] not beeing the actual mean for inv_gamma_dynare
+        pars = self.par_fix # ensure that ALL parameters are reset, not only those included in the prior
         par_cand = []
         for pp in self.prior.keys():
             try:
@@ -447,6 +460,7 @@ def get_par(self, dummy=None, npar=None, asdict=False, full=None, nsamples=1, ve
                 poww = 0
             par_cand.append(self.prior[pp][-2]*10 ** poww)
     elif dummy == 'init':
+        pars = self.par_fix # ensure that ALL parameters are reset, not only those included in the prior
         par_cand = self.fdict['init_value']
         for i in range(self.ndim):
             if par_cand[i] is None:
@@ -456,8 +470,13 @@ def get_par(self, dummy=None, npar=None, asdict=False, full=None, nsamples=1, ve
             "Parameter or parametrization '%s' does not exist." % dummy)
 
     if full:
-        par = np.array(pars)
-        par[self.prior_arg] = par_cand
+        if isinstance(dummy, str) and dummy in ('prior', 'post', 'posterior'):
+            par = np.tile(pars,(nsamples,1))
+            for i in range(nsamples):
+                par[i][self.prior_arg] = par_cand[i]
+        else:
+            par = np.array(pars)
+            par[self.prior_arg] = par_cand
 
         if not asdict:
             return par
@@ -470,7 +489,7 @@ def get_par(self, dummy=None, npar=None, asdict=False, full=None, nsamples=1, ve
     if asdict:
         return dict(zip(np.array(pars_str)[self.prior_arg], np.round(par_cand, roundto)))
 
-    if nsamples > 1:
+    if nsamples > 1 and not dummy in ('prior', 'post', 'posterior'):
         par_cand = par_cand*(1 + 1e-3*np.random.randn(nsamples, len(par_cand)))
 
     return par_cand
@@ -516,7 +535,7 @@ def set_par(self, dummy, setpar=None, npar=None, verbose=False, roundto=5, **arg
         elif len(npar) == len(self.prior_arg):
             par[self.prior_arg] = npar
         else:
-            par = npar
+            par = np.copy(npar)
         par[pars_str.index(dummy)] = setpar
     elif dummy in pfnames:
         raise SyntaxError(
@@ -526,7 +545,7 @@ def set_par(self, dummy, setpar=None, npar=None, verbose=False, roundto=5, **arg
             "Parameter '%s' is not defined for this model." % dummy)
 
     if npar is not None:
-        return get_par(self, par)
+        return par
 
     # do compile model only if not vector is given that should be altered
     get_sys(self, par=list(par), verbose=verbose, **args)
