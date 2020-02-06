@@ -18,8 +18,12 @@ from .estimation import *
 def vix(self, *variables):
     """Returns the indices of a list of variables
     """
+
+    if isinstance(variables, str):
+        variables = [variables]
     if len(variables) == 1:
         variables = variables[0]
+
     return [list(self.vv).index(v) for v in variables]
 
 
@@ -30,6 +34,7 @@ def get_eps_lin(self, x, xp, rcond=1e-14):
     return np.linalg.pinv(self.SIG, rcond) @ (x - self.lin_t_func@xp)
 
 
+@property
 def get_tune(self):
 
     if hasattr(self, 'tune'):
