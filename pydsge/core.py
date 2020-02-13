@@ -225,7 +225,7 @@ def posterior_sampler(self, nsamples, seed=0, verbose=True):
     from .clsmethods import get_tune
 
     random.seed(seed)
-    sample = self.get_chain()[-get_tune(self):]
+    sample = self.get_chain()[-self.get_tune:]
     sample = sample.reshape(-1, sample.shape[-1])
     sample = random.choices(sample, k=nsamples)
 
