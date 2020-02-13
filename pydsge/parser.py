@@ -378,17 +378,12 @@ class DSGE(dict):
         psi = lambdify([self.parameters], [ss[str(px)]
                                            for px in self['other_para']])  # , modules=context_f)
 
-        # def add_para_func(f):
-        # def wrapped_f(px):
-        # return f(px + psi(px))
-        # return wrapped_f
-
         # disable this
         def add_para_func(f):
             return f
 
         def full_compile(px):
-            return px + psi(px)
+            return list(px) + psi(list(px))
 
         self.compile = full_compile
         self.parafunc = [p.name for p in self['other_para']], psi

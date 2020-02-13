@@ -280,11 +280,14 @@ def simulate(self, source, mask=None, linear=False, debug=False, verbose=False):
     return X, (LK[:, 0, :], LK[:, 1, :]), flags
 
 
-def simulate_ts(self, T=1e3, cov=None, verbose=False):
+def simulate_ts(self, par=None, cov=None, T=1e3, verbose=False):
     """Simulate a random time series (probably not up-to-date)
     """
 
     import scipy.stats as ss
+
+    if par is None:
+        self.set_par(par)
 
     if cov is None:
         cov = self.QQ(self.ppar)
@@ -294,6 +297,7 @@ def simulate_ts(self, T=1e3, cov=None, verbose=False):
     states, Ks = [], []
     for i in range(int(T)):
         shk_vec = ss.multivariate_normal.rvs(cov=cov)
+        print(shk_vec)
         st_vec, ks, flag = self.t_func(
             st_vec, shk_vec, return_k=True, verbose=verbose)
         states.append(st_vec)
