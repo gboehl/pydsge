@@ -218,12 +218,15 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
         debug = not hasattr(self, 'debug') or self.debug
         self.debug = True
 
+    if self.filter.dim_x != len(self.vv):
+        raise RuntimeError('Shape mismatch between dimensionality of filter and model. Maybe you want to set `reduce_sys` to True/False or (re) define the/a new filter?')
+
     else:
         self.debug |= debug
         npas = serializer(self.filter.npas)
 
-    run_filter = serializer(self.run_filter)
     set_par = serializer(self.set_par)
+    run_filter = serializer(self.run_filter)
     t_func = serializer(self.t_func)
     obs = serializer(self.obs)
     filter_get_eps = serializer(self.get_eps_lin)

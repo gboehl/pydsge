@@ -495,14 +495,14 @@ def get_par(self, dummy=None, npar=None, asdict=False, full=None, nsamples=1, ve
     return par_cand
 
 
-def set_par(self, dummy, setpar=None, npar=None, verbose=False, roundto=5, **args):
+def set_par(self, dummy=None, setpar=None, npar=None, verbose=False, roundto=5, **args):
     """Set the current parameter values.
 
     In essence, this is a wrapper around `get_par` which also compiles the transition function with the desired parameters.
 
     Parameters
     ----------
-    dummy : str or array
+    dummy : str or array, optional
         If an array, sets all parameters. If a string and a parameter name,`setpar` must be provided to define the value of this parameter. Otherwise, `dummy` is forwarded to `get_par` and the returning value(s) are set as parameters.
     setpar : float, optional
         Parametervalue to be set. Of course, only if `dummy` is a parameter name.

@@ -576,10 +576,10 @@ def mdd(self, method='laplace', chain=None, lprobs=None, tune=None, verbose=Fals
 
     if method in ('laplace', 'lp'):
         mstr = 'LaPlace approximation'
-        mdd = mdd_lp(chain, lprobs, calc_hess=False)
+        mdd = mdd_lp(chain, lprobs, calc_hess=False, **args)
     elif method == 'hess':
         mstr = 'LaPlace approximation with hessian approximation'
-        mdd = mdd_lp(chain, lprobs, calc_hess=True)
+        mdd = mdd_lp(chain, lprobs, calc_hess=True, **args)
     elif method == 'mhm':
         mstr = 'modified harmonic mean'
         pool = self.pool if hasattr(self, 'pool') else None
@@ -590,7 +590,7 @@ def mdd(self, method='laplace', chain=None, lprobs=None, tune=None, verbose=Fals
 
     if verbose:
         print('[mdd:]'.ljust(15, ' ') + "done after %s. Marginal data density according to %s is %s." %
-              (timeprint(time.time()-st), mstr, mdd.round(4)))
+              (timeprint(time.time()-st), mstr, mdd.round(3)))
 
     return mdd
 
