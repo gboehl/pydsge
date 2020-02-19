@@ -42,7 +42,8 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, ignore_test
     l_max = 3 if l_max is None else l_max
     k_max = 17 if k_max is None else k_max
 
-    self.fdict['reduce_sys'] = reduce_sys
+    if not self.fdict.get('reduce_sys'):
+        self.fdict['reduce_sys'] = reduce_sys
     self.fdict['ignore_tests'] = ignore_tests
 
     par = self.p0() if par is None else list(par)
