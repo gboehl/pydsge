@@ -222,10 +222,9 @@ def posterior_sampler(self, nsamples, seed=0, verbose=True):
     """
 
     import random
-    from .clsmethods import get_tune
 
     random.seed(seed)
-    sample = self.get_chain()[-get_tune(self):]
+    sample = self.get_chain()[-self.get_tune:]
     sample = sample.reshape(-1, sample.shape[-1])
     sample = random.choices(sample, k=nsamples)
 
@@ -407,9 +406,9 @@ def get_par(self, dummy=None, npar=None, asdict=False, full=None, nsamples=1, ve
         except:
             par_cand = get_par(self, 'best', asdict=False,
                                full=False, verbose=verbose, **args)
-    elif len(dummy) == len(self.par_fix):
+    elif not isinstance(dummy, str) and len(dummy) == len(self.par_fix):
         par_cand = dummy[self.prior_arg]
-    elif len(dummy) == len(self.prior_arg):
+    elif not isinstance(dummy, str) and len(dummy) == len(self.prior_arg):
         par_cand = dummy
     elif dummy in pars_str:
         p = pars[pars_str.index(dummy)]

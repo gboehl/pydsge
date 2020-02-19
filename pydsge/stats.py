@@ -476,8 +476,6 @@ def mdd_lp(chain, lprobs, calc_hess=False):
     """Approximate the marginal data density useing the LaPlace method.
     """
 
-    from .clsmethods import get_tune
-
     mode_x = chain[lprobs.argmax()]
 
     if calc_hess:
@@ -559,18 +557,16 @@ def mdd(self, method='laplace', chain=None, lprobs=None, tune=None, verbose=Fals
         The method used for the approximation. Can be either of 'laplace', 'mhm' (modified harmonic mean) or 'hess' (LaPlace approximation with the numerical approximation of the hessian; NOT FUNCTIONAL).
     """
 
-    from .clsmethods import get_tune
-
     if verbose:
         st = time.time()
 
     if chain is None:
-        tune = tune or get_tune(self)
+        tune = tune or self.get_tune
         chain = self.get_chain()[-tune:]
         chain = chain.reshape(-1, chain.shape[-1])
 
     if lprobs is None:
-        tune = tune or get_tune(self)
+        tune = tune or self.get_tune
         lprobs = self.get_log_prob()[-tune:]
         lprobs = lprobs.flatten()
 
@@ -599,7 +595,7 @@ def post_mean(self, chain=None, tune=None):
     """Calculate the mean of the posterior distribution
     """
 
-    tune = tune or self.get_tune()
+    tune = tune or self.get_tune
     chain = chain or self.get_chain()[-tune:]
 
     return chain.reshape(-1, chain.shape[-1]).mean(axis=0)

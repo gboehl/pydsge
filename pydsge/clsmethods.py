@@ -171,14 +171,14 @@ def traceplot_m(self, chain=None, **args):
             args['tune'] = int(chain.shape[0]/5)
         else:
             chain = self.get_chain()
-            args['tune'] = get_tune(self)
+            args['tune'] = self.get_tune
 
     return traceplot(chain, varnames=self.fdict['prior_names'], **args)
 
 
 def posteriorplot_m(self, **args):
 
-    tune = get_tune(self)
+    tune = self.get_tune
 
     return posteriorplot(self.get_chain(), varnames=self.fdict['prior_names'], tune=tune, **args)
 
@@ -232,7 +232,7 @@ def mcmc_summary(self, chain=None, tune=None, calc_mdd=True, calc_ll_stats=False
         raise AttributeError('[summary:]'.ljust(
             15, ' ') + "No chain to be found...")
 
-    tune = tune or get_tune(self)
+    tune = tune or self.get_tune
 
     chain = chain[-tune:]
     nchain = chain.reshape(-1, chain.shape[-1])
@@ -293,7 +293,7 @@ def info_m(self, verbose=True, **args):
 
     try:
         cshp = self.get_chain().shape
-        tune = get_tune(self)
+        tune = self.get_tune
         res += 'Parameters: %s\n' % cshp[2]
         res += 'Chains: %s\n' % cshp[1]
         res += 'Last %s of %s samples\n' % (tune, cshp[0])
