@@ -56,19 +56,13 @@ def _hpd_df(x, alpha):
     return pd.DataFrame(hpd_vals, columns=cnames)
 
 
-def summary(self, store, pmode=None, bounds=None, alpha=0.1, top=None, show_prior=True, min_col=86):
+def summary(self, store, pmode=None, bounds=None, alpha=0.1, top=None, show_prior=True):
     # inspired by pymc3 because it looks really nice
 
     priors = self['__data__']['estimation']['prior']
 
-    try:
-        with os.popen('stty size', 'r') as rows_cols:
-            cols = rows_cols.read().split()[1]
-    except IndexError:
-        cols = min_col + 1
 
     if bounds is not None or isinstance(store, tuple):
-        min_col += 20
         xs, fs, ns = store
         ns = ns.squeeze()
         fas = (-fs[:, 0]).argsort()
@@ -97,7 +91,7 @@ def summary(self, store, pmode=None, bounds=None, alpha=0.1, top=None, show_prio
     for i, var in enumerate(priors):
 
         lst = []
-        if show_prior and int(cols) > min_col:
+        if show_prior:
             prior = priors[var]
             if len(prior) > 3:
                 prior = prior[-3:]
@@ -120,7 +114,7 @@ def summary(self, store, pmode=None, bounds=None, alpha=0.1, top=None, show_prio
 
         lst = []
 
-        if show_prior and int(cols) > min_col:
+        if show_prior:
             [lst.append(f('')) for j, f in enumerate(f_prs)]
             if bounds is not None:
                 [lst.append(f('')) for j, f in enumerate(f_bnd)]

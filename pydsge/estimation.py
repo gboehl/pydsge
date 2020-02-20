@@ -157,7 +157,7 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
                     print('[llike:]'.ljust(15, ' ') +
                           ' Failure. Error msg: %s' % err)
                     if verbose > 1:
-                        pardict = get_par(self, full=False)
+                        pardict = get_par(self, full=False, asdict=True)
                         print(pardict)
                         self.box_check([*pardict.values()])
 

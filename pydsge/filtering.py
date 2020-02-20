@@ -203,14 +203,14 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
     fname = self.filter.name
     verbose = max(verbose, 9*debug)
 
-    if fname == 'ParticleFilter':
-        raise NotImplementedError
-
     if hasattr(self, 'pool'):
         from .estimation import create_pool
         create_pool(self)
 
-    if fname == 'KalmanFilter':
+    if fname == 'ParticleFilter':
+        raise NotImplementedError
+
+    elif fname == 'KalmanFilter':
         if nsamples > 1:
             print('[extract:]'.ljust(
                 15, ' ')+' Setting `nsamples` to 1 as the linear filter is deterministic.')
@@ -218,12 +218,14 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
         debug = not hasattr(self, 'debug') or self.debug
         self.debug = True
 
+    else:
+        npas = serializer(self.filter.npas)
+
     if self.filter.dim_x != len(self.vv):
         raise RuntimeError('Shape mismatch between dimensionality of filter and model. Maybe you want to set `reduce_sys` to True/False or (re) define the/a new filter?')
 
     else:
         self.debug |= debug
-        npas = serializer(self.filter.npas)
 
     set_par = serializer(self.set_par)
     run_filter = serializer(self.run_filter)
