@@ -470,8 +470,6 @@ def mdd_lp(chain, lprobs, calc_hess=False):
     """Approximate the marginal data density useing the LaPlace method.
     """
 
-    from .clsmethods import get_tune
-
     mode_x = chain[lprobs.argmax()]
 
     if calc_hess:
@@ -552,8 +550,6 @@ def mdd(self, method='laplace', chain=None, lprobs=None, tune=None, verbose=Fals
     method : str
         The method used for the approximation. Can be either of 'laplace', 'mhm' (modified harmonic mean) or 'hess' (LaPlace approximation with the numerical approximation of the hessian; NOT FUNCTIONAL).
     """
-
-    from .clsmethods import get_tune
 
     if verbose:
         st = time.time()
