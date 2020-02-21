@@ -39,8 +39,11 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, ignore_test
     reduce_sys = reduce_sys if reduce_sys is not None else self.fdict.get('reduce_sys')
     ignore_tests = ignore_tests if ignore_tests is not None else self.fdict.get('ignore_tests')
 
-    l_max = 3 if l_max is None else l_max
-    k_max = 17 if k_max is None else k_max
+    if hasattr(self, 'lks'):
+        if l_max: self.lks[0] = l_max
+        if k_max: self.lks[1] = k_max
+    else:
+        self.lks = l_max or 3, k_max or 17
 
     if not self.fdict.get('reduce_sys'):
         self.fdict['reduce_sys'] = reduce_sys
@@ -199,7 +202,7 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, ignore_test
         print('[get_sys:]'.ljust(15, ' ')+' Creation of system matrices finished in %ss.'
               % np.round(time.time() - st, 3))
 
-    preprocess(self, l_max, k_max, verbose)
+    preprocess(self, self.lks[0], self.lks[1], verbose)
 
     test = self.precalc_mat[0][1, 0, 1]
     if not ignore_tests and (eig(test[-test.shape[1]:]) > 1).any():
@@ -250,7 +253,7 @@ def sample_box(self, dim0, dim1=None, bounds=None, lp_rule=None, verbose=False):
     return res
 
 
-def prior_sampler(self, nsamples, seed=0, test_lprob=False, verbose=True, debug=False):
+def prior_sampler(self, nsamples, seed=0, test_lprob=False, verbose=True, debug=False, **args):
     """Draw parameters from prior. 
 
     Parameters
@@ -275,8 +278,10 @@ def prior_sampler(self, nsamples, seed=0, test_lprob=False, verbose=True, debug=
 
     store_reduce_sys = np.copy(self.fdict['reduce_sys'])
 
+    l_max, k_max = lks or None, None
+
     if not store_reduce_sys:
-        self.get_sys(reduce_sys=True, verbose=verbose > 1)
+        self.get_sys(reduce_sys=True, verbose=verbose > 1, **args)
 
     if test_lprob and not hasattr(self, 'ndim'):
         self.prep_estim(load_R=True, verbose=verbose > 2)
@@ -319,7 +324,7 @@ def prior_sampler(self, nsamples, seed=0, test_lprob=False, verbose=True, debug=
                         done = not np.isinf(draw_prob)
                     else:
                         pdraw_full = get_par(pdraw, asdict=False, full=True)
-                        get_sys(par=pdraw_full, reduce_sys=True)
+                        get_sys(par=pdraw_full, reduce_sys=True, **args)
                         done = True
 
                 except Exception as e:
@@ -337,7 +342,7 @@ def prior_sampler(self, nsamples, seed=0, test_lprob=False, verbose=True, debug=
     draws, nos = map2arr(pmap_sim)
 
     if not store_reduce_sys:
-        self.get_sys(reduce_sys=False, verbose=verbose > 1)
+        self.get_sys(reduce_sys=False, verbose=verbose > 1, **args)
 
     if verbose:
         smess = ''
@@ -377,7 +382,7 @@ def get_par(self, dummy=None, npar=None, asdict=False, full=None, nsamples=1, ve
     roundto : int, optional
         Rounding of additional output if verbose, defaults to 5
     args : various, optional
-        Auxilliary arguments passed on to a sampler from prior/posterior
+        Auxilliary arguments passed to `get_sys` calls
 
     Returns
     -------
@@ -388,7 +393,7 @@ def get_par(self, dummy=None, npar=None, asdict=False, full=None, nsamples=1, ve
     full = full if full is not None else asdict
 
     if not hasattr(self, 'par'):
-        get_sys(self, verbose=verbose)
+        get_sys(self, verbose=verbose, **args)
 
     pfnames, pffunc = self.parafunc
     pars_str = [str(p) for p in self.parameters]
@@ -405,8 +410,7 @@ def get_par(self, dummy=None, npar=None, asdict=False, full=None, nsamples=1, ve
         try:
             par_cand = np.array(pars)[self.prior_arg]
         except:
-            par_cand = get_par(self, 'best', asdict=False,
-                               full=False, verbose=verbose, **args)
+            par_cand = get_par(self, 'best', asdict=False, full=False, verbose=verbose, **args)
     elif not isinstance(dummy, str) and len(dummy) == len(self.par_fix):
         par_cand = dummy[self.prior_arg]
     elif not isinstance(dummy, str) and len(dummy) == len(self.prior_arg):
@@ -528,7 +532,7 @@ def set_par(self, dummy=None, setpar=None, npar=None, verbose=False, roundto=5, 
             par[self.prior_arg] = dummy
         else:
             par = get_par(self, dummy=dummy, parname=None,
-                          asdict=False, full=True, verbose=verbose)
+                          asdict=False, full=True, verbose=verbose, **args)
     elif dummy in pars_str:
         if npar is None:
             pass

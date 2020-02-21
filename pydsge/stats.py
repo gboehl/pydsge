@@ -322,7 +322,7 @@ def pmdm_report(self, x_max, res_max, n=np.inf, printfunc=print):
     return
 
 
-def gfevd(self, eps_dict, horizon=1, nsamples=None, linear=False, seed=0, verbose=True):
+def gfevd(self, eps_dict, horizon=1, nsamples=None, linear=False, seed=0, verbose=True, **args):
     """Calculates the generalized forecasting error variance decomposition (GFEVD, Lanne & Nyberg)
 
     Parameters
@@ -361,7 +361,7 @@ def gfevd(self, eps_dict, horizon=1, nsamples=None, linear=False, seed=0, verbos
     for s in wrap(sample, total=nsamples, unit='draws', dynamic_ncols=True):
 
         if s[2] is not None:
-            self.set_par(s[2])
+            self.set_par(s[2], **args)
 
         for e in self.shocks:
 
@@ -409,7 +409,7 @@ def mbcs_index(self, vd, verbose=True):
     return mbs
 
 
-def nhd(self, eps_dict):
+def nhd(self, eps_dict, **args):
     """Calculates the normalized historic decomposition, based on normalized counterfactuals
     """
 
@@ -427,7 +427,7 @@ def nhd(self, eps_dict):
 
     for i in range(nsamples):
 
-        self.set_par(pars[i])
+        self.set_par(pars[i], **args)
 
         mat, term, bmat, bterm = self.precalc_mat
         N, A, J, cx, b, x_bar = self.sys
