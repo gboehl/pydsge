@@ -17,8 +17,6 @@ from decimal import Decimal
 def lin_t_func(self):
     """Get a linear representation of the system under the current parameters
     """
-    from .core import get_sys
-
     mat = self.precalc_mat[0]
     dim_x = self.sys[2].shape[0]
 
@@ -92,7 +90,7 @@ def calc_obs(self, states, covs=None):
     return iv95_obs, iv95
 
 
-def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, verbose=True):
+def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, verbose=True, **args):
     """Simulate impulse responses
 
     Parameters
@@ -132,7 +130,7 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, verbose=Tru
 
         if np.any(par):
             try:
-                set_par(par)
+                set_par(par, **args)
             except ValueError:
                 X[:] = np.nan
                 K[:] = np.nan
@@ -196,12 +194,12 @@ def mask(self, verbose=False):
     try:
         self.observables
     except AttributeError:
-        self.get_sys(self.par, verbose=verbose)
+        raise AttributeError("Model not initialized. Try calling `set_par` first. Cheers.")
 
     return msk.rename(columns=dict(zip(self.observables, self.shocks)))[:-1]
 
 
-def simulate(self, source, mask=None, linear=False, debug=False, verbose=False):
+def simulate(self, source, mask=None, linear=False, debug=False, verbose=False, **args):
     """Simulate time series given a series of exogenous innovations.
 
     Parameters
@@ -236,7 +234,7 @@ def simulate(self, source, mask=None, linear=False, debug=False, verbose=False):
         if mask is not None:
             eps = np.where(np.isnan(mask), eps, np.array(mask)*eps)
 
-        set_par(par)
+        set_par(par, **args)
 
         X = [state]
         K = []
@@ -280,14 +278,14 @@ def simulate(self, source, mask=None, linear=False, debug=False, verbose=False):
     return X, (LK[:, 0, :], LK[:, 1, :]), flags
 
 
-def simulate_ts(self, par=None, cov=None, T=1e3, verbose=False):
+def simulate_ts(self, par=None, cov=None, T=1e3, verbose=False, **args):
     """Simulate a random time series (probably not up-to-date)
     """
 
     import scipy.stats as ss
 
     if par is None:
-        self.set_par(par)
+        self.set_par(par, **args)
 
     if cov is None:
         cov = self.QQ(self.ppar)

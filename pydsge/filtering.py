@@ -172,7 +172,7 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, co
     return res
 
 
-def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, verbose=True, debug=False, **npasargs):
+def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, verbose=True, debug=False, l_max=None, k_max=None, **npasargs):
     """Extract the timeseries of (smoothed) shocks.
 
     Parameters
@@ -241,7 +241,7 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
         par, seed_loc = arg
 
         if par is not None:
-            set_par(par)
+            set_par(par, l_max=l_max, k_max=k_max)
 
         res = run_filter(verbose=verbose-2)
 
