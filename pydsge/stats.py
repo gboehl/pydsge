@@ -531,7 +531,7 @@ def mdd_mhm(chain, lprobs, alpha=.05, pool=None, verbose=False, debug=False):
         else:
             nbatches = pool.ncpus
 
-        batches = pool.imap(runner, np.split(chain, nbatches))
+        batches = pool.imap(runner, np.array_split(chain, nbatches))
         mls = np.vstack(list(batches))
     else:
         mls = runner(chain)
