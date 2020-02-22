@@ -43,7 +43,7 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, ignore_test
         if l_max: self.lks[0] = l_max
         if k_max: self.lks[1] = k_max
     else:
-        self.lks = l_max or 3, k_max or 17
+        self.lks = [l_max or 3, k_max or 17]
 
     if not self.fdict.get('reduce_sys'):
         self.fdict['reduce_sys'] = reduce_sys
@@ -531,8 +531,7 @@ def set_par(self, dummy=None, setpar=None, npar=None, verbose=False, roundto=5, 
         elif len(dummy) == len(self.prior_arg):
             par[self.prior_arg] = dummy
         else:
-            par = get_par(self, dummy=dummy, parname=None,
-                          asdict=False, full=True, verbose=verbose, **args)
+            par = get_par(self, dummy=dummy, asdict=False, full=True, verbose=verbose, **args)
     elif dummy in pars_str:
         if npar is None:
             pass
