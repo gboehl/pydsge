@@ -199,7 +199,7 @@ def mask(self, verbose=False):
     return msk.rename(columns=dict(zip(self.observables, self.shocks)))[:-1]
 
 
-def simulate(self, source, mask=None, linear=False, debug=False, verbose=False, **args):
+def simulate(self, source, mask=None, pars=None, resid=None, init=None, linear=False, debug=False, verbose=False, **args):
     """Simulate time series given a series of exogenous innovations.
 
     Parameters
@@ -211,8 +211,11 @@ def simulate(self, source, mask=None, linear=False, debug=False, verbose=False, 
     """
     from grgrlib.core import serializer
 
-    sample = zip(source['pars'], source['resid'], [s[0]
-                                                   for s in source['means']])
+    pars = pars or source['pars']
+    resi = resid or source['resid']
+    init = init or [s[0] for s in source['means']]
+
+    sample = zip(pars, resi, init)
 
     if verbose:
         st = time.time()
@@ -225,6 +228,7 @@ def simulate(self, source, mask=None, linear=False, debug=False, verbose=False, 
 
     set_par = serializer(self.set_par)
     t_func = serializer(self.t_func)
+    obs = serializer(self.obs)
 
     def runner(arg):
 
@@ -237,6 +241,7 @@ def simulate(self, source, mask=None, linear=False, debug=False, verbose=False, 
         set_par(par, **args)
 
         X = [state]
+        Y = [obs(state)]
         K = []
         L = []
 
@@ -248,14 +253,16 @@ def simulate(self, source, mask=None, linear=False, debug=False, verbose=False, 
             superflag |= flag
 
             X.append(state)
+            Y.append(obs(state))
             L.append(l)
             K.append(k)
 
         X = np.array(X)
+        Y = np.array(Y)
         L = np.array(L)
         K = np.array(K)
 
-        return X, (L, K), superflag
+        return X, Y, (L, K), superflag
 
     wrap = tqdm.tqdm if verbose else (lambda x, **kwarg: x)
 
@@ -273,9 +280,9 @@ def simulate(self, source, mask=None, linear=False, debug=False, verbose=False, 
         print('[simulate:]'.ljust(
             15, ' ')+'No rational expectations solution found.')
 
-    X, LK, flags = res
+    X, Y, LK, flags = res
 
-    return X, (LK[:, 0, :], LK[:, 1, :]), flags
+    return X, Y, (LK[:, 0, :], LK[:, 1, :]), flags
 
 
 def simulate_ts(self, par=None, cov=None, T=1e3, verbose=False, **args):

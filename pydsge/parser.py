@@ -826,5 +826,6 @@ class DSGE(dict):
         model.prior_arg = [p_names.index(pp) for pp in model.prior.keys()]
         model.prior_names = [str(pp) for pp in model.prior.keys()]
         model.observables = [str(o) for o in observables]
+        model.oo = np.array(model.observables)
 
         return model

@@ -27,6 +27,18 @@ def vix(self, *variables):
     return [list(self.vv).index(v) for v in variables]
 
 
+def oix(self, *observables):
+    """Returns the indices of a list of observables
+    """
+
+    if isinstance(observables, str):
+        observables = [observables]
+    if len(observables) == 1:
+        observables = observables[0]
+
+    return [list(self.observables).index(v) for v in observables]
+
+
 def get_eps_lin(self, x, xp, rcond=1e-14):
     """Get filter-implied (smoothed) shocks for linear model
     """
@@ -404,6 +416,7 @@ def get_sample(self, size, chain=None):
 
 
 DSGE.vix = vix
+DSGE.oix = oix
 DSGE.get_tune = get_tune
 DSGE.save = save_meta
 DSGE.mapper = mapper
