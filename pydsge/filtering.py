@@ -266,11 +266,12 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
                     get_eps=get_eps, verbose=(len(sample) == 1) or (verbose-1), seed=seed_loc, nsamples=1, **npasargs)
 
                 return means[0], obs(means[0]), covs, resid[0], flags
-            except:
-                if natt < 3:
-                    pass
-                else:
-                    raise
+            except Exception as e:
+                pass
+
+        import sys
+        raise type(e)(str(e) + ' happen after %s unsuccessful attemps.' %natt).with_traceback(sys.exc_info()[2])
+
 
     wrap = tqdm.tqdm if (verbose and len(sample) >
                          1) else (lambda x, **kwarg: x)

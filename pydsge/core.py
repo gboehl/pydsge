@@ -252,7 +252,7 @@ def sample_box(self, dim0, dim1=None, bounds=None, lp_rule=None, verbose=False):
     return res
 
 
-def prior_sampler(self, nsamples, seed=0, test_lprob=False, verbose=True, debug=False, **args):
+def prior_sampler(self, nsamples, seed=0, test_lprob=False, lks=None, verbose=True, debug=False, **args):
     """Draw parameters from prior. 
 
     Parameters
@@ -277,7 +277,7 @@ def prior_sampler(self, nsamples, seed=0, test_lprob=False, verbose=True, debug=
 
     store_reduce_sys = np.copy(self.fdict['reduce_sys'])
 
-    l_max, k_max = lks or None, None
+    l_max, k_max = lks or (None, None)
 
     if not store_reduce_sys:
         self.get_sys(reduce_sys=True, verbose=verbose > 1, **args)
@@ -353,7 +353,7 @@ def prior_sampler(self, nsamples, seed=0, test_lprob=False, verbose=True, debug=
     return draws
 
 
-def get_par(self, dummy=None, npar=None, asdict=False, full=None, nsamples=1, verbose=False, roundto=5, **args):
+def get_par(self, dummy=None, npar=None, asdict=False, full=True, nsamples=1, verbose=False, roundto=5, **args):
     """Get parameters. Tries to figure out what you want. 
 
     Parameters
@@ -373,7 +373,7 @@ def get_par(self, dummy=None, npar=None, asdict=False, full=None, nsamples=1, ve
     asdict : bool, optional
         Returns a dict of the values if `True` and an array otherwise (default is `False`).
     full : bool, optional
-        Whether to return all parameters or the estimated ones only. (default: False unless asdict is True)
+        Whether to return all parameters or the estimated ones only. (default: True)
     nsamples : int, optional
         Size of the sample. Defaults to 1
     verbose : bool, optional
@@ -388,8 +388,6 @@ def get_par(self, dummy=None, npar=None, asdict=False, full=None, nsamples=1, ve
     array or dict
         Numpy array of parameters or dict of parameters
     """
-
-    full = full if full is not None else asdict
 
     if not hasattr(self, 'par'):
         get_sys(self, verbose=verbose, **args)
@@ -532,12 +530,12 @@ def set_par(self, dummy=None, setpar=None, npar=None, verbose=False, roundto=5, 
         else:
             par = get_par(self, dummy=dummy, asdict=False, full=True, verbose=verbose, **args)
     elif dummy in pars_str:
-        if npar is None:
-            pass
-        elif len(npar) == len(self.prior_arg):
-            par[self.prior_arg] = npar
-        else:
-            par = np.copy(npar)
+        if npar is not None:
+            if len(npar) == len(self.prior_arg):
+                npar[self.prior_names.index(dummy)] = setpar
+            else:
+                npar[pars_str.index(dummy)] = setpar
+            return npar
         par[pars_str.index(dummy)] = setpar
     elif dummy in pfnames:
         raise SyntaxError(
@@ -545,9 +543,6 @@ def set_par(self, dummy=None, setpar=None, npar=None, verbose=False, roundto=5, 
     else:
         raise SyntaxError(
             "Parameter '%s' is not defined for this model." % dummy)
-
-    if npar is not None:
-        return par
 
     # do compile model only if not vector is given that should be altered
     get_sys(self, par=list(par), verbose=verbose, **args)
