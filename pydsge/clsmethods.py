@@ -15,26 +15,29 @@ from .core import get_sys, get_par, set_par
 from .estimation import *
 
 
-def vix(self, *variables):
+def vix(self, variables, dontfail=False):
     """Returns the indices of a list of variables
     """
 
     if isinstance(variables, str):
         variables = [variables]
-    if len(variables) == 1:
-        variables = variables[0]
 
-    return [list(self.vv).index(v) for v in variables]
+    res = []
+    for v in variables:
+        try:
+            res.append(list(self.vv).index(v))
+        except ValueError:
+            if not dontfail: raise
+
+    return res
 
 
-def oix(self, *observables):
+def oix(self, observables):
     """Returns the indices of a list of observables
     """
 
     if isinstance(observables, str):
         observables = [observables]
-    if len(observables) == 1:
-        observables = observables[0]
 
     return [list(self.observables).index(v) for v in observables]
 

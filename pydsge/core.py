@@ -523,7 +523,9 @@ def set_par(self, dummy=None, setpar=None, npar=None, verbose=False, roundto=5, 
         self, 'par') else np.array(self.par_fix)
 
     if setpar is None:
-        if len(dummy) == len(self.par_fix):
+        if dummy is None:
+            par = get_par(self, dummy=dummy, asdict=False, full=True, verbose=verbose, **args)
+        elif len(dummy) == len(self.par_fix):
             par = dummy
         elif len(dummy) == len(self.prior_arg):
             par[self.prior_arg] = dummy

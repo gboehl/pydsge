@@ -179,7 +179,7 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, verbose=Tru
         print('[irfs:]'.ljust(15, ' ') + 'Simulation took ',
               np.round((time.time() - st), 5), ' seconds.')
 
-    return X, (K, L)
+    return X, (K, L), flag
 
 
 @property
