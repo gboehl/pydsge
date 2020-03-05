@@ -7,6 +7,9 @@ from .plots import sort_nhd
 from pandas.plotting import register_matplotlib_converters
 register_matplotlib_converters()
 
+import logging
+logging.basicConfig(level=logging.INFO)
+
 pth = os.path.dirname(__file__)
 
 example_model = os.path.join(pth, 'examples', 'dfi.yaml')

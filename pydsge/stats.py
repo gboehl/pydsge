@@ -10,7 +10,8 @@ import pandas as pd
 import scipy.stats as ss
 import scipy.optimize as so
 from scipy.special import gammaln
-from grgrlib.core import mode, timeprint
+from grgrlib.core import timeprint
+from grgrlib.stats import mode
 
 
 def mc_error(x):

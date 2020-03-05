@@ -68,9 +68,7 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
     self.debug |= debug
     self.Z = np.array(self.data)
 
-    if not hasattr(self, 'sys') or not hasattr(self, 'precalc_mat'):
-        set_par(self, 'prior_mean', reduce_sys=reduce_sys,
-                verbose=verbose > 3, l_max=l_max, k_max=k_max)
+    set_par(self, 'prior_mean', reduce_sys=reduce_sys, verbose=verbose > 3, l_max=l_max, k_max=k_max)
 
     self.create_filter(
         N=N, ftype='KalmanFilter' if linear else None, **filterargs)
