@@ -61,7 +61,6 @@ def summary(self, store, pmode=None, bounds=None, alpha=0.1, top=None, show_prio
 
     priors = self['__data__']['estimation']['prior']
 
-
     if bounds is not None or isinstance(store, tuple):
         xs, fs, ns = store
         ns = ns.squeeze()

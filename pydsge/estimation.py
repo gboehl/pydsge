@@ -12,7 +12,7 @@ from .filtering import get_ll
 from .core import get_par, set_par
 
 
-def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=False, dispatch=False, constr_data=False, ncores=None, reduce_sys=True, l_max=3, k_max=16, verbose=True, debug=False, **filterargs):
+def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=False, dispatch=False, ncores=None, reduce_sys=True, l_max=3, k_max=16, verbose=True, debug=False, **filterargs):
     """Initializes the tools necessary for estimation
 
     ...
@@ -29,8 +29,6 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
         Random seed. Defaults to 0
     dispatch : bool, optional
         Whether to use a dispatcher to create jitted transition and observation functions. Defaults to False.
-    constr_data : bool, optional
-        Whether to apply the constraint to the data as well. Defaults to False.
     verbose : bool/int, optional
         Whether display messages:
             0 - no messages
@@ -66,13 +64,13 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
     self.fdict['filter_n'] = N
     self.fdict['linear'] = linear
     self.fdict['seed'] = seed
-    self.fdict['constr_data'] = constr_data
 
     self.debug |= debug
     self.Z = np.array(self.data)
 
     if not hasattr(self, 'sys') or not hasattr(self, 'precalc_mat'):
-        set_par(self, 'prior_mean', reduce_sys=reduce_sys, verbose=verbose > 3, l_max=l_max, k_max=k_max)
+        set_par(self, 'prior_mean', reduce_sys=reduce_sys,
+                verbose=verbose > 3, l_max=l_max, k_max=k_max)
 
     self.create_filter(
         N=N, ftype='KalmanFilter' if linear else None, **filterargs)
@@ -84,7 +82,7 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
             15, ' ') + "`filter.R` not in `fdict`.")
 
     # dry run before the fun beginns
-    if np.isinf(get_ll(self, constr_data=constr_data, verbose=verbose > 3, dispatch=dispatch)):
+    if np.isinf(get_ll(self, verbose=verbose > 3, dispatch=dispatch)):
         raise ValueError('[estimation:]'.ljust(
             15, ' ') + 'likelihood of initial values is zero.')
 
@@ -143,8 +141,7 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
                     CO = self.SIG @ self.QQ(self.ppar)
                     self.filter.Q = CO @ CO.T
 
-                ll = get_ll(self, constr_data=constr_data,
-                            verbose=verbose > 3, dispatch=dispatch)
+                ll = get_ll(self, verbose=verbose > 3, dispatch=dispatch)
 
                 np.random.set_state(random_state)
                 return ll

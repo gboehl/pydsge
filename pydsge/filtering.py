@@ -81,28 +81,12 @@ def get_ll(self, **args):
     return run_filter(self, smoother=False, get_ll=True, **args)
 
 
-def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, constr_data=None, verbose=False):
+def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, verbose=False):
 
     if verbose:
         st = time.time()
 
-    if constr_data is None:
-        if self.filter.name == 'ParticleFilter':
-            constr_data = 'elb_level'  # wild guess
-        else:
-            constr_data = False
-
-    if constr_data:
-        # copy the data
-        data = self.data
-        # constaint const_obs
-        x_shift = self.get_par(constr_data)
-        data[str(self.const_obs)] = np.maximum(
-            data[str(self.const_obs)], x_shift)
-        # send to filter
-        self.Z = np.array(data)
-    else:
-        self.Z = np.array(self.data)
+    self.Z = np.array(self.data)
 
     # assign latest transition & observation functions (of parameters)
     if self.filter.name == 'KalmanFilter':
@@ -222,7 +206,8 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
         npas = serializer(self.filter.npas)
 
     if self.filter.dim_x != len(self.vv):
-        raise RuntimeError('Shape mismatch between dimensionality of filter and model. Maybe you want to set `reduce_sys` to True/False or (re) define the/a new filter?')
+        raise RuntimeError(
+            'Shape mismatch between dimensionality of filter and model. Maybe you want to set `reduce_sys` to True/False or (re) define the/a new filter?')
 
     else:
         self.debug |= debug
@@ -270,8 +255,8 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
                 pass
 
         import sys
-        raise type(e)(str(e) + ' happen after %s unsuccessful attemps.' %natt).with_traceback(sys.exc_info()[2])
-
+        raise type(e)(str(e) + ' happen after %s unsuccessful attemps.' %
+                      natt).with_traceback(sys.exc_info()[2])
 
     wrap = tqdm.tqdm if (verbose and len(sample) >
                          1) else (lambda x, **kwarg: x)
@@ -284,7 +269,8 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
 
     if means.shape[0] == 1:
         means = pd.DataFrame(means[0], index=self.data.index, columns=self.vv)
-        resid = pd.DataFrame(resid[0], index=self.data.index[:-1], columns=self.shocks)
+        resid = pd.DataFrame(
+            resid[0], index=self.data.index[:-1], columns=self.shocks)
 
     edict = {'pars': np.array([s[0] for s in sample]),
              'means': means,

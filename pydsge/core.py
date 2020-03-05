@@ -36,12 +36,16 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, ignore_test
 
     st = time.time()
 
-    reduce_sys = reduce_sys if reduce_sys is not None else self.fdict.get('reduce_sys')
-    ignore_tests = ignore_tests if ignore_tests is not None else self.fdict.get('ignore_tests')
+    reduce_sys = reduce_sys if reduce_sys is not None else self.fdict.get(
+        'reduce_sys')
+    ignore_tests = ignore_tests if ignore_tests is not None else self.fdict.get(
+        'ignore_tests')
 
     if hasattr(self, 'lks'):
-        if l_max: self.lks[0] = l_max
-        if k_max: self.lks[1] = k_max
+        if l_max:
+            self.lks[0] = l_max
+        if k_max:
+            self.lks[1] = k_max
     else:
         self.lks = [l_max or 3, k_max or 17]
 
@@ -50,6 +54,9 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, ignore_test
 
     par = self.p0() if par is None else list(par)
     ppar = self.compile(par)  # parsed par
+
+    self.par = par
+    self.ppar = ppar
 
     if not self.const_var:
         raise NotImplementedError('Pakage is only meant to work with OBCs')
@@ -132,12 +139,13 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, ignore_test
 
     # rounding here to allow for small numeric errors during SVD & inversion
     if not ignore_tests:
-        if sum(eig(A).round(3) < 1) > len(vv_v):
+        self.evs = eig(A).round(3)
+        if sum(self.evs < 1) > len(vv_v):
             raise ValueError(
-                'B-K condition *not* satisfied (too many EV < 1).')
-        if sum(eig(A).round(3) >= 1) > len(vv_x3):
+                'B-K condition *not* satisfied (too many EV < 1): %s' % self.evs)
+        if sum(self.evs >= 1) > len(vv_x3):
             raise ValueError(
-                'B-K condition *not* satisfied (too many EV > 1).')
+                'B-K condition *not* satisfied (too many EV > 1): %s' % self.evs)
 
     dim_x = len(vv_x3)
     OME = re_bc(A, dim_x)
@@ -182,9 +190,6 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, ignore_test
     self.vx = np.array([v.name for v in vv_x3])
     self.dim_x = dim_x
     self.dim_v = len(self.vv)
-
-    self.par = par
-    self.ppar = ppar
 
     self.hx = self.ZZ(ppar)[:, ~s_out_msk], self.DD(ppar).squeeze()
     self.obs_arg = np.where(self.hx[0])[1]
@@ -407,7 +412,8 @@ def get_par(self, dummy=None, npar=None, asdict=False, full=True, nsamples=1, ve
         try:
             par_cand = np.array(pars)[self.prior_arg]
         except:
-            par_cand = get_par(self, 'best', asdict=False, full=False, verbose=verbose, **args)
+            par_cand = get_par(self, 'best', asdict=False,
+                               full=False, verbose=verbose, **args)
     elif not isinstance(dummy, str) and len(dummy) == len(self.par_fix):
         par_cand = dummy[self.prior_arg]
     elif not isinstance(dummy, str) and len(dummy) == len(self.prior_arg):
@@ -430,38 +436,49 @@ def get_par(self, dummy=None, npar=None, asdict=False, full=True, nsamples=1, ve
             par_cand = get_par(self, 'init', asdict=False,
                                full=False, verbose=verbose, **args)
     elif dummy == 'prior':
-        pars = self.par_fix # ensure that ALL parameters are reset, not only those included in the prior
-        par_cand = prior_sampler(self, nsamples=nsamples, verbose=verbose, **args)
-    elif dummy in ('post','posterior'):
-        pars = self.par_fix # ensure that ALL parameters are reset, not only those included in the prior
-        par_cand = posterior_sampler(self, nsamples=nsamples, verbose=verbose, **args)
+        # ensure that ALL parameters are reset, not only those included in the prior
+        pars = self.par_fix
+        par_cand = prior_sampler(
+            self, nsamples=nsamples, verbose=verbose, **args)
+    elif dummy in ('post', 'posterior'):
+        # ensure that ALL parameters are reset, not only those included in the prior
+        pars = self.par_fix
+        par_cand = posterior_sampler(
+            self, nsamples=nsamples, verbose=verbose, **args)
     elif dummy == 'posterior_mean' or dummy == 'post_mean':
-        pars = self.par_fix # ensure that ALL parameters are reset, not only those included in the prior
+        # ensure that ALL parameters are reset, not only those included in the prior
+        pars = self.par_fix
         par_cand = post_mean(self)
     elif dummy == 'mode':
-        pars = self.par_fix # ensure that ALL parameters are reset, not only those included in the prior
+        # ensure that ALL parameters are reset, not only those included in the prior
+        pars = self.par_fix
         par_cand = self.fdict['mode_x']
     elif dummy in ('mcmc_mode', 'mode_mcmc', 'posterior_mode', 'post_mode'):
-        pars = self.par_fix # ensure that ALL parameters are reset, not only those included in the prior
+        # ensure that ALL parameters are reset, not only those included in the prior
+        pars = self.par_fix
         par_cand = self.fdict['mcmc_mode_x']
     elif dummy == 'calib':
-        pars = self.par_fix # ensure that ALL parameters are reset, not only those included in the prior
+        # ensure that ALL parameters are reset, not only those included in the prior
+        pars = self.par_fix
         par_cand = self.par_fix[self.prior_arg].copy()
     elif dummy == 'prior_mean':
-        pars = self.par_fix # ensure that ALL parameters are reset, not only those included in the prior
+        # ensure that ALL parameters are reset, not only those included in the prior
+        pars = self.par_fix
         par_cand = [self.prior[pp][-2] for pp in self.prior.keys()]
     elif dummy == 'adj_prior_mean':
         # adjust for prior[pp][-2] not beeing the actual mean for inv_gamma_dynare
-        pars = self.par_fix # ensure that ALL parameters are reset, not only those included in the prior
+        # ensure that ALL parameters are reset, not only those included in the prior
+        pars = self.par_fix
         par_cand = []
         for pp in self.prior.keys():
             try:
-                poww = (self.prior[pp][3] == 'inv_gamma_dynare') 
+                poww = (self.prior[pp][3] == 'inv_gamma_dynare')
             except IndexError:
                 poww = 0
             par_cand.append(self.prior[pp][-2]*10 ** poww)
     elif dummy == 'init':
-        pars = self.par_fix # ensure that ALL parameters are reset, not only those included in the prior
+        # ensure that ALL parameters are reset, not only those included in the prior
+        pars = self.par_fix
         par_cand = self.fdict['init_value']
         for i in range(self.ndim):
             if par_cand[i] is None:
@@ -472,7 +489,7 @@ def get_par(self, dummy=None, npar=None, asdict=False, full=True, nsamples=1, ve
 
     if full:
         if isinstance(dummy, str) and dummy in ('prior', 'post', 'posterior'):
-            par = np.tile(pars,(nsamples,1))
+            par = np.tile(pars, (nsamples, 1))
             for i in range(nsamples):
                 par[i][self.prior_arg] = par_cand[i]
         else:
@@ -524,13 +541,15 @@ def set_par(self, dummy=None, setpar=None, npar=None, verbose=False, roundto=5, 
 
     if setpar is None:
         if dummy is None:
-            par = get_par(self, dummy=dummy, asdict=False, full=True, verbose=verbose, **args)
+            par = get_par(self, dummy=dummy, asdict=False,
+                          full=True, verbose=verbose, **args)
         elif len(dummy) == len(self.par_fix):
             par = dummy
         elif len(dummy) == len(self.prior_arg):
             par[self.prior_arg] = dummy
         else:
-            par = get_par(self, dummy=dummy, asdict=False, full=True, verbose=verbose, **args)
+            par = get_par(self, dummy=dummy, asdict=False,
+                          full=True, verbose=verbose, **args)
     elif dummy in pars_str:
         if npar is not None:
             if len(npar) == len(self.prior_arg):

@@ -351,7 +351,8 @@ class DSGE(dict):
                             if not os.path.exists(self.func_file):
                                 fname = os.path.basename(self.func_file)
                                 error_msg += ' (info: a file named `%s` was not found)' % fname
-                                raise NameError("Definitions of `para_func` seem to be circular. Last error: "+error_msg)
+                                raise NameError(
+                                    "Definitions of `para_func` seem to be circular. Last error: "+error_msg)
 
         # print(context)
         # DD = DD.subs(subs_dict)

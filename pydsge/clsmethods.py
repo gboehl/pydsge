@@ -27,7 +27,8 @@ def vix(self, variables, dontfail=False):
         try:
             res.append(list(self.vv).index(v))
         except ValueError:
-            if not dontfail: raise
+            if not dontfail:
+                raise
 
     return res
 
@@ -438,6 +439,7 @@ DSGE.get_sample = get_sample
 DSGE.create_pool = create_pool
 # from core
 DSGE.get_par = get_par
+DSGE.gp = get_par
 DSGE.set_par = set_par
 DSGE.get_sys = get_sys
 # from tools

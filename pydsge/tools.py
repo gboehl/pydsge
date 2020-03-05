@@ -194,7 +194,8 @@ def mask(self, verbose=False):
     try:
         self.observables
     except AttributeError:
-        raise AttributeError("Model not initialized. Try calling `set_par` first. Cheers.")
+        raise AttributeError(
+            "Model not initialized. Try calling `set_par` first. Cheers.")
 
     return msk.rename(columns=dict(zip(self.observables, self.shocks)))[:-1]
 

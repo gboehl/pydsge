@@ -118,7 +118,8 @@ class PMDM(object):
         try:
             f_val = -np.inf
 
-            self.x = get_par('best', self, linear=linear, verbose=verbose, full=False)
+            self.x = get_par('best', self, linear=linear,
+                             verbose=verbose, full=False)
 
             res = so.minimize(self, self.x, method=self.method,
                               tol=self.tol, options=self.opt_dict)
