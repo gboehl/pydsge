@@ -152,7 +152,7 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
                 15, ' ') + "Summary from last %s of %s iterations" % (update_freq, cnt)
 
             if temp < 1:
-                prnttup += ' with temp of %s%%' % (np.round(temp, 6)*100)
+                prnttup += ' with temp of %s%%' % (np.round(temp*100, 6))
 
             if self.description is not None:
                 prnttup += ' (%s)' % str(self.description)

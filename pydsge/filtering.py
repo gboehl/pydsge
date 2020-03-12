@@ -264,6 +264,9 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
                total=len(sample), dynamic_ncols=True)
     means, obs, covs, resid, flags = map2arr(res)
 
+    if self.pool:
+        self.pool.close()
+
     if fname == 'KalmanFilter':
         self.debug = debug
 
