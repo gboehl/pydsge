@@ -248,14 +248,14 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
             seed_loc = np.random.randint(2**31)  # win explodes with 2**32
             try:
                 means, covs, resid, flags = npas(
-                    get_eps=get_eps, verbose=(len(sample) == 1) or (verbose-1), seed=seed_loc, nsamples=1, **npasargs)
+                    get_eps=get_eps, verbose=max(len(sample) == 1, verbose-1), seed=seed_loc, nsamples=1, **npasargs)
 
                 return means[0], obs(means[0]), covs, resid[0], flags
             except Exception as e:
-                pass
+                ee = e
 
         import sys
-        raise type(e)(str(e) + ' happen after %s unsuccessful attemps.' %
+        raise type(ee)(str(ee) + ' happen after %s unsuccessful attemps.' %
                       natt).with_traceback(sys.exc_info()[2])
 
     wrap = tqdm.tqdm if (verbose and len(sample) >
