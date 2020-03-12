@@ -353,7 +353,7 @@ def prior_sampler(self, nsamples, seed=0, test_lprob=False, lks=None, verbose=Tr
         if test_lprob:
             smess = 'of zero likelihood, '
         print('[prior_sample:]'.ljust(
-            15, ' ') + ' Sampling done. %2.2f%% of the prior are either %s indetermined or explosive.' % (100*(sum(nos)-nsamples)/nsamples, smess))
+            15, ' ') + ' Sampling done. %2.2f%% of the prior is either %sindetermined or explosive.' % (100*(sum(nos)-nsamples)/nsamples, smess))
 
     return draws
 
@@ -366,9 +366,11 @@ def get_par(self, dummy=None, npar=None, asdict=False, full=True, nsamples=1, ve
     dummy : str, optional
         Can be `None`, a parameter name, a parameter set out of {'calib', 'init', 'prior_mean', 'best', 'mode', 'mcmc_mode', 'post_mean', 'posterior_mean'} or one of {'prior', 'post', 'posterior'}. 
 
-        If `None`, returns the current parameters (default).
+        If `None`, returns the current parameters (default). If there are no current parameters, this defaults to 'best'.
         'calib' will return the calibration in the main body of the *.yaml (`parameters`). 
         'init' are the initial values (first column) in the `prior` section of the *.yaml.
+        'mode' is the highest known mode from any sort of parameter estimation.
+        'best' will default to 'mode' if it exists and otherwise fall back to 'init'.
         'posterior_mean' and 'post_mean' are the same thing.
         'posterior_mode', 'post_mode' and 'mcmc_mode' are the same thing.
         'prior' or 'post'/'posterior' will draw random samples. Obviously, 'posterior', 'mode' etc are only available if a posterior/chain exists.
