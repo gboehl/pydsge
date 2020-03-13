@@ -11,6 +11,7 @@ import numpy as np
 import scipy.stats as sst
 import scipy.optimize as sso
 import cloudpickle as cpickle
+from sys import platform
 from copy import deepcopy
 from .symbols import Variable, Equation, Shock, Parameter, TSymbol
 from sympy.matrices import Matrix, zeros
@@ -472,8 +473,6 @@ class DSGE(dict):
 
     @classmethod
     def load(cls, npzfile, force_parse=False, verbose=False):
-
-        from sys import platform
 
         global processed_raw_model
 
