@@ -360,7 +360,7 @@ def load_data(self, df, start=None, end=None):
 
     import cloudpickle as cpickle
     self.data = d
-    self.fdict['data'] = cpickle.dumps(d)
+    self.fdict['data'] = cpickle.dumps(d, protocol=4)
     self.fdict['obs'] = self.observables
 
     return d
