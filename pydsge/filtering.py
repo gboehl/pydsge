@@ -228,7 +228,7 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
         if par is not None:
             set_par(par, l_max=l_max, k_max=k_max)
 
-        res = run_filter(verbose=verbose-2)
+        res = run_filter(verbose=verbose > 2)
 
         if fname == 'KalmanFilter':
             means, covs = res
