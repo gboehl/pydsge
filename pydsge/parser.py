@@ -324,8 +324,6 @@ class DSGE(dict):
             # for n in self['__data__']['declarations']['helper_func']['names']:
                 # context[n] = sympy.Function(n)  # getattr(module, n)
                 # context_f[n] = getattr(module, n)
-        #import sys
-        # sys.stdout.flush()
         ss = {}
 
         # print(context['lamp_p'])
@@ -451,11 +449,13 @@ class DSGE(dict):
                 ftxt = ff.read()
                 pmodel.fdict['ffile_raw'] = ftxt
 
-            pmodel_dump = cpickle.dumps(pmodel)
+            pmodel_dump = cpickle.dumps(pmodel, protocol=4)
             pmodel.fdict['model_dump'] = pmodel_dump
             pmodel.name = pmodel.mod_name
             pmodel.path = os.path.dirname(mfile)
-            pmodel.debug = False
+            pmodel.debug = platform == "darwin" or platform == "win32"
+            if pmodel.debug:
+                print('[DSGE:]'.ljust(15, ' ') + 'Parallelization disabled under Windows and Mac due to a problem with pickling some of the symbolic elements. Sorry...')
 
             processed_raw_model = deepcopy(pmodel)
 
@@ -472,6 +472,8 @@ class DSGE(dict):
 
     @classmethod
     def load(cls, npzfile, force_parse=False, verbose=False):
+
+        from sys import platform
 
         global processed_raw_model
 
@@ -519,12 +521,10 @@ class DSGE(dict):
         pmodel.fdict = fdict
         pmodel.name = str(fdict['name'])
         pmodel.path = os.path.dirname(npzfile)
-        pmodel.debug = False
-
-        try:
-            pmodel.data = cpickle.loads(fdict['data'])
-        except:
-            pass
+        pmodel.data = cpickle.loads(fdict['data'])
+        pmodel.debug = platform == "darwin" or platform == "win32"
+        if pmodel.debug:
+            print('[DSGE:]'.ljust(15, ' ') + 'Parallelization disabled under Windows and Mac due to a problem with pickling some of the symbolic elements. Sorry...')
 
         for ob in pmodel.fdict.keys():
             if str(pmodel.fdict[ob]) == 'None':

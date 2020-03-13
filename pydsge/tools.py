@@ -90,7 +90,7 @@ def calc_obs(self, states, covs=None):
     return iv95_obs, iv95
 
 
-def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, verbose=True, **args):
+def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, verbose=True, debug=False, **args):
     """Simulate impulse responses
 
     Parameters
@@ -109,6 +109,8 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, verbose=Tru
 
     from grgrlib.core import serializer
 
+    self.debug |= debug
+
     if isinstance(shocklist, tuple):
         shocklist = [shocklist, ]
 
@@ -117,10 +119,11 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, verbose=Tru
         create_pool(self)
 
     st = time.time()
-    set_par = serializer(self.set_par)
-    t_func = serializer(self.t_func)
     shocks = self.shocks
     nstates = len(self.vv)
+
+    set_par = serializer(self.set_par)
+    t_func = serializer(self.t_func)
 
     def runner(par):
 
