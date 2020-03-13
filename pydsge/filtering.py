@@ -256,7 +256,7 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
 
         import sys
         raise type(ee)(str(ee) + ' happen after %s unsuccessful attemps.' %
-                      natt).with_traceback(sys.exc_info()[2])
+                       natt).with_traceback(sys.exc_info()[2])
 
     wrap = tqdm.tqdm if (verbose and len(sample) >
                          1) else (lambda x, **kwarg: x)
@@ -264,7 +264,7 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
                total=len(sample), dynamic_ncols=True)
     means, obs, covs, resid, flags = map2arr(res)
 
-    if self.pool:
+    if hasattr(self, 'pool') and self.pool:
         self.pool.close()
 
     if fname == 'KalmanFilter':

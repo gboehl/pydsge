@@ -456,7 +456,8 @@ class DSGE(dict):
             pmodel.path = os.path.dirname(mfile)
             pmodel.debug = platform == "darwin" or platform == "win32"
             if pmodel.debug:
-                print('[DSGE:]'.ljust(15, ' ') + 'Parallelization disabled under Windows and Mac due to a problem with pickling some of the symbolic elements. Sorry...')
+                print('[DSGE:]'.ljust(
+                    15, ' ') + 'Parallelization disabled under Windows and Mac due to a problem with pickling some of the symbolic elements. Sorry...')
 
             processed_raw_model = deepcopy(pmodel)
 
@@ -523,7 +524,8 @@ class DSGE(dict):
         pmodel.data = cpickle.loads(fdict['data'])
         pmodel.debug = platform == "darwin" or platform == "win32"
         if pmodel.debug:
-            print('[DSGE:]'.ljust(15, ' ') + 'Parallelization disabled under Windows and Mac due to a problem with pickling some of the symbolic elements. Sorry...')
+            print('[DSGE:]'.ljust(
+                15, ' ') + 'Parallelization disabled under Windows and Mac due to a problem with pickling some of the symbolic elements. Sorry...')
 
         for ob in pmodel.fdict.keys():
             if str(pmodel.fdict[ob]) == 'None':
