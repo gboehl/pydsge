@@ -47,6 +47,7 @@ def preprocess_jit(vals, l_max, k_max):
             core_mat[l, s, :] = core_mat[l-1, s, :] @ A
 
     for l in range(l_max):
+
         for k in range(k_max):
 
             JN = J @ core_mat[l, k]

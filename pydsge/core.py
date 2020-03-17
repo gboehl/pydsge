@@ -107,6 +107,11 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, ignore_test
     M1 = np.delete(M, c_arg, 1)
     P1 = np.delete(P, c_arg, 1)
     vv_x3 = np.delete(vv_x2, c_arg)
+    dim_x = len(vv_x3)
+
+    # get the RE solution
+    OME = re_bc(M1 + np.outer(c_M,b2), P1, d_endo=dim_x)
+    J = np.hstack((np.eye(dim_x), -OME))
 
     # decompose P in singular & nonsingular rows
     U, s, V = nl.svd(P1)
@@ -133,6 +138,12 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, ignore_test
         print("Parameter `x_bar` (maximum value of the constraint) not specified. Assuming x_bar = -1 for now.")
         x_bar = -1
 
+    try:
+        cx = nl.inv(P2) @ c1*x_bar
+    except ParafuncError:
+        raise SyntaxError(
+            "At least one parameter is a function of other parameters, and should be declared in `parafunc`.")
+
     # create the stuff that the algorithm needs
     N = nl.inv(P2) @ M2
     A = nl.inv(P2) @ (M2 + np.outer(c1, b2))
@@ -146,16 +157,6 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, ignore_test
         if sum(self.evs >= 1) > len(vv_x3):
             raise ValueError(
                 'B-K condition *not* satisfied (too many EV > 1): %s' % self.evs)
-
-    dim_x = len(vv_x3)
-    OME = re_bc(A, dim_x)
-    J = np.hstack((np.eye(dim_x), -OME))
-
-    try:
-        cx = nl.inv(P2) @ c1*x_bar
-    except ParafuncError:
-        raise SyntaxError(
-            "At least one parameter is a function of other parameters, and should be declared in `parafunc`.")
 
     # check condition:
     n1 = N[:dim_x, :dim_x]
@@ -554,6 +555,7 @@ def set_par(self, dummy=None, setpar=None, npar=None, verbose=False, roundto=5, 
                           full=True, verbose=verbose, **args)
     elif dummy in pars_str:
         if npar is not None:
+            npar = npar.copy()
             if len(npar) == len(self.prior_arg):
                 npar[self.prior_names.index(dummy)] = setpar
             else:

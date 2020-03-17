@@ -266,13 +266,14 @@ def get_prior(prior):
                 y1 = ss.invgamma(x[0], scale=x[1]).mean() - pmean
                 return np.array([y0, y1])
 
-            ig_res = so.root(targf, np.array([4, 4]))
-            if ig_res['success']:
-                a = ig_res['x']
-                prior_lst.append(ss.invgamma(a[0], scale=a[1]))
+            ig_res = so.root(targf, np.array([4, 4]), method='lm')
+
+            if ig_res['success'] and np.allclose(targf(ig_res['x']),0):
+                prior_lst.append(ss.invgamma(ig_res['x'][0], scale=ig_res['x'][1]))
             else:
                 raise ValueError(
                     'Can not find inverse gamma distribution with mean %s and std %s' % (pmean, pstdd))
+
         elif str(ptype) == 'inv_gamma_dynare':
             s, nu = inv_gamma_spec(pmean, pstdd)
             ig = InvGammaDynare()(s, nu)
