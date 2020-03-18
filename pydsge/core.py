@@ -467,18 +467,24 @@ def get_par(self, dummy=None, npar=None, asdict=False, full=True, nsamples=1, ve
     elif dummy == 'prior_mean':
         # ensure that ALL parameters are reset, not only those included in the prior
         pars = self.par_fix
-        par_cand = [self.prior[pp][-2] for pp in self.prior.keys()]
+        par_cand = []
+        for pp in self.prior.keys():
+            if self.prior[pp][3] == 'uniform':
+                par_cand.append(.5*self.prior[pp][-2] + .5*self.prior[pp][-1])
+            else:
+                par_cand.append(self.prior[pp][-2])
     elif dummy == 'adj_prior_mean':
         # adjust for prior[pp][-2] not beeing the actual mean for inv_gamma_dynare
         # ensure that ALL parameters are reset, not only those included in the prior
         pars = self.par_fix
         par_cand = []
         for pp in self.prior.keys():
-            try:
-                poww = (self.prior[pp][3] == 'inv_gamma_dynare')
-            except IndexError:
-                poww = 0
-            par_cand.append(self.prior[pp][-2]*10 ** poww)
+            if self.prior[pp][3] == 'inv_gamma_dynare':
+                par_cand.append(self.prior[pp][-2]*10)
+            elif self.prior[pp][3] == 'uniform':
+                par_cand.append(.5*self.prior[pp][-2] + .5*self.prior[pp][-1])
+            else:
+                par_cand.append(self.prior[pp][-2])
     elif dummy == 'init':
         # ensure that ALL parameters are reset, not only those included in the prior
         pars = self.par_fix
