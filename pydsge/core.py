@@ -53,7 +53,10 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, ignore_test
     self.fdict['ignore_tests'] = ignore_tests
 
     par = self.p0() if par is None else list(par)
-    ppar = self.compile(par)  # parsed par
+    try:
+        ppar = self.pcompile(par)  # parsed par
+    except AttributeError:
+        ppar = self.compile(par)  # parsed par
 
     self.par = par
     self.ppar = ppar
@@ -66,8 +69,7 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, ignore_test
 
     dim_v = len(vv_v)
 
-    # obtain matrices from pydsge
-    # this could be further accelerated by getting them directly from the equations in pydsge
+    # obtain matrices 
     AA = self.AA(ppar)              # forward
     BB = self.BB(ppar)              # contemp
     CC = self.CC(ppar)              # backward
@@ -147,16 +149,6 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, ignore_test
     # create the stuff that the algorithm needs
     N = nl.inv(P2) @ M2
     A = nl.inv(P2) @ (M2 + np.outer(c1, b2))
-
-    # rounding here to allow for small numeric errors during SVD & inversion
-    if not ignore_tests:
-        self.evs = eig(A).round(3)
-        if sum(self.evs < 1) > len(vv_v):
-            raise ValueError(
-                'B-K condition *not* satisfied (too many EV < 1): %s' % self.evs)
-        if sum(self.evs >= 1) > len(vv_x3):
-            raise ValueError(
-                'B-K condition *not* satisfied (too many EV > 1): %s' % self.evs)
 
     # check condition:
     n1 = N[:dim_x, :dim_x]

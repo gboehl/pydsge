@@ -379,24 +379,37 @@ class DSGE(dict):
                                            for px in self['other_para']])  # , modules=context_f)
 
         # disable this
-        def add_para_func(f):
-            return f
+        # def add_para_func(f):
+            # return f
 
-        def full_compile(px):
+        # def full_compile(px):
+            # return list(px) + psi(list(px))
+
+        def compile(px):
             return list(px) + psi(list(px))
 
-        self.compile = full_compile
+        self.pcompile = compile
         self.parafunc = [p.name for p in self['other_para']], psi
         self.psi = psi
-        self.PSI = add_para_func(PSI)
+        # self.PSI = add_para_func(PSI)
+        self.PSI = PSI
 
-        self.DD = add_para_func(DD)
-        self.ZZ = add_para_func(ZZ)
-        # ->
-        self.AA = add_para_func(AA)
-        self.BB = add_para_func(BB)
-        self.CC = add_para_func(CC)
-        self.bb = add_para_func(bb)
+        # self.DD = add_para_func(DD)
+        # self.ZZ = add_para_func(ZZ)
+        # # ->
+        # self.AA = add_para_func(AA)
+        # self.BB = add_para_func(BB)
+        # self.CC = add_para_func(CC)
+        # self.bb = add_para_func(bb)
+        # <-
+
+        self.DD = DD
+        self.ZZ = ZZ
+        # # ->
+        self.AA = AA
+        self.BB = BB
+        self.CC = CC
+        self.bb = bb
         # <-
 
         # QQ = self['covariance'].subs(subs_dict)
@@ -406,8 +419,11 @@ class DSGE(dict):
         HH = lambdify([self.parameters+self['other_para']],
                       self['measurement_errors'])
 
-        self.QQ = add_para_func(QQ)
-        self.HH = add_para_func(HH)
+        # self.QQ = add_para_func(QQ)
+        # self.HH = add_para_func(HH)
+
+        self.QQ = QQ
+        self.HH = HH
 
     @classmethod
     def read(cls, mfile, verbose=False):
