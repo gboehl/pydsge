@@ -209,14 +209,16 @@ def inv_gamma_spec(mu, sigma):
     return s, nu
 
 
-def get_prior(prior):
+def get_prior(prior, verbose=False):
 
     prior_lst = []
     initv = []
     lb = []
     ub = []
 
-    print('Adding parameters to the prior distribution...')
+    if verbose:
+        print('Adding parameters to the prior distribution...')
+
     for pp in prior:
 
         dist = prior[str(pp)]
@@ -283,12 +285,13 @@ def get_prior(prior):
         else:
             raise NotImplementedError(
                 ' Distribution *not* implemented: ', str(ptype))
-        if len(dist) == 3:
-            print('  parameter %s as %s with mean %s and std/df %s...' %
-                  (pp, ptype, pmean, pstdd))
-        if len(dist) == 6:
-            print('  parameter %s as %s (%s, %s). Init @ %s, with bounds (%s, %s)...' % (
-                pp, ptype, pmean, pstdd, dist[0], dist[1], dist[2]))
+        if verbose:
+            if len(dist) == 3:
+                print('  parameter %s as %s with mean %s and std/df %s...' %
+                      (pp, ptype, pmean, pstdd))
+            if len(dist) == 6:
+                print('  parameter %s as %s (%s, %s). Init @ %s, with bounds (%s, %s)...' % (
+                    pp, ptype, pmean, pstdd, dist[0], dist[1], dist[2]))
 
     return prior_lst, initv, (lb, ub)
 

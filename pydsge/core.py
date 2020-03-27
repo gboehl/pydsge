@@ -274,6 +274,7 @@ def prior_sampler(self, nsamples, seed=0, test_lprob=False, lks=None, verbose=Tr
 
     import tqdm
     from grgrlib import map2arr, serializer
+    from .stats import get_prior
 
     store_reduce_sys = np.copy(self.fdict['reduce_sys'])
 
@@ -285,11 +286,7 @@ def prior_sampler(self, nsamples, seed=0, test_lprob=False, lks=None, verbose=Tr
     if test_lprob and not hasattr(self, 'ndim'):
         self.prep_estim(load_R=True, verbose=verbose > 2)
 
-    if not 'frozen_prior' in self.fdict.keys():
-        from .stats import get_prior
-        self.fdict['frozen_prior'] = get_prior(self.prior)[0]
-
-    frozen_prior = self.fdict['frozen_prior']
+    frozen_prior = get_prior(self.prior, verbose=verbose)[0]
     self.debug |= debug
 
     if hasattr(self, 'pool'):
