@@ -105,9 +105,9 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
         self.fdict['prior_bounds'] = bounds
         self.fdict['init_value'] = pinitv
 
-    if verbose:
-        print('[estimation:]'.ljust(
-            15, ' ') + ' %s priors detected. Adding parameters to the prior distribution.' % self.ndim)
+        if verbose:
+            print('[estimation:]'.ljust(
+                15, ' ') + ' %s priors detected. Adding parameters to the prior distribution.' % self.ndim)
 
     def llike(parameters, par_fix, linear, verbose, seed):
 

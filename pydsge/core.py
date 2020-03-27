@@ -348,7 +348,7 @@ def prior_sampler(self, nsamples, seed=0, test_lprob=False, lks=None, verbose=Tr
         if test_lprob:
             smess = 'of zero likelihood, '
         print('[prior_sample:]'.ljust(
-            15, ' ') + ' Sampling done. %2.2f%% of the prior is either %sindetermined or explosive.' % (100*(sum(nos)-nsamples)/nsamples, smess))
+            15, ' ') + ' Sampling done. %2.2f%% of the prior is either %sindetermined or explosive.' % (100*(sum(nos)-nsamples)/sum(nos), smess))
 
     return draws
 
