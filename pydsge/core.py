@@ -117,7 +117,7 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, ignore_test
 
     # decompose P in singular & nonsingular rows
     U, s, V = nl.svd(P1)
-    s0 = fast0(s)
+    s0 = s < 1e-8
 
     P2 = np.diag(s) @ V
     M2 = U.T @ M1
@@ -201,9 +201,11 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, ignore_test
 
     preprocess(self, self.lks[0], self.lks[1], verbose)
 
-    test = self.precalc_mat[0][1, 0, 1]
-    if not ignore_tests and (eig(test[-test.shape[1]:]) > 1).any():
-        raise ValueError('Explosive dynamics detected.')
+    if not ignore_tests:
+        test_obj = self.precalc_mat[0][1, 0, 1]
+        test_con = eig(test_obj[-test_obj.shape[1]:]) > 1
+        if test_con.any():
+            raise ValueError('Explosive dynamics detected: %s EV(s) > 1' %sum(test_con))
 
     return
 

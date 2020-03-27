@@ -117,7 +117,7 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
         sampler = emcee.EnsembleSampler(
             nwalks, self.ndim, lprob_scaled, moves=moves, pool=self.pool, backend=backend)
 
-    if resume:
+    if resume and not p0:
         p0 = sampler.get_last_sample()
 
     self.sampler = sampler
