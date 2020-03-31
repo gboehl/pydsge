@@ -100,7 +100,7 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
 
     if 'frozen_prior' not in self.fdict.keys() or eval_priors:
 
-        pfrozen, pinitv, bounds = get_prior(prior, verobse=verbose)
+        pfrozen, pinitv, bounds = get_prior(prior, verbose=verbose)
         self.fdict['frozen_prior'] = pfrozen
         self.fdict['prior_bounds'] = bounds
         self.fdict['init_value'] = pinitv
