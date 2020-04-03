@@ -4,7 +4,7 @@
 """contains functions related to (re)compiling the model with different parameters
 """
 
-from grgrlib import fast0, eig, re_bc
+from grgrlib import fast0, eig, re_bk
 import numpy as np
 import numpy.linalg as nl
 import time
@@ -69,7 +69,7 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, ignore_test
 
     dim_v = len(vv_v)
 
-    # obtain matrices 
+    # obtain matrices
     AA = self.AA(ppar)              # forward
     BB = self.BB(ppar)              # contemp
     CC = self.CC(ppar)              # backward
@@ -95,7 +95,7 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, ignore_test
     M = np.block([[np.zeros(A1.shape), CC],
                   [np.eye(dim_x), np.zeros((dim_x, dim_v))]])
 
-    P = np.block([[A1, -BB],
+    P = np.block([[-A1, -BB],
                   [np.zeros((dim_x, dim_x)), np.eye(dim_v)[in_x]]])
 
     c_arg = list(vv_x2).index(self.const_var)
@@ -112,7 +112,7 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, ignore_test
     dim_x = len(vv_x3)
 
     # get the RE solution
-    OME = re_bc(M1 + np.outer(c_M,b2), P1, d_endo=dim_x)
+    OME = re_bk(M1 + np.outer(c_M, b2), P1, d_endo=dim_x, verbose=verbose-1)
     J = np.hstack((np.eye(dim_x), -OME))
 
     # decompose P in singular & nonsingular rows
@@ -124,12 +124,16 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, ignore_test
 
     c1 = U.T @ c_M
 
+    # I could possible create auxiallary variables to make this work. Or I get the stuff directly from the boehlgo
     if not fast0(c1[s0], 2) or not fast0(U.T[s0] @ c_P, 2):
         raise NotImplementedError(
             'The system depends directly or indirectly on whether the constraint holds in the future or not.\n')
 
     # actual desingularization by iterating equations in M forward
     P2[s0] = M2[s0]
+    
+    if verbose > 1:
+        print('[get_sys:]'.ljust(15, ' ')+' determinant of `P` is %1.2e.' %nl.det(P2))
 
     if 'x_bar' in [p.name for p in self.parameters]:
         x_bar = par[[p.name for p in self.parameters].index('x_bar')]
@@ -205,7 +209,8 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, ignore_test
         test_obj = self.precalc_mat[0][1, 0, 1]
         test_con = eig(test_obj[-test_obj.shape[1]:]) > 1
         if test_con.any():
-            raise ValueError('Explosive dynamics detected: %s EV(s) > 1' %sum(test_con))
+            raise ValueError(
+                'Explosive dynamics detected: %s EV(s) > 1' % sum(test_con))
 
     return
 

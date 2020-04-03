@@ -219,7 +219,7 @@ class DSGE(dict):
 
             for v in A_var:
                 v_j = fvarl.index(v)
-                AA[eq_i, v_j] = -(eq).set_eq_zero.diff(v).subs(subs_dict)
+                AA[eq_i, v_j] = (eq).set_eq_zero.diff(v).subs(subs_dict)
 
             B_var = filter(lambda x: x.date == 0, eq.atoms(Variable))
 
@@ -380,10 +380,10 @@ class DSGE(dict):
 
         # disable this
         # def add_para_func(f):
-            # return f
+        # return f
 
         # def full_compile(px):
-            # return list(px) + psi(list(px))
+        # return list(px) + psi(list(px))
 
         def compile(px):
             return list(px) + psi(list(px))
