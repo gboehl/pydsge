@@ -538,6 +538,9 @@ class DSGE(dict):
         pmodel.name = str(fdict['name'])
         pmodel.path = os.path.dirname(npzfile)
         pmodel.data = cpickle.loads(fdict['data'])
+        pmodel_dump = cpickle.dumps(pmodel, protocol=4)
+        pmodel.fdict['model_dump'] = pmodel_dump
+
         pmodel.debug = platform == "darwin" or platform == "win32"
         if pmodel.debug:
             print('[DSGE:]'.ljust(

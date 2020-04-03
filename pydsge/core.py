@@ -112,7 +112,7 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, ignore_test
     dim_x = len(vv_x3)
 
     # get the RE solution
-    OME = re_bk(M1 + np.outer(c_M, b2), P1, d_endo=dim_x, verbose=verbose-1)
+    OME = re_bk(M1 + np.outer(c_M, b2), P1, d_endo=dim_x, verbose=max(verbose-1,0))
     J = np.hstack((np.eye(dim_x), -OME))
 
     # decompose P in singular & nonsingular rows
