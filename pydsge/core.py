@@ -7,6 +7,7 @@
 from grgrlib import fast0, eig, re_bk
 import numpy as np
 import numpy.linalg as nl
+import scipy.linalg as sl
 import time
 from .engine import preprocess
 from .stats import post_mean
@@ -17,7 +18,7 @@ except ModuleNotFoundError:
     ParafuncError = Exception
 
 
-def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, ignore_tests=False, verbose=False):
+def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, tol=1e-8, ignore_tests=False, verbose=False):
     """Creates the transition function given a set of parameters. 
 
     If no parameters are given this will default to the calibration in the `yaml` file.
@@ -73,65 +74,85 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, ignore_test
     AA = self.AA(ppar)              # forward
     BB = self.BB(ppar)              # contemp
     CC = self.CC(ppar)              # backward
-    bb = self.bb(ppar).flatten()    # constraint
-
-    # the special case in which the constraint is just a cut-off of another variable requires
-    b = bb.astype(float)
+    bb = self.bb(ppar).flatten().astype(float)  # constraint
 
     # define transition shocks -> state
     D = self.PSI(ppar)
 
     # mask those vars that are either forward looking or part of the constraint
-    in_x = ~fast0(AA, 0) | ~fast0(b[:dim_v])
+    in_x = ~fast0(AA, 0) | ~fast0(bb[:dim_v])
 
     # reduce x vector
     vv_x2 = vv_x[in_x]
     A1 = AA[:, in_x]
-    b1 = np.hstack((b[:dim_v][in_x], b[dim_v:]))
+    b1 = np.hstack((bb[:dim_v][in_x], bb[dim_v:]))
 
     dim_x = len(vv_x2)
 
     # define actual matrices
-    M = np.block([[np.zeros(A1.shape), CC],
-                  [np.eye(dim_x), np.zeros((dim_x, dim_v))]])
+    N = np.block([[np.zeros(A1.shape), CC], [np.eye(dim_x), np.zeros((dim_x, dim_v))]])
 
-    P = np.block([[-A1, -BB],
-                  [np.zeros((dim_x, dim_x)), np.eye(dim_v)[in_x]]])
+    P = np.block([[-A1, -BB], [np.zeros((dim_x, dim_x)), np.eye(dim_v)[in_x]]])
 
     c_arg = list(vv_x2).index(self.const_var)
 
     # c contains information on how the constraint var affects the system
-    c_M = M[:, c_arg]
+    c1 = N[:, c_arg]
     c_P = P[:, c_arg]
 
     # get rid of constrained var
     b2 = np.delete(b1, c_arg)
-    M1 = np.delete(M, c_arg, 1)
+    N1 = np.delete(N, c_arg, 1)
     P1 = np.delete(P, c_arg, 1)
     vv_x3 = np.delete(vv_x2, c_arg)
     dim_x = len(vv_x3)
 
-    # get the RE solution
-    OME = re_bk(M1 + np.outer(c_M, b2), P1, d_endo=dim_x, verbose=max(verbose-1,0))
+    ## used to be re_bk. Now included to make SVD obsolete
+    M1 = N1 + np.outer(c1, b2)
+
+    MM, PP, alp, bet, Q, Z = sl.ordqz(M1, P1, sort='iuc')
+    s0 = bet < tol
+
+    P2 = Q.T @ P1
+    N2 = Q.T @ N1
+    c2 = Q.T @ c1
+
+    # actual desingularization by iterating equations in M forward
+    P2[s0] = N2[s0]
+
+    if not fast0(Q @ MM @ Z.T - M1, 2):
+        raise ValueError('Numerical errors in QZ')
+
+    if verbose > 2:
+        print('[get_sys:]'.ljust(15, ' ')+' pairs of `alp` and `bet`:\n', np.vstack((alp,bet)).T)
+
+    ## stolen from scipy and inverted
+    ouc = np.empty_like(alp, dtype=bool)
+    nonzero = (bet != 0)
+    # handles (x, y) = (0, 0) too
+    ouc[~nonzero] = True
+    ouc[nonzero] = abs(alp[nonzero]/bet[nonzero]) > 1.0
+
+    if sum(ouc) > dim_x:
+        raise ValueError('B-K condition not satisfied: %s EVs outside the unit circle for %s forward looking variables.' %(sum(ouc), dim_x))
+    if sum(ouc) < dim_x:
+        raise ValueError('B-K condition not satisfied: %s EVs outside the unit circle for %s forward looking variables.' %(sum(ouc), dim_x))
+
+    Z21 = Z.T[-dim_x:, :dim_x]
+    Z22 = Z.T[-dim_x:, dim_x:]
+
+    if verbose > 1:
+        print('[RE solver:]'.ljust(15, ' ')+' determinant of `Z21` is %1.2e. There are %s EVs o.u.c.' %(nl.det(Z21),sum(ouc)))
+
+    OME = -nl.inv(Z21) @ Z22
+
     J = np.hstack((np.eye(dim_x), -OME))
 
-    # decompose P in singular & nonsingular rows
-    U, s, V = nl.svd(P1)
-    s0 = s < 1e-8
-
-    P2 = np.diag(s) @ V
-    M2 = U.T @ M1
-
-    c1 = U.T @ c_M
-
     # I could possible create auxiallary variables to make this work. Or I get the stuff directly from the boehlgo
-    if not fast0(c1[s0], 2) or not fast0(U.T[s0] @ c_P, 2):
+    if not fast0(c2[s0], 2) or not fast0(Q.T[s0] @ c_P, 2):
         raise NotImplementedError(
             'The system depends directly or indirectly on whether the constraint holds in the future or not.\n')
 
-    # actual desingularization by iterating equations in M forward
-    P2[s0] = M2[s0]
-    
     if verbose > 1:
         print('[get_sys:]'.ljust(15, ' ')+' determinant of `P` is %1.2e.' %nl.det(P2))
 
@@ -145,21 +166,14 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, ignore_test
         x_bar = -1
 
     try:
-        cx = nl.inv(P2) @ c1*x_bar
+        cx = nl.inv(P2) @ c2*x_bar
     except ParafuncError:
         raise SyntaxError(
             "At least one parameter is a function of other parameters, and should be declared in `parafunc`.")
 
     # create the stuff that the algorithm needs
-    N = nl.inv(P2) @ M2
-    A = nl.inv(P2) @ (M2 + np.outer(c1, b2))
-
-    # check condition:
-    n1 = N[:dim_x, :dim_x]
-    n3 = N[dim_x:, :dim_x]
-    cc1 = cx[:dim_x]
-    cc2 = cx[dim_x:]
-    bb1 = b2[:dim_x]
+    N = nl.inv(P2) @ N2
+    A = nl.inv(P2) @ (N2 + np.outer(c2, b2))
 
     out_msk = fast0(N, 0) & fast0(A, 0) & fast0(b2) & fast0(cx)
     out_msk[-len(vv_v):] = out_msk[-len(vv_v):] & fast0(self.ZZ(ppar), 0)
