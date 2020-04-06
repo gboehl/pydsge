@@ -217,9 +217,9 @@ def simulate(self, source, mask=None, pars=None, resid=None, init=None, linear=F
 
     pars = pars or source['pars']
     resi = resid or source['resid']
-    init = init or [s[0] for s in source['means']]
+    init = init or np.array(source['means'])[...,0,:]
 
-    sample = zip(pars, resi, init)
+    sample = pars, resi, init
 
     if verbose:
         st = time.time()
@@ -263,18 +263,22 @@ def simulate(self, source, mask=None, pars=None, resid=None, init=None, linear=F
 
         X = np.array(X)
         Y = np.array(Y)
-        L = np.array(L)
+        LK = np.array((L,K))
         K = np.array(K)
 
-        return X, Y, (L, K), superflag
+        return X, Y, LK, superflag
 
     wrap = tqdm.tqdm if verbose else (lambda x, **kwarg: x)
 
-    res = wrap(self.mapper(runner, sample), unit=' sample(s)',
-               total=len(source['pars']), dynamic_ncols=True)
+    if np.ndim(resi) > 2 or np.ndim(pars) > 1 or np.ndim(init) > 2:
 
-    res = map2arr(res)
-    superflag = res[-1].any()
+        res = wrap(self.mapper(runner, zip(*sample)), unit=' sample(s)', total=len(source['pars']), dynamic_ncols=True)
+        res = map2arr(res)
+
+    else:
+        res = runner(sample)
+
+    superflag = np.any(res[-1])
 
     if verbose:
         print('[simulate:]'.ljust(15, ' ')+'Simulation took ',
@@ -286,7 +290,7 @@ def simulate(self, source, mask=None, pars=None, resid=None, init=None, linear=F
 
     X, Y, LK, flags = res
 
-    return X, Y, (LK[:, 0, :], LK[:, 1, :]), flags
+    return X, Y, (LK[..., 0, :], LK[..., 1, :]), flags
 
 
 def simulate_ts(self, par=None, cov=None, T=1e3, verbose=False, **args):

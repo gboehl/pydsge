@@ -272,10 +272,11 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
 
     if means.shape[0] == 1:
         means = pd.DataFrame(means[0], index=self.data.index, columns=self.vv)
-        resid = pd.DataFrame(
-            resid[0], index=self.data.index[:-1], columns=self.shocks)
+        resid = pd.DataFrame(resid[0], index=self.data.index[:-1], columns=self.shocks)
 
-    edict = {'pars': np.array([s[0] for s in sample]),
+    pars = np.array([s[0] for s in sample])
+
+    edict = {'pars': pars.squeeze(),
              'means': means,
              'obs': obs,
              'covs': covs,

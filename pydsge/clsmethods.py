@@ -130,7 +130,8 @@ def save_meta(self, filename=None, verbose=True):
         self.fdict['filter_R'] = self.filter.R
         self.fdict['filter_P'] = self.filter.P
 
-    np.savez(filename, **self.fdict)
+    # np.savez(filename, **self.fdict)
+    np.savez_compressed(filename, **self.fdict)
 
     if verbose:
         print('[save_meta:]'.ljust(15, ' ') +
@@ -154,10 +155,11 @@ def save_rdict(self, rdict, path=None, suffix='', verbose=True):
     if not os.path.isabs(path):
         path = os.path.join(self.path, path)
 
-    np.savez(path + suffix, **rdict)
+    # np.savez(path + suffix, **rdict)
+    np.savez_compressed(path + suffix, **rdict)
 
     if verbose:
-        print('[save_rdict:]'.ljust(15, ' ') + " Results saved as '%s'" % path)
+        print('[save_rdict:]'.ljust(15, ' ') + " Results saved as '%s'" % path + suffix)
     return
 
 
@@ -170,13 +172,15 @@ def load_rdict(self, path=None, suffix=''):
     if path is None:
         path = self.name + '_res'
 
+    path += suffix
+
     if path[-4] != '.npz':
         path += '.npz'
 
     if not os.path.isabs(path):
         path = os.path.join(self.path, path)
 
-    return dict(np.load(path + suffix, allow_pickle=True))
+    return dict(np.load(path, allow_pickle=True))
 
 
 def traceplot_m(self, chain=None, **args):
