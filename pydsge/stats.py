@@ -423,6 +423,7 @@ def nhd(self, eps_dict, **args):
     resids = eps_dict['resid']
     if np.ndim(states) == 2:
         states = np.expand_dims(states, 0)
+        pars = np.expand_dims(pars, 0)
         resids = np.expand_dims(resids, 0)
 
     nsamples = pars.shape[0]
