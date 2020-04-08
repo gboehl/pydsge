@@ -255,8 +255,7 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
                 ee = e
 
         import sys
-        raise type(ee)(str(ee) + ' (after %s unsuccessful attemps).' %
-                       natt+1).with_traceback(sys.exc_info()[2])
+        raise type(ee)(str(ee) + ' (after %s unsuccessful attemps).' %(natt+1)).with_traceback(sys.exc_info()[2])
 
     wrap = tqdm.tqdm if (verbose and len(sample) >
                          1) else (lambda x, **kwarg: x)
