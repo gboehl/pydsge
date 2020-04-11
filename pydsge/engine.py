@@ -94,11 +94,15 @@ def preprocess_jit(vals, l_max, k_max):
 
 
 def preprocess(self, l_max, k_max, verbose):
+
     st = time.time()
     self.precalc_mat = preprocess_jit(self.sys, l_max, k_max)
+
     if verbose:
         print('[preprocess:]'.ljust(
             15, ' ')+' Preproceccing finished within %ss.' % np.round((time.time() - st), 3))
+
+    return
 
 
 @njit(nogil=True, cache=True)
@@ -124,12 +128,12 @@ def boehlgorithm_jit(N, A, J, cx, b, x_bar, v, mat, term, bmat, bterm, max_cnt):
 
     # check if (0,0) is a solution
     while bLL_jit(l, 0, l, v, bmat, bterm) - x_bar > 0:
-        if l == l_max:
-            break
         l += 1
+        if l > l_max:
+            break
 
     # check if (0,0) is a solution
-    if l < l_max:
+    if l <= l_max:
         # needs to be wrapped so that both loops can be exited at once
         l, k = bruite_wrapper(b, x_bar, v, bmat, bterm)
 
@@ -156,8 +160,8 @@ def boehlgorithm_jit(N, A, J, cx, b, x_bar, v, mat, term, bmat, bterm, max_cnt):
 @njit(nogil=True, cache=True)
 def bruite_wrapper(b, x_bar, v, mat, term):
 
-    l_max = mat.shape[0] - 1
-    k_max = mat.shape[1] - 1
+    l_max = mat.shape[0]
+    k_max = mat.shape[1]
 
     for l in range(l_max):
         for k in range(1, k_max):

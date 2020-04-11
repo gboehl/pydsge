@@ -255,7 +255,8 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
                 ee = e
 
         import sys
-        raise type(ee)(str(ee) + ' (after %s unsuccessful attemps).' %(natt+1)).with_traceback(sys.exc_info()[2])
+        raise type(ee)(str(ee) + ' (after %s unsuccessful attemps).' %
+                       (natt+1)).with_traceback(sys.exc_info()[2])
 
     wrap = tqdm.tqdm if (verbose and len(sample) >
                          1) else (lambda x, **kwarg: x)
@@ -271,7 +272,8 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
 
     if means.shape[0] == 1:
         means = pd.DataFrame(means[0], index=self.data.index, columns=self.vv)
-        resid = pd.DataFrame(resid[0], index=self.data.index[:-1], columns=self.shocks)
+        resid = pd.DataFrame(
+            resid[0], index=self.data.index[:-1], columns=self.shocks)
 
     pars = np.array([s[0] for s in sample])
 

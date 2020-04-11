@@ -42,13 +42,27 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, tol=1e-8, i
     ignore_tests = ignore_tests if ignore_tests is not None else self.fdict.get(
         'ignore_tests')
 
-    if hasattr(self, 'lks'):
-        if l_max:
-            self.lks[0] = l_max
-        if k_max:
-            self.lks[1] = k_max
+    if l_max is not None:
+        if l_max < 2:
+            print('[get_sys:]'.ljust(15, ' ') +
+                  ' `l_max` must be at least 2 (is %s). Correcting...' % l_max)
+            l_max = 2
+        # effective l_max is one lower because algorithm exists on l_max 
+        l_max += 1
+
+    elif hasattr(self, 'lks'):
+        l_max = self.lks[0]
     else:
-        self.lks = [l_max or 3, k_max or 17]
+        l_max = 3
+
+    if k_max is not None:
+        pass
+    elif hasattr(self, 'lks'):
+        k_max = self.lks[1]
+    else:
+        k_max = 17
+
+    self.lks = [l_max, k_max]
 
     self.fdict['reduce_sys'] = reduce_sys
     self.fdict['ignore_tests'] = ignore_tests
@@ -63,7 +77,7 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, tol=1e-8, i
     self.ppar = ppar
 
     if not self.const_var:
-        raise NotImplementedError('Pakage is only meant to work with OBCs')
+        raise NotImplementedError('Package is only meant to work with OBCs')
 
     vv_v = np.array([v.name for v in self.variables])
     vv_x = np.array(self.variables)
@@ -90,7 +104,8 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, tol=1e-8, i
     dim_x = len(vv_x2)
 
     # define actual matrices
-    N = np.block([[np.zeros(A1.shape), CC], [np.eye(dim_x), np.zeros((dim_x, dim_v))]])
+    N = np.block([[np.zeros(A1.shape), CC], [
+                 np.eye(dim_x), np.zeros((dim_x, dim_v))]])
 
     P = np.block([[-A1, -BB], [np.zeros((dim_x, dim_x)), np.eye(dim_v)[in_x]]])
 
@@ -107,7 +122,7 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, tol=1e-8, i
     vv_x3 = np.delete(vv_x2, c_arg)
     dim_x = len(vv_x3)
 
-    ## used to be re_bk. Now included to make SVD obsolete
+    # used to be re_bk. Now included to make SVD obsolete
     M1 = N1 + np.outer(c1, b2)
 
     MM, PP, alp, bet, Q, Z = sl.ordqz(M1, P1, sort='iuc')
@@ -124,9 +139,10 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, tol=1e-8, i
         raise ValueError('Numerical errors in QZ')
 
     if verbose > 2:
-        print('[get_sys:]'.ljust(15, ' ')+' pairs of `alp` and `bet`:\n', np.vstack((alp,bet)).T)
+        print('[get_sys:]'.ljust(15, ' ') +
+              ' pairs of `alp` and `bet`:\n', np.vstack((alp, bet)).T)
 
-    ## stolen from scipy and inverted
+    # stolen from scipy and inverted
     ouc = np.empty_like(alp, dtype=bool)
     nonzero = (bet != 0)
     # handles (x, y) = (0, 0) too
@@ -134,15 +150,18 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, tol=1e-8, i
     ouc[nonzero] = abs(alp[nonzero]/bet[nonzero]) > 1.0
 
     if sum(ouc) > dim_x:
-        raise ValueError('B-K condition not satisfied: %s EVs outside the unit circle for %s forward looking variables.' %(sum(ouc), dim_x))
+        raise ValueError(
+            'B-K condition not satisfied: %s EVs outside the unit circle for %s forward looking variables.' % (sum(ouc), dim_x))
     if sum(ouc) < dim_x:
-        raise ValueError('B-K condition not satisfied: %s EVs outside the unit circle for %s forward looking variables.' %(sum(ouc), dim_x))
+        raise ValueError(
+            'B-K condition not satisfied: %s EVs outside the unit circle for %s forward looking variables.' % (sum(ouc), dim_x))
 
     Z21 = Z.T[-dim_x:, :dim_x]
     Z22 = Z.T[-dim_x:, dim_x:]
 
     if verbose > 1:
-        print('[RE solver:]'.ljust(15, ' ')+' determinant of `Z21` is %1.2e. There are %s EVs o.u.c.' %(nl.det(Z21),sum(ouc)))
+        print('[RE solver:]'.ljust(
+            15, ' ')+' determinant of `Z21` is %1.2e. There are %s EVs o.u.c.' % (nl.det(Z21), sum(ouc)))
 
     OME = -nl.inv(Z21) @ Z22
 
@@ -154,7 +173,8 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, tol=1e-8, i
             'The system depends directly or indirectly on whether the constraint holds in the future or not.\n')
 
     if verbose > 1:
-        print('[get_sys:]'.ljust(15, ' ')+' determinant of `P` is %1.2e.' %nl.det(P2))
+        print('[get_sys:]'.ljust(15, ' ') +
+              ' determinant of `P` is %1.2e.' % nl.det(P2))
 
     if 'x_bar' in [p.name for p in self.parameters]:
         x_bar = par[[p.name for p in self.parameters].index('x_bar')]

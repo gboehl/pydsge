@@ -40,14 +40,14 @@ def t_func(self, state, noise=None, set_k=None, return_flag=True, return_k=False
     if noise is not None:
         newstate += self.SIG @ noise
 
-    if set_k is None or isinstance(set_k,bool):
+    if set_k is None or isinstance(set_k, bool):
         newstate, (l, k), flag = boehlgorithm(self, newstate, linear=linear)
 
     else:
         print('woah')
         mat, term, _, _ = self.precalc_mat
         J = self.sys[2]
-        l,k = int(not bool(set_k)), set_k
+        l, k = int(not bool(set_k)), set_k
         flag = 0
 
         newstate = (mat[l, k, 1] @ newstate + term[l, k, 1])[J.shape[0]:]
@@ -136,12 +136,12 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, set_k=False
     set_par = serializer(self.set_par)
     t_func = serializer(self.t_func)
 
-    ## accept all sorts of inputs
+    # accept all sorts of inputs
     new_shocklist = []
 
     for vec in shocklist:
         if isinstance(vec, str):
-            vec = (vec, 1, 0) 
+            vec = (vec, 1, 0)
         elif len(vec) == 2:
             vec += 0,
         new_shocklist.append(vec)
@@ -177,9 +177,10 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, set_k=False
                     shock_arg = shocks.index(shock)
                     shk_vec[shock_arg] = shocksize
 
-            set_k_eff = max(set_k-t,0) if set_k else set_k
+            set_k_eff = max(set_k-t, 0) if set_k else set_k
 
-            st_vec, (l, k), flag = t_func(st_vec, shk_vec, set_k=set_k_eff, linear=linear, return_k=True)
+            st_vec, (l, k), flag = t_func(st_vec, shk_vec,
+                                          set_k=set_k_eff, linear=linear, return_k=True)
 
             superflag |= flag
 
@@ -239,7 +240,7 @@ def simulate(self, source, mask=None, pars=None, resid=None, init=None, linear=F
 
     pars = pars or source['pars']
     resi = resid or source['resid']
-    init = init or np.array(source['means'])[...,0,:]
+    init = init or np.array(source['means'])[..., 0, :]
 
     sample = pars, resi, init
 
@@ -285,7 +286,7 @@ def simulate(self, source, mask=None, pars=None, resid=None, init=None, linear=F
 
         X = np.array(X)
         Y = np.array(Y)
-        LK = np.array((L,K))
+        LK = np.array((L, K))
         K = np.array(K)
 
         return X, Y, LK, superflag
@@ -294,7 +295,8 @@ def simulate(self, source, mask=None, pars=None, resid=None, init=None, linear=F
 
     if np.ndim(resi) > 2 or np.ndim(pars) > 1 or np.ndim(init) > 2:
 
-        res = wrap(self.mapper(runner, zip(*sample)), unit=' sample(s)', total=len(source['pars']), dynamic_ncols=True)
+        res = wrap(self.mapper(runner, zip(*sample)), unit=' sample(s)',
+                   total=len(source['pars']), dynamic_ncols=True)
         res = map2arr(res)
 
     else:
