@@ -30,7 +30,7 @@ def lin_o_func(self):
     return self.hx
 
 
-def t_func(self, state, noise=None, return_flag=True, return_k=False, linear=False, verbose=False):
+def t_func(self, state, noise=None, set_k=None, return_flag=True, return_k=False, linear=False, verbose=False):
 
     if verbose:
         st = time.time()
@@ -39,7 +39,18 @@ def t_func(self, state, noise=None, return_flag=True, return_k=False, linear=Fal
 
     if noise is not None:
         newstate += self.SIG @ noise
-    newstate, (l, k), flag = boehlgorithm(self, newstate, linear=linear)
+
+    if set_k is None or isinstance(set_k,bool):
+        newstate, (l, k), flag = boehlgorithm(self, newstate, linear=linear)
+
+    else:
+        print('woah')
+        mat, term, _, _ = self.precalc_mat
+        J = self.sys[2]
+        l,k = int(not bool(set_k)), set_k
+        flag = 0
+
+        newstate = (mat[l, k, 1] @ newstate + term[l, k, 1])[J.shape[0]:]
 
     if verbose:
         print('[t_func:]'.ljust(15, ' ') +
@@ -90,7 +101,7 @@ def calc_obs(self, states, covs=None):
     return iv95_obs, iv95
 
 
-def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, verbose=True, debug=False, **args):
+def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, set_k=False, verbose=True, debug=False, **args):
     """Simulate impulse responses
 
     Parameters
@@ -111,7 +122,7 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, verbose=Tru
 
     self.debug |= debug
 
-    if isinstance(shocklist, tuple):
+    if not isinstance(shocklist, list):
         shocklist = [shocklist, ]
 
     if hasattr(self, 'pool'):
@@ -124,6 +135,16 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, verbose=Tru
 
     set_par = serializer(self.set_par)
     t_func = serializer(self.t_func)
+
+    ## accept all sorts of inputs
+    new_shocklist = []
+
+    for vec in shocklist:
+        if isinstance(vec, str):
+            vec = (vec, 1, 0) 
+        elif len(vec) == 2:
+            vec += 0,
+        new_shocklist.append(vec)
 
     def runner(par):
 
@@ -147,7 +168,7 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, verbose=Tru
         for t in range(T):
 
             shk_vec = np.zeros(len(shocks))
-            for vec in shocklist:
+            for vec in new_shocklist:
                 if vec[2] == t:
 
                     shock = vec[0]
@@ -156,8 +177,9 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, verbose=Tru
                     shock_arg = shocks.index(shock)
                     shk_vec[shock_arg] = shocksize
 
-            st_vec, (l, k), flag = t_func(
-                st_vec, shk_vec, linear=linear, return_k=True)
+            set_k_eff = max(set_k-t,0) if set_k else set_k
+
+            st_vec, (l, k), flag = t_func(st_vec, shk_vec, set_k=set_k_eff, linear=linear, return_k=True)
 
             superflag |= flag
 
@@ -310,7 +332,6 @@ def simulate_ts(self, par=None, cov=None, T=1e3, verbose=False, **args):
     states, Ks = [], []
     for i in range(int(T)):
         shk_vec = ss.multivariate_normal.rvs(cov=cov)
-        print(shk_vec)
         st_vec, ks, flag = self.t_func(
             st_vec, shk_vec, return_k=True, verbose=verbose)
         states.append(st_vec)
