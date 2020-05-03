@@ -122,53 +122,25 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, tol=1e-8, i
     vv_x3 = np.delete(vv_x2, c_arg)
     dim_x = len(vv_x3)
 
-    # used to be re_bk. Now included to make SVD obsolete
     M1 = N1 + np.outer(c1, b2)
+    # solve using Klein's method
+    OME = re_bk(M1, P1, d_endo=dim_x)
+    J = np.hstack((np.eye(dim_x), -OME))
 
-    MM, PP, alp, bet, Q, Z = sl.ordqz(M1, P1, sort='iuc')
-    s0 = bet < tol
+    # desingularization of P
+    U, s, V = nl.svd(P1)
 
-    P2 = Q.T @ P1
-    N2 = Q.T @ N1
-    c2 = Q.T @ c1
+    s0 = s < tol
+
+    P2 = U.T @ P1
+    N2 = U.T @ N1
+    c2 = U.T @ c1
 
     # actual desingularization by iterating equations in M forward
     P2[s0] = N2[s0]
 
-    if not fast0(Q @ MM @ Z.T - M1, 2):
-        raise ValueError('Numerical errors in QZ')
-
-    if verbose > 2:
-        print('[get_sys:]'.ljust(15, ' ') +
-              ' pairs of `alp` and `bet`:\n', np.vstack((alp, bet)).T)
-
-    # stolen from scipy and inverted
-    ouc = np.empty_like(alp, dtype=bool)
-    nonzero = (bet != 0)
-    # handles (x, y) = (0, 0) too
-    ouc[~nonzero] = True
-    ouc[nonzero] = abs(alp[nonzero]/bet[nonzero]) > 1.0
-
-    if sum(ouc) > dim_x:
-        raise ValueError(
-            'B-K condition not satisfied: %s EVs outside the unit circle for %s forward looking variables.' % (sum(ouc), dim_x))
-    if sum(ouc) < dim_x:
-        raise ValueError(
-            'B-K condition not satisfied: %s EVs outside the unit circle for %s forward looking variables.' % (sum(ouc), dim_x))
-
-    Z21 = Z.T[-dim_x:, :dim_x]
-    Z22 = Z.T[-dim_x:, dim_x:]
-
-    if verbose > 1:
-        print('[RE solver:]'.ljust(
-            15, ' ')+' determinant of `Z21` is %1.2e. There are %s EVs o.u.c.' % (nl.det(Z21), sum(ouc)))
-
-    OME = -nl.inv(Z21) @ Z22
-
-    J = np.hstack((np.eye(dim_x), -OME))
-
     # I could possible create auxiallary variables to make this work. Or I get the stuff directly from the boehlgo
-    if not fast0(c2[s0], 2) or not fast0(Q.T[s0] @ c_P, 2):
+    if not fast0(c2[s0], 2) or not fast0(U.T[s0] @ c_P, 2):
         raise NotImplementedError(
             'The system depends directly or indirectly on whether the constraint holds in the future or not.\n')
 

@@ -83,7 +83,7 @@ def summary(self, store, pmode=None, bounds=None, alpha=0.1, top=None, show_prio
         lambda x, n: pd.Series(np.mean(x), name='mean'),
         lambda x, n: pd.Series(np.std(x), name='sd'),
         lambda x, n: pd.Series(
-            mode_func(x, n), name='mode' if pmode is not None else 'marg.mode'),
+            mode_func(x, n), name='mode' if pmode is not None else 'marg. mode'),
         lambda x, n: _hpd_df(x, alpha),
         lambda x, n: pd.Series(mc_error(x), name='mc_error')]
 
