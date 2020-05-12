@@ -226,7 +226,7 @@ def mask(self, verbose=False):
     return msk.rename(columns=dict(zip(self.observables, self.shocks)))[:-1]
 
 
-def simulate(self, source, mask=None, pars=None, resid=None, init=None, linear=False, debug=False, verbose=False, **args):
+def simulate(self, source=None, mask=None, pars=None, resid=None, init=None, operation=np.multiply, linear=False, debug=False, verbose=False, **args):
     """Simulate time series given a series of exogenous innovations.
 
     Parameters
@@ -238,9 +238,9 @@ def simulate(self, source, mask=None, pars=None, resid=None, init=None, linear=F
     """
     from grgrlib.core import serializer
 
-    pars = pars or source['pars']
-    resi = resid or source['resid']
-    init = init or np.array(source['means'])[..., 0, :]
+    pars = pars if pars is not None else source['pars']
+    resi = resid if resid is not None else source['resid']
+    init = init if init is not None else np.array(source['means'])[..., 0, :]
 
     sample = pars, resi, init
 
@@ -263,7 +263,7 @@ def simulate(self, source, mask=None, pars=None, resid=None, init=None, linear=F
         par, eps, state = arg
 
         if mask is not None:
-            eps = np.where(np.isnan(mask), eps, np.array(mask)*eps)
+            eps = np.where(np.isnan(mask), eps, operation(np.array(mask),eps))
 
         set_par(par, **args)
 
@@ -315,32 +315,3 @@ def simulate(self, source, mask=None, pars=None, resid=None, init=None, linear=F
     X, Y, LK, flags = res
 
     return X, Y, (LK[..., 0, :], LK[..., 1, :]), flags
-
-
-def simulate_ts(self, par=None, cov=None, T=1e3, verbose=False, **args):
-    """Simulate a random time series (probably not up-to-date)
-    """
-
-    import scipy.stats as ss
-
-    if par is None:
-        self.set_par(par, **args)
-
-    if cov is None:
-        cov = self.QQ(self.ppar)
-
-    st_vec = np.zeros(len(self.vv))
-
-    states, Ks = [], []
-    for i in range(int(T)):
-        shk_vec = ss.multivariate_normal.rvs(cov=cov)
-        st_vec, ks, flag = self.t_func(
-            st_vec, shk_vec, return_k=True, verbose=verbose)
-        states.append(st_vec)
-        Ks.append(ks)
-
-        if verbose and flag:
-            print('[irfs:]'.ljust(15, ' ') +
-                  'No rational expectations solution found.')
-
-    return np.array(states), np.array(Ks)

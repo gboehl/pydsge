@@ -11,7 +11,7 @@ from .mcmc import mcmc, tmcmc
 from .modesearch import cmaes
 from .filtering import *
 from .tools import *
-from .core import get_sys, get_par, set_par
+from .core import get_sys, get_par, get_cov, set_par
 from .estimation import *
 
 
@@ -445,8 +445,9 @@ DSGE.create_pool = create_pool
 # from core
 DSGE.get_par = get_par
 DSGE.gp = get_par
-DSGE.set_par = set_par
 DSGE.get_sys = get_sys
+DSGE.get_cov = get_cov
+DSGE.set_par = set_par
 # from tools
 DSGE.t_func = t_func
 DSGE.o_func = o_func
@@ -455,7 +456,6 @@ DSGE.lin_o_func = lin_o_func
 DSGE.get_eps_lin = get_eps_lin
 DSGE.irfs = irfs
 DSGE.simulate = simulate
-DSGE.simulate_ts = simulate_ts
 # from mcmc
 DSGE.mcmc = mcmc
 DSGE.tmcmc = tmcmc

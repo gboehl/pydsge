@@ -433,6 +433,12 @@ def get_par(self, dummy=None, npar=None, asdict=False, full=True, nsamples=1, ve
         if verbose:
             print('[get_par:]'.ljust(15, ' ') + "%s = %s" % (dummy, p))
         return p
+    elif dummy == 'cov_mat':
+        get_sys(self, pars)
+        p = self.QQ(self.ppar)
+        if verbose:
+            print('[get_par:]'.ljust(15, ' ') + "%s = %s" % (dummy, p))
+        return p
     elif dummy == 'best':
         try:
             par_cand = get_par(self, 'mode', asdict=False,
@@ -522,6 +528,11 @@ def get_par(self, dummy=None, npar=None, asdict=False, full=True, nsamples=1, ve
         par_cand = par_cand*(1 + 1e-3*np.random.randn(nsamples, len(par_cand)))
 
     return par_cand
+
+
+def get_cov(self, npar=None, **args):
+    """get the covariance matrix"""
+    return get_par(self, dummy='cov_mat', npar=npar, **args)
 
 
 def set_par(self, dummy=None, setpar=None, npar=None, verbose=False, roundto=5, **args):
