@@ -126,3 +126,4 @@ estimation:
     sig_u   : [0.5, 0.025, 5, inv_gamma_dynare, 0.1, 2]
     sig_r   : [0.5, 0.01, 3, inv_gamma_dynare, 0.1, 2]
     sig_z   : [0.5, 0.01,3 , inv_gamma_dynare, 0.1, 2]
+    #nub     : [0.1, 0.001, 0.9, normal, 0.25, 0.05]

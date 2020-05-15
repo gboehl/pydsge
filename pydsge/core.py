@@ -291,8 +291,8 @@ def prior_sampler(self, nsamples, seed=0, test_lprob=False, lks=None, verbose=Tr
 
     l_max, k_max = lks or (None, None)
 
-    if not store_reduce_sys:
-        self.get_sys(reduce_sys=True, verbose=verbose > 1, **args)
+    # if not store_reduce_sys:
+        # self.get_sys(reduce_sys=True, verbose=verbose > 1, **args)
 
     if test_lprob and not hasattr(self, 'ndim'):
         self.prep_estim(load_R=True, verbose=verbose > 2)
@@ -304,8 +304,8 @@ def prior_sampler(self, nsamples, seed=0, test_lprob=False, lks=None, verbose=Tr
         from .estimation import create_pool
         create_pool(self)
 
+    set_par = serializer(self.set_par)
     get_par = serializer(self.get_par)
-    get_sys = serializer(self.get_sys)
     lprob = serializer(self.lprob) if test_lprob else None
 
     def runner(locseed):
@@ -330,8 +330,7 @@ def prior_sampler(self, nsamples, seed=0, test_lprob=False, lks=None, verbose=Tr
                                           verbose=verbose > 1)
                         done = not np.isinf(draw_prob)
                     else:
-                        pdraw_full = get_par(pdraw, asdict=False, full=True)
-                        get_sys(par=pdraw_full, reduce_sys=True, **args)
+                        set_par(pdraw)
                         done = True
 
                 except Exception as e:
@@ -348,8 +347,8 @@ def prior_sampler(self, nsamples, seed=0, test_lprob=False, lks=None, verbose=Tr
 
     draws, nos = map2arr(pmap_sim)
 
-    if not store_reduce_sys:
-        self.get_sys(reduce_sys=False, verbose=verbose > 1, **args)
+    # if not store_reduce_sys:
+        # self.get_sys(reduce_sys=False, verbose=verbose > 1, **args)
 
     if verbose:
         smess = ''
@@ -361,7 +360,7 @@ def prior_sampler(self, nsamples, seed=0, test_lprob=False, lks=None, verbose=Tr
     return draws
 
 
-def get_par(self, dummy=None, npar=None, asdict=False, full=True, nsamples=1, verbose=False, roundto=5, **args):
+def get_par(self, dummy=None, npar=None, asdict=False, full=True, nsamples=1, verbose=False, roundto=5, debug=False, **args):
     """Get parameters. Tries to figure out what you want. 
 
     Parameters
@@ -446,63 +445,52 @@ def get_par(self, dummy=None, npar=None, asdict=False, full=True, nsamples=1, ve
         except:
             par_cand = get_par(self, 'init', asdict=False,
                                full=False, verbose=verbose, **args)
-    elif dummy == 'prior':
-        # ensure that ALL parameters are reset, not only those included in the prior
-        pars = self.par_fix
-        par_cand = prior_sampler(
-            self, nsamples=nsamples, verbose=verbose, **args)
-    elif dummy in ('post', 'posterior'):
-        # ensure that ALL parameters are reset, not only those included in the prior
-        pars = self.par_fix
-        par_cand = posterior_sampler(
-            self, nsamples=nsamples, verbose=verbose, **args)
-    elif dummy == 'posterior_mean' or dummy == 'post_mean':
-        # ensure that ALL parameters are reset, not only those included in the prior
-        pars = self.par_fix
-        par_cand = post_mean(self)
-    elif dummy == 'mode':
-        # ensure that ALL parameters are reset, not only those included in the prior
-        pars = self.par_fix
-        par_cand = self.fdict['mode_x']
-    elif dummy in ('mcmc_mode', 'mode_mcmc', 'posterior_mode', 'post_mode'):
-        # ensure that ALL parameters are reset, not only those included in the prior
-        pars = self.par_fix
-        par_cand = self.fdict['mcmc_mode_x']
-    elif dummy == 'calib':
-        # ensure that ALL parameters are reset, not only those included in the prior
-        pars = self.par_fix
-        par_cand = self.par_fix[self.prior_arg].copy()
-    elif dummy == 'prior_mean':
-        # ensure that ALL parameters are reset, not only those included in the prior
-        pars = self.par_fix
-        par_cand = []
-        for pp in self.prior.keys():
-            if self.prior[pp][3] == 'uniform':
-                par_cand.append(.5*self.prior[pp][-2] + .5*self.prior[pp][-1])
-            else:
-                par_cand.append(self.prior[pp][-2])
-    elif dummy == 'adj_prior_mean':
-        # adjust for prior[pp][-2] not beeing the actual mean for inv_gamma_dynare
-        # ensure that ALL parameters are reset, not only those included in the prior
-        pars = self.par_fix
-        par_cand = []
-        for pp in self.prior.keys():
-            if self.prior[pp][3] == 'inv_gamma_dynare':
-                par_cand.append(self.prior[pp][-2]*10)
-            elif self.prior[pp][3] == 'uniform':
-                par_cand.append(.5*self.prior[pp][-2] + .5*self.prior[pp][-1])
-            else:
-                par_cand.append(self.prior[pp][-2])
-    elif dummy == 'init':
-        # ensure that ALL parameters are reset, not only those included in the prior
-        pars = self.par_fix
-        par_cand = self.fdict['init_value']
-        for i in range(self.ndim):
-            if par_cand[i] is None:
-                par_cand[i] = self.par_fix[self.prior_arg][i]
     else:
-        raise KeyError(
-            "Parameter or parametrization '%s' does not exist." % dummy)
+        # ensure that ALL parameters are reset, not only those included in the prior
+        old_par = self.par
+        pars = self.par_fix
+        self.par = self.par_fix
+
+        if dummy == 'prior':
+            par_cand = prior_sampler(
+                self, nsamples=nsamples, verbose=verbose, debug=debug, **args)
+        elif dummy in ('post', 'posterior'):
+            par_cand = posterior_sampler(
+                self, nsamples=nsamples, verbose=verbose, **args)
+        elif dummy == 'posterior_mean' or dummy == 'post_mean':
+            par_cand = post_mean(self)
+        elif dummy == 'mode':
+            par_cand = self.fdict['mode_x']
+        elif dummy in ('mcmc_mode', 'mode_mcmc', 'posterior_mode', 'post_mode'):
+            par_cand = self.fdict['mcmc_mode_x']
+        elif dummy == 'calib':
+            par_cand = self.par_fix[self.prior_arg].copy()
+        elif dummy == 'prior_mean':
+            par_cand = []
+            for pp in self.prior.keys():
+                if self.prior[pp][3] == 'uniform':
+                    par_cand.append(.5*self.prior[pp][-2] + .5*self.prior[pp][-1])
+                else:
+                    par_cand.append(self.prior[pp][-2])
+        elif dummy == 'adj_prior_mean':
+            # adjust for prior[pp][-2] not beeing the actual mean for inv_gamma_dynare
+            par_cand = []
+            for pp in self.prior.keys():
+                if self.prior[pp][3] == 'inv_gamma_dynare':
+                    par_cand.append(self.prior[pp][-2]*10)
+                elif self.prior[pp][3] == 'uniform':
+                    par_cand.append(.5*self.prior[pp][-2] + .5*self.prior[pp][-1])
+                else:
+                    par_cand.append(self.prior[pp][-2])
+        elif dummy == 'init':
+            par_cand = self.fdict['init_value']
+            for i in range(self.ndim):
+                if par_cand[i] is None:
+                    par_cand[i] = self.par_fix[self.prior_arg][i]
+        else:
+            self.par = old_par
+            raise KeyError(
+                "Parameter or parametrization '%s' does not exist." % dummy)
 
     if full:
         if isinstance(dummy, str) and dummy in ('prior', 'post', 'posterior'):
