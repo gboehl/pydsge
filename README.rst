@@ -51,4 +51,4 @@ See https://github.com/EconForge/dolo and https://github.com/eph.
 References
 ----------
 
-Boehl, Gregor (2010). `Efficient Solution, Filtering and Estimation of Models with OBCs <http://gregorboehl.com/live/obc_boehl.pdf>`_. *Unpublished Manuscript*
+Boehl, Gregor (2020). `Efficient Solution, Filtering and Estimation of Models with OBCs <http://gregorboehl.com/live/obc_boehl.pdf>`_. *Unpublished Manuscript*
