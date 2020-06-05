@@ -43,7 +43,7 @@ been using the package and it motivates further work.
 Parser
 ------
 
-The parser originally was a fork of Ed Herbst's fork from Pablo Winant's (excellent) package **dolo**. This version seemed slightly easier to adjust in order to obtain the matrices I need than in the up-to-date and more advanced version of dolo.
+The parser originally was a fork of Ed Herbst's fork from Pablo Winant's (excellent) package **dolo**. 
 
 See https://github.com/EconForge/dolo and https://github.com/eph.
 
