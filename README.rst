@@ -29,7 +29,7 @@ Citation
 
 .. code-block::
 
-    @Unpublished{boehl2020,
+    @Software{boehl2020,
       Title  = {pydsge -- A package to simulate, filter, and estimate DSGE models with occasionally binding constraints},
       Author = {Gregor Boehl},
       Year   = {2020},
