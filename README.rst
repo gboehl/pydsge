@@ -22,6 +22,23 @@ There is some `preliminary documentation <https://pydsge.readthedocs.io/en/lates
 - `Getting Started <https://pydsge.readthedocs.io/en/latest/getting_started.html>`_
 - `Module Documentation <https://pydsge.readthedocs.io/en/latest/modules.html>`_
 
+Citation
+--------
+
+**pydsge** is developed by Gregor Boehl to simulate, filter, and estimate DSGE models with the zero lower bound on nominal interest rates in various applications (see [here](https://gregorboehl.com) for research papers using the package). Please cite it with
+
+.. code-block::
+
+    @Unpublished{boehl2020,
+      Title  = {pydsge -- A package to simulate, filter, and estimate DSGE models with occasionally binding constraints},
+      Author = {Gregor Boehl},
+      Year   = {2020},
+      Url    = {https://github.com/gboehl/pydsge},
+    }
+
+We appreciate citations for **pydsge** because it helps us to find out how people have
+been using the package and it motivates further work.
+
 
 Parser
 ------
