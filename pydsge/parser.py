@@ -698,8 +698,8 @@ class DSGE(dict):
                 equations.append(Equation(var_s, s))
 
                 subs1 = [s(-i) for i in np.arange(1, abs(max_lag_exo[s])+1)]
-                subs2 = [var_s(-i-1)
-                         for i in np.arange(1, abs(max_lag_exo[s])+1)]
+                # subs2 = [var_s(-i) for i in np.arange(1, abs(max_lag_exo[s])+1)]
+                subs2 = [var_s(-i-1) for i in np.arange(1, abs(max_lag_exo[s])+1)]
                 subs_dict = dict(zip(subs1, subs2))
                 equations = [eq.subs(subs_dict) for eq in equations]
 

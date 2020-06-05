@@ -123,6 +123,7 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, tol=1e-8, i
     dim_x = len(vv_x3)
 
     M1 = N1 + np.outer(c1, b2)
+
     # solve using Klein's method
     OME = re_bk(M1, P1, d_endo=dim_x)
     J = np.hstack((np.eye(dim_x), -OME))
