@@ -5,7 +5,7 @@ import os
 import time
 import tqdm
 import numpy as np
-from .core import get_par
+from .mpile import get_par
 from .stats import summary, pmdm_report
 
 

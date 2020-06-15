@@ -11,7 +11,8 @@ from .mcmc import mcmc, tmcmc
 from .modesearch import cmaes
 from .filtering import *
 from .tools import *
-from .core import get_sys, get_par, get_cov, set_par
+from .gensys import gen_sys
+from .mpile import get_par, get_cov, set_par
 from .estimation import *
 
 
@@ -155,7 +156,6 @@ def save_rdict(self, rdict, path=None, suffix='', verbose=True):
     if not os.path.isabs(path):
         path = os.path.join(self.path, path)
 
-    # np.savez(path + suffix, **rdict)
     np.savez_compressed(path + suffix, **rdict)
 
     if verbose:
@@ -442,10 +442,11 @@ DSGE.rjfunc = rjfunc
 DSGE.bjfunc = bjfunc
 DSGE.get_sample = get_sample
 DSGE.create_pool = create_pool
-# from core
+# from gensys
+DSGE.gen_sys = gen_sys
+# from mpile
 DSGE.get_par = get_par
 DSGE.gp = get_par
-DSGE.get_sys = get_sys
 DSGE.get_cov = get_cov
 DSGE.set_par = set_par
 # from tools

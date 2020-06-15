@@ -8,7 +8,7 @@ import pathos
 import time
 import tqdm
 from datetime import datetime
-from .core import get_par
+from .mpile import get_par
 
 
 def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=False, seed=None, backend=True, suffix=None, linear=None, resume=False, append=False, update_freq=None, lprob_seed=None, biject=False, report=None, verbose=False, debug=False, **samplerargs):
@@ -359,7 +359,7 @@ def tmcmc(self, nsteps, nwalks, ntemps, target, update_freq=False, test_lprob=Fa
     """
 
     from grgrlib.core import map2arr
-    from .core import prior_sampler
+    from .mpile import prior_sampler
 
     update_freq = update_freq if update_freq <= nsteps else False
 

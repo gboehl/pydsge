@@ -9,7 +9,7 @@ import time
 import tqdm
 from .stats import get_prior
 from .filtering import get_ll
-from .core import get_par, set_par
+from .mpile import get_par, set_par
 
 
 def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=False, dispatch=False, ncores=None, reduce_sys=True, l_max=3, k_max=16, verbose=True, debug=False, **filterargs):
@@ -126,16 +126,16 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
                         raise AttributeError('[estimation:]'.ljust(
                             15, ' ') + 'Missmatch between linearity choice (filter vs. lprob)')
                     # these max vals should be sufficient given we're dealing with stochastic linearization
-                    # the get_sys and following part replicates call to set_par, redundant
-                    self.get_sys(par=par_active_lst, l_max=l_max, k_max=k_max,
+                    # the gen_sys and following part replicates call to set_par, redundant
+                    self.gen_sys(par=par_active_lst, l_max=l_max, k_max=k_max,
                                  reduce_sys=True, verbose=verbose > 3)
                     self.filter.Q = self.QQ(self.ppar) @ self.QQ(self.ppar)
                 else:
                     if not self.filter.name == 'KalmanFilter':
                         raise AttributeError('[estimation:]'.ljust(
                             15, ' ') + 'Missmatch between linearity choice (filter vs. lprob)')
-                    # the get_sys and following part replicates call to set_par, redundant
-                    self.get_sys(par=par_active_lst, l_max=1, k_max=0,
+                    # the gen_sys and following part replicates call to set_par, redundant
+                    self.gen_sys(par=par_active_lst, l_max=1, k_max=0,
                                  reduce_sys=True, verbose=verbose > 3)
                     CO = self.SIG @ self.QQ(self.ppar)
                     self.filter.Q = CO @ CO.T

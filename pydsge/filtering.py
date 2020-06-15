@@ -1,9 +1,9 @@
 #!/bin/python
 # -*- coding: utf-8 -*-
 
+import time
 import numpy as np
 import pandas as pd
-from .core import time
 from grgrlib.core import timeprint
 from econsieve.stats import logpdf
 
@@ -36,7 +36,7 @@ def create_filter(self, P=None, R=None, N=None, ftype=None, seed=None, **fargs):
 
     elif ftype in ('PF', 'APF'):
 
-        from .partfilt import ParticleFilter
+        from .pfilter import ParticleFilter
 
         if N is None:
             N = 10000

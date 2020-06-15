@@ -57,25 +57,6 @@ class DSGE(dict):
                 Equation(fv(-1) - lag_fv - self['re_errors'][i], 0))
             i += 1
 
-        # if 'make_log' in self.keys():
-            # self['perturb_eq'] = []
-            # sub_dict = dict()
-            # sub_dict.update({v: Variable(v.name+'ss')*sympy.exp(v)
-            # for v in self['make_log']})
-            # sub_dict.update({v(-1): Variable(v.name+'ss') *
-            # sympy.exp(v(-1)) for v in self['make_log']})
-            # sub_dict.update({v(1): Variable(v.name+'ss')*sympy.exp(v(1))
-            # for v in self['make_log']})
-
-            # for eq in self.equations:
-            # peq = eq.subs(sub_dict)
-            # self['perturb_eq'].append(peq)
-
-            # self['ss_ordering'] = [Variable(v.name+'ss')
-            # for v in self['make_log']]
-
-        # else:
-            # self['perturb_eq'] = self['equations']
         self['perturb_eq'] = self['equations']
 
         context = {}
@@ -191,21 +172,27 @@ class DSGE(dict):
         no_lvar = len(lvarl)
 
         bb = zeros(1, no_var+no_lvar)
+        bb_PSI = zeros(1, evar)
 
         if self['const_var']:
             AA = zeros(no_var-1, no_var)
             BB = zeros(no_var-1, no_var)
             CC = zeros(no_var-1, no_var)
             PSI = zeros(no_var-1, evar)
-            bb_var = filter(lambda x: x.date <= 0,
-                            self['const_eq'].atoms(Variable))
 
+            bb_var = filter(lambda x: x.date <= 0, self['const_eq'].atoms(Variable))
             full_var = sub_var + lvarl
 
             for v in bb_var:
                 v_j = full_var.index(v)
-                bb[v_j] = -(self['const_eq']
-                            ).set_eq_zero.diff(v).subs(subs_dict)
+                bb[v_j] = -(self['const_eq']).set_eq_zero.diff(v).subs(subs_dict)
+
+            shocks = filter(lambda x: x, self['const_eq'].atoms(Shock))
+
+            for s in shocks:
+                s_j = slist.index(s)
+                bb_PSI[s_j] = -(self['const_eq']).set_eq_zero.diff(s).subs(subs_dict)
+
         else:
             AA = zeros(no_var, no_var)
             BB = zeros(no_var, no_var)
@@ -373,6 +360,7 @@ class DSGE(dict):
         CC = lambdify([self.parameters+self['other_para']], CC)
         # , modules={'ImmutableDenseMatrix': np.array})#'numpy')
         bb = lambdify([self.parameters+self['other_para']], bb)
+        bb_PSI = lambdify([self.parameters+self['other_para']], bb_PSI)
         # <-
 
         psi = lambdify([self.parameters], [ss[str(px)]
@@ -410,6 +398,7 @@ class DSGE(dict):
         self.BB = BB
         self.CC = CC
         self.bb = bb
+        self.bb_PSI = bb_PSI
         # <-
 
         # QQ = self['covariance'].subs(subs_dict)
@@ -698,8 +687,7 @@ class DSGE(dict):
                 equations.append(Equation(var_s, s))
 
                 subs1 = [s(-i) for i in np.arange(1, abs(max_lag_exo[s])+1)]
-                # subs2 = [var_s(-i) for i in np.arange(1, abs(max_lag_exo[s])+1)]
-                subs2 = [var_s(-i-1) for i in np.arange(1, abs(max_lag_exo[s])+1)]
+                subs2 = [var_s(-i) for i in np.arange(1, abs(max_lag_exo[s])+1)]
                 subs_dict = dict(zip(subs1, subs2))
                 equations = [eq.subs(subs_dict) for eq in equations]
 
