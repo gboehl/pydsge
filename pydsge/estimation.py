@@ -205,7 +205,7 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
 
         if verbose:
             print('[lprob:]'.ljust(15, ' ') + " Sample took %ss, ll is %s, temp is %s." %
-                  (np.round(time.time() - st, 3), np.round(ll, 4), np.round(temp, 3)))
+                  (np.round(time.time() - st, 3), np.round(ll, 4), np.round(temp, 4)))
 
         return ll
 
