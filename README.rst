@@ -29,7 +29,7 @@ Citation
 
 .. code-block::
 
-    @Unpublished{boehl2020,
+    @Software{boehl2020,
       Title  = {pydsge -- A package to simulate, filter, and estimate DSGE models with occasionally binding constraints},
       Author = {Gregor Boehl},
       Year   = {2020},
@@ -43,6 +43,12 @@ been using the package and it motivates further work.
 Parser
 ------
 
-The parser originally was a fork of Ed Herbst's fork from Pablo Winant's (excellent) package dolo. This version seemed slightly easier to adjust in order to obtain the matrices I need than in the up-to-date and more advanced version of dolo.
+The parser originally was a fork of Ed Herbst's fork from Pablo Winant's (excellent) package **dolo**. 
 
 See https://github.com/EconForge/dolo and https://github.com/eph.
+
+
+References
+----------
+
+Boehl, Gregor (2020). `Efficient Solution, Filtering and Estimation of Models with OBCs <http://gregorboehl.com/live/obc_boehl.pdf>`_. *Unpublished Manuscript*
