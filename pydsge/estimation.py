@@ -12,7 +12,7 @@ from .filtering import get_ll
 from .core import get_par, set_par
 
 
-def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=False, dispatch=False, ncores=None, reduce_sys=True, l_max=3, k_max=16, verbose=True, debug=False, **filterargs):
+def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=False, dispatch=False, ncores=None, reduce_sys=True, l_max=3, k_max=16, pre_func=None, verbose=True, debug=False, **filterargs):
     """Initializes the tools necessary for estimation
 
     ...
@@ -66,7 +66,7 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
     self.fdict['seed'] = seed
 
     self.debug |= debug
-    self.Z = np.array(self.data)
+    # self.Z = np.array(self.data)
 
     set_par(self, 'prior_mean', reduce_sys=reduce_sys,
             verbose=verbose > 3, l_max=l_max, k_max=k_max)
@@ -139,6 +139,9 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
                                  reduce_sys=True, verbose=verbose > 3)
                     CO = self.SIG @ self.QQ(self.ppar)
                     self.filter.Q = CO @ CO.T
+
+                if pre_func is not None:
+                    pre_func(self)
 
                 ll = get_ll(self, verbose=verbose > 3, dispatch=dispatch)
 
