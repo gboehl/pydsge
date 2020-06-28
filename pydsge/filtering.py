@@ -156,7 +156,7 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, ve
     return res
 
 
-def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, verbose=True, debug=False, l_max=None, k_max=None, **npasargs):
+def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, accept_failure=False, verbose=True, debug=False, l_max=None, k_max=None, **npasargs):
     """Extract the timeseries of (smoothed) shocks.
 
     Parameters
@@ -254,9 +254,9 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
             except Exception as e:
                 ee = e
 
-        import sys
-        raise type(ee)(str(ee) + ' (after %s unsuccessful attemps).' %
-                       (natt+1)).with_traceback(sys.exc_info()[2])
+        if not accept_failure:
+            import sys
+            raise type(ee)(str(ee) + ' (after %s unsuccessful attemps).' % (natt+1)).with_traceback(sys.exc_info()[2])
 
     wrap = tqdm.tqdm if (verbose and len(sample) >
                          1) else (lambda x, **kwarg: x)
