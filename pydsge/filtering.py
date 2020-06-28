@@ -185,7 +185,7 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, acc
         sample = [sample]
 
     fname = self.filter.name
-    verbose = max(verbose, 9*debug)
+    verbose = max(verbose, debug)
 
     if hasattr(self, 'pool'):
         from .estimation import create_pool
@@ -218,6 +218,8 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, acc
     obs = serializer(self.obs)
     filter_get_eps = serializer(self.get_eps_lin)
     edim = len(self.shocks)
+    xdim = len(self.vv)
+    odim = len(self.observables)
 
     sample = [(x, y) for x in sample for y in range(nsamples)]
 
@@ -254,7 +256,10 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, acc
             except Exception as e:
                 ee = e
 
-        if not accept_failure:
+        if accept_failure:
+            print('[extract:]'.ljust(15, ' ') + "got an error: '%s' (after %s unsuccessful attemps)." %(ee,natt+1))
+            return None
+        else:
             import sys
             raise type(ee)(str(ee) + ' (after %s unsuccessful attemps).' % (natt+1)).with_traceback(sys.exc_info()[2])
 
