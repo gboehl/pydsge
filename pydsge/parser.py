@@ -350,7 +350,7 @@ class DSGE(dict):
                             if not os.path.exists(self.func_file):
                                 fname = os.path.basename(self.func_file)
                                 error_msg += ' (info: a file named `%s` was not found)' % fname
-                                raise NameError(
+                                raise SyntaxError(
                                     "Definitions of `para_func` seem to be circular. Last error: "+error_msg)
 
         # print(context)
@@ -646,6 +646,9 @@ class DSGE(dict):
             raw_equations = model_yaml['equations']['model']
         else:
             raw_equations = model_yaml['equations']
+
+        if len(raw_equations) + 1 != len(var_ordering):
+            raise SyntaxError("I got %s variables but %s equations" %(len(var_ordering), len(raw_equations)+1))
 
         for eq in raw_equations:
             if '=' in eq:

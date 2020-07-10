@@ -178,6 +178,8 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
         lp = lprior(par)
 
         if np.isinf(lp):
+            if verbose:
+                print('[lprob:]'.ljust(15, ' ') + " prior is -inf.")
             return lp
 
         if linear is None:
