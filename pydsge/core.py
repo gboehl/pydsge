@@ -18,7 +18,7 @@ except ModuleNotFoundError:
     ParafuncError = Exception
 
 
-def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, tol=1e-8, ignore_tests=False, verbose=False):
+def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, linear=False, tol=1e-8, ignore_tests=False, verbose=False):
     """Creates the transition function given a set of parameters. 
 
     If no parameters are given this will default to the calibration in the `yaml` file.
@@ -53,14 +53,14 @@ def get_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, tol=1e-8, i
     elif hasattr(self, 'lks'):
         l_max = self.lks[0]
     else:
-        l_max = 3
+        l_max = 1 if linear else 3
 
     if k_max is not None:
         pass
     elif hasattr(self, 'lks'):
         k_max = self.lks[1]
     else:
-        k_max = 17
+        k_max = 0 if linear else 17 
 
     self.lks = [l_max, k_max]
 

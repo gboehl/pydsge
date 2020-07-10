@@ -156,7 +156,7 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, ve
     return res
 
 
-def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, verbose=True, debug=False, l_max=None, k_max=None, **npasargs):
+def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, accept_failure=False, verbose=True, debug=False, l_max=None, k_max=None, **npasargs):
     """Extract the timeseries of (smoothed) shocks.
 
     Parameters
@@ -185,7 +185,7 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
         sample = [sample]
 
     fname = self.filter.name
-    verbose = max(verbose, 9*debug)
+    verbose = max(verbose, debug)
 
     if hasattr(self, 'pool'):
         from .estimation import create_pool
@@ -218,6 +218,8 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
     obs = serializer(self.obs)
     filter_get_eps = serializer(self.get_eps_lin)
     edim = len(self.shocks)
+    xdim = len(self.vv)
+    odim = len(self.observables)
 
     sample = [(x, y) for x in sample for y in range(nsamples)]
 
@@ -254,9 +256,12 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
             except Exception as e:
                 ee = e
 
-        import sys
-        raise type(ee)(str(ee) + ' (after %s unsuccessful attemps).' %
-                       (natt+1)).with_traceback(sys.exc_info()[2])
+        if accept_failure:
+            print('[extract:]'.ljust(15, ' ') + "got an error: '%s' (after %s unsuccessful attemps)." %(ee,natt+1))
+            return None
+        else:
+            import sys
+            raise type(ee)(str(ee) + ' (after %s unsuccessful attemps).' % (natt+1)).with_traceback(sys.exc_info()[2])
 
     wrap = tqdm.tqdm if (verbose and len(sample) >
                          1) else (lambda x, **kwarg: x)
