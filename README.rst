@@ -27,7 +27,7 @@ There is some `preliminary documentation <https://pydsge.readthedocs.io/en/lates
 Citation
 --------
 
-**pydsge** is developed by Gregor Boehl to simulate, filter, and estimate DSGE models with the zero lower bound on nominal interest rates in various applications (see `here <https://gregorboehl.com>`_) for research papers using the package). Please cite it with
+**pydsge** is developed by Gregor Boehl to simulate, filter, and estimate DSGE models with the zero lower bound on nominal interest rates in various applications (see `my website <https://gregorboehl.com>`_ for research papers using the package). Please cite it with
 
 .. code-block::
 
