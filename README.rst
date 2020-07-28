@@ -4,7 +4,7 @@ pydsge
 
 Contains the functions and classes for solving, filtering and estimating DSGE models @ZLB (or with other OBCs). Not well documented and very rawwwww.
 
-A collection of models that can (and were) used with this package can be found in [https://github.com/gboehl/projectlib/tree/master/yamls](another repo).
+A collection of models that can (and were) used with this package can be found in `another repo <https://github.com/gboehl/projectlib/tree/master/yamls>`_.
 
 The code is in alpha state and provided for reasons of collaboration, replicability and code sharing in the spirit of open science. It does not (and for now, can not) have a toolbox character. The code is operational, but (yet) not ready for public use and I can not provide any support. You are however very welcome to get in touch if you are interested working with the package.
 
@@ -27,7 +27,7 @@ There is some `preliminary documentation <https://pydsge.readthedocs.io/en/lates
 Citation
 --------
 
-**pydsge** is developed by Gregor Boehl to simulate, filter, and estimate DSGE models with the zero lower bound on nominal interest rates in various applications (see [here](https://gregorboehl.com) for research papers using the package). Please cite it with
+**pydsge** is developed by Gregor Boehl to simulate, filter, and estimate DSGE models with the zero lower bound on nominal interest rates in various applications (see `here<https://gregorboehl.com>`_) for research papers using the package). Please cite it with
 
 .. code-block::
 
