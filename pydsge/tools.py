@@ -13,54 +13,6 @@ from .engine import *
 from decimal import Decimal
 
 
-# @property
-# def lin_t_func(self):
-    # mat = self.precalc_mat[0]
-    # dim_x = self.sys[2].shape[0]
-
-    # return mat[1, 0, 1][dim_x:]
-
-
-# @property
-# def lin_o_func(self):
-    # """Get a linear representation of the observation function under the current parameters
-    # """
-    # return self.hx
-
-
-# def t_func(self, state, noise=None, set_k=None, return_flag=True, return_k=False, linear=False, verbose=False):
-
-    # if verbose:
-        # st = time.time()
-
-    # newstate = state.copy()
-
-    # if noise is not None:
-        # newstate += self.SIG @ noise
-
-    # if set_k is None or isinstance(set_k, bool):
-        # newstate, (l, k), flag = boehlgorithm(self, newstate, linear=linear)
-
-    # else:
-        # mat, term, _, _ = self.precalc_mat
-        # J = self.sys[2]
-        # l, k = int(not bool(set_k)), set_k
-        # flag = 0
-
-        # newstate = (mat[l, k, 1] @ newstate + term[l, k, 1])[J.shape[0]:]
-
-    # if verbose:
-        # print('[t_func:]'.ljust(15, ' ') +
-              # 'Transition function took %.2Es.' % Decimal(time.time() - st))
-
-    # if return_k:
-        # return newstate, (l, k), flag
-    # elif return_flag:
-        # return newstate, flag
-    # else:
-        # return newstate
-
-
 # @profile
 def t_func(self, state, shocks=None, set_k=None, return_flag=True, return_k=False, linear=False, verbose=False):
 
@@ -83,6 +35,7 @@ def t_func(self, state, shocks=None, set_k=None, return_flag=True, return_k=Fals
             return newstate
 
     A, N, J, D, cc, x_bar, ff, S, aux = self.sys
+    SAP, SAQ, SBP, SBQ, SCP, SCQ = S
     mat, term = D
     l_max, k_max = self.lks
 
@@ -96,7 +49,7 @@ def t_func(self, state, shocks=None, set_k=None, return_flag=True, return_k=Fals
         set_k = -1
 
     state = np.hstack((state,shocks))
-    newstate, l, k, flag = t_func_jit(mat, term, dimp, ff, x_bar, S, aux, l_max, k_max, state, set_k)
+    newstate, l, k, flag = t_func_jit(mat, term, dimp, ff, x_bar, SAP, SAQ, SBP, SBQ, SCP, SCQ, aux, l_max, k_max, state, set_k)
     newstate = newstate[:-len(self.shocks)]
 
     if verbose:

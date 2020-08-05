@@ -161,8 +161,8 @@ def boehlgorithm_jit(mat, term, dimp, ff, x_bar, l_max, k_max, q):
     return l,k, flag
 
 
-# @njit(cache=True, nogil=True)
-def t_func_jit(mat, term, dimp, ff, x_bar, S, aux, l_max, k_max, state, set_k):
+@njit(cache=True, nogil=True)
+def t_func_jit(mat, term, dimp, ff, x_bar, SAP, SAQ, SBP, SBQ, SCP, SCQ, aux, l_max, k_max, state, set_k):
 
     # translate y to x
     x = aux @ state
@@ -178,14 +178,15 @@ def t_func_jit(mat, term, dimp, ff, x_bar, S, aux, l_max, k_max, state, set_k):
 
     p = mat[l,k,0][:dimp,dimp:] @ q0 + term[l,k,0][:dimp]
     x = mat[l,k,1][:,:dimp] @ p + mat[l,k,1][:,dimp:] @ q0 + term[l,k,1]
+    x1 = mat[l,k,2][:,:dimp] @ p + mat[l,k,2][:,dimp:] @ q0 + term[l,k,2]
 
     q = x[dimp:]
     p1 = x[:dimp]
-
-    q1 = (mat[l,k,2][:,:dimp] @ p + mat[l,k,2][:,dimp:] @ q0 + term[l,k,2])[dimp:]
+    q1 = x1[dimp:]
 
     # translate back to y 
-    y = S[0] @ p1 + S[1] @ q1 + S[2] @ p + S[3] @ q + S[4] @ p0 + S[5] @ q0 
+    # y = S[0] @ p1 + S[1] @ q1 + S[2] @ p + S[3] @ q + S[4] @ p0 + S[5] @ q0 
+    y = SAP @ p1 + SAQ @ q1 + SBP @ p + SBQ @ q + SCP @ p0 + SCQ @ q0 
 
     return y, l, k, flag
 
