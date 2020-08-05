@@ -61,6 +61,7 @@ from decimal import Decimal
         # return newstate
 
 
+# @profile
 def t_func(self, state, shocks=None, set_k=None, return_flag=True, return_k=False, linear=False, verbose=False):
 
     if verbose:
@@ -82,6 +83,8 @@ def t_func(self, state, shocks=None, set_k=None, return_flag=True, return_k=Fals
             return newstate
 
     A, N, J, D, cc, x_bar, ff, S, aux = self.sys
+    mat, term = D
+    l_max, k_max = self.lks
 
     dimp, dimx = J.shape
     dimq = dimx - dimp
@@ -93,7 +96,7 @@ def t_func(self, state, shocks=None, set_k=None, return_flag=True, return_k=Fals
         set_k = -1
 
     state = np.hstack((state,shocks))
-    newstate, l, k, flag = t_func_jit(self.sys, self.lks, state, set_k)
+    newstate, l, k, flag = t_func_jit(mat, term, dimp, ff, x_bar, S, aux, l_max, k_max, state, set_k)
     newstate = newstate[:-len(self.shocks)]
 
     if verbose:
