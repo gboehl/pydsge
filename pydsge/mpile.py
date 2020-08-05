@@ -1,12 +1,10 @@
-# decompyle3 version 3.3.2
-# Python bytecode 3.8 (3413)
-# Decompiled from: Python 3.8.3 (default, May 17 2020, 18:15:42)
-# [GCC 10.1.0]
-# Embedded file name: /home/gboehl/repos/pydsge/pydsge/mpile.py
-# Compiled at: 2020-06-11 20:40:48
-# Size of source mod 2**32: 13880 bytes
+#!/bin/python
+# -*- coding: utf-8 -*-
+
 """contains functions related to (re)compiling the model with different parameters
 """
+
+
 import numpy as np
 import time
 from .stats import post_mean
@@ -343,9 +341,10 @@ def set_par(self, dummy=None, setpar=None, npar=None, verbose=False, roundto=5, 
             "Parameter '%s' is not defined for this model." % dummy)
     gen_sys(self, par=list(par), verbose=verbose, **args)
     if hasattr(self, 'filter'):
-        self.filter.eps_cov = self.QQ(self.ppar)
+        # self.filter.eps_cov = self.QQ(self.ppar)
         if self.filter.name == 'KalmanFilter':
-            CO = self.SIG @ self.filter.eps_cov
+            # CO = self.SIG @ self.filter.eps_cov
+            print('rewörk!!')
             Q = CO @ CO.T
         elif self.filter.name == 'ParticleFilter':
             raise NotImplementedError

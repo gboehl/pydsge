@@ -452,8 +452,7 @@ DSGE.set_par = set_par
 # from tools
 DSGE.t_func = t_func
 DSGE.o_func = o_func
-DSGE.lin_t_func = lin_t_func
-DSGE.lin_o_func = lin_o_func
+# DSGE.lin_sys = lin_sys
 DSGE.get_eps_lin = get_eps_lin
 DSGE.irfs = irfs
 DSGE.simulate = simulate

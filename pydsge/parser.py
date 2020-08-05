@@ -113,7 +113,7 @@ class DSGE(dict):
         return len(self['fvars'])
 
     @property
-    def ny(self):
+    def nobs(self):
         return len(self['observables'])
 
     @property
@@ -835,6 +835,7 @@ class DSGE(dict):
         model.prior_arg = [p_names.index(pp) for pp in model.prior.keys()]
         model.prior_names = [str(pp) for pp in model.prior.keys()]
         model.observables = [str(o) for o in observables]
-        model.oo = np.array(model.observables)
+        model.vo = np.array(model.observables)
+        model.ve = np.array(model.shocks)
 
         return model

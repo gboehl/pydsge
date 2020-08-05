@@ -27,23 +27,23 @@ def create_filter(self, P=None, R=None, N=None, ftype=None, seed=None, **fargs):
         ftype = 'PF'
     if ftype == 'AuxiliaryParticleFilter':
         ftype = 'APF'
-
     if ftype == 'KF':
 
         from econsieve import KalmanFilter
 
-        f = KalmanFilter(dim_x=len(self.vv), dim_z=self.ny)
+        f = KalmanFilter(dim_x=self.nvar+self.neps, dim_z=self.nobs)
 
     elif ftype in ('PF', 'APF'):
 
+        print('Warning: Particle filter is experimental and currently not under development.')
         from .pfilter import ParticleFilter
 
         if N is None:
             N = 10000
 
         aux_bs = ftype == 'APF'
-        f = ParticleFilter(N=N, dim_x=len(self.vv),
-                           dim_z=self.ny, auxiliary_bootstrap=aux_bs)
+        f = ParticleFilter(N=N, dim_x=self.nvar,
+                           dim_z=self.nobs, auxiliary_bootstrap=aux_bs)
 
     else:
         ftype = 'TEnKF'
@@ -52,7 +52,7 @@ def create_filter(self, P=None, R=None, N=None, ftype=None, seed=None, **fargs):
 
         if N is None:
             N = 500
-        f = TEnKF(N=N, dim_x=len(self.vv), dim_z=self.ny, seed=seed, **fargs)
+        f = TEnKF(N=N, dim_x=self.nvar, dim_z=self.nobs, seed=seed, **fargs)
 
     if P is not None:
         f.P = P
@@ -65,13 +65,7 @@ def create_filter(self, P=None, R=None, N=None, ftype=None, seed=None, **fargs):
     if R is not None:
         f.R = R
 
-    f.eps_cov = self.QQ(self.ppar)
     f.Q = self.QQ(self.ppar) @ self.QQ(self.ppar)
-
-    if ftype == 'KF':
-        CO = self.SIG @ f.eps_cov
-        f.Q = CO @ CO.T
-
     self.filter = f
 
     return f
@@ -90,31 +84,38 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, ve
 
     # assign latest transition & observation functions (of parameters)
     if self.filter.name == 'KalmanFilter':
-        self.filter.F = self.lin_t_func
-        self.filter.H = self.lin_o_func
+        F, E = self.lin_sys
+        EE = np.vstack((E,np.eye(self.neps)))
+
+        self.filter.F = np.pad(F, ((0,self.neps),(0,self.neps)))
+        self.filter.H = np.pad(self.hx[0], ((0,0),(0,self.neps))), self.hx[1]
+        self.filter.Q = EE @ self.filter.Q @ EE.T
+
     elif dispatch or self.filter.name == 'ParticleFilter':
         from .engine import func_dispatch
         t_func_jit, o_func_jit, get_eps_jit = func_dispatch(self, full=True)
         self.filter.t_func = t_func_jit
         self.filter.o_func = o_func_jit
         self.filter.get_eps = get_eps_jit
+
     else:
         self.filter.t_func = self.t_func
         self.filter.o_func = self.o_func
-    self.filter.get_eps = self.get_eps_lin
+    # self.filter.get_eps = self.get_eps_lin
 
     if self.filter.name == 'KalmanFilter':
 
         means, covs, ll = self.filter.batch_filter(self.Z)
-        res = (means, covs)
+
+        if smoother:
+            means, covs, _, _ = self.filter.rts_smoother(means, covs, inv=np.linalg.pinv)
 
         if get_ll:
             res = ll
-
-        if smoother:
-            means, covs, _, _ = self.filter.rts_smoother(
-                means, covs, inv=np.linalg.pinv)
-            res = (means, covs)
+        else:
+            eps = means[:,-self.neps:]
+            means = means[:,:-self.neps]
+            res = (means, covs, eps)
 
     elif self.filter.name == 'ParticleFilter':
 
@@ -142,16 +143,14 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, ve
         if np.isnan(res):
             res = -np.inf
         self.ll = res
-
-        if verbose > 0:
-            print('[run_filter:]'.ljust(15, ' ')+' Filtering done in %s. Likelihood is %s.' %
-                  (timeprint(time.time()-st, 3), res))
     else:
         self.X = res
 
-        if verbose > 0:
-            print('[run_filter:]'.ljust(15, ' ')+' Filtering done in %s.' %
-                  timeprint(time.time()-st, 3))
+    if verbose > 0:
+        mess = '[run_filter:]'.ljust(15, ' ')+' Filtering done in %s.' %timeprint(time.time()-st, 3)
+        if get_ll:
+            mess += 'Likelihood is %s.' %res
+        print(mess)
 
     return res
 
@@ -205,7 +204,7 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
     else:
         npas = serializer(self.filter.npas)
 
-    if self.filter.dim_x != len(self.vv):
+    if self.filter.dim_x != self.nvar:
         raise RuntimeError(
             'Shape mismatch between dimensionality of filter and model. Maybe you want to set `reduce_sys` to True/False or (re) define the/a new filter?')
 
@@ -216,7 +215,7 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
     run_filter = serializer(self.run_filter)
     t_func = serializer(self.t_func)
     obs = serializer(self.obs)
-    filter_get_eps = serializer(self.get_eps_lin)
+    # filter_get_eps = serializer(self.get_eps_lin)
     edim = len(self.shocks)
 
     sample = [(x, y) for x in sample for y in range(nsamples)]
@@ -231,6 +230,7 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
         res = run_filter(verbose=verbose > 2)
 
         if fname == 'KalmanFilter':
+            raise NotImplementedError('extraction for linear KF is rewritten via KF smoother. To be done.')
             means, covs = res
             res = means.copy()
             resid = np.empty((means.shape[0]-1, edim))
@@ -241,14 +241,14 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
 
             return res, obs(res), covs, resid, 0
 
-        get_eps = filter_get_eps if precalc else None
+        # get_eps = filter_get_eps if precalc else None
 
         for natt in range(nattemps):
             np.random.seed(seed_loc)
             seed_loc = np.random.randint(2**31)  # win explodes with 2**32
             try:
                 means, covs, resid, flags = npas(
-                    get_eps=get_eps, verbose=max(len(sample) == 1, verbose-1), seed=seed_loc, nsamples=1, **npasargs)
+                    get_eps=None, verbose=max(len(sample) == 1, verbose-1), seed=seed_loc, nsamples=1, **npasargs)
 
                 return means[0], obs(means[0]), covs, resid[0], flags
             except Exception as e:

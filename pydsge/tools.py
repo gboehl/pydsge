@@ -1,7 +1,7 @@
 #!/bin/python
 # -*- coding: utf-8 -*-
 
-"""contains functions related to simulating the mode
+"""functions for model simulations
 """
 
 import os
@@ -9,52 +9,95 @@ import numpy as np
 import pandas as pd
 import time
 from grgrlib import fast0, map2arr
-from .engine import boehlgorithm
+from .engine import *
 from decimal import Decimal
 
 
-@property
-def lin_t_func(self):
-    """Get a linear representation of the system under the current parameters
-    """
-    mat = self.precalc_mat[0]
-    dim_x = self.sys[2].shape[0]
+# @property
+# def lin_t_func(self):
+    # mat = self.precalc_mat[0]
+    # dim_x = self.sys[2].shape[0]
 
-    return mat[1, 0, 1][dim_x:]
+    # return mat[1, 0, 1][dim_x:]
 
 
-@property
-def lin_o_func(self):
-    """Get a linear representation of the observation function under the current parameters
-    """
-    return self.hx
+# @property
+# def lin_o_func(self):
+    # """Get a linear representation of the observation function under the current parameters
+    # """
+    # return self.hx
 
 
-def t_func(self, state, noise=None, set_k=None, return_flag=True, return_k=False, linear=False, verbose=False):
+# def t_func(self, state, noise=None, set_k=None, return_flag=True, return_k=False, linear=False, verbose=False):
+
+    # if verbose:
+        # st = time.time()
+
+    # newstate = state.copy()
+
+    # if noise is not None:
+        # newstate += self.SIG @ noise
+
+    # if set_k is None or isinstance(set_k, bool):
+        # newstate, (l, k), flag = boehlgorithm(self, newstate, linear=linear)
+
+    # else:
+        # mat, term, _, _ = self.precalc_mat
+        # J = self.sys[2]
+        # l, k = int(not bool(set_k)), set_k
+        # flag = 0
+
+        # newstate = (mat[l, k, 1] @ newstate + term[l, k, 1])[J.shape[0]:]
+
+    # if verbose:
+        # print('[t_func:]'.ljust(15, ' ') +
+              # 'Transition function took %.2Es.' % Decimal(time.time() - st))
+
+    # if return_k:
+        # return newstate, (l, k), flag
+    # elif return_flag:
+        # return newstate, flag
+    # else:
+        # return newstate
+
+
+def t_func(self, state, shocks=None, set_k=None, return_flag=True, return_k=False, linear=False, verbose=False):
 
     if verbose:
         st = time.time()
 
-    newstate = state.copy()
+    if linear:
 
-    if noise is not None:
-        newstate += self.SIG @ noise
+        F,E = self.lin_sys
+        newstate = F @ state
+
+        if shocks is not None:
+            newstate += E @ shocks
+
+        if return_k:
+            return newstate, (1, 0), 0
+        elif return_flag:
+            return newstate, 0
+        else:
+            return newstate
+
+    A, N, J, D, cc, x_bar, ff, S, aux = self.sys
+
+    dimp, dimx = J.shape
+    dimq = dimx - dimp
+
+    if shocks is None:
+        shocks = np.zeros(len(self.shocks))
 
     if set_k is None or isinstance(set_k, bool):
-        newstate, (l, k), flag = boehlgorithm(self, newstate, linear=linear)
+        set_k = -1
 
-    else:
-        print('woah')
-        mat, term, _, _ = self.precalc_mat
-        J = self.sys[2]
-        l, k = int(not bool(set_k)), set_k
-        flag = 0
-
-        newstate = (mat[l, k, 1] @ newstate + term[l, k, 1])[J.shape[0]:]
+    state = np.hstack((state,shocks))
+    newstate, l, k, flag = t_func_jit(self.sys, self.lks, state, set_k)
+    newstate = newstate[:-len(self.shocks)]
 
     if verbose:
-        print('[t_func:]'.ljust(15, ' ') +
-              'Transition function took %.2Es.' % Decimal(time.time() - st))
+        print('[t_func:]'.ljust(15, ' ') + 'Transition function took %.2Es.' % Decimal(time.time() - st))
 
     if return_k:
         return newstate, (l, k), flag
