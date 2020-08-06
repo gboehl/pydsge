@@ -99,28 +99,6 @@ def preprocess(self, lks, verbose):
     return
 
 
-# def boehlgorithm(self, v, max_cnt=4e1, linear=False):
-
-    # if not linear:
-
-        # if not hasattr(self, 'precalc_mat'):
-            # self.preprocess(verbose=False)
-
-        # # numba does not like tuples of numpy arrays
-        # mat, term, bmat, bterm = self.precalc_mat
-        # N, A, J, cx, b, x_bar = self.sys
-
-        # return boehlgorithm_jit(N, A, J, cx, b, x_bar, v, mat, term, bmat, bterm, max_cnt)
-
-    # else:
-
-        # if not hasattr(self, 'precalc_mat'):
-            # self.preprocess(l_max=1, k_max=1, verbose=False)
-
-        # dim_x = self.sys[2].shape[0]
-
-        # return (self.precalc_mat[0][1, 0, 1] @ v)[dim_x:], (0, 0), 0
-
 def boehlgorithm(self, q, linear=False):
 
     if linear:
@@ -154,15 +132,17 @@ def boehlgorithm_jit(mat, term, dimp, ff, x_bar, l_max, k_max, q):
                 flag = 1
                 l, k = 0, 0
                 while check_cnst(mat, term, dimp, ff, l+k, l, k, q) - x_bar > 0:
-                    if k == k_max:
+                    k += 1
+                    if k >= k_max:
                         # set error flag 'no solution + k_max reached'
                         flag = 2
+                        break
 
     return l,k, flag
 
 
 @njit(cache=True, nogil=True)
-def t_func_jit(mat, term, dimp, ff, x_bar, SAP, SAQ, SBP, SBQ, SCP, SCQ, aux, l_max, k_max, state, set_k):
+def t_func_jit(mat, term, dimp, ff, x_bar, S, aux, l_max, k_max, state, set_k):
 
     # translate y to x
     x = aux @ state
@@ -176,19 +156,49 @@ def t_func_jit(mat, term, dimp, ff, x_bar, SAP, SAQ, SBP, SBQ, SCP, SCQ, aux, l_
         l, k = int(not bool(set_k)), set_k
         flag = 0
 
-    p = mat[l,k,0][:dimp,dimp:] @ q0 + term[l,k,0][:dimp]
-    x = mat[l,k,1][:,:dimp] @ p + mat[l,k,1][:,dimp:] @ q0 + term[l,k,1]
-    x1 = mat[l,k,2][:,:dimp] @ p + mat[l,k,2][:,dimp:] @ q0 + term[l,k,2]
-
-    q = x[dimp:]
-    p1 = x[:dimp]
-    q1 = x1[dimp:]
+    x0 = aca(mat[l,k,0][:,dimp:]) @ q0 + term[l,k,0]
+    x = aca(mat[l,k,1]) @ x0 + term[l,k,1]
+    x1 = aca(mat[l,k,2]) @ x0 + term[l,k,2]
 
     # translate back to y 
-    # y = S[0] @ p1 + S[1] @ q1 + S[2] @ p + S[3] @ q + S[4] @ p0 + S[5] @ q0 
-    y = SAP @ p1 + SAQ @ q1 + SBP @ p + SBQ @ q + SCP @ p0 + SCQ @ q0 
+    newstate = S @ np.hstack((x1[dimp:], x, x0, p0))
 
-    return y, l, k, flag
+    return newstate, l, k, flag
+
+
+@njit(nogil=True, cache=True)
+def check_cnst(mat, term, dimp, ff, s, l, k, q0):
+
+    x = aca(mat[l,k,0][:,dimp:]) @ q0 + term[l,k,0]
+    q = (aca(mat[l,k,s+1]) @ x + term[l,k,s+1])[dimp:]
+
+    if s:
+        x = aca(mat[l,k,s]) @ x + term[l,k,s]
+
+    return ff[0] @ q + ff[1] @ x
+
+
+@njit(nogil=True, cache=True)
+def bruite_wrapper(mat, term, dimp, ff, x_bar, l_max, k_max, q):
+
+    for l in range(l_max):
+        for k in range(1, k_max):
+            if l:
+                if check_cnst(mat, term, dimp, ff, 0, l, k, q) - x_bar < 0:
+                    continue
+                if l > 1:
+                    if check_cnst(mat, term, dimp, ff, l-1, l, k, q) - x_bar < 0:
+                        continue
+            if check_cnst(mat, term, dimp, ff, k+l, l, k, q) - x_bar < 0:
+                continue
+            if check_cnst(mat, term, dimp, ff, l, l, k, q) - x_bar > 0:
+                continue
+            if k > 1:
+                if check_cnst(mat, term, dimp, ff, k+l-1, l, k, q) - x_bar > 0:
+                    continue
+            return l, k
+
+    return 999, 999
 
 
 def solve_p_cont(sys, evs, l,k,q):
@@ -225,42 +235,3 @@ def move_q_cont(sys, evs, s, l, k, p, q):
     # t2 = pre @ nl.inv(np.eye(dimx) - N) @ (np.eye(dimx) - vln*wn** min(max(s-l,0),k) @ vrn) @ cc * x_bar
 
     return np.real(t1[:,:dimp] @ p.astype(np.complex128) + t1[:,dimp:] @ q.astype(np.complex128) + t2)
-
-
-@njit(nogil=True, cache=True)
-def check_cnst(mat, term, dimp, ff, s, l, k, q0):
-
-    p = mat[l,k,0][:dimp,dimp:] @ q0 + term[l,k,0][:dimp]
-    q = (mat[l,k,s+1][:,:dimp] @ p + mat[l,k,s+1][:,dimp:] @ q0 + term[l,k,s+1])[dimp:]
-
-    if s:
-        x = mat[l,k,s][:,:dimp] @ p + mat[l,k,s][:,dimp:] @ q0 + term[l,k,s]
-        q0 = x[dimp:]
-        p = x[:dimp]
-
-    return ff[0] @ p + ff[1] @ q + ff[2] @ q0
-
-
-@njit(nogil=True, cache=True)
-def bruite_wrapper(mat, term, dimp, ff, x_bar, l_max, k_max, q):
-
-    for l in range(l_max):
-        for k in range(1, k_max):
-            if l:
-                if check_cnst(mat, term, dimp, ff, 0, l, k, q) - x_bar < 0:
-                    continue
-                if l > 1:
-                    if check_cnst(mat, term, dimp, ff, l-1, l, k, q) - x_bar < 0:
-                        continue
-            if check_cnst(mat, term, dimp, ff, k+l, l, k, q) - x_bar < 0:
-                continue
-            if check_cnst(mat, term, dimp, ff, l, l, k, q) - x_bar > 0:
-                continue
-            if k > 1:
-                if check_cnst(mat, term, dimp, ff, k+l-1, l, k, q) - x_bar > 0:
-                    continue
-            return l, k
-
-    return 999, 999
-
-

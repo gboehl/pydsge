@@ -17,6 +17,7 @@ try:
 except ModuleNotFoundError:
     ParafuncError = Exception
 
+aca = np.ascontiguousarray
 
 # def gen_sys(self, par=None, reduce_sys=None, l_max=None, k_max=None, tol=1e-08, ignore_tests=False, verbose=False):
     # """Creates the transition function given a set of parameters. 
@@ -345,8 +346,8 @@ def gen_lin_sys(self):
     Eq1 = (A @ Ex)[dimp:]
 
     # translate back to y 
-    Fy = S[0] @ Fp1 + S[1] @ Fq1 + S[2] @ Fp + S[3] @ Fq + S[4] @ Fp0 + S[5] @ Fq0 
-    Ey = S[0] @ Ep1 + S[1] @ Eq1 + S[2] @ Ep + S[3] @ Eq + S[4] @ Ep0 + S[5] @ Eq0 
+    Fy = S @ np.vstack((Fq1, Fp1, Fq, Fp, Fq0, Fp0))
+    Ey = S @ np.vstack((Eq1, Ep1, Eq, Ep, Eq0, Ep0))
 
     self.lin_sys = Fy[:-self.ve.shape[0]], Ey[:-self.ve.shape[0]]
 
@@ -490,7 +491,8 @@ def gen_sys(self, par=None, l_max=None, k_max=None, tol = 1e-8, ignore_tests=Fal
     SCP = -SI @ RC[:,inp]
     SCQ = -SI @ RC[:,inq]
 
-    S = SAP, SAQ, SBP, SBQ, SCP, SCQ
+    # S = SAP, SAQ, SBP, SBQ, SCP, SCQ
+    S = np.hstack((SAQ, SAP, SBQ, SBP, SCQ, SCP))
 
     if verbose:
         print('max error in S', abs(SI @ RB[:,:dimy] - np.eye(SI.shape[0])).max())
@@ -537,7 +539,7 @@ def gen_sys(self, par=None, l_max=None, k_max=None, tol = 1e-8, ignore_tests=Fal
     if ~fast0(fc1[inp],2):
         raise NotImplementedError('fc1 of p is non-zero')
 
-    ff1 = fb1[inp],fb1[inq],fc1[inq]
+    ff1 = fb1[inq], np.hstack((fb1[inp], fc1[inq]))
 
     A1 = A2[:dimx]
     B1 = B2[:dimx] + np.outer(B2[:dimx,dimz-1],fb1)
@@ -586,12 +588,9 @@ def gen_sys(self, par=None, l_max=None, k_max=None, tol = 1e-8, ignore_tests=Fal
     vrn = nl.inv(vln)
 
     self.evs = vra, wa, vla, vrn, wn, vln
-    self.sys = A, N, J, D, cc, x_bar, ff1, S, S0[:,:-dimx]
+    self.sys = A, N, J, D, cc, x_bar, ff1, S, aca(S0[:,:-dimx])
 
     gen_lin_sys(self)
     preprocess(self, self.lks, verbose)
-
-    D = self.precalc_mat
-    self.sys = A, N, J, D, cc, x_bar, ff1, S, S0[:,:-dimx]
 
     return 

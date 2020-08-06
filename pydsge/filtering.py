@@ -230,7 +230,7 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
         res = run_filter(verbose=verbose > 2)
 
         if fname == 'KalmanFilter':
-            raise NotImplementedError('extraction for linear KF is rewritten via KF smoother. To be done.')
+            raise NotImplementedError('extraction for linear KF is rewritten via KF smoother. To be re-implemented.')
             means, covs = res
             res = means.copy()
             resid = np.empty((means.shape[0]-1, edim))
