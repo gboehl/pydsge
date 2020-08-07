@@ -11,15 +11,13 @@ aca = np.ascontiguousarray
 
 
 @njit(cache=True, nogil=True)
-def preprocess_jit(sys, l_max, k_max):
+def preprocess_jit(A, N, J, cx, x_bar, l_max, k_max):
+    """jitted preprocessing of system matrices until (l_max, k_max)
+    """
 
     # these must be the real max values, not only the size of the matrices
     l_max += 1
     k_max += 1
-
-    # N, A, J, cx, b, x_bar = vals
-    A, N, J, D, cc, x_bar, ff, S, aux = sys
-    cx = cc * x_bar
 
     dimp, dimq = J.shape
     s_max = l_max + k_max
@@ -85,80 +83,83 @@ def preprocess_jit(sys, l_max, k_max):
     return mat, term
 
 
-def preprocess(self, lks, verbose):
+def preprocess(self, verbose):
+    """dispatcher to jitted preprocessing
+    """
 
-    l_max, k_max = lks
+    l_max, k_max = self.lks
+    A, N, J, cc, x_bar, ff, S, aux = self.sys
+
+    cx = cc * x_bar
 
     st = time.time()
-    self.precalc_mat = preprocess_jit(self.sys, l_max, k_max)
+    self.precalc_mat = preprocess_jit(A, N, J, cx, x_bar, l_max, k_max)
 
     if verbose:
         print('[preprocess:]'.ljust(
-            15, ' ')+' Preproceccing finished within %ss.' % np.round((time.time() - st), 3))
+            15, ' ')+' Preprocessing finished within %ss.' % np.round((time.time() - st), 3))
 
     return
 
 
-def boehlgorithm(self, q, linear=False):
-
-    if linear:
-        raise NotImplementedError('linear not yet implemented')
-
-    return boehlgorithm_jit(self.sys, self.lks, q)
-
-
 @njit(nogil=True, cache=True)
-def boehlgorithm_jit(mat, term, dimp, ff, x_bar, l_max, k_max, q):
+def find_lk(mat, term, dimp, ff, x_bar, l_max, k_max, q):
+    """iteration loop to find (l,k) given state q
+    """
 
     flag = 0
     l, k = 0, 0
-    done = False
 
     # check if (0,0) is a solution
     while check_cnst(mat, term, dimp, ff, l, l, 0, q) - x_bar > 0:
         l += 1
-        if l >= l_max:
-            done = True
+        if l == l_max:
             break
 
-    if not done:
-        # check if (0,0) is a solution
-        if l <= l_max:
-            # needs to be wrapped so that both loops can be exited at once
-            l, k = bruite_wrapper(mat, term, dimp, ff, x_bar, l_max, k_max, q)
+    # check if (0,0) is a solution
+    if l < l_max:
+        # needs to be wrapped so that both loops can be exited at once
+        l, k = bruite_wrapper(mat, term, dimp, ff, x_bar, l_max, k_max, q)
 
-            # if still no solution, use approximation
-            if l == 999:
-                flag = 1
-                l, k = 0, 0
-                while check_cnst(mat, term, dimp, ff, l+k, l, k, q) - x_bar > 0:
-                    k += 1
-                    if k >= k_max:
-                        # set error flag 'no solution + k_max reached'
-                        flag = 2
-                        break
+        # if still no solution, use approximation
+        if l == 999:
+            flag = 1
+            l, k = 0, 0
+            while check_cnst(mat, term, dimp, ff, l+k, l, k, q) - x_bar > 0:
+                k += 1
+                if k >= k_max:
+                    # set error flag 'no solution + k_max reached'
+                    flag = 2
+                    break
 
-    return l,k, flag
+    if not k:
+        l = 1
+
+    return l, k, flag
 
 
 @njit(cache=True, nogil=True)
 def t_func_jit(mat, term, dimp, ff, x_bar, S, aux, l_max, k_max, state, set_k):
+    """jitted transitiona function
+    """
 
-    # translate y to x
+
+    # state given in y-space, translate to x-space
     x = aux @ state
 
     p0 = x[:dimp]
     q0 = x[dimp:]
 
     if set_k == -1:
-        l, k, flag = boehlgorithm_jit(mat, term, dimp, ff, x_bar, l_max, k_max, q0)
+        # find (l,k) if requested
+        l, k, flag = find_lk(mat, term, dimp, ff, x_bar, l_max, k_max, q0)
     else:
         l, k = int(not bool(set_k)), set_k
         flag = 0
 
-    x0 = aca(mat[l,k,0][:,dimp:]) @ q0 + term[l,k,0]
-    x = aca(mat[l,k,1]) @ x0 + term[l,k,1]
-    x1 = aca(mat[l,k,2]) @ x0 + term[l,k,2]
+    x0 = aca(mat[l,k,0][:,dimp:]) @ q0 + term[l,k,0] # x(-1)
+    x = aca(mat[l,k,1]) @ x0 + term[l,k,1] # x
+    x1 = aca(mat[l,k,2]) @ x0 + term[l,k,2] # x(+1)
 
     # translate back to y 
     newstate = S @ np.hstack((x1[dimp:], x, x0, p0))
@@ -168,6 +169,8 @@ def t_func_jit(mat, term, dimp, ff, x_bar, S, aux, l_max, k_max, state, set_k):
 
 @njit(nogil=True, cache=True)
 def check_cnst(mat, term, dimp, ff, s, l, k, q0):
+    """constraint value in period s given CDR-state q0 under the assumptions (l,k)
+    """
 
     x = aca(mat[l,k,0][:,dimp:]) @ q0 + term[l,k,0]
     q = (aca(mat[l,k,s+1]) @ x + term[l,k,s+1])[dimp:]
@@ -180,6 +183,8 @@ def check_cnst(mat, term, dimp, ff, s, l, k, q0):
 
 @njit(nogil=True, cache=True)
 def bruite_wrapper(mat, term, dimp, ff, x_bar, l_max, k_max, q):
+    """iterate over (l,k) until (l_max, k_max) and check if RE equilibrium
+    """
 
     for l in range(l_max):
         for k in range(1, k_max):
@@ -202,8 +207,10 @@ def bruite_wrapper(mat, term, dimp, ff, x_bar, l_max, k_max, q):
 
 
 def solve_p_cont(sys, evs, l,k,q):
+    """for continuous (l,k). Not in use for pydsge
+    """
 
-    A, N, JJ, D, cc, x_bar, ff, S, aux = sys
+    A, N, JJ, cc, x_bar, ff, S, aux = sys
     vra, wa, vla, vrn, wn, vln = evs
     J = JJ.astype(np.complex128)
 
@@ -220,8 +227,10 @@ def solve_p_cont(sys, evs, l,k,q):
 
 
 def move_q_cont(sys, evs, s, l, k, p, q):
+    """for continuous (l,k). Not in use for pydsge
+    """
 
-    A, N, J, D, cc, x_bar, ff, S, aux = sys
+    A, N, J, cc, x_bar, ff, S, aux = sys
     vra, wa, vla, vrn, wn, vln = evs
 
     dimx = J.shape[1]

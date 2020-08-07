@@ -435,8 +435,8 @@ def nhd(self, eps_dict, **args):
 
         self.set_par(pars[i], **args)
 
-        mat, term, bmat, bterm = self.precalc_mat
-        N, A, J, cx, b, x_bar = self.sys
+        mat, term = self.precalc_mat
+        A, N, J, cc, x_bar, ff, S, aux = self.sys
 
         state = states[i][0]
 

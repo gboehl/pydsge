@@ -205,8 +205,7 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
         npas = serializer(self.filter.npas)
 
     if self.filter.dim_x != self.nvar:
-        raise RuntimeError(
-            'Shape mismatch between dimensionality of filter and model. Maybe you want to set `reduce_sys` to True/False or (re) define the/a new filter?')
+        raise RuntimeError('Shape mismatch between dimensionality of filter and model.')
 
     else:
         self.debug |= debug

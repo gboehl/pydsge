@@ -46,7 +46,6 @@ def sample_box(self, dim0, dim1=None, bounds=None, lp_rule=None, verbose=False):
 
 def prior_sampler(self, nsamples, seed=0, test_lprob=False, lks=None, verbose=True, debug=False, **args):
     """Draw parameters from prior. 
-
     Parameters
     ----------
     nsamples : int
@@ -57,74 +56,79 @@ def prior_sampler(self, nsamples, seed=0, test_lprob=False, lks=None, verbose=Tr
         Whether to ensure that drawn parameters have a finite likelihood (False by default)
     verbose : bool, optional
     debug : bool, optional
-
     Returns
     -------
     array
         Numpy array of parameters
     """
+
     import tqdm
     from grgrlib import map2arr, serializer
     from .stats import get_prior
-    store_reduce_sys = np.copy(self.fdict['reduce_sys'])
+
     l_max, k_max = lks or (None, None)
-    if test_lprob:
-        if not hasattr(self, 'ndim'):
-            self.prep_estim(load_R=True, verbose=(verbose > 2))
-        frozen_prior = get_prior((self.prior), verbose=verbose)[0]
-        self.debug |= debug
-        if hasattr(self, 'pool'):
-            from .estimation import create_pool
-            create_pool(self)
-        set_par = serializer(self.set_par)
-        get_par = serializer(self.get_par)
-        lprob = serializer(self.lprob) if test_lprob else None
 
-        def runner(locseed):
-            np.random.seed(seed + locseed)
-            done = False
-            no = 0
-            while True:
-                if not done:
-                    no += 1
-                    with np.warnings.catch_warnings(record=False):
-                        try:
-                            np.warnings.filterwarnings('error')
-                            rst = np.random.randint(2147483648)
-                            pdraw = [pl.rvs(random_state=(rst + sn))
-                                     for sn, pl in enumerate(frozen_prior)]
-                            if test_lprob:
-                                draw_prob = lprob(
-                                    pdraw, linear=None, verbose=(verbose > 1))
-                                done = not np.isinf(draw_prob)
-                            else:
-                                set_par(pdraw)
-                                done = True
-                        except Exception as e:
-                            try:
-                                if verbose > 1:
-                                    print(str(e) + '(%s) ' % no)
-                            finally:
-                                e = None
-                                del e
+    if test_lprob and not hasattr(self, 'ndim'):
+        self.prep_estim(load_R=True, verbose=verbose > 2)
 
-            return (
-                pdraw, no)
+    frozen_prior = get_prior(self.prior, verbose=verbose)[0]
+    self.debug |= debug
 
-        if verbose > 1:
-            print('[prior_sample:]'.ljust(15, ' ') +
-                  ' Sampling from the pior...')
-        wrapper = tqdm.tqdm if verbose < 2 else (lambda x, **kwarg: x)
-        pmap_sim = wrapper(
-            (self.mapper(runner, range(nsamples))), total=nsamples)
-        draws, nos = map2arr(pmap_sim)
-        if verbose:
-            smess = ''
-            if test_lprob:
-                smess = 'of zero likelihood, '
-            print('[prior_sample:]'.ljust(15, ' ') + ' Sampling done. %2.2f%% of the prior is either %sindetermined or explosive.' %
-                  (100 * (sum(nos) - nsamples) / sum(nos), smess))
-        return draws
+    if hasattr(self, 'pool'):
+        from .estimation import create_pool
+        create_pool(self)
+
+    set_par = serializer(self.set_par)
+    get_par = serializer(self.get_par)
+    lprob = serializer(self.lprob) if test_lprob else None
+
+    def runner(locseed):
+
+        np.random.seed(seed+locseed)
+        done = False
+        no = 0
+
+        while not done:
+
+            no += 1
+
+            with np.warnings.catch_warnings(record=False):
+                try:
+                    np.warnings.filterwarnings('error')
+                    rst = np.random.randint(2**31)  # win explodes with 2**32
+                    pdraw = [pl.rvs(random_state=rst+sn)
+                             for sn, pl in enumerate(frozen_prior)]
+
+                    if test_lprob:
+                        draw_prob = lprob(pdraw, linear=None,
+                                          verbose=verbose > 1)
+                        done = not np.isinf(draw_prob)
+                    else:
+                        set_par(pdraw)
+                        done = True
+
+                except Exception as e:
+                    if verbose > 1:
+                        print(str(e)+'(%s) ' % no)
+
+        return pdraw, no
+
+    if verbose > 1:
+        print('[prior_sample:]'.ljust(15, ' ') + ' Sampling from the pior...')
+
+    wrapper = tqdm.tqdm if verbose < 2 else (lambda x, **kwarg: x)
+    pmap_sim = wrapper(self.mapper(runner, range(nsamples)), total=nsamples)
+
+    draws, nos = map2arr(pmap_sim)
+
+    if verbose:
+        smess = ''
+        if test_lprob:
+            smess = 'of zero likelihood, '
+        print('[prior_sample:]'.ljust(
+            15, ' ') + ' Sampling done. %2.2f%% of the prior is either %sindetermined or explosive.' % (100*(sum(nos)-nsamples)/sum(nos), smess))
+
+    return draws
 
 
 def get_par(self, dummy=None, npar=None, asdict=False, full=True, nsamples=1, verbose=False, roundto=5, debug=False, **args):

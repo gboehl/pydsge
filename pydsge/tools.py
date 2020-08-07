@@ -14,6 +14,25 @@ from decimal import Decimal
 
 
 def t_func(self, state, shocks=None, set_k=None, return_flag=True, return_k=False, linear=False, verbose=False):
+    """transition function
+
+    Parameters
+    ----------
+    state : array 
+        full state in y-space
+    shocks : array, optional
+        shock vector. If None, zero will be assumed
+    set_k : tuple of int, optional
+        set the expected number of periods if desired. Otherwise will be calculated endogenoulsy.
+    return_flag : bool, optional
+        wheter to return error flags, defaults to True
+    return_k : bool, optional
+        wheter to return values of (l,k), defaults to False
+    linear : bool, optional
+        wheter to ignore the constraint and return the linear solution, defaults to False
+    verbose : bool or int, optional
+        Level of verbosity, defaults to 0
+    """
 
     if verbose:
         st = time.time()
@@ -33,7 +52,7 @@ def t_func(self, state, shocks=None, set_k=None, return_flag=True, return_k=Fals
         else:
             return newstate
 
-    A, N, J, D, cc, x_bar, ff, S, aux = self.sys
+    A, N, J, cc, x_bar, ff, S, aux = self.sys
     mat, term = self.precalc_mat
     l_max, k_max = self.lks
 
@@ -271,8 +290,7 @@ def simulate(self, source=None, mask=None, pars=None, resid=None, init=None, ope
 
         for eps_t in eps:
 
-            state, (l, k), flag = t_func(
-                state, noise=eps_t, return_k=True, linear=linear)
+            state, (l, k), flag = t_func(state, eps_t, return_k=True, linear=linear)
 
             superflag |= flag
 

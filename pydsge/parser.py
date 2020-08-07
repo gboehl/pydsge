@@ -229,19 +229,19 @@ class DSGE(dict):
             eq_i += 1
             # <-
 
-        DD = zeros(ovar, 1)
-        ZZ = zeros(ovar, no_var)
+        ZZ0 = zeros(ovar, no_var)
+        ZZ1 = zeros(ovar, 1)
 
         eq_i = 0
         for obs in self['observables']:
             eq = self['obs_equations'][str(obs)]
-            DD[eq_i, 0] = eq.subs(subs_dict)
+            ZZ1[eq_i, 0] = eq.subs(subs_dict)
 
             curr_var = filter(lambda x: x.date >= 0, eq.atoms(Variable))
 
             for v in curr_var:
                 v_j = vlist.index(v)
-                ZZ[eq_i, v_j] = eq.diff(v).subs(subs_dict)
+                ZZ0[eq_i, v_j] = eq.diff(v).subs(subs_dict)
 
                 if self.const_var is v:
                     self.const_obs = obs
@@ -340,38 +340,19 @@ class DSGE(dict):
                                 raise NameError(
                                     "Definitions of `para_func` seem to be circular. Last error: "+error_msg)
 
-        # print(context)
-        # DD = DD.subs(subs_dict)
-        # ZZ = ZZ.subs(subs_dict)
+        ZZ0 = lambdify([self.parameters+self['other_para']], ZZ0)
+        ZZ1 = lambdify([self.parameters+self['other_para']], ZZ1)
 
-        DD = lambdify([self.parameters+self['other_para']], DD)
-        ZZ = lambdify([self.parameters+self['other_para']], ZZ)
-
-        # , modules={'ImmutableDenseMatrix': np.array})#'numpy')
         PSI = lambdify([self.parameters+self['other_para']], PSI)
-        # PPI = lambdify([self.parameters+self['other_para']], PPI)#, modules={'ImmutableDenseMatrix': np.array})#'numpy')
 
-        # ->
-        # , modules={'ImmutableDenseMatrix': np.array})#'numpy')
         AA = lambdify([self.parameters+self['other_para']], AA)
-        # , modules={'ImmutableDenseMatrix': np.array})#'numpy')
         BB = lambdify([self.parameters+self['other_para']], BB)
-        # , modules={'ImmutableDenseMatrix': np.array})#'numpy')
         CC = lambdify([self.parameters+self['other_para']], CC)
-        # , modules={'ImmutableDenseMatrix': np.array})#'numpy')
         bb = lambdify([self.parameters+self['other_para']], bb)
         bb_PSI = lambdify([self.parameters+self['other_para']], bb_PSI)
-        # <-
 
         psi = lambdify([self.parameters], [ss[str(px)]
                                            for px in self['other_para']])  # , modules=context_f)
-
-        # disable this
-        # def add_para_func(f):
-        # return f
-
-        # def full_compile(px):
-        # return list(px) + psi(list(px))
 
         def compile(px):
             return list(px) + psi(list(px))
@@ -379,30 +360,15 @@ class DSGE(dict):
         self.pcompile = compile
         self.parafunc = [p.name for p in self['other_para']], psi
         self.psi = psi
-        # self.PSI = add_para_func(PSI)
         self.PSI = PSI
 
-        # self.DD = add_para_func(DD)
-        # self.ZZ = add_para_func(ZZ)
-        # # ->
-        # self.AA = add_para_func(AA)
-        # self.BB = add_para_func(BB)
-        # self.CC = add_para_func(CC)
-        # self.bb = add_para_func(bb)
-        # <-
-
-        self.DD = DD
-        self.ZZ = ZZ
-        # # ->
+        self.ZZ0 = ZZ0
+        self.ZZ1 = ZZ1
         self.AA = AA
         self.BB = BB
         self.CC = CC
         self.bb = bb
         self.bb_PSI = bb_PSI
-        # <-
-
-        # QQ = self['covariance'].subs(subs_dict)
-        # HH = self['measurement_errors'].subs(subs_dict)
 
         QQ = lambdify([self.parameters+self['other_para']], self['covariance'])
         HH = lambdify([self.parameters+self['other_para']],
