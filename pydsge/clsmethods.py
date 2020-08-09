@@ -160,7 +160,7 @@ def save_rdict(self, rdict, path=None, suffix='', verbose=True):
 
     if verbose:
         print('[save_rdict:]'.ljust(15, ' ') +
-              " Results saved as '%s'" %(path + suffix))
+              " Results saved as '%s'" % (path + suffix))
     return
 
 

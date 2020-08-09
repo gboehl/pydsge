@@ -180,18 +180,21 @@ class DSGE(dict):
             CC = zeros(no_var-1, no_var)
             PSI = zeros(no_var-1, evar)
 
-            bb_var = filter(lambda x: x.date <= 0, self['const_eq'].atoms(Variable))
+            bb_var = filter(lambda x: x.date <= 0,
+                            self['const_eq'].atoms(Variable))
             full_var = sub_var + lvarl
 
             for v in bb_var:
                 v_j = full_var.index(v)
-                bb[v_j] = -(self['const_eq']).set_eq_zero.diff(v).subs(subs_dict)
+                bb[v_j] = -(self['const_eq']
+                            ).set_eq_zero.diff(v).subs(subs_dict)
 
             shocks = filter(lambda x: x, self['const_eq'].atoms(Shock))
 
             for s in shocks:
                 s_j = slist.index(s)
-                bb_PSI[s_j] = -(self['const_eq']).set_eq_zero.diff(s).subs(subs_dict)
+                bb_PSI[s_j] = -(self['const_eq']
+                                ).set_eq_zero.diff(s).subs(subs_dict)
 
         else:
             AA = zeros(no_var, no_var)
@@ -653,7 +656,8 @@ class DSGE(dict):
                 equations.append(Equation(var_s, s))
 
                 subs1 = [s(-i) for i in np.arange(1, abs(max_lag_exo[s])+1)]
-                subs2 = [var_s(-i) for i in np.arange(1, abs(max_lag_exo[s])+1)]
+                subs2 = [var_s(-i)
+                         for i in np.arange(1, abs(max_lag_exo[s])+1)]
                 subs_dict = dict(zip(subs1, subs2))
                 equations = [eq.subs(subs_dict) for eq in equations]
 

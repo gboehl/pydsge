@@ -78,7 +78,8 @@ def preprocess_jit(A, N, J, cx, x_bar, l_max, k_max):
                 fin_mat = aca(matrices[:, :dimp]) @ SS_mat + aca(matrices)
                 fin_term = aca(matrices[:, :dimp]) @ SS_term + oterm
 
-                mat[l, k, s], term[l, k, s] = core_mat[s0, 0] @ fin_mat, core_mat[s0, 0] @ fin_term 
+                mat[l, k, s], term[l, k, s] = core_mat[s0,
+                                                       0] @ fin_mat, core_mat[s0, 0] @ fin_term
 
     return mat, term
 
@@ -143,7 +144,6 @@ def t_func_jit(mat, term, dimp, ff, x_bar, S, aux, l_max, k_max, state, set_k):
     """jitted transitiona function
     """
 
-
     # state given in y-space, translate to x-space
     x = aux @ state
 
@@ -157,11 +157,11 @@ def t_func_jit(mat, term, dimp, ff, x_bar, S, aux, l_max, k_max, state, set_k):
         l, k = int(not bool(set_k)), set_k
         flag = 0
 
-    x0 = aca(mat[l,k,0][:,dimp:]) @ q0 + term[l,k,0] # x(-1)
-    x = aca(mat[l,k,1]) @ x0 + term[l,k,1] # x
-    x1 = aca(mat[l,k,2]) @ x0 + term[l,k,2] # x(+1)
+    x0 = aca(mat[l, k, 0][:, dimp:]) @ q0 + term[l, k, 0]  # x(-1)
+    x = aca(mat[l, k, 1]) @ x0 + term[l, k, 1]  # x
+    x1 = aca(mat[l, k, 2]) @ x0 + term[l, k, 2]  # x(+1)
 
-    # translate back to y 
+    # translate back to y
     newstate = S @ np.hstack((x1[dimp:], x, x0, p0))
 
     return newstate, l, k, flag
@@ -172,11 +172,11 @@ def check_cnst(mat, term, dimp, ff, s, l, k, q0):
     """constraint value in period s given CDR-state q0 under the assumptions (l,k)
     """
 
-    x = aca(mat[l,k,0][:,dimp:]) @ q0 + term[l,k,0]
-    q = (aca(mat[l,k,s+1]) @ x + term[l,k,s+1])[dimp:]
+    x = aca(mat[l, k, 0][:, dimp:]) @ q0 + term[l, k, 0]
+    q = (aca(mat[l, k, s+1]) @ x + term[l, k, s+1])[dimp:]
 
     if s:
-        x = aca(mat[l,k,s]) @ x + term[l,k,s]
+        x = aca(mat[l, k, s]) @ x + term[l, k, s]
 
     return ff[0] @ q + ff[1] @ x
 
@@ -206,7 +206,7 @@ def bruite_wrapper(mat, term, dimp, ff, x_bar, l_max, k_max, q):
     return 999, 999
 
 
-def solve_p_cont(sys, evs, l,k,q):
+def solve_p_cont(sys, evs, l, k, q):
     """for continuous (l,k). Not in use for pydsge
     """
 
@@ -221,9 +221,10 @@ def solve_p_cont(sys, evs, l,k,q):
 
     ding = J @ nl.inv(np.eye(dimx) - N).astype(np.complex128)
 
-    term = ding @ (np.eye(dimx) - vln*wn**k @ vrn) @ (cc * x_bar).astype(np.complex128)
+    term = ding @ (np.eye(dimx) - vln*wn**k @ vrn) @ (cc *
+                                                      x_bar).astype(np.complex128)
 
-    return -np.real(nl.inv(mat[:,:dimp]) @ (term + mat[:,dimp:] @ q.astype(np.complex128)))
+    return -np.real(nl.inv(mat[:, :dimp]) @ (term + mat[:, dimp:] @ q.astype(np.complex128)))
 
 
 def move_q_cont(sys, evs, s, l, k, p, q):
@@ -236,11 +237,12 @@ def move_q_cont(sys, evs, s, l, k, p, q):
     dimx = J.shape[1]
     dimp = J.shape[0]
 
-    pre = vla*wa**max(s-k-l,0) @ vra
-    t1 = pre @ vln*wn**min(max(s-l,0),k) @ vrn @ vla*wa**min(s,l) @ vra
+    pre = vla*wa**max(s-k-l, 0) @ vra
+    t1 = pre @ vln*wn**min(max(s-l, 0), k) @ vrn @ vla*wa**min(s, l) @ vra
     ding = pre @ nl.inv(np.eye(dimx) - N).astype(np.complex128)
 
-    t2 = ding @ (np.eye(dimx) - vln*wn** min(max(s-l,0),k) @ vrn) @ (cc * x_bar).astype(np.complex128)
+    t2 = ding @ (np.eye(dimx) - vln*wn ** min(max(s-l, 0), k)
+                 @ vrn) @ (cc * x_bar).astype(np.complex128)
     # t2 = pre @ nl.inv(np.eye(dimx) - N) @ (np.eye(dimx) - vln*wn** min(max(s-l,0),k) @ vrn) @ cc * x_bar
 
-    return np.real(t1[:,:dimp] @ p.astype(np.complex128) + t1[:,dimp:] @ q.astype(np.complex128) + t2)
+    return np.real(t1[:, :dimp] @ p.astype(np.complex128) + t1[:, dimp:] @ q.astype(np.complex128) + t2)

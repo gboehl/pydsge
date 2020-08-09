@@ -35,7 +35,8 @@ def create_filter(self, P=None, R=None, N=None, ftype=None, seed=None, **fargs):
 
     elif ftype in ('PF', 'APF'):
 
-        print('Warning: Particle filter is experimental and currently not under development.')
+        print(
+            'Warning: Particle filter is experimental and currently not under development.')
         from .pfilter import ParticleFilter
 
         if N is None:
@@ -85,10 +86,11 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, ve
     # assign latest transition & observation functions (of parameters)
     if self.filter.name == 'KalmanFilter':
         F, E = self.lin_sys
-        EE = np.vstack((E,np.eye(self.neps)))
+        EE = np.vstack((E, np.eye(self.neps)))
 
-        self.filter.F = np.pad(F, ((0,self.neps),(0,self.neps)))
-        self.filter.H = np.pad(self.hx[0], ((0,0),(0,self.neps))), self.hx[1]
+        self.filter.F = np.pad(F, ((0, self.neps), (0, self.neps)))
+        self.filter.H = np.pad(
+            self.hx[0], ((0, 0), (0, self.neps))), self.hx[1]
         self.filter.Q = EE @ self.filter.Q @ EE.T
 
     elif dispatch or self.filter.name == 'ParticleFilter':
@@ -108,13 +110,14 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, ve
         means, covs, ll = self.filter.batch_filter(self.Z)
 
         if smoother:
-            means, covs, _, _ = self.filter.rts_smoother(means, covs, inv=np.linalg.pinv)
+            means, covs, _, _ = self.filter.rts_smoother(
+                means, covs, inv=np.linalg.pinv)
 
         if get_ll:
             res = ll
         else:
-            eps = means[:,-self.neps:]
-            means = means[:,:-self.neps]
+            eps = means[:, -self.neps:]
+            means = means[:, :-self.neps]
             res = (means, covs, eps)
 
     elif self.filter.name == 'ParticleFilter':
@@ -147,9 +150,10 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, ve
         self.X = res
 
     if verbose > 0:
-        mess = '[run_filter:]'.ljust(15, ' ')+' Filtering done in %s.' %timeprint(time.time()-st, 3)
+        mess = '[run_filter:]'.ljust(
+            15, ' ')+' Filtering done in %s.' % timeprint(time.time()-st, 3)
         if get_ll:
-            mess += 'Likelihood is %s.' %res
+            mess += 'Likelihood is %s.' % res
         print(mess)
 
     return res
@@ -205,7 +209,8 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
         npas = serializer(self.filter.npas)
 
     if self.filter.dim_x != self.nvar:
-        raise RuntimeError('Shape mismatch between dimensionality of filter and model.')
+        raise RuntimeError(
+            'Shape mismatch between dimensionality of filter and model.')
 
     else:
         self.debug |= debug
@@ -229,7 +234,8 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
         res = run_filter(verbose=verbose > 2)
 
         if fname == 'KalmanFilter':
-            raise NotImplementedError('extraction for linear KF is rewritten via KF smoother. To be re-implemented.')
+            raise NotImplementedError(
+                'extraction for linear KF is rewritten via KF smoother. To be re-implemented.')
             means, covs = res
             res = means.copy()
             resid = np.empty((means.shape[0]-1, edim))

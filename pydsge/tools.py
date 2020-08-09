@@ -39,7 +39,7 @@ def t_func(self, state, shocks=None, set_k=None, return_flag=True, return_k=Fals
 
     if linear:
 
-        F,E = self.lin_sys
+        F, E = self.lin_sys
         newstate = F @ state
 
         if shocks is not None:
@@ -65,12 +65,14 @@ def t_func(self, state, shocks=None, set_k=None, return_flag=True, return_k=Fals
     if set_k is None or isinstance(set_k, bool):
         set_k = -1
 
-    state = np.hstack((state,shocks))
-    newstate, l, k, flag = t_func_jit(mat, term, dimp, ff, x_bar, S, aux, l_max, k_max, state, set_k)
+    state = np.hstack((state, shocks))
+    newstate, l, k, flag = t_func_jit(
+        mat, term, dimp, ff, x_bar, S, aux, l_max, k_max, state, set_k)
     newstate = newstate[:-len(self.shocks)]
 
     if verbose:
-        print('[t_func:]'.ljust(15, ' ') + 'Transition function took %.2Es.' % Decimal(time.time() - st))
+        print('[t_func:]'.ljust(15, ' ') +
+              'Transition function took %.2Es.' % Decimal(time.time() - st))
 
     if return_k:
         return newstate, (l, k), flag
@@ -279,7 +281,7 @@ def simulate(self, source=None, mask=None, pars=None, resid=None, init=None, ope
         par, eps, state = arg
 
         if mask is not None:
-            eps = np.where(np.isnan(mask), eps, operation(np.array(mask),eps))
+            eps = np.where(np.isnan(mask), eps, operation(np.array(mask), eps))
 
         set_par(par, **args)
 
@@ -290,7 +292,8 @@ def simulate(self, source=None, mask=None, pars=None, resid=None, init=None, ope
 
         for eps_t in eps:
 
-            state, (l, k), flag = t_func(state, eps_t, return_k=True, linear=linear)
+            state, (l, k), flag = t_func(
+                state, eps_t, return_k=True, linear=linear)
 
             superflag |= flag
 
