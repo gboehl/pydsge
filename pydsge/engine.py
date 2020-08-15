@@ -103,7 +103,7 @@ def preprocess(self, verbose):
     return
 
 
-@njit(nogil=True, cache=True)
+# @njit(nogil=True, cache=True)
 def find_lk(mat, term, dimp, ff, x_bar, l_max, k_max, q):
     """iteration loop to find (l,k) given state q
     """
@@ -139,7 +139,7 @@ def find_lk(mat, term, dimp, ff, x_bar, l_max, k_max, q):
     return l, k, flag
 
 
-@njit(cache=True, nogil=True)
+# @njit(cache=True, nogil=True)
 def t_func_jit(mat, term, dimp, ff, x_bar, S, aux, l_max, k_max, state, set_k):
     """jitted transitiona function
     """

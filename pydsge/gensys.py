@@ -125,7 +125,7 @@ def gen_lin_sys(self):
     """Get a linear representation of the system. System transition and shock propagation can be obtained using only (cheap) standard LA operations
     """
 
-    A, N, J, cc, x_bar, ff, S, aux = self.sys
+    A, N, J, g, x_bar, ff, S, aux = self.sys
 
     dimp = J.shape[0]
 
@@ -272,14 +272,14 @@ def gen_sys(self, par=None, l_max=None, k_max=None, tol=1e-8, verbose=True):
 
     # create auxiliary variables such that non-zero rows of A & C have full row rank
     A, B, C, vva, auxa = desingularize(A, B, C, vv, verbose=verbose > 1)
-    C, B, A, vvc, auxc = desingularize(C, B, A, vva, verbose=verbose > 1)
+    C, _, A, vvc, auxc = desingularize(C, B, A, vva, verbose=verbose > 1)
 
     # "old" variables have been removed from A & C and are hence static. So again remove static endogenous variables
-    A1, B1, C1, _ = cutoff(A, B, C, verbose=verbose > 1)
+    # A1, B1, C1, _ = cutoff(A, B, C, verbose=verbose > 1)
 
     inp = ~fast0(A, 0)
-    iny = fast0(B1, 0)
-    inq = ~fast0(C1, 0)
+    inq = ~fast0(C, 0)
+    iny = ~inp & ~inq
     # forward looking variables in CDR
     dimp = sum(inp)
     # state variables in CDR
@@ -302,6 +302,7 @@ def gen_sys(self, par=None, l_max=None, k_max=None, tol=1e-8, verbose=True):
 
     # use pile representation to remove all y(+1) from A and all y(-1) from C
     u, s, _ = nl.svd(np.hstack((RA[:, iny], RC[:, iny])), full_matrices=True)
+    # u, s, _ = nl.svd(np.hstack((RA[:, ~inp], RC[:, ~inq])), full_matrices=True)
 
     RA = u.T[sum(s > tol):] @ RA
     RB = u.T[sum(s > tol):] @ RB
@@ -317,10 +318,13 @@ def gen_sys(self, par=None, l_max=None, k_max=None, tol=1e-8, verbose=True):
     TI = nl.inv(RB[:, :dimy])
     TAP = -TI @ RA[:, inp]
     TAQ = -TI @ RA[:, inq]
+    # print(TAP)
+    print(fast0(TAQ,2))
     TBP = -TI @ RB[:, inp]
     TBQ = -TI @ RB[:, inq]
     TCP = -TI @ RC[:, inp]
     TCQ = -TI @ RC[:, inq]
+    print(fast0(TCP,2))
 
     # store in T
     T = np.hstack((TAQ, TAP, TBQ, TBP, TCQ, TCP))
@@ -352,18 +356,14 @@ def gen_sys(self, par=None, l_max=None, k_max=None, tol=1e-8, verbose=True):
     fb0, fc0 = ff0
 
     # translate constraint eq
-    fb = np.vstack((np.pad(fb0, (0, dimx)), np.zeros_like(S1), S1))
-    fc = np.vstack((np.pad(fc0, (0, dimx)), S1, np.zeros_like(S1)))
+    fb = np.vstack((np.pad(fb0, (0, dimx)), S1))
+    fc = np.vstack((np.pad(fc0, (0, dimx)), S1))
 
-    u, s, _ = nl.svd(np.hstack((fc[:, ~inq], fb[:, ynr])), full_matrices=True)
+    q, r = shredder(fc[:, ~inq])
+    fc = q.T[-1] @ fc
 
-    fb = u.T[sum(s > tol):] @ fb
-    fc = u.T[sum(s > tol):] @ fc
-
-    q, r = sl.qr(fb)
-
-    fb = q.T[0] @ fb
-    fc = q.T[0] @ fc
+    q, r = shredder(fb[:, ynr])
+    fb = q.T[-1] @ fb
 
     fb1 = -fb/fb[dimz-1]
     fc1 = -fc/fb[dimz-1]
@@ -375,17 +375,39 @@ def gen_sys(self, par=None, l_max=None, k_max=None, tol=1e-8, verbose=True):
     ff1 = fb1[inq], np.hstack((fb1[inp], fc1[inq]))
 
     # done with the nasty part. Now find one-sided first-oder sys
-    A1 = A2[:dimx]
-    B1 = B2[:dimx] + np.outer(B2[:dimx, dimz-1], fb1)
-    C1 = C2[:dimx] + np.outer(B2[:dimx, dimz-1], fc1)
+    g1 = B2[:, dimz-1]
+    B1 = B2 + np.outer(g1, fb1)
+    C1 = C2 + np.outer(g1, fc1)
 
+    P1 = -np.hstack((A2[:, inp], B1[:, inq]))
     N1 = np.hstack((B1[:, inp], C1[:, inq]))
-    P1 = -np.hstack((A1[:, inp], B1[:, inq]))
+    P2 = -np.hstack((A2[:, inp], B2[:, inq]))
     N2 = np.hstack((B2[:, inp], C2[:, inq]))
-    P2 = -np.hstack((A1[:, inp], B2[:, inq]))
+
+    # desingularization of P 
+    U, s, V = nl.svd(P1)
+
+    s0 = s < tol
+
+    P1 = U.T @ P1
+    N1 = U.T @ N1
+    P2 = U.T @ P2
+    N2 = U.T @ N2
+    g1 = U.T @ g1
+
+    omg = re_bk(N1, P1, d_endo=sum(inp))
+
+    # actual desingularization by iterating equations in M forward
+    P1[s0] = N1[s0]
+    P2[s0] = N2[s0]
+
+    # future values must be read directly from the iterative output. Not yet implemented
+    if not fast0(g1[s0], 2):
+        raise NotImplementedError(
+            'The system depends directly or indirectly on whether the constraint holds in the future or not.\n')
 
     if verbose:
-        print('dets1:', nl.det(N1), nl.det(P2), np.shape(N2))
+        print('dets1:', nl.det(N1), nl.det(P1), np.shape(N2))
         print('max error in N1:', abs(nl.inv(N1) @ N1 -
                                       np.eye(N1.shape[0])).max(), nl.cond(N1))
         print('max error in P1:', abs(nl.inv(P1) @ P1 -
@@ -397,13 +419,13 @@ def gen_sys(self, par=None, l_max=None, k_max=None, tol=1e-8, verbose=True):
                                       np.eye(P2.shape[0])).max(), nl.cond(P2))
 
     # find linear RE solution for when constraint does not bind
-    omg = re_bk(N1, P1, d_endo=sum(inp))
+    # omg = re_bk(N1, P1, d_endo=sum(inp))
 
     J = np.hstack((np.eye(omg.shape[0]), -omg))
 
     A = nl.inv(P1) @ N1
     N = nl.inv(P2) @ N2
-    cc = nl.inv(P2) @ B2[:, dimz-1]
+    g = nl.inv(P2) @ g1
 
     # fix value of x_bar
     if 'x_bar' in [p.name for p in self.parameters]:
@@ -420,13 +442,13 @@ def gen_sys(self, par=None, l_max=None, k_max=None, tol=1e-8, verbose=True):
     self.nvar = len(self.vv)
 
     # precalculate eigenvalues and eigenvectors
-    wa, vla = sl.eig(A)
-    wn, vln = sl.eig(N)
-    vra = nl.inv(vla)
-    vrn = nl.inv(vln)
+    # wa, vla = sl.eig(A)
+    # wn, vln = sl.eig(N)
+    # vra = nl.inv(vla)
+    # vrn = nl.inv(vln)
 
-    self.evs = vra, wa, vla, vrn, wn, vln
-    self.sys = A, N, J, cc, x_bar, ff1, T, aca(S0[:, :-dimx])
+    # self.evs = vra, wa, vla, vrn, wn, vln
+    self.sys = A, N, J, g, x_bar, ff1, T, aca(S0[:, :-dimx])
 
     # also add simple linear representation
     gen_lin_sys(self)
