@@ -89,7 +89,7 @@ def preprocess(self, verbose):
     """
 
     l_max, k_max = self.lks
-    A, N, J, cc, x_bar, ff, S, aux = self.sys
+    A, N, J, cc, x_bar, ff0, ff1, S, aux = self.sys
 
     cx = cc * x_bar
 
@@ -103,8 +103,8 @@ def preprocess(self, verbose):
     return
 
 
-# @njit(nogil=True, cache=True)
-def find_lk(mat, term, dimp, ff, x_bar, l_max, k_max, q):
+@njit(nogil=True, cache=True)
+def find_lk(mat, term, dimp, ff0, ff1, x_bar, l_max, k_max, q):
     """iteration loop to find (l,k) given state q
     """
 
@@ -112,7 +112,7 @@ def find_lk(mat, term, dimp, ff, x_bar, l_max, k_max, q):
     l, k = 0, 0
 
     # check if (0,0) is a solution
-    while check_cnst(mat, term, dimp, ff, l, l, 0, q) - x_bar > 0:
+    while check_cnst(mat, term, dimp, ff0, ff1, l, l, 0, q) - x_bar > 0:
         l += 1
         if l == l_max:
             break
@@ -120,13 +120,13 @@ def find_lk(mat, term, dimp, ff, x_bar, l_max, k_max, q):
     # check if (0,0) is a solution
     if l < l_max:
         # needs to be wrapped so that both loops can be exited at once
-        l, k = bruite_wrapper(mat, term, dimp, ff, x_bar, l_max, k_max, q)
+        l, k = bruite_wrapper(mat, term, dimp, ff0, ff1, x_bar, l_max, k_max, q)
 
         # if still no solution, use approximation
         if l == 999:
             flag = 1
             l, k = 0, 0
-            while check_cnst(mat, term, dimp, ff, l+k, l, k, q) - x_bar > 0:
+            while check_cnst(mat, term, dimp, ff0, ff1, l+k, l, k, q) - x_bar > 0:
                 k += 1
                 if k >= k_max:
                     # set error flag 'no solution + k_max reached'
@@ -139,67 +139,58 @@ def find_lk(mat, term, dimp, ff, x_bar, l_max, k_max, q):
     return l, k, flag
 
 
-# @njit(cache=True, nogil=True)
-def t_func_jit(mat, term, dimp, ff, x_bar, S, aux, l_max, k_max, state, set_k):
+@njit(cache=True, nogil=True)
+def t_func_jit(mat, term, dimp, ff0, ff1, x_bar, T, aux, l_max, k_max, state, set_k):
     """jitted transitiona function
     """
 
     # state given in y-space, translate to x-space
     x = aux @ state
 
-    p0 = x[:dimp]
     q0 = x[dimp:]
 
     if set_k == -1:
         # find (l,k) if requested
-        l, k, flag = find_lk(mat, term, dimp, ff, x_bar, l_max, k_max, q0)
+        l, k, flag = find_lk(mat, term, dimp, ff0, ff1, x_bar, l_max, k_max, q0)
     else:
         l, k = int(not bool(set_k)), set_k
         flag = 0
 
-    x0 = aca(mat[l, k, 0][:, dimp:]) @ q0 + term[l, k, 0]  # x(-1)
+    x0 = aca(mat[l, k, 0, :, dimp:]) @ q0 + term[l, k, 0]  # x(-1)
     x = aca(mat[l, k, 1]) @ x0 + term[l, k, 1]  # x
-    x1 = aca(mat[l, k, 2]) @ x0 + term[l, k, 2]  # x(+1)
 
     # translate back to y
-    newstate = S @ np.hstack((x1[dimp:], x, x0, p0))
+    newstate = T @ np.hstack((x, x0))
 
     return newstate, l, k, flag
 
 
 @njit(nogil=True, cache=True)
-def check_cnst(mat, term, dimp, ff, s, l, k, q0):
+def check_cnst(mat, term, dimp, ff0, ff1, s, l, k, q0):
     """constraint value in period s given CDR-state q0 under the assumptions (l,k)
     """
-
-    x = aca(mat[l, k, 0][:, dimp:]) @ q0 + term[l, k, 0]
-    q = (aca(mat[l, k, s+1]) @ x + term[l, k, s+1])[dimp:]
-
-    if s:
-        x = aca(mat[l, k, s]) @ x + term[l, k, s]
-
-    return ff[0] @ q + ff[1] @ x
+    return ff0 @ (aca(mat[l, k, s+1, dimp:, dimp:]) @ q0 + term[l, k, s+1, dimp:]) + ff1 @ (aca(mat[l, k, s, :, dimp:]) @ q0 + term[l, k, 0])
 
 
 @njit(nogil=True, cache=True)
-def bruite_wrapper(mat, term, dimp, ff, x_bar, l_max, k_max, q):
+def bruite_wrapper(mat, term, dimp, ff0, ff1, x_bar, l_max, k_max, q):
     """iterate over (l,k) until (l_max, k_max) and check if RE equilibrium
     """
 
     for l in range(l_max):
         for k in range(1, k_max):
             if l:
-                if check_cnst(mat, term, dimp, ff, 0, l, k, q) - x_bar < 0:
+                if check_cnst(mat, term, dimp, ff0, ff1, 0, l, k, q) - x_bar < 0:
                     continue
                 if l > 1:
-                    if check_cnst(mat, term, dimp, ff, l-1, l, k, q) - x_bar < 0:
+                    if check_cnst(mat, term, dimp, ff0, ff1, l-1, l, k, q) - x_bar < 0:
                         continue
-            if check_cnst(mat, term, dimp, ff, k+l, l, k, q) - x_bar < 0:
+            if check_cnst(mat, term, dimp, ff0, ff1, k+l, l, k, q) - x_bar < 0:
                 continue
-            if check_cnst(mat, term, dimp, ff, l, l, k, q) - x_bar > 0:
+            if check_cnst(mat, term, dimp, ff0, ff1, l, l, k, q) - x_bar > 0:
                 continue
             if k > 1:
-                if check_cnst(mat, term, dimp, ff, k+l-1, l, k, q) - x_bar > 0:
+                if check_cnst(mat, term, dimp, ff0, ff1, k+l-1, l, k, q) - x_bar > 0:
                     continue
             return l, k
 
@@ -210,7 +201,7 @@ def solve_p_cont(sys, evs, l, k, q):
     """for continuous (l,k). Not in use for pydsge
     """
 
-    A, N, JJ, cc, x_bar, ff, S, aux = sys
+    A, N, JJ, cc, x_bar, ff0, ff1, S, aux = sys
     vra, wa, vla, vrn, wn, vln = evs
     J = JJ.astype(np.complex128)
 
@@ -231,7 +222,7 @@ def move_q_cont(sys, evs, s, l, k, p, q):
     """for continuous (l,k). Not in use for pydsge
     """
 
-    A, N, J, cc, x_bar, ff, S, aux = sys
+    A, N, J, cc, x_bar, ff0, ff1, S, aux = sys
     vra, wa, vla, vrn, wn, vln = evs
 
     dimx = J.shape[1]

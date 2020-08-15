@@ -52,7 +52,7 @@ def t_func(self, state, shocks=None, set_k=None, return_flag=True, return_k=Fals
         else:
             return newstate
 
-    A, N, J, cc, x_bar, ff, S, aux = self.sys
+    A, N, J, cc, x_bar, ff0, ff1, T, aux = self.sys
     mat, term = self.precalc_mat
     l_max, k_max = self.lks
 
@@ -67,7 +67,7 @@ def t_func(self, state, shocks=None, set_k=None, return_flag=True, return_k=Fals
 
     state = np.hstack((state, shocks))
     newstate, l, k, flag = t_func_jit(
-        mat, term, dimp, ff, x_bar, S, aux, l_max, k_max, state, set_k)
+        mat, term, dimp, ff0, ff1, x_bar, T, aux, l_max, k_max, state, set_k)
     newstate = newstate[:-len(self.shocks)]
 
     if verbose:
