@@ -15,10 +15,6 @@ def preprocess_jit(A, N, J, cx, x_bar, ff0, ff1, l_max, k_max):
     """jitted preprocessing of system matrices until (l_max, k_max)
     """
 
-    # these must be the real max values, not only the size of the matrices
-    l_max += 1
-    k_max += 1
-
     dimp, dimx = J.shape
     dimq = dimx - dimp
     s_max = l_max + k_max + 1
@@ -110,15 +106,16 @@ def preprocess(self, verbose):
 
 
 @njit(nogil=True, cache=True)
-def find_lk(mat, term, bmat, bterm, dimp, ff0, ff1, x_bar, l_max, k_max, q):
+def find_lk(bmat, bterm, x_bar, q):
     """iteration loop to find (l,k) given state q
     """
 
+    l_max, k_max, _ = bterm.shape
     flag = 0
     l, k = 0, 0
 
     # check if (0,0) is a solution
-    while check_cnst(mat, term, bmat, bterm, dimp, ff0, ff1, l, l, 0, q) - x_bar > 0:
+    while check_cnst(bmat, bterm, l, l, 0, q) - x_bar > 0:
         l += 1
         if l == l_max:
             break
@@ -126,13 +123,13 @@ def find_lk(mat, term, bmat, bterm, dimp, ff0, ff1, x_bar, l_max, k_max, q):
     # check if (0,0) is a solution
     if l < l_max:
         # needs to be wrapped so that both loops can be exited at once
-        l, k = bruite_wrapper(mat, term, bmat, bterm, dimp, ff0, ff1, x_bar, l_max, k_max, q)
+        l, k = bruite_wrapper(bmat, bterm, x_bar, q)
 
         # if still no solution, use approximation
         if l == 999:
             flag = 1
             l, k = 0, 0
-            while check_cnst(mat, term, bmat, bterm, dimp, ff0, ff1, l+k, l, k, q) - x_bar > 0:
+            while check_cnst(bmat, bterm, l+k, l, k, q) - x_bar > 0:
                 k += 1
                 if k >= k_max:
                     # set error flag 'no solution + k_max reached'
@@ -146,19 +143,20 @@ def find_lk(mat, term, bmat, bterm, dimp, ff0, ff1, x_bar, l_max, k_max, q):
 
 
 @njit(cache=True, nogil=True)
-def t_func_jit(mat, term, bmat, bterm, dimp, ff0, ff1, x_bar, T, aux, l_max, k_max, state, set_k):
+def t_func_jit(mat, term, bmat, bterm, dimp, x_bar, state, set_k):
     """jitted transitiona function
     """
+    q = aca(state)
 
     if set_k == -1:
         # find (l,k) if requested
-        l, k, flag = find_lk(mat, term, bmat, bterm, dimp, ff0, ff1, x_bar, l_max, k_max, aca(state))
+        l, k, flag = find_lk(bmat, bterm, x_bar, q)
     else:
         l, k = int(not bool(set_k)), set_k
         flag = 0
 
-    x0 = aca(mat[l, k, 0, :, dimp:]) @ aca(state) + term[l, k, 0]  # x(-1)
-    x = aca(mat[l, k, 1, :, dimp:]) @ aca(state) + term[l, k, 1]  # x
+    x0 = aca(mat[l, k, 0, :, dimp:]) @ q + term[l, k, 0]  # x(-1)
+    x = aca(mat[l, k, 1, :, dimp:]) @ q + term[l, k, 1]  # x
 
     return x, x0, l, k, flag
 
@@ -174,31 +172,32 @@ def get_obs(x, x0, H):
 
 
 @njit(nogil=True, cache=True)
-def check_cnst(mat, term, bmat, bterm, dimp, ff0, ff1, s, l, k, q0):
+def check_cnst(bmat, bterm, s, l, k, q0):
     """constraint value in period s given CDR-state q0 under the assumptions (l,k)
     """
     return bmat[l, k, s] @ q0 + bterm[l, k, s]
 
 
 @njit(nogil=True, cache=True)
-def bruite_wrapper(mat, term, bmat, bterm, dimp, ff0, ff1, x_bar, l_max, k_max, q):
+def bruite_wrapper(bmat, bterm, x_bar, q):
     """iterate over (l,k) until (l_max, k_max) and check if RE equilibrium
     """
+    l_max, k_max, _ = bterm.shape
 
     for l in range(l_max):
         for k in range(1, k_max):
             if l:
-                if check_cnst(mat, term, bmat, bterm, dimp, ff0, ff1, 0, l, k, q) - x_bar < 0:
+                if check_cnst(bmat, bterm, 0, l, k, q) - x_bar < 0:
                     continue
                 if l > 1:
-                    if check_cnst(mat, term, bmat, bterm, dimp, ff0, ff1, l-1, l, k, q) - x_bar < 0:
+                    if check_cnst(bmat, bterm, l-1, l, k, q) - x_bar < 0:
                         continue
-            if check_cnst(mat, term, bmat, bterm, dimp, ff0, ff1, k+l, l, k, q) - x_bar < 0:
+            if check_cnst(bmat, bterm, k+l, l, k, q) - x_bar < 0:
                 continue
-            if check_cnst(mat, term, bmat, bterm, dimp, ff0, ff1, l, l, k, q) - x_bar > 0:
+            if check_cnst(bmat, bterm, l, l, k, q) - x_bar > 0:
                 continue
             if k > 1:
-                if check_cnst(mat, term, bmat, bterm, dimp, ff0, ff1, k+l-1, l, k, q) - x_bar > 0:
+                if check_cnst(bmat, bterm, k+l-1, l, k, q) - x_bar > 0:
                     continue
             return l, k
 

@@ -73,7 +73,7 @@ def t_func(self, state, shocks=None, set_k=None, return_flag=None, return_k=Fals
     else:
         state = aux[dimp:] @ np.hstack((state, shocks))
 
-    x, x0, l, k, flag = t_func_jit(mat, term, bmat, bterm, dimp, ff0, ff1, x_bar, T, aux, l_max, k_max, state, set_k)
+    x, x0, l, k, flag = t_func_jit(mat, term, bmat, bterm, dimp, x_bar, state, set_k)
 
     if x_space:
         obs = get_obs(x, x0, self.hx[0]) + self.hy[1]
