@@ -11,7 +11,7 @@ aca = np.ascontiguousarray
 
 
 @njit(cache=True, nogil=True)
-def preprocess_jit(A, N, J, cx, x_bar, l_max, k_max):
+def preprocess_jit(A, N, J, cx, x_bar, ff0, ff1, l_max, k_max):
     """jitted preprocessing of system matrices until (l_max, k_max)
     """
 
@@ -19,16 +19,19 @@ def preprocess_jit(A, N, J, cx, x_bar, l_max, k_max):
     l_max += 1
     k_max += 1
 
-    dimp, dimq = J.shape
-    s_max = l_max + k_max
+    dimp, dimx = J.shape
+    dimq = dimx - dimp
+    s_max = l_max + k_max + 1
 
-    mat = np.empty((l_max, k_max, s_max, dimq, dimq))
-    term = np.empty((l_max, k_max, s_max, dimq))
-    core_mat = np.empty((l_max, s_max, dimq, dimq))
-    core_term = np.empty((s_max, dimq))
+    mat = np.empty((l_max, k_max, s_max, dimx, dimx))
+    term = np.empty((l_max, k_max, s_max, dimx))
+    bmat = np.empty((l_max, k_max, s_max, dimq))
+    bterm = np.empty((l_max, k_max, s_max))
+    core_mat = np.empty((l_max, s_max, dimx, dimx))
+    core_term = np.empty((s_max, dimx))
 
-    core_mat[0, 0, :] = np.identity(dimq)
-    res = np.zeros((dimq, dimq))
+    core_mat[0, 0, :] = np.identity(dimx)
+    res = np.zeros((dimx, dimx))
 
     for s in range(s_max):
 
@@ -78,8 +81,11 @@ def preprocess_jit(A, N, J, cx, x_bar, l_max, k_max):
                 fin_mat = aca(matrices[:, :dimp]) @ SS_mat + aca(matrices)
                 fin_term = aca(matrices[:, :dimp]) @ SS_term + oterm
 
-                mat[l, k, s], term[l, k, s] = core_mat[s0,
-                                                       0] @ fin_mat, core_mat[s0, 0] @ fin_term
+                mat[l, k, s], term[l, k, s] = core_mat[s0, 0] @ fin_mat, core_mat[s0, 0] @ fin_term
+
+                if s:
+                    bmat[l, k, s-1, :] = ff0 @ mat[l, k, s, dimp:, dimp:] + ff1 @ mat[l, k, s-1, :, dimp:]
+                    bterm[l, k, s-1] = ff0 @ term[l, k, s, dimp:] + ff1 @ term[l, k, s-1]
 
     return mat, term
 
@@ -94,7 +100,7 @@ def preprocess(self, verbose):
     cx = cc * x_bar
 
     st = time.time()
-    self.precalc_mat = preprocess_jit(A, N, J, cx, x_bar, l_max, k_max)
+    self.precalc_mat = preprocess_jit(A, N, J, cx, x_bar, ff0, ff1, l_max, k_max)
 
     if verbose:
         print('[preprocess:]'.ljust(
