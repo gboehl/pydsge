@@ -13,7 +13,7 @@ from .engine import *
 from decimal import Decimal
 
 
-def t_func(self, state, shocks=None, set_k=None, return_flag=True, return_k=False, linear=False, verbose=False):
+def t_func(self, state, shocks=None, set_k=None, return_flag=None, return_k=False, x_space=False, linear=False, verbose=False):
     """transition function
 
     Parameters
@@ -65,10 +65,21 @@ def t_func(self, state, shocks=None, set_k=None, return_flag=True, return_k=Fals
     if set_k is None or isinstance(set_k, bool):
         set_k = -1
 
-    state = np.hstack((state, shocks))
-    newstate, l, k, flag = t_func_jit(
-        mat, term, dimp, ff0, ff1, x_bar, T, aux, l_max, k_max, state, set_k)
-    newstate = newstate[:-len(self.shocks)]
+    if return_flag is None:
+        return_flag = not x_space
+
+    if x_space:
+        state += aux[dimp:,-len(self.shocks):] @ shocks
+    else:
+        state = aux[dimp:] @ np.hstack((state, shocks))
+
+    x, x0, l, k, flag = t_func_jit(mat, term, dimp, ff0, ff1, x_bar, T, aux, l_max, k_max, state, set_k)
+
+    if x_space:
+        obs = get_obs(x, x0, self.hx[0]) + self.hy[1]
+        newstate = x[dimp:], obs
+    else:
+        newstate = get_state(x, x0, len(self.shocks), T)
 
     if verbose:
         print('[t_func:]'.ljust(15, ' ') +
@@ -82,12 +93,15 @@ def t_func(self, state, shocks=None, set_k=None, return_flag=True, return_k=Fals
         return newstate
 
 
-def o_func(self, state):
+def o_func(self, state, x_space=False):
     """
     observation function
     """
 
-    obs = state @ self.hx[0].T + self.hx[1]
+    if x_space:
+        return self.hy[0] @ T @ state + self.hy[1]
+
+    obs = state @ self.hy[0].T + self.hy[1]
     if np.ndim(state) <= 1:
         data = self.data.index if hasattr(self, 'data') else None
         obs = pd.DataFrame(obs, index=data, columns=self.observables)
@@ -106,14 +120,14 @@ def calc_obs(self, states, covs=None):
     """
 
     if covs is None:
-        return states @ self.hx[0].T + self.hx[1]
+        return states @ self.hy[0].T + self.hy[1]
 
     var = np.diagonal(covs, axis1=1, axis2=2)
     std = np.sqrt(var)
     iv95 = np.stack((states - 1.96*std, states, states + 1.96*std))
 
-    obs = (self.hx[0] @ states.T).T + self.hx[1]
-    std_obs = (self.hx[0] @ std.T).T
+    obs = (self.hy[0] @ states.T).T + self.hy[1]
+    std_obs = (self.hy[0] @ std.T).T
     iv95_obs = np.stack((obs - 1.96*std_obs, obs, obs + 1.96*std_obs))
 
     return iv95_obs, iv95

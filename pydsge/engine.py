@@ -144,25 +144,27 @@ def t_func_jit(mat, term, dimp, ff0, ff1, x_bar, T, aux, l_max, k_max, state, se
     """jitted transitiona function
     """
 
-    # state given in y-space, translate to x-space
-    x = aux @ state
-
-    q0 = x[dimp:]
-
     if set_k == -1:
         # find (l,k) if requested
-        l, k, flag = find_lk(mat, term, dimp, ff0, ff1, x_bar, l_max, k_max, q0)
+        l, k, flag = find_lk(mat, term, dimp, ff0, ff1, x_bar, l_max, k_max, aca(state))
     else:
         l, k = int(not bool(set_k)), set_k
         flag = 0
 
-    x0 = aca(mat[l, k, 0, :, dimp:]) @ q0 + term[l, k, 0]  # x(-1)
-    x = aca(mat[l, k, 1]) @ x0 + term[l, k, 1]  # x
+    x0 = aca(mat[l, k, 0, :, dimp:]) @ aca(state) + term[l, k, 0]  # x(-1)
+    x = aca(mat[l, k, 1, :, dimp:]) @ aca(state) + term[l, k, 1]  # x
 
-    # translate back to y
-    newstate = T @ np.hstack((x, x0))
+    return x, x0, l, k, flag
 
-    return newstate, l, k, flag
+
+@njit(nogil=True, cache=True)
+def get_state(x, x0, edim, T):
+    return T[:-edim] @ np.hstack((x, x0))
+
+
+@njit(nogil=True, cache=True)
+def get_obs(x, x0, H):
+    return H @ np.hstack((x, x0))
 
 
 @njit(nogil=True, cache=True)

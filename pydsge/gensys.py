@@ -240,8 +240,6 @@ def gen_sys(self, par=None, l_max=None, k_max=None, tol=1e-8, verbose=True):
     ZZ0[:, [-1, c_arg]] = ZZ0[:, [c_arg, -1]]
     vv0[[-1, c_arg]] = vv0[[c_arg, -1]]
 
-    self.hx = ZZ0, self.ZZ1(self.ppar).squeeze()
-
     # create representation in y-space
     AA0 = np.pad(AA0, ((0, dimeps), (0, dimeps)))
     BB0 = sl.block_diag(BB0, np.eye(dimeps))
@@ -319,6 +317,9 @@ def gen_sys(self, par=None, l_max=None, k_max=None, tol=1e-8, verbose=True):
     # store in T
     # T = np.hstack((TAQ, TAP, TBQ, TBP, TCQ, TCP))
     T = np.hstack((TAP, TBQ, TBP, TCQ))
+
+    self.hy = ZZ0, self.ZZ1(self.ppar).squeeze()
+    self.hx = ZZ0 @ T[:-len(self.shocks)], self.hy[1]
 
     if verbose:
         print('max error in T', abs(
@@ -427,6 +428,7 @@ def gen_sys(self, par=None, l_max=None, k_max=None, tol=1e-8, verbose=True):
     # finally add relevant stuff to the class
     self.vv = vv[:-len(self.shocks)]
     self.nvar = len(self.vv)
+    self.dimq = dimq
 
     # precalculate eigenvalues and eigenvectors
     # wa, vla = sl.eig(A)
