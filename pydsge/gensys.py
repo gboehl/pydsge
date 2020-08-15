@@ -362,8 +362,8 @@ def gen_sys(self, par=None, l_max=None, k_max=None, tol=1e-8, verbose=True):
         raise NotImplementedError(
             'Constraint depends on future variables (fc1 of p is non-zero)')
 
-    ff0 = fb1[inq]
-    ff1 = np.hstack((fb1[inp], fc1[inq]))
+    ff0 = aca(fb1[inq])
+    ff1 = aca(np.hstack((fb1[inp], fc1[inq])))
 
     # done with the nasty part. Now find one-sided first-oder sys
     g1 = B2[:, dimz-1]
