@@ -12,19 +12,7 @@ from grgrlib import fast0, eig, re_bk, shredder
 from .engine import preprocess
 from .stats import post_mean
 
-try:
-    from numpy.core._exceptions import UFuncTypeError as ParafuncError
-except ModuleNotFoundError:
-    ParafuncError = Exception
-
-# try:
-    # ...
-# except ParafuncError:
-    # raise SyntaxError(
-    # "At least one parameter is a function of other parameters, and should be declared in `parafunc`.")
-
 aca = np.ascontiguousarray
-
 
 def desingularize(A, B, C, vv, verbose=False):
     """Reduces `A` to full row-rank, then creates auxilliary variables and adds them as static variables
@@ -203,7 +191,10 @@ def gen_sys(self, par=None, l_max=None, k_max=None, tol=1e-8, verbose=True):
     self.lks = np.array([l_max, k_max])
 
     self.par = self.p0() if par is None else list(par)
-    self.ppar = self.pcompile(self.par)  # parsed par
+    try:
+        self.ppar = self.pcompile(self.par)  # parsed par
+    except TypeError:
+        raise SyntaxError("At least one parameter is a function of other parameters, and should be declared in `parafunc`.")
 
     if not self.const_var:
         raise NotImplementedError('Package is only meant to work with OBCs')
@@ -288,11 +279,12 @@ def gen_sys(self, par=None, l_max=None, k_max=None, tol=1e-8, verbose=True):
 
     # apply pile representation
     RA1, RB1, RC1, S1 = pile(RA0, RB0, RC0, S0)
+    print(S1.shape)
+    print(dimx,dimeps,dimy,dimz)
 
     RA, RB, RC = RA1.copy(), RB1.copy(), RC1.copy()
 
     # use pile representation to remove all y(+1), q(+1) from A and all y(-1), p(-1) from C
-    # u, s, _ = nl.svd(np.hstack((RA[:, iny], RC[:, iny])), full_matrices=True)
     u, s, _ = nl.svd(np.hstack((RA[:, ~inp], RC[:, ~inq])), full_matrices=True)
 
     RA = u.T[sum(s > tol):] @ RA
@@ -305,17 +297,20 @@ def gen_sys(self, par=None, l_max=None, k_max=None, tol=1e-8, verbose=True):
     RB = q.T[:dimy] @ RB
     RC = q.T[:dimy] @ RC
 
+    # q, r, = sl.qr(np.hstack((RA[:, ~inp], RC[:, ~inq], RB)))
+
+    # RA = q.T[:dimy] @ RA
+    # RB = q.T[:dimy] @ RB
+    # RC = q.T[:dimy] @ RC
+
     # invert system to get a representation from (x(+1), x, x(-1)) -> y
     TI = nl.inv(RB[:, :dimy])
     TAP = -TI @ RA[:, inp]
-    # TAQ = -TI @ RA[:, inq]
     TBP = -TI @ RB[:, inp]
     TBQ = -TI @ RB[:, inq]
     TCQ = -TI @ RC[:, inq]
-    # TCP = -TI @ RC[:, inp]
 
     # store in T
-    # T = np.hstack((TAQ, TAP, TBQ, TBP, TCQ, TCP))
     T = np.hstack((TAP, TBQ, TBP, TCQ))
 
     self.hy = ZZ0, self.ZZ1(self.ppar).squeeze()
@@ -346,21 +341,17 @@ def gen_sys(self, par=None, l_max=None, k_max=None, tol=1e-8, verbose=True):
     C2 = q.T[:dimx] @ C2
 
     # translate constraint eq
-    fb = np.vstack((np.pad(fb0, (0, dimx)), S1))
-    fc = np.vstack((np.pad(fc0, (0, dimx)), S1))
+    fb = np.vstack((np.pad(fb0, (0, dimx)), S1, np.zeros_like(S1)))
+    fc = np.vstack((np.pad(fc0, (0, dimx)), np.zeros_like(S1), S1))
 
-    q, r = shredder(fc[:, ~inq])
+    q, r = sl.qr(np.hstack((fb[:, ynr],fc[:, ~inq])))
+    from grgrlib import spy
+    spy(r)
     fc = q.T[-1] @ fc
-
-    q, r = shredder(fb[:, ynr])
     fb = q.T[-1] @ fb
 
     fb1 = -fb/fb[dimz-1]
     fc1 = -fc/fb[dimz-1]
-
-    if ~fast0(fc1[inp], 2):
-        raise NotImplementedError(
-            'Constraint depends on future variables (fc1 of p is non-zero)')
 
     ff0 = aca(fb1[inq])
     ff1 = aca(np.hstack((fb1[inp], fc1[inq])))
@@ -397,19 +388,11 @@ def gen_sys(self, par=None, l_max=None, k_max=None, tol=1e-8, verbose=True):
     # future values must be read directly from the iterative output. Not yet implemented
     if not fast0(g1[s0], 2):
         raise NotImplementedError(
-            'The system depends directly or indirectly on whether the constraint holds in the future or not.\n')
+            'The system depends directly or indirectly on whether the constraint holds in a future period.\n')
 
     if verbose:
-        print('dets1:', nl.det(N1), nl.det(P1), np.shape(N2))
-        print('max error in N1:', abs(nl.inv(N1) @ N1 -
-                                      np.eye(N1.shape[0])).max(), nl.cond(N1))
-        print('max error in P1:', abs(nl.inv(P1) @ P1 -
-                                      np.eye(P1.shape[0])).max(), nl.cond(P1))
-        print('dets2:', nl.det(N2), nl.det(P2), np.shape(N2))
-        print('max error in N2:', abs(nl.inv(N2) @ N2 -
-                                      np.eye(N2.shape[0])).max(), nl.cond(N2))
-        print('max error in P2:', abs(nl.inv(P2) @ P2 -
-                                      np.eye(P2.shape[0])).max(), nl.cond(P2))
+        print('P1 (det, cond, max error): ', nl.det(P1), nl.cond(P1), abs(nl.inv(P1) @ P1 - np.eye(P1.shape[0])).max())
+        print('P2 (det, cond, max error): ', nl.det(P2), nl.cond(P2), abs(nl.inv(P2) @ P2 - np.eye(P2.shape[0])).max())
 
     A = nl.inv(P1) @ N1
     N = nl.inv(P2) @ N2
