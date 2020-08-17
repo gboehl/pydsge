@@ -77,11 +77,14 @@ def preprocess_jit(A, N, J, cx, x_bar, ff0, ff1, l_max, k_max):
                 fin_mat = aca(matrices[:, :dimp]) @ SS_mat + aca(matrices)
                 fin_term = aca(matrices[:, :dimp]) @ SS_term + oterm
 
-                mat[l, k, s], term[l, k, s] = core_mat[s0, 0] @ fin_mat, core_mat[s0, 0] @ fin_term
+                mat[l, k, s], term[l, k, s] = core_mat[s0,
+                                                       0] @ fin_mat, core_mat[s0, 0] @ fin_term
 
                 if s:
-                    bmat[l, k, s-1, :] = ff0 @ aca(mat[l, k, s, dimp:, dimp:]) + ff1 @ aca(mat[l, k, s-1, :, dimp:])
-                    bterm[l, k, s-1] = ff0 @ term[l, k, s, dimp:] + ff1 @ term[l, k, s-1]
+                    bmat[l, k, s-1, :] = ff0 @ aca(
+                        mat[l, k, s, dimp:, dimp:]) + ff1 @ aca(mat[l, k, s-1, :, dimp:])
+                    bterm[l, k, s-1] = ff0 @ term[l, k,
+                                                  s, dimp:] + ff1 @ term[l, k, s-1]
 
     return mat, term, bmat, bterm
 
@@ -96,7 +99,8 @@ def preprocess(self, verbose):
     cx = cc * x_bar
 
     st = time.time()
-    self.precalc_mat = preprocess_jit(A, N, J, cx, x_bar, ff0, ff1, l_max, k_max)
+    self.precalc_mat = preprocess_jit(
+        A, N, J, cx, x_bar, ff0, ff1, l_max, k_max)
 
     if verbose:
         print('[preprocess:]'.ljust(
@@ -143,10 +147,16 @@ def find_lk(bmat, bterm, x_bar, q):
 
 
 @njit(cache=True, nogil=True)
-def t_func_jit(mat, term, bmat, bterm, dimp, x_bar, state, set_k):
+def t_func_jit(mat, term, bmat, bterm, dimp, dimeps, x_bar, hx0, hy1, T, aux, state, shocks, set_k, x_space):
     """jitted transitiona function
     """
+
     q = aca(state)
+
+    if x_space:
+        q += aca(aux[:, -dimeps:]) @ aca(shocks)
+    else:
+        q = aux @ np.hstack((q, shocks))
 
     if set_k == -1:
         # find (l,k) if requested
@@ -158,16 +168,27 @@ def t_func_jit(mat, term, bmat, bterm, dimp, x_bar, state, set_k):
     x0 = aca(mat[l, k, 0, :, dimp:]) @ q + term[l, k, 0]  # x(-1)
     x = aca(mat[l, k, 1, :, dimp:]) @ q + term[l, k, 1]  # x
 
-    return x, x0, l, k, flag
+    if x_space:
+        obs = hx0 @ np.hstack((x, x0)) + hy1
+        newstate = np.hstack((obs, x[dimp:]))
+    else:
+        newstate = T @ np.hstack((x, x0))
+
+    return newstate, x, x0, l, k, flag
 
 
 @njit(nogil=True, cache=True)
-def get_state(x, x0, edim, T):
-    return T[:-edim] @ np.hstack((x, x0))
+def t_get_y(x, x0, T):
+    return T @ np.hstack((x, x0))
 
 
 @njit(nogil=True, cache=True)
-def get_obs(x, x0, H):
+def t_get_x(state, shocks, T):
+    return T @ np.hstack((state, shocks))
+
+
+@njit(nogil=True, cache=True)
+def t_get_obs(x, x0, H):
     return H @ np.hstack((x, x0))
 
 

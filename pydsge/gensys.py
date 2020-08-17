@@ -14,6 +14,7 @@ from .stats import post_mean
 
 aca = np.ascontiguousarray
 
+
 def desingularize(A, B, C, vv, verbose=False):
     """Reduces `A` to full row-rank, then creates auxilliary variables and adds them as static variables
     """
@@ -46,40 +47,10 @@ def desingularize(A, B, C, vv, verbose=False):
     return (A, B, C, vv, A12)
 
 
-def cutoff(A, B, C, verbose=False):
-    """cut-off reduction.
-
-    Solves for and removes static variables.
-    """
-
-    viu = fast0(A, 0) & ~fast0(B, 0) & fast0(C, 0)
-    dim = sum(viu)
-
-    if viu.any():
-
-        enb = ~fast0(B, 1)
-        Q, R = sl.qr(B[enb][:, viu])
-
-        A[enb] = Q.T @ A[enb]
-        B[enb] = Q.T @ B[enb]
-        C[enb] = Q.T @ C[enb]
-
-        A = A[dim:]
-        B = B[dim:]
-        C = C[dim:]
-
-        if verbose:
-            print('cutting off %s rows...' % dim)
-
-        return (A, B, C, True)
-
-    return (A, B, C, False)
-
-
 def pile(RA0, RB0, RC0, S):
     """Pile representation algorithm
 
-    The resulting system matrices contain all atainable information on the full (y,x) system. S contains time-t-only information on this system (static relationships among variables).
+    The resulting system matrices contain all atainable information on the full (y,x) system. S contains the extracted time-t-only information on this system (static relationships among variables).
     """
 
     st = time.time()
@@ -194,7 +165,8 @@ def gen_sys(self, par=None, l_max=None, k_max=None, tol=1e-8, verbose=True):
     try:
         self.ppar = self.pcompile(self.par)  # parsed par
     except TypeError:
-        raise SyntaxError("At least one parameter is a function of other parameters, and should be declared in `parafunc`.")
+        raise SyntaxError(
+            "At least one parameter is a function of other parameters, and should be declared in `parafunc`.")
 
     if not self.const_var:
         raise NotImplementedError('Package is only meant to work with OBCs')
@@ -249,12 +221,6 @@ def gen_sys(self, par=None, l_max=None, k_max=None, tol=1e-8, verbose=True):
     C = CC1.copy()
     vv = vv0.copy()
 
-    # remove static endogenous variables (for debugging)
-    # while True:
-        # A, B, C, flag = cutoff(A, B, C, verbose=verbose > 1)
-        # if not flag:
-            # break
-
     # create auxiliary variables such that non-zero rows of A & C have full row rank
     A, B, C, vva, auxa = desingularize(A, B, C, vv, verbose=verbose > 1)
     C, _, A, vvc, auxc = desingularize(C, B, A, vva, verbose=verbose > 1)
@@ -269,27 +235,25 @@ def gen_sys(self, par=None, l_max=None, k_max=None, tol=1e-8, verbose=True):
     # call both together "x-space"
     dimx = dimp+dimq
 
+    # stack y -> p and (y,p) -> q
+    S0 = np.block([[auxa, np.zeros((auxa.shape[0], auxc.shape[0]))], [auxc]])
+
     # step 2: recover y-representation from x-representation
     RA0 = np.pad(AA0.copy(), ((0, 0), (0, dimx)))
     RB0 = np.pad(BB0.copy(), ((0, 0), (0, dimx)))
     RC0 = np.pad(CC0.copy(), ((0, 0), (0, dimx)))
 
-    # stack y -> p and (y,p) -> q
-    S0 = np.block([[auxa, np.zeros((auxa.shape[0], auxc.shape[0]))], [auxc]])
-
     # apply pile representation
     RA1, RB1, RC1, S1 = pile(RA0, RB0, RC0, S0)
-    print(S1.shape)
-    print(dimx,dimeps,dimy,dimz)
-
-    RA, RB, RC = RA1.copy(), RB1.copy(), RC1.copy()
 
     # use pile representation to remove all y(+1), q(+1) from A and all y(-1), p(-1) from C
-    u, s, _ = nl.svd(np.hstack((RA[:, ~inp], RC[:, ~inq])), full_matrices=True)
+    # svd + QR can do the same job as QS decomposition, but numpy implementations are faster
+    u, s, _ = nl.svd(
+        np.hstack((RA1[:, ~inp], RC1[:, ~inq])), full_matrices=True)
 
-    RA = u.T[sum(s > tol):] @ RA
-    RB = u.T[sum(s > tol):] @ RB
-    RC = u.T[sum(s > tol):] @ RC
+    RA = u.T[sum(s > tol):] @ RA1
+    RB = u.T[sum(s > tol):] @ RB1
+    RC = u.T[sum(s > tol):] @ RC1
 
     q, r = sl.qr(RB)
 
@@ -297,17 +261,11 @@ def gen_sys(self, par=None, l_max=None, k_max=None, tol=1e-8, verbose=True):
     RB = q.T[:dimy] @ RB
     RC = q.T[:dimy] @ RC
 
-    # q, r, = sl.qr(np.hstack((RA[:, ~inp], RC[:, ~inq], RB)))
-
-    # RA = q.T[:dimy] @ RA
-    # RB = q.T[:dimy] @ RB
-    # RC = q.T[:dimy] @ RC
-
     # invert system to get a representation from (x(+1), x, x(-1)) -> y
     TI = nl.inv(RB[:, :dimy])
     TAP = -TI @ RA[:, inp]
-    TBP = -TI @ RB[:, inp]
     TBQ = -TI @ RB[:, inq]
+    TBP = -TI @ RB[:, inp]
     TCQ = -TI @ RC[:, inq]
 
     # store in T
@@ -322,18 +280,18 @@ def gen_sys(self, par=None, l_max=None, k_max=None, tol=1e-8, verbose=True):
         print('det & cond T', nl.det(RB[:, :dimy]), nl.cond(RB[:, :dimy]))
 
     # step 3: find CDR of constraint system
-    A2, B2, C2 = RA1, RB1, RC1
-
     ynr = iny.copy()  # "in y not r"
     ynr[dimz-1] = False
 
+    # could be done with QS, but numpy implementation is faster
     u, s, _ = nl.svd(
-        np.hstack((A2[:, ~inp], C2[:, ~inq], B2[:, ynr])), full_matrices=True)
+        np.hstack((RA1[:, ~inp], RC1[:, ~inq], RB1[:, ynr])), full_matrices=True)
 
-    A2 = u.T[sum(s > tol):] @ A2
-    B2 = u.T[sum(s > tol):] @ B2
-    C2 = u.T[sum(s > tol):] @ C2
+    A2 = u.T[sum(s > tol):] @ RA1
+    B2 = u.T[sum(s > tol):] @ RB1
+    C2 = u.T[sum(s > tol):] @ RC1
 
+    # shredder is the QS decomposition. Necessary because axis 1 of B2 is sparse (because ynr is sparse)
     q, r = shredder(B2)
 
     A2 = q.T[:dimx] @ A2
@@ -344,9 +302,7 @@ def gen_sys(self, par=None, l_max=None, k_max=None, tol=1e-8, verbose=True):
     fb = np.vstack((np.pad(fb0, (0, dimx)), S1, np.zeros_like(S1)))
     fc = np.vstack((np.pad(fc0, (0, dimx)), np.zeros_like(S1), S1))
 
-    q, r = sl.qr(np.hstack((fb[:, ynr],fc[:, ~inq])))
-    from grgrlib import spy
-    spy(r)
+    q, r = shredder(np.hstack((fc[:, ~inq], fb[:, ynr])))
     fc = q.T[-1] @ fc
     fb = q.T[-1] @ fb
 
@@ -356,7 +312,7 @@ def gen_sys(self, par=None, l_max=None, k_max=None, tol=1e-8, verbose=True):
     ff0 = aca(fb1[inq])
     ff1 = aca(np.hstack((fb1[inp], fc1[inq])))
 
-    # done with the nasty part. Now find one-sided first-oder sys
+    # step 4: done with the nasty part. Now find one-sided first-oder sys
     g1 = B2[:, dimz-1]
     B1 = B2 + np.outer(g1, fb1)
     C1 = C2 + np.outer(g1, fc1)
@@ -370,7 +326,7 @@ def gen_sys(self, par=None, l_max=None, k_max=None, tol=1e-8, verbose=True):
     omg = re_bk(N1, P1, d_endo=sum(inp))
     J = np.hstack((np.eye(omg.shape[0]), -omg))
 
-    # desingularization of P 
+    # desingularization of P
     U, s, V = nl.svd(P1)
 
     s0 = s < tol
@@ -391,8 +347,10 @@ def gen_sys(self, par=None, l_max=None, k_max=None, tol=1e-8, verbose=True):
             'The system depends directly or indirectly on whether the constraint holds in a future period.\n')
 
     if verbose:
-        print('P1 (det, cond, max error): ', nl.det(P1), nl.cond(P1), abs(nl.inv(P1) @ P1 - np.eye(P1.shape[0])).max())
-        print('P2 (det, cond, max error): ', nl.det(P2), nl.cond(P2), abs(nl.inv(P2) @ P2 - np.eye(P2.shape[0])).max())
+        print('P1 (det, cond, max error): ', nl.det(P1), nl.cond(
+            P1), abs(nl.inv(P1) @ P1 - np.eye(P1.shape[0])).max())
+        print('P2 (det, cond, max error): ', nl.det(P2), nl.cond(
+            P2), abs(nl.inv(P2) @ P2 - np.eye(P2.shape[0])).max())
 
     A = nl.inv(P1) @ N1
     N = nl.inv(P2) @ N2
@@ -412,6 +370,8 @@ def gen_sys(self, par=None, l_max=None, k_max=None, tol=1e-8, verbose=True):
     self.vv = vv[:-len(self.shocks)]
     self.nvar = len(self.vv)
     self.dimq = dimq
+    self.dimy = dimy
+    self.dimz = dimz
 
     # precalculate eigenvalues and eigenvectors
     # wa, vla = sl.eig(A)

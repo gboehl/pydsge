@@ -54,13 +54,12 @@ def t_func(self, state, shocks=None, set_k=None, return_flag=None, return_k=Fals
 
     A, N, J, cc, x_bar, ff0, ff1, T, aux = self.sys
     mat, term, bmat, bterm = self.precalc_mat
-    l_max, k_max = self.lks
 
     dimp, dimx = J.shape
-    dimq = dimx - dimp
+    dimeps = self.neps
 
     if shocks is None:
-        shocks = np.zeros(len(self.shocks))
+        shocks = np.zeros(dimeps)
 
     if set_k is None or isinstance(set_k, bool):
         set_k = -1
@@ -68,18 +67,13 @@ def t_func(self, state, shocks=None, set_k=None, return_flag=None, return_k=Fals
     if return_flag is None:
         return_flag = not x_space
 
-    if x_space:
-        state += aux[dimp:,-len(self.shocks):] @ shocks
-    else:
-        state = aux[dimp:] @ np.hstack((state, shocks))
-
-    x, x0, l, k, flag = t_func_jit(mat, term, bmat, bterm, dimp, x_bar, state, set_k)
+    res, x, x0, l, k, flag = t_func_jit(mat, term, bmat, bterm, dimp, dimeps, x_bar,
+                                        self.hx[0], self.hy[1], T[:-dimeps], aux[dimp:], state, shocks, set_k, x_space)
 
     if x_space:
-        obs = get_obs(x, x0, self.hx[0]) + self.hy[1]
-        newstate = x[dimp:], obs
+        newstate = res[self.nobs:], res[:self.nobs]
     else:
-        newstate = get_state(x, x0, len(self.shocks), T)
+        newstate = res
 
     if verbose:
         print('[t_func:]'.ljust(15, ' ') +

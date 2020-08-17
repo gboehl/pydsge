@@ -20,7 +20,7 @@ def create_obs_cov(self, scale_obs=0.1):
 def create_filter(self, P=None, R=None, N=None, ftype=None, x_space=False, seed=None, **fargs):
 
     self.Z = np.array(self.data)
-    dim = self.dimq if x_space else self.nvar 
+    dim = self.dimq if x_space else self.nvar
 
     if ftype == 'KalmanFilter':
         ftype = 'KF'
@@ -104,7 +104,8 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, ve
 
     else:
         if self.filter.x_space:
-            self.filter.t_func = lambda *x: self.t_func(*x, x_space=self.filter.x_space)
+            self.filter.t_func = lambda *x: self.t_func(
+                *x, x_space=self.filter.x_space)
             self.filter.o_func = None
         else:
             self.filter.t_func = self.t_func
