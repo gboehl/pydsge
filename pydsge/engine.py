@@ -19,7 +19,7 @@ def preprocess_jit(A, N, J, cx, x_bar, ff0, ff1, l_max, k_max):
     dimq = dimx - dimp
     s_max = l_max + k_max + 1
 
-    mat = np.empty((l_max, k_max, s_max, dimx, dimx))
+    mat = np.empty((l_max, k_max, s_max, dimx, dimq))
     term = np.empty((l_max, k_max, s_max, dimx))
     bmat = np.empty((l_max, k_max, s_max, dimq))
     bterm = np.empty((l_max, k_max, s_max))
@@ -50,7 +50,7 @@ def preprocess_jit(A, N, J, cx, x_bar, ff0, ff1, l_max, k_max):
 
             core = -nl.inv(JN[:, :dimp])
 
-            SS_mat = core @ aca(JN)
+            SS_mat = core @ aca(JN[:,dimp:])
             SS_term = core @ sterm
 
             for s in range(s_max):
@@ -74,17 +74,15 @@ def preprocess_jit(A, N, J, cx, x_bar, ff0, ff1, l_max, k_max):
                 matrices = core_mat[l0, k0]
                 oterm = core_term[k0]
 
-                fin_mat = aca(matrices[:, :dimp]) @ SS_mat + aca(matrices)
+                fin_mat = aca(matrices[:, :dimp]) @ SS_mat + aca(matrices[:, dimp:])
                 fin_term = aca(matrices[:, :dimp]) @ SS_term + oterm
 
-                mat[l, k, s], term[l, k, s] = core_mat[s0,
-                                                       0] @ fin_mat, core_mat[s0, 0] @ fin_term
+                mat[l, k, s] = core_mat[s0, 0] @ fin_mat
+                term[l, k, s] = core_mat[s0, 0] @ fin_term
 
                 if s:
-                    bmat[l, k, s-1, :] = ff0 @ aca(
-                        mat[l, k, s, dimp:, dimp:]) + ff1 @ aca(mat[l, k, s-1, :, dimp:])
-                    bterm[l, k, s-1] = ff0 @ term[l, k,
-                                                  s, dimp:] + ff1 @ term[l, k, s-1]
+                    bmat[l, k, s-1, :] = ff0 @ aca(mat[l, k, s, dimp:]) + ff1 @ mat[l, k, s-1]
+                    bterm[l, k, s-1] = ff0 @ term[l, k, s, dimp:] + ff1 @ term[l, k, s-1]
 
     return mat, term, bmat, bterm
 
@@ -115,6 +113,7 @@ def find_lk(bmat, bterm, x_bar, q):
     """
 
     l_max, k_max, _ = bterm.shape
+
     flag = 0
     l, k = 0, 0
 
@@ -133,7 +132,7 @@ def find_lk(bmat, bterm, x_bar, q):
         if l == 999:
             flag = 1
             l, k = 0, 0
-            while check_cnst(bmat, bterm, l+k, l, k, q) - x_bar > 0:
+            while check_cnst(bmat, bterm, k, 0, k, q) - x_bar > 0:
                 k += 1
                 if k >= k_max:
                     # set error flag 'no solution + k_max reached'
@@ -147,7 +146,7 @@ def find_lk(bmat, bterm, x_bar, q):
 
 
 @njit(cache=True, nogil=True)
-def t_func_jit(mat, term, bmat, bterm, dimp, dimeps, x_bar, hx0, hy1, T, aux, state, shocks, set_k, x_space):
+def t_func_jit(mat, term, bmat, bterm, dimp, dimeps, x_bar, hx0, hy1, T, aux, state, shocks, set_l, set_k, x_space):
     """jitted transitiona function
     """
 
@@ -162,11 +161,11 @@ def t_func_jit(mat, term, bmat, bterm, dimp, dimeps, x_bar, hx0, hy1, T, aux, st
         # find (l,k) if requested
         l, k, flag = find_lk(bmat, bterm, x_bar, q)
     else:
-        l, k = int(not bool(set_k)), set_k
+        l, k = set_l, set_k
         flag = 0
 
-    x0 = aca(mat[l, k, 0, :, dimp:]) @ q + term[l, k, 0]  # x(-1)
-    x = aca(mat[l, k, 1, :, dimp:]) @ q + term[l, k, 1]  # x
+    x0 = mat[l, k, 0] @ q + term[l, k, 0]  # x(-1)
+    x = mat[l, k, 1] @ q + term[l, k, 1]  # x
 
     if x_space:
         obs = hx0 @ np.hstack((x, x0)) + hy1
@@ -175,21 +174,6 @@ def t_func_jit(mat, term, bmat, bterm, dimp, dimeps, x_bar, hx0, hy1, T, aux, st
         newstate = T @ np.hstack((x, x0))
 
     return newstate, x, x0, l, k, flag
-
-
-@njit(nogil=True, cache=True)
-def t_get_y(x, x0, T):
-    return T @ np.hstack((x, x0))
-
-
-@njit(nogil=True, cache=True)
-def t_get_x(state, shocks, T):
-    return T @ np.hstack((state, shocks))
-
-
-@njit(nogil=True, cache=True)
-def t_get_obs(x, x0, H):
-    return H @ np.hstack((x, x0))
 
 
 @njit(nogil=True, cache=True)

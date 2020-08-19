@@ -63,12 +63,16 @@ def t_func(self, state, shocks=None, set_k=None, return_flag=None, return_k=Fals
 
     if set_k is None or isinstance(set_k, bool):
         set_k = -1
+        set_l = -1
+    elif isinstance(set_k, tuple):
+        set_l, set_k = set_k
+    else:
+        set_l = int(not bool(set_k))
 
     if return_flag is None:
         return_flag = not x_space
 
-    res, x, x0, l, k, flag = t_func_jit(mat, term, bmat, bterm, dimp, dimeps, x_bar,
-                                        self.hx[0], self.hy[1], T[:-dimeps], aux[dimp:], state, shocks, set_k, x_space)
+    res, x, x0, l, k, flag = t_func_jit(mat, term, bmat, bterm, dimp, dimeps, x_bar, self.hx[0], self.hy[1], T[:-dimeps], aux, state, shocks, set_l, set_k, x_space)
 
     if x_space:
         newstate = res[self.nobs:], res[:self.nobs]
@@ -214,13 +218,13 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, set_k=False
             L[t] = l
             K[t] = k
 
-        return X, K, L, superflag
+        return X, L, K, superflag
 
     if pars is not None and np.ndim(pars) > 1:
         res = self.mapper(runner, pars)
-        X, K, L, flag = map2arr(res)
+        X, L, K, flag = map2arr(res)
     else:
-        X, K, L, flag = runner(pars)
+        X, L, K, flag = runner(pars)
         X = pd.DataFrame(X, columns=self.vv)
 
     if np.any(flag) and verbose:
@@ -231,7 +235,7 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, set_k=False
         print('[irfs:]'.ljust(15, ' ') + 'Simulation took ',
               np.round((time.time() - st), 5), ' seconds.')
 
-    return X, (K, L), flag
+    return X, (L,K), flag
 
 
 @property

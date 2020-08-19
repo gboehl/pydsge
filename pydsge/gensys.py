@@ -93,14 +93,11 @@ def gen_lin_sys(self):
 
     omg = -J[:, dimp:]
 
-    Fq0 = F[dimp:]
-    Eq0 = E[dimp:]
+    Fp = omg @ F
+    Ep = omg @ E
 
-    Fp = omg @ Fq0
-    Ep = omg @ Eq0
-
-    Fx = A[:, :dimp] @ Fp + A[:, dimp:] @ Fq0
-    Ex = A[:, :dimp] @ Ep + A[:, dimp:] @ Eq0
+    Fx = A[:, :dimp] @ Fp + A[:, dimp:] @ F
+    Ex = A[:, :dimp] @ Ep + A[:, dimp:] @ E
 
     Fq = Fx[dimp:]
     Eq = Ex[dimp:]
@@ -108,8 +105,8 @@ def gen_lin_sys(self):
     Ep1 = Ex[:dimp]
 
     # translate back to y
-    Fy = T @ np.vstack((Fp1, Fq, Fp, Fq0))
-    Ey = T @ np.vstack((Ep1, Eq, Ep, Eq0))
+    Fy = T @ np.vstack((Fp1, Fq, Fp, F))
+    Ey = T @ np.vstack((Ep1, Eq, Ep, E))
 
     self.lin_sys = Fy[:-self.ve.shape[0]], Ey[:-self.ve.shape[0]]
 
@@ -380,7 +377,7 @@ def gen_sys(self, par=None, l_max=None, k_max=None, tol=1e-8, verbose=True):
     # vrn = nl.inv(vln)
 
     # self.evs = vra, wa, vla, vrn, wn, vln
-    self.sys = A, N, J, g, x_bar, ff0, ff1, T, aca(S0[:, :-dimx])
+    self.sys = A, N, J, g, x_bar, ff0, ff1, T, aca(auxc[:, :-dimx])
 
     # also add simple linear representation
     gen_lin_sys(self)
