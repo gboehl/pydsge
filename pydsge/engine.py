@@ -84,7 +84,7 @@ def preprocess_jit(A, N, J, cx, x_bar, ff0, ff1, l_max, k_max):
                     bmat[l, k, s-1, :] = ff0 @ aca(mat[l, k, s, dimp:]) + ff1 @ mat[l, k, s-1]
                     bterm[l, k, s-1] = ff0 @ term[l, k, s, dimp:] + ff1 @ term[l, k, s-1]
 
-    return mat, term, bmat, bterm
+    return aca(mat[:,:,:2]), aca(term[:,:,:2]), bmat, bterm
 
 
 def preprocess(self, verbose):

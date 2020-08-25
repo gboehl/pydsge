@@ -47,13 +47,13 @@ def desingularize(A, B, C, vv, verbose=False):
     return (A, B, C, vv, A12)
 
 
-def pile(RA0, RB0, RC0, S):
+def pile(RA0, RB0, RC0, S, tol=1e-8, verbose=False):
     """Pile representation algorithm
 
     The resulting system matrices contain all atainable information on the full (y,x) system. S contains the extracted time-t-only information on this system (static relationships among variables).
     """
 
-    st = time.time()
+    cnt = 0
 
     while True:
 
@@ -69,13 +69,18 @@ def pile(RA0, RB0, RC0, S):
         eim = np.any(M, 1)
 
         u, s, v = nl.svd(M[eim][:, vim])
-        SB = np.vstack((RB[(~eim)], u.T[(s < 1e-08)] @ RB[eim]))
+        SB = np.vstack((RB[(~eim)], u.T[s < tol] @ RB[eim]))
 
         u, s, v = nl.svd(SB, full_matrices=False)
-        S = u.T[(s > 1e-08)] @ SB
+        S = u.T[s > tol] @ SB
 
         if S.shape == oldshape:
             break
+
+        cnt += 1
+
+    if verbose:
+        print('%s iteration(s) necessary for pile' %cnt)
 
     return (RA, RB, RC, S)
 
@@ -241,7 +246,7 @@ def gen_sys(self, par=None, l_max=None, k_max=None, tol=1e-8, verbose=True):
     RC0 = np.pad(CC0.copy(), ((0, 0), (0, dimx)))
 
     # apply pile representation
-    RA1, RB1, RC1, S1 = pile(RA0, RB0, RC0, S0)
+    RA1, RB1, RC1, S1 = pile(RA0, RB0, RC0, S0, verbose=verbose)
 
     # use pile representation to remove all y(+1), q(+1) from A and all y(-1), p(-1) from C
     # svd + QR can do the same job as QS decomposition, but numpy implementations are faster
@@ -302,6 +307,15 @@ def gen_sys(self, par=None, l_max=None, k_max=None, tol=1e-8, verbose=True):
     q, r = shredder(np.hstack((fc[:, ~inq], fb[:, ynr])))
     fc = q.T[-1] @ fc
     fb = q.T[-1] @ fb
+
+    # fb = np.vstack((np.pad(fb0, (0, dimx)), S1))
+    # fc = np.vstack((np.pad(fc0, (0, dimx)), S1))
+
+    # q, r = shredder(fc[:, ~inq])
+    # fc = q.T[sum(~inq)] @ fc
+
+    # q, r = shredder(fb[:, ynr])
+    # fb = q.T[sum(ynr)] @ fb
 
     fb1 = -fb/fb[dimz-1]
     fc1 = -fc/fb[dimz-1]
