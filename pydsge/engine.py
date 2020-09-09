@@ -9,9 +9,8 @@ from numba import njit
 
 aca = np.ascontiguousarray
 
-
 @njit(cache=True, nogil=True)
-def preprocess_jit(A, N, J, cx, x_bar, ff0, ff1, l_max, k_max):
+def preprocess_jit(A, N, J, cx, x_bar, ff, l_max, k_max):
     """jitted preprocessing of system matrices until (l_max, k_max)
     """
 
@@ -55,7 +54,6 @@ def preprocess_jit(A, N, J, cx, x_bar, ff0, ff1, l_max, k_max):
 
             for s in range(s_max):
 
-                doit = True
                 l0 = s
                 k0 = 0
                 s0 = 0
@@ -64,7 +62,7 @@ def preprocess_jit(A, N, J, cx, x_bar, ff0, ff1, l_max, k_max):
                     l0 = l
                     if s > l+k+1:
                         continue
-                    elif s == l+k+1:
+                    if s == l+k+1:
                         k0 = k
                         s0 = 1
                     else:
@@ -80,9 +78,8 @@ def preprocess_jit(A, N, J, cx, x_bar, ff0, ff1, l_max, k_max):
                 mat[l, k, s] = core_mat[s0, 0] @ fin_mat
                 term[l, k, s] = core_mat[s0, 0] @ fin_term
 
-                if s:
-                    bmat[l, k, s-1, :] = ff0 @ aca(mat[l, k, s, dimp:]) + ff1 @ mat[l, k, s-1]
-                    bterm[l, k, s-1] = ff0 @ term[l, k, s, dimp:] + ff1 @ term[l, k, s-1]
+                bmat[l, k, s, :] = ff @ mat[l, k, s]
+                bterm[l, k, s] = ff @ term[l, k, s]
 
     return aca(mat[:,:,:2]), aca(term[:,:,:2]), bmat, bterm
 
@@ -92,13 +89,12 @@ def preprocess(self, verbose):
     """
 
     l_max, k_max = self.lks
-    A, N, J, cc, x_bar, ff0, ff1, S, aux = self.sys
+    A, N, J, g, x_bar, ff, TU, TR0, TR1, HU0, HU1, HR0, HR1 = self.sys
 
-    cx = cc * x_bar
+    cx = g * x_bar
 
     st = time.time()
-    self.precalc_mat = preprocess_jit(
-        A, N, J, cx, x_bar, ff0, ff1, l_max, k_max)
+    self.precalc_mat = preprocess_jit(A, N, J, cx, x_bar, ff, l_max, k_max)
 
     if verbose:
         print('[preprocess:]'.ljust(
@@ -131,7 +127,7 @@ def find_lk(bmat, bterm, x_bar, q):
         # if still no solution, use approximation
         if l == 999:
             flag = 1
-            l, k = 0, 0
+            l, k = 0, 1
             while check_cnst(bmat, bterm, k, 0, k, q) - x_bar > 0:
                 k += 1
                 if k >= k_max:
@@ -146,16 +142,11 @@ def find_lk(bmat, bterm, x_bar, q):
 
 
 @njit(cache=True, nogil=True)
-def t_func_jit(mat, term, bmat, bterm, dimp, dimeps, x_bar, hx0, hy1, T, aux, state, shocks, set_l, set_k, x_space):
+def t_func_jit(mat, term, bmat, bterm, dimp, dimeps, x_bar, HU0, HU1, HR0, HR1, TU, TR0, TR1, state, shocks, set_l, set_k, reduced):
     """jitted transitiona function
     """
 
-    q = aca(state)
-
-    if x_space:
-        q += aca(aux[:, -dimeps:]) @ aca(shocks)
-    else:
-        q = aux @ np.hstack((q, shocks))
+    q = np.hstack((state, shocks))
 
     if set_k == -1:
         # find (l,k) if requested
@@ -167,13 +158,18 @@ def t_func_jit(mat, term, bmat, bterm, dimp, dimeps, x_bar, hx0, hy1, T, aux, st
     x0 = mat[l, k, 0] @ q + term[l, k, 0]  # x(-1)
     x = mat[l, k, 1] @ q + term[l, k, 1]  # x
 
-    if x_space:
-        obs = hx0 @ np.hstack((x, x0)) + hy1
+    if reduced:
+        if l:
+            obs = HU0 @ np.hstack((x, x0)) + HU1
+        else:
+            obs = HR0 @ np.hstack((x, x0)) + HR1
         newstate = np.hstack((obs, x[dimp:]))
+    elif l:
+        newstate = TU @ np.hstack((x, x0))
     else:
-        newstate = T @ np.hstack((x, x0))
+        newstate = TR0 @ np.hstack((x, x0)) + TR1
 
-    return newstate, x, x0, l, k, flag
+    return newstate[:-dimeps], l, k, flag
 
 
 @njit(nogil=True, cache=True)
@@ -213,7 +209,7 @@ def solve_p_cont(sys, evs, l, k, q):
     """for continuous (l,k). Not in use for pydsge
     """
 
-    A, N, JJ, cc, x_bar, ff0, ff1, S, aux = sys
+    A, N, J, g, x_bar, ff, TU, TR0, TR1, HU0, HU1, HR0, HR1 = self.sys
     vra, wa, vla, vrn, wn, vln = evs
     J = JJ.astype(np.complex128)
 
@@ -224,8 +220,7 @@ def solve_p_cont(sys, evs, l, k, q):
 
     ding = J @ nl.inv(np.eye(dimx) - N).astype(np.complex128)
 
-    term = ding @ (np.eye(dimx) - vln*wn**k @ vrn) @ (cc *
-                                                      x_bar).astype(np.complex128)
+    term = ding @ (np.eye(dimx) - vln*wn**k @ vrn) @ (cc * x_bar).astype(np.complex128)
 
     return -np.real(nl.inv(mat[:, :dimp]) @ (term + mat[:, dimp:] @ q.astype(np.complex128)))
 
@@ -234,7 +229,7 @@ def move_q_cont(sys, evs, s, l, k, p, q):
     """for continuous (l,k). Not in use for pydsge
     """
 
-    A, N, J, cc, x_bar, ff0, ff1, S, aux = sys
+    A, N, J, g, x_bar, ff, TU, TR0, TR1, HU0, HU1, HR0, HR1 = self.sys
     vra, wa, vla, vrn, wn, vln = evs
 
     dimx = J.shape[1]

@@ -13,7 +13,7 @@ from .engine import *
 from decimal import Decimal
 
 
-def t_func(self, state, shocks=None, set_k=None, return_flag=None, return_k=False, x_space=False, linear=False, verbose=False):
+def t_func(self, state, shocks=None, set_k=None, return_flag=None, return_k=False, reduced=False, linear=False, verbose=False):
     """transition function
 
     Parameters
@@ -37,44 +37,33 @@ def t_func(self, state, shocks=None, set_k=None, return_flag=None, return_k=Fals
     if verbose:
         st = time.time()
 
-    if linear:
-
-        F, E = self.lin_sys
-        newstate = F @ state
-
-        if shocks is not None:
-            newstate += E @ shocks
-
-        if return_k:
-            return newstate, (1, 0), 0
-        elif return_flag:
-            return newstate, 0
-        else:
-            return newstate
-
-    A, N, J, cc, x_bar, ff0, ff1, T, aux = self.sys
+    A, N, J, g, x_bar, ff, TU, TR0, TR1, HU0, HU1, HR0, HR1 = self.sys
     mat, term, bmat, bterm = self.precalc_mat
 
     dimp, dimx = J.shape
-    dimeps = self.neps
+    dimq = dimx - dimp
 
     if shocks is None:
-        shocks = np.zeros(dimeps)
+        shocks = np.zeros(self.neps)
 
-    if set_k is None or isinstance(set_k, bool):
-        set_k = -1
-        set_l = -1
+    if linear:
+        set_l, set_k = 1, 0
+    elif set_k is None or isinstance(set_k, bool):
+        set_l, set_k = -1, -1
     elif isinstance(set_k, tuple):
         set_l, set_k = set_k
     else:
         set_l = int(not bool(set_k))
 
     if return_flag is None:
-        return_flag = not x_space
+        return_flag = not reduced
 
-    res, x, x0, l, k, flag = t_func_jit(mat, term, bmat, bterm, dimp, dimeps, x_bar, self.hx[0], self.hy[1], T[:-dimeps], aux, state, shocks, set_l, set_k, x_space)
+    if not reduced:
+        state = state[self.inq]
 
-    if x_space:
+    res, l, k, flag = t_func_jit(mat, term, bmat, bterm, dimp, self.neps, x_bar, HU0, HU1, HR0, HR1, TU, TR0, TR1, state, shocks, set_l, set_k, reduced)
+
+    if reduced:
         newstate = res[self.nobs:], res[:self.nobs]
     else:
         newstate = res
@@ -91,15 +80,11 @@ def t_func(self, state, shocks=None, set_k=None, return_flag=None, return_k=Fals
         return newstate
 
 
-def o_func(self, state, x_space=False):
+def o_func(self, state):
     """
     observation function
     """
-
-    if x_space:
-        return self.hy[0] @ T @ state + self.hy[1]
-
-    obs = state @ self.hy[0].T + self.hy[1]
+    obs = state @ self.hx[0].T + self.hx[1]
     if np.ndim(state) <= 1:
         data = self.data.index if hasattr(self, 'data') else None
         obs = pd.DataFrame(obs, index=data, columns=self.observables)
@@ -118,14 +103,14 @@ def calc_obs(self, states, covs=None):
     """
 
     if covs is None:
-        return states @ self.hy[0].T + self.hy[1]
+        return states @ self.hx[0].T + self.hx[1]
 
     var = np.diagonal(covs, axis1=1, axis2=2)
     std = np.sqrt(var)
     iv95 = np.stack((states - 1.96*std, states, states + 1.96*std))
 
-    obs = (self.hy[0] @ states.T).T + self.hy[1]
-    std_obs = (self.hy[0] @ std.T).T
+    obs = (self.hx[0] @ states.T).T + self.hx[1]
+    std_obs = (self.hx[0] @ std.T).T
     iv95_obs = np.stack((obs - 1.96*std_obs, obs, obs + 1.96*std_obs))
 
     return iv95_obs, iv95
@@ -179,17 +164,15 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, set_k=False
     def runner(par):
 
         X = np.empty((T, nstates))
-        K = np.empty(T)
-        L = np.empty(T)
+        LK = np.empty((2,T))
 
         if np.any(par):
             try:
                 set_par(par, **args)
             except ValueError:
                 X[:] = np.nan
-                K[:] = np.nan
-                L[:] = np.nan
-                return X, K, L, 4
+                LK[:] = np.nan
+                return X, LK, 4
 
         st_vec = state if state is not None else np.zeros(nstates)
 
@@ -215,16 +198,16 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, set_k=False
             superflag |= flag
 
             X[t, :] = st_vec
-            L[t] = l
-            K[t] = k
+            LK[0,t] = l
+            LK[1,t] = k
 
-        return X, L, K, superflag
+        return X, LK, superflag
 
     if pars is not None and np.ndim(pars) > 1:
         res = self.mapper(runner, pars)
-        X, L, K, flag = map2arr(res)
+        X, LK, flag = map2arr(res)
     else:
-        X, L, K, flag = runner(pars)
+        X, LK, flag = runner(pars)
         X = pd.DataFrame(X, columns=self.vv)
 
     if np.any(flag) and verbose:
@@ -235,7 +218,7 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, set_k=False
         print('[irfs:]'.ljust(15, ' ') + 'Simulation took ',
               np.round((time.time() - st), 5), ' seconds.')
 
-    return X, (L,K), flag
+    return X, LK, flag
 
 
 @property

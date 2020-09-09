@@ -5,6 +5,7 @@ import os
 import numpy as np
 import pandas as pd
 from .parser import DSGE
+from .engine import preprocess
 from .stats import summary, gfevd, mbcs_index, nhd, mdd
 from .plots import posteriorplot, traceplot
 from .mcmc import mcmc, tmcmc
@@ -483,3 +484,4 @@ DSGE.save_rdict = save_rdict
 DSGE.gfevd = gfevd
 DSGE.mbcs_index = mbcs_index
 DSGE.nhd = nhd
+DSGE.preprocess = preprocess

@@ -180,8 +180,12 @@ class DSGE(dict):
             CC = zeros(no_var-1, no_var)
             PSI = zeros(no_var-1, evar)
 
-            bb_var = filter(lambda x: x.date <= 0,
-                            self['const_eq'].atoms(Variable))
+            bb_ff = filter(lambda x: x.date > 0, self['const_eq'].atoms(Variable))
+            bb_ff_list = tuple([v for v in bb_ff])
+            if bb_ff_list:
+                raise NotImplementedError('The constraint depends on future variables: %s (should be fixed easiliy)' %bb_ff_list)
+
+            bb_var = filter(lambda x: x.date <= 0, self['const_eq'].atoms(Variable))
             full_var = sub_var + lvarl
 
             for v in bb_var:
