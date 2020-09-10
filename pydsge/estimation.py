@@ -12,7 +12,7 @@ from .filtering import get_ll
 from .mpile import get_par, set_par
 
 
-def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=False, x_space=True, dispatch=False, ncores=None, l_max=3, k_max=16, verbose=True, debug=False, **filterargs):
+def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=False, dispatch=False, ncores=None, l_max=3, k_max=16, verbose=True, debug=False, **filterargs):
     """Initializes the tools necessary for estimation
 
     ...
@@ -55,11 +55,6 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
         else:
             linear = False
 
-    if linear and x_space:
-        print('[estimation:]'.ljust(15, ' ') +
-              ' `x_space` not implemented for linear filter')
-        x_space = False
-
     if seed is None:
         if 'seed' in self.fdict.keys():
             seed = self.fdict['seed']
@@ -69,7 +64,6 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
     self.fdict['filter_n'] = N
     self.fdict['linear'] = linear
     self.fdict['seed'] = seed
-    self.fdict['x_space'] = x_space
 
     self.debug |= debug
     self.Z = np.array(self.data)
@@ -77,7 +71,7 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
     set_par(self, 'prior_mean', verbose=verbose > 3, l_max=l_max, k_max=k_max)
 
     self.create_filter(
-        N=N, ftype='KalmanFilter' if linear else None, x_space=x_space, **filterargs)
+        N=N, ftype='KalmanFilter' if linear else None, **filterargs)
 
     if 'filter_R' in self.fdict.keys():
         self.filter.R = self.fdict['filter_R']

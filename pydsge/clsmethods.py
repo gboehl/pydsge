@@ -11,7 +11,7 @@ from .mcmc import mcmc, tmcmc
 from .modesearch import cmaes
 from .filtering import *
 from .tools import *
-from .gensys import gen_sys
+from .gensys import gen_sys_from_yaml
 from .mpile import get_par, get_cov, set_par
 from .estimation import *
 
@@ -448,7 +448,7 @@ DSGE.bjfunc = bjfunc
 DSGE.get_sample = get_sample
 DSGE.create_pool = create_pool
 # from gensys
-DSGE.gen_sys = gen_sys
+DSGE.gen_sys = gen_sys_from_yaml
 # from mpile
 DSGE.get_par = get_par
 DSGE.gp = get_par
