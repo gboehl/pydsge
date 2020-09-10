@@ -19,9 +19,9 @@ def get_lam(omg, psi, S, T, V, W, h, l):
     B = T if l else W
     c = np.zeros(dimq) if l else h[:dimq]
 
-    inv = nl.inv(np.eye(dimq) + A[:dimq, dimq:] @ omg)
-    lam = inv @ B[:dimq, :dimq]
-    xi = inv @ (c - A[:dimq, dimq:] @ psi)
+    inv = nl.inv(np.eye(dimq) + aca(A[:dimq, dimq:]) @ omg)
+    lam = inv @ aca(B[:dimq, :dimq])
+    xi = inv @ (c - aca(A[:dimq, dimq:]) @ psi)
 
     return lam, xi
 
@@ -35,8 +35,8 @@ def get_omg(omg, psi, lam, xi, S, T, V, W, h, l):
     B = T if l else W
     c = np.zeros(dimp) if l else h[dimq:]
 
-    psi = A[dimq:, dimq:] @ (omg @ xi + psi) - c
-    omg = A[dimq:, dimq:] @ omg @ lam - B[dimq:, :dimq]
+    psi = aca(A[dimq:, dimq:]) @ (omg @ xi + psi) - c
+    omg = aca(A[dimq:, dimq:]) @ omg @ lam - aca(B[dimq:, :dimq])
 
     return omg, psi
 
@@ -62,28 +62,28 @@ def preprocess_jit(PU, MU, PR, MR, gg, fq1, fp1, fq0, omg, lam, x_bar, l_max, k_
     T[dimq:] = T22i @ T[dimq:]
     S[dimq:] = T22i @ aca(S[dimq:])
 
-    S[:dimq, dimq:] -= T[:dimq, dimq:] @ aca(S[dimq:, dimq:])
-    T[:dimq, :dimq] -= T[:dimq, dimq:] @ T[dimq:, :dimq]
+    S[:dimq, dimq:] -= aca(T[:dimq, dimq:]) @ aca(S[dimq:, dimq:])
+    T[:dimq, :dimq] -= aca(T[:dimq, dimq:]) @ aca(T[dimq:, :dimq])
     T[:dimq, dimq:] = 0
 
     # cast matrices of constraint sys in nice form
     Q, V = nl.qr(PR)
-    W = Q.T @ MR
-    h = Q.T @ gg
+    W = aca(Q.T) @ aca(MR)
+    h = aca(Q.T) @ gg
 
     V11i = nl.inv(V[:dimq, :dimq])
     W[:dimq] = V11i @ W[:dimq]
-    V[:dimq] = V11i @ V[:dimq]
+    V[:dimq] = V11i @ aca(V[:dimq])
     h[:dimq] = V11i @ h[:dimq]
 
     W22i = nl.inv(W[dimq:, dimq:])
     W[dimq:] = W22i @ W[dimq:]
-    V[dimq:] = W22i @ V[dimq:]
-    h[dimq:] = W22i @ h[dimq:]
+    V[dimq:] = W22i @ aca(V[dimq:])
+    h[dimq:] = W22i @ aca(h[dimq:])
 
-    h[:dimq] -= W[:dimq, dimq:] @ h[dimq:]
-    V[:dimq, dimq:] -= W[:dimq, dimq:] @ V[dimq:, dimq:]
-    W[:dimq, :dimq] -= W[:dimq, dimq:] @ W[dimq:, :dimq]
+    h[:dimq] -= aca(W[:dimq, dimq:]) @ h[dimq:]
+    V[:dimq, dimq:] -= aca(W[:dimq, dimq:]) @ aca(V[dimq:, dimq:])
+    W[:dimq, :dimq] -= aca(W[:dimq, dimq:]) @ aca(W[dimq:, :dimq])
     W[:dimq, dimq:] = 0
 
     pmat = np.empty((l_max, k_max, dimp, dimq))
@@ -192,7 +192,7 @@ def find_lk(bmat, bterm, x_bar, q):
 
 
 @njit(cache=True, nogil=True)
-def t_func_jit(pmat, pterm, qmat, qterm, bmat, bterm, x_bar, zp, zq, zc, state, shocks, set_l, set_k, x_space):
+def t_func_jit(pmat, pterm, qmat, qterm, bmat, bterm, x_bar, hxp, hxq, hxc, state, shocks, set_l, set_k, x_space):
     """jitted transitiona function
     """
 
@@ -211,7 +211,7 @@ def t_func_jit(pmat, pterm, qmat, qterm, bmat, bterm, x_bar, zp, zq, zc, state, 
 
     # instead, I should either return p or obs
     if x_space:
-        p_or_obs = zp @ p + zq @ q + zc
+        p_or_obs = hxp @ p + hxq @ q + hxc
     else:
         p_or_obs = p
 

@@ -156,6 +156,9 @@ def gen_sys(self, AA0, BB0, CC0, DD0, fb0, fc0, fd0, ZZ0, ZZ1, l_max, k_max, ver
         fb0 = np.pad(fb0, (0, sum(inall)))
         fc0 = np.pad(fc0, (0, sum(inall)))
 
+        if ZZ0 is not None:
+            ZZ0 = np.pad(ZZ0, ((0, 0), (0, sum(inall))))
+
         BB0[-sum(inall):, -sum(inall):] = np.eye(sum(inall))
         BB0[-sum(inall):, :-sum(inall)][:, inall] = -np.eye(sum(inall))
         CC0[:, -sum(inall):] = CC0[:, :-sum(inall)][:, inall]
@@ -170,7 +173,9 @@ def gen_sys(self, AA0, BB0, CC0, DD0, fb0, fc0, fd0, ZZ0, ZZ1, l_max, k_max, ver
         fc0 = -np.hstack((fc0, fd0))
     else:
         fc0 = np.pad(fc0, (0, dimeps))
+
     vv0 = np.hstack((vv0, self.shocks))
+    ZZ0 = np.pad(ZZ0, ((0,0), (0,dimeps)))
 
     inq = ~fast0(CC0, 0) | ~fast0(fc0)
     inp = (~fast0(AA0, 0) | ~fast0(BB0, 0)) & ~inq
@@ -232,11 +237,11 @@ def gen_sys(self, AA0, BB0, CC0, DD0, fb0, fc0, fd0, ZZ0, ZZ1, l_max, k_max, ver
         zq = np.empty(dimq)
         zc = np.empty(1)
     else:
-        zp = ZZ0[:, inp[:-sum(inall)-dimeps]]
-        zq = ZZ0[:, inq[:-sum(inall)-dimeps]]
+        zp = ZZ0[:, inp]
+        zq = ZZ0[:, inq]
         zc = ZZ1
 
-    self.hx = np.hstack((zp, zq)), zc
+    self.hx = zp, zq, zc
     self.sys = omg, lam, self.x_bar
 
     fq0 = fc0[inq]

@@ -40,7 +40,7 @@ def t_func(self, state, shocks=None, set_k=None, return_flag=None, return_k=Fals
     omg, lam, x_bar = self.sys
     pmat, qmat, pterm, qterm, bmat, bterm = self.precalc_mat
 
-    dimq, dimp = omg.shape
+    dimp, dimq = omg.shape
     dimeps = self.neps
 
     if shocks is None:
@@ -60,11 +60,10 @@ def t_func(self, state, shocks=None, set_k=None, return_flag=None, return_k=Fals
     if return_flag is None:
         return_flag = not get_obs
 
-    pobs, q, l, k, flag = t_func_jit(pmat, pterm, qmat, qterm, bmat, bterm, x_bar,
-                                     self.hx[0][dimp:], self.hx[0][:dimp], self.hx[1], state, shocks, set_l, set_k, get_obs)
+    pobs, q, l, k, flag = t_func_jit(pmat, pterm, qmat, qterm, bmat, bterm, x_bar, *self.hx, state, shocks, set_l, set_k, get_obs)
 
     if get_obs:
-        newstate = pobs, q
+        newstate = q, pobs
     else:
         newstate = np.hstack((pobs, q))
 
@@ -84,6 +83,8 @@ def o_func(self, state):
     """
     observation function
     """
+
+    raise NotImplementedError()
 
     obs = state @ self.hx[0].T + self.hx[1]
     if np.ndim(state) <= 1:
