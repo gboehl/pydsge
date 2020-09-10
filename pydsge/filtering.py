@@ -17,10 +17,9 @@ def create_obs_cov(self, scale_obs=0.1):
     return obs_cov
 
 
-def create_filter(self, P=None, R=None, N=None, ftype=None, x_space=False, seed=None, **fargs):
+def create_filter(self, P=None, R=None, N=None, ftype=None, seed=None, **fargs):
 
     self.Z = np.array(self.data)
-    dim = self.dimq if x_space else self.nvar
 
     if ftype == 'KalmanFilter':
         ftype = 'KF'
@@ -54,7 +53,7 @@ def create_filter(self, P=None, R=None, N=None, ftype=None, x_space=False, seed=
 
         if N is None:
             N = 500
-        f = TEnKF(N=N, dim_x=dim, dim_z=self.nobs, seed=seed, **fargs)
+        f = TEnKF(N=N, dim_x=self.dimq, dim_z=self.nobs, seed=seed, **fargs)
 
     if P is not None:
         f.P = P
@@ -68,7 +67,6 @@ def create_filter(self, P=None, R=None, N=None, ftype=None, x_space=False, seed=
         f.R = R
 
     f.Q = self.QQ(self.ppar) @ self.QQ(self.ppar)
-    f.x_space = x_space
     self.filter = f
 
     return f
@@ -103,13 +101,8 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, ve
         self.filter.get_eps = get_eps_jit
 
     else:
-        if self.filter.x_space:
-            self.filter.t_func = lambda *x: self.t_func(
-                *x, x_space=self.filter.x_space)
-            self.filter.o_func = None
-        else:
-            self.filter.t_func = self.t_func
-            self.filter.o_func = self.o_func
+        self.filter.t_func = lambda *x: self.t_func(*x, get_obs=True)
+        self.filter.o_func = None
     # self.filter.get_eps = self.get_eps_lin
 
     if self.filter.name == 'KalmanFilter':

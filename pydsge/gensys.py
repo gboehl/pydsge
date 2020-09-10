@@ -12,6 +12,7 @@ from .engine import preprocess
 
 aca = np.ascontiguousarray
 
+
 def gen_sys_from_dict(mdict, l_max=None, k_max=None, verbose=True):
 
     from .tools import t_func, irfs, traj
@@ -82,8 +83,8 @@ def gen_sys_from_yaml(self, par=None, l_max=None, k_max=None, verbose=True):
     fc0 = -fbc[len(self.vv):]
 
     # observables from z
-    ZZ0 = self.ZZ0(self.ppar)
-    ZZ1 = self.ZZ1(self.ppar).squeeze()
+    ZZ0 = self.ZZ0(self.ppar).astype(float)
+    ZZ1 = self.ZZ1(self.ppar).squeeze().astype(float)
 
     return gen_sys(self, AA0, BB0, CC0, DD0, fb0, fc0, fd0, ZZ0, ZZ1, l_max, k_max, verbose)
 
@@ -145,20 +146,20 @@ def gen_sys(self, AA0, BB0, CC0, DD0, fb0, fc0, fd0, ZZ0, ZZ1, l_max, k_max, ver
     fb0 = -fb0/fb0[c_arg]
 
     # create auxiliry vars for those both in A & C
-    inall = ~fast0(AA0,0) & ~fast0(CC0,0)
-    if np.any(inall): 
+    inall = ~fast0(AA0, 0) & ~fast0(CC0, 0)
+    if np.any(inall):
         vv0 = np.hstack((vv0, [v + '_lag' for v in vv0[inall]]))
-        AA0 = np.pad(AA0, ((0,sum(inall)),(0,sum(inall))))
-        BB0 = np.pad(BB0, ((0,sum(inall)),(0,sum(inall))))
-        CC0 = np.pad(CC0, ((0,sum(inall)),(0,sum(inall))))
-        DD0 = np.pad(DD0, ((0,sum(inall)),(0,0)))
-        fb0 = np.pad(fb0, (0,sum(inall)))
-        fc0 = np.pad(fc0, (0,sum(inall)))
+        AA0 = np.pad(AA0, ((0, sum(inall)), (0, sum(inall))))
+        BB0 = np.pad(BB0, ((0, sum(inall)), (0, sum(inall))))
+        CC0 = np.pad(CC0, ((0, sum(inall)), (0, sum(inall))))
+        DD0 = np.pad(DD0, ((0, sum(inall)), (0, 0)))
+        fb0 = np.pad(fb0, (0, sum(inall)))
+        fc0 = np.pad(fc0, (0, sum(inall)))
 
-        BB0[-sum(inall):,-sum(inall):] = np.eye(sum(inall))
-        BB0[-sum(inall):,:-sum(inall)][:,inall] = -np.eye(sum(inall))
-        CC0[:,-sum(inall):] = CC0[:,:-sum(inall)][:,inall] 
-        CC0[:,:-sum(inall)][:,inall] = 0
+        BB0[-sum(inall):, -sum(inall):] = np.eye(sum(inall))
+        BB0[-sum(inall):, :-sum(inall)][:, inall] = -np.eye(sum(inall))
+        CC0[:, -sum(inall):] = CC0[:, :-sum(inall)][:, inall]
+        CC0[:, :-sum(inall)][:, inall] = 0
 
     # create representation in y-space
     AA0 = np.pad(AA0, ((0, dimeps), (0, dimeps)))
@@ -171,40 +172,39 @@ def gen_sys(self, AA0, BB0, CC0, DD0, fb0, fc0, fd0, ZZ0, ZZ1, l_max, k_max, ver
         fc0 = np.pad(fc0, (0, dimeps))
     vv0 = np.hstack((vv0, self.shocks))
 
-    inq = ~fast0(CC0,0) | ~fast0(fc0)
-    inp = (~fast0(AA0,0) | ~fast0(BB0,0)) & ~inq
+    inq = ~fast0(CC0, 0) | ~fast0(fc0)
+    inp = (~fast0(AA0, 0) | ~fast0(BB0, 0)) & ~inq
 
     # check dimensionality
     dimy = len(vv0)
     dimq = sum(inq)
     dimp = sum(inp)
 
-    AA = np.pad(AA0, ((0,1),(0,0)))
+    AA = np.pad(AA0, ((0, 1), (0, 0)))
     BBU = np.vstack((BB0, fb0))
     CCU = np.vstack((CC0, fc0))
-    BBR = np.pad(BB0, ((0,1),(0,0)))
-    CCR = np.pad(CC0, ((0,1),(0,0)))
+    BBR = np.pad(BB0, ((0, 1), (0, 0)))
+    CCR = np.pad(CC0, ((0, 1), (0, 0)))
     BBR[-1, list(vv0).index(str(self.const_var))] = -1
 
     fb0[list(vv0).index(str(self.const_var))] = 0
 
-    PU = -np.hstack((BBU[:,inq], AA[:,inp]))
-    MU = np.hstack((CCU[:,inq], BBU[:,inp]))
+    PU = -np.hstack((BBU[:, inq], AA[:, inp]))
+    MU = np.hstack((CCU[:, inq], BBU[:, inp]))
 
-    PR = -np.hstack((BBR[:,inq], AA[:,inp]))
-    MR = np.hstack((CCR[:,inq], BBR[:,inp]))
-    gg = np.pad([float(self.x_bar)], (dimy-1,0))
+    PR = -np.hstack((BBR[:, inq], AA[:, inp]))
+    MR = np.hstack((CCR[:, inq], BBR[:, inp]))
+    gg = np.pad([float(self.x_bar)], (dimy-1, 0))
 
     self.svv = vv0[inq]
     self.cvv = vv0[inp]
-    vv0 = np.hstack((self.cvv,self.svv))
+    vv0 = np.hstack((self.cvv, self.svv))
 
     SS, TT, alp, bet, Q, Z = sl.ordqz(PU, MU, sort='ouc')
 
     # check for Blanchard-Kahn
     if not dimq == sum(ouc(alp, bet)):
-        raise Exception('%s states but %s Evs' %(dimq, sum(ouc(alp, bet))))
-
+        raise Exception('%s states but %s Evs' % (dimq, sum(ouc(alp, bet))))
 
     S11 = SS[:dimq, :dimq]
     T11 = TT[:dimq, :dimq]
@@ -232,11 +232,12 @@ def gen_sys(self, AA0, BB0, CC0, DD0, fb0, fc0, fd0, ZZ0, ZZ1, l_max, k_max, ver
         zq = np.empty(dimq)
         zc = np.empty(1)
     else:
-        zp = ZZ0[:,inp[:-sum(inall)-dimeps]]
-        zq = ZZ0[:,inq[:-sum(inall)-dimeps]]
+        zp = ZZ0[:, inp[:-sum(inall)-dimeps]]
+        zq = ZZ0[:, inq[:-sum(inall)-dimeps]]
         zc = ZZ1
 
-    self.sys = omg, lam, self.x_bar, zp.astype(float), zq.astype(float), zc.astype(float)
+    self.hx = np.hstack((zp, zq)), zc
+    self.sys = omg, lam, self.x_bar
 
     fq0 = fc0[inq]
     fp1 = fb0[inp]

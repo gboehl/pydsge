@@ -13,7 +13,7 @@ from .engine import *
 from decimal import Decimal
 
 
-def t_func(self, state, shocks=None, set_k=None, return_flag=None, return_k=False, x_space=False, linear=False, verbose=False):
+def t_func(self, state, shocks=None, set_k=None, return_flag=None, return_k=False, get_obs=False, linear=False, verbose=False):
     """transition function
 
     Parameters
@@ -37,8 +37,7 @@ def t_func(self, state, shocks=None, set_k=None, return_flag=None, return_k=Fals
     if verbose:
         st = time.time()
 
-
-    omg, lam, x_bar, zp, zq, zc = self.sys
+    omg, lam, x_bar = self.sys
     pmat, qmat, pterm, qterm, bmat, bterm = self.precalc_mat
 
     dimq, dimp = omg.shape
@@ -59,14 +58,15 @@ def t_func(self, state, shocks=None, set_k=None, return_flag=None, return_k=Fals
         set_l = int(not bool(set_k))
 
     if return_flag is None:
-        return_flag = not x_space
+        return_flag = not get_obs
 
-    pobs, q, l, k, flag = t_func_jit(pmat, pterm, qmat, qterm, bmat, bterm, x_bar, zp, zq, zc, state, shocks, set_l, set_k, x_space)
+    pobs, q, l, k, flag = t_func_jit(pmat, pterm, qmat, qterm, bmat, bterm, x_bar,
+                                     self.hx[0][dimp:], self.hx[0][:dimp], self.hx[1], state, shocks, set_l, set_k, get_obs)
 
-    if x_space:
+    if get_obs:
         newstate = pobs, q
     else:
-        newstate = np.hstack((pobs,q))
+        newstate = np.hstack((pobs, q))
 
     if verbose:
         print('[t_func:]'.ljust(15, ' ') +
@@ -80,15 +80,12 @@ def t_func(self, state, shocks=None, set_k=None, return_flag=None, return_k=Fals
         return newstate
 
 
-def o_func(self, state, x_space=False):
+def o_func(self, state):
     """
     observation function
     """
 
-    if x_space:
-        return self.hy[0] @ T @ state + self.hy[1]
-
-    obs = state @ self.hy[0].T + self.hy[1]
+    obs = state @ self.hx[0].T + self.hx[1]
     if np.ndim(state) <= 1:
         data = self.data.index if hasattr(self, 'data') else None
         obs = pd.DataFrame(obs, index=data, columns=self.observables)
@@ -107,14 +104,14 @@ def calc_obs(self, states, covs=None):
     """
 
     if covs is None:
-        return states @ self.hy[0].T + self.hy[1]
+        return states @ self.hx[0].T + self.hx[1]
 
     var = np.diagonal(covs, axis1=1, axis2=2)
     std = np.sqrt(var)
     iv95 = np.stack((states - 1.96*std, states, states + 1.96*std))
 
-    obs = (self.hy[0] @ states.T).T + self.hy[1]
-    std_obs = (self.hy[0] @ std.T).T
+    obs = (self.hx[0] @ states.T).T + self.hx[1]
+    std_obs = (self.hx[0] @ std.T).T
     iv95_obs = np.stack((obs - 1.96*std_obs, obs, obs + 1.96*std_obs))
 
     return iv95_obs, iv95
@@ -122,23 +119,24 @@ def calc_obs(self, states, covs=None):
 
 def traj(self, state, l=None, k=None, verbose=True):
 
-    omg, lam, x_bar, zp, zq, zc = self.sys
+    omg, lam, x_bar = self.sys
     pmat, qmat, pterm, qterm, bmat, bterm = self.precalc_mat
-    
+
     if k is None or l is None:
         l, k, flag = find_lk(bmat, bterm, x_bar, state)
 
         if verbose:
             if flag == 0:
-                meaning = 'all good' 
+                meaning = 'all good'
             elif flag == 1:
                 meaning = 'no solution'
             elif flag == 2:
                 meaning = 'no solution, k_max reached'
 
-            print('[traj:]'.ljust(15, ' ') + 'l=%s, k=%s, flag is %s (%s).' %(l,k,flag, meaning))
+            print('[traj:]'.ljust(15, ' ') +
+                  'l=%s, k=%s, flag is %s (%s).' % (l, k, flag, meaning))
 
-    return bmat[:,l,k-1] @ state + bterm[:,l,k-1]
+    return bmat[:, l, k-1] @ state + bterm[:, l, k-1]
 
 
 def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, set_k=False, verbose=True, debug=False, **args):
@@ -246,7 +244,7 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, set_k=False
         print('[irfs:]'.ljust(15, ' ') + 'Simulation took ',
               np.round((time.time() - st), 5), ' seconds.')
 
-    return X, (L,K), flag
+    return X, (L, K), flag
 
 
 @property

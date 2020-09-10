@@ -56,7 +56,8 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
             linear = False
 
     if linear and x_space:
-        print('[estimation:]'.ljust(15, ' ') + ' `x_space` not implemented for linear filter')
+        print('[estimation:]'.ljust(15, ' ') +
+              ' `x_space` not implemented for linear filter')
         x_space = False
 
     if seed is None:
@@ -75,7 +76,8 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
 
     set_par(self, 'prior_mean', verbose=verbose > 3, l_max=l_max, k_max=k_max)
 
-    self.create_filter(N=N, ftype='KalmanFilter' if linear else None, x_space=x_space, **filterargs)
+    self.create_filter(
+        N=N, ftype='KalmanFilter' if linear else None, x_space=x_space, **filterargs)
 
     if 'filter_R' in self.fdict.keys():
         self.filter.R = self.fdict['filter_R']

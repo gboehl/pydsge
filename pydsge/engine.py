@@ -11,6 +11,37 @@ aca = np.ascontiguousarray
 
 
 @njit(cache=True, nogil=True)
+def get_lam(omg, psi, S, T, V, W, h, l):
+
+    dimp, dimq = omg.shape
+
+    A = S if l else V
+    B = T if l else W
+    c = np.zeros(dimq) if l else h[:dimq]
+
+    inv = nl.inv(np.eye(dimq) + A[:dimq, dimq:] @ omg)
+    lam = inv @ B[:dimq, :dimq]
+    xi = inv @ (c - A[:dimq, dimq:] @ psi)
+
+    return lam, xi
+
+
+@njit(cache=True, nogil=True)
+def get_omg(omg, psi, lam, xi, S, T, V, W, h, l):
+
+    dimp, dimq = omg.shape
+
+    A = S if l else V
+    B = T if l else W
+    c = np.zeros(dimp) if l else h[dimq:]
+
+    psi = A[dimq:, dimq:] @ (omg @ xi + psi) - c
+    omg = A[dimq:, dimq:] @ omg @ lam - B[dimq:, :dimq]
+
+    return omg, psi
+
+
+@njit(cache=True, nogil=True)
 def preprocess_jit(PU, MU, PR, MR, gg, fq1, fp1, fq0, omg, lam, x_bar, l_max, k_max):
     """jitted preprocessing of system matrices until (l_max, k_max)
     """
@@ -21,65 +52,39 @@ def preprocess_jit(PU, MU, PR, MR, gg, fq1, fp1, fq0, omg, lam, x_bar, l_max, k_
 
     # cast matrices of unconstraint sys in nice form
     Q, S = nl.qr(PU)
-    T = Q.T @ aca(MU)
+    T = aca(Q.T) @ aca(MU)
 
-    S11i = nl.inv(S[:dimq,:dimq])
+    S11i = nl.inv(S[:dimq, :dimq])
     T[:dimq] = S11i @ T[:dimq]
-    S[:dimq] = S11i @ S[:dimq]
+    S[:dimq] = S11i @ aca(S[:dimq])
 
-    T22i = nl.inv(T[dimq:,dimq:])
+    T22i = nl.inv(T[dimq:, dimq:])
     T[dimq:] = T22i @ T[dimq:]
-    S[dimq:] = T22i @ S[dimq:]
+    S[dimq:] = T22i @ aca(S[dimq:])
 
-    S[:dimq,dimq:] -= T[:dimq,dimq:] @ S[dimq:,dimq:]
-    T[:dimq,:dimq] -= T[:dimq,dimq:] @ T[dimq:,:dimq]
-    T[:dimq,dimq:] = 0
+    S[:dimq, dimq:] -= T[:dimq, dimq:] @ aca(S[dimq:, dimq:])
+    T[:dimq, :dimq] -= T[:dimq, dimq:] @ T[dimq:, :dimq]
+    T[:dimq, dimq:] = 0
 
     # cast matrices of constraint sys in nice form
     Q, V = nl.qr(PR)
     W = Q.T @ MR
     h = Q.T @ gg
 
-    V11i = nl.inv(V[:dimq,:dimq])
+    V11i = nl.inv(V[:dimq, :dimq])
     W[:dimq] = V11i @ W[:dimq]
     V[:dimq] = V11i @ V[:dimq]
     h[:dimq] = V11i @ h[:dimq]
 
-    W22i = nl.inv(W[dimq:,dimq:])
+    W22i = nl.inv(W[dimq:, dimq:])
     W[dimq:] = W22i @ W[dimq:]
     V[dimq:] = W22i @ V[dimq:]
     h[dimq:] = W22i @ h[dimq:]
 
-    h[:dimq] -= W[:dimq,dimq:] @ h[dimq:]
-    V[:dimq,dimq:] -= W[:dimq,dimq:] @ V[dimq:,dimq:]
-    W[:dimq,:dimq] -= W[:dimq,dimq:] @ W[dimq:,:dimq]
-    W[:dimq,dimq:] = 0
-
-
-    def get_lam(omg, psi, l):
-
-        A = S if l else V
-        B = T if l else W
-        c = np.zeros(dimq) if l else h[:dimq]
-
-        inv = nl.inv(np.eye(dimq) + A[:dimq,dimq:] @ omg)
-        lam = inv @ B[:dimq,:dimq]
-        xi = inv @ (c - A[:dimq,dimq:] @ psi)
-
-        return lam, xi
-
-
-    def get_omg(omg, psi, lam, xi, l):
-        
-        A = S if l else V
-        B = T if l else W
-        c = np.zeros(dimp) if l else h[dimq:]
-
-        psi = A[dimq:,dimq:] @ (omg @ xi + psi) - c
-        omg = A[dimq:,dimq:] @ omg @ lam - B[dimq:,:dimq]
-
-        return omg, psi
-
+    h[:dimq] -= W[:dimq, dimq:] @ h[dimq:]
+    V[:dimq, dimq:] -= W[:dimq, dimq:] @ V[dimq:, dimq:]
+    W[:dimq, :dimq] -= W[:dimq, dimq:] @ W[dimq:, :dimq]
+    W[:dimq, dimq:] = 0
 
     pmat = np.empty((l_max, k_max, dimp, dimq))
     qmat = np.empty((l_max, k_max, dimq, dimq))
@@ -89,50 +94,23 @@ def preprocess_jit(PU, MU, PR, MR, gg, fq1, fp1, fq0, omg, lam, x_bar, l_max, k_
     bmat = np.empty((l_max + k_max, l_max, k_max, dimq))
     bterm = np.empty((l_max + k_max, l_max, k_max))
 
-    pmat[0,0] = omg
-    pterm[0,0] = np.zeros(dimp)
-    qmat[0,0] = lam
-    qterm[0,0] = np.zeros(dimq)
+    pmat[0, 0] = omg
+    pterm[0, 0] = np.zeros(dimp)
+    qmat[0, 0] = lam
+    qterm[0, 0] = np.zeros(dimq)
 
-    lam = np.eye(dimq)
-    xi = np.zeros(dimq)
-
-    for s in range(l_max + k_max):
-
-        y2r = fp1 @ pmat[0,0] + fq1 @ qmat[0,0] + fq0
-        cr = fp1 @ pterm[0,0] + fq1 @ qterm[0,0]
-
-        bmat[s,0,0] = y2r @ lam
-        bterm[s,0,0] = cr + y2r @ xi
-
-        lam = qmat[0,0] @ lam
-        xi = qmat[0,0] @ xi + qterm[0,0]
-
-    for k in range(1,k_max):
-        qmat[0,k], qterm[0,k] = get_lam(pmat[0,k-1], pterm[0,k-1], 0)
-        pmat[0,k], pterm[0,k] = get_omg(pmat[0,k-1], pterm[0,k-1], qmat[0,k], qterm[0,k], 0)
-
-        # initialize local lam, xi to iterate upon
-        lam = np.eye(dimq)
-        xi = np.zeros(dimq)
-
-        for s in range(l_max + k_max):
-
-            k_loc = max(min(k, k-s), 0)
-
-            y2r = fp1 @ pmat[0,k_loc] + fq1 @ qmat[0,k_loc] + fq0
-            cr = fp1 @ pterm[0,k_loc] + fq1 @ qterm[0,k_loc]
-            bmat[s,0,k] = y2r @ lam
-            bterm[s,0,k] = cr + y2r @ xi
-
-            lam = qmat[0,k_loc] @ lam
-            xi = qmat[0,k_loc] @ xi + qterm[0,k_loc]
-
-
-    for l in range(1,l_max):
+    for l in range(0, l_max):
         for k in range(0, k_max):
-            qmat[l,k], qterm[l,k] = get_lam(pmat[l-1,k], pterm[l-1,k], l)
-            pmat[l,k], pterm[l,k] = get_omg(pmat[l-1,k], pterm[l-1,k], qmat[l,k], qterm[l,k], l)
+
+            if k or l:  # TODO: l necessary here?
+
+                k_last = k if l else max(k-1, 0)
+                l_last = max(l-1, 0)
+
+                qmat[l, k], qterm[l, k] = get_lam(
+                    pmat[l_last, k_last], pterm[l_last, k_last], S, T, V, W, h, l)
+                pmat[l, k], pterm[l, k] = get_omg(
+                    pmat[l_last, k_last], pterm[l_last, k_last], qmat[l, k], qterm[l, k], S, T, V, W, h, l)
 
             # initialize local lam, xi to iterate upon
             lam = np.eye(dimq)
@@ -143,33 +121,35 @@ def preprocess_jit(PU, MU, PR, MR, gg, fq1, fp1, fq0, omg, lam, x_bar, l_max, k_
                 l_loc = max(l-s, 0)
                 k_loc = max(min(k, k+l-s), 0)
 
-                y2r = fp1 @ pmat[l_loc,k_loc] + fq1 @ qmat[l_loc,k_loc] + fq0
-                cr = fp1 @ pterm[l_loc,k_loc] + fq1 @ qterm[l_loc,k_loc]
-                bmat[s,l,k] = y2r @ lam
-                bterm[s,l,k] = cr + y2r @ xi
+                y2r = fp1 @ pmat[l_loc, k_loc] + fq1 @ qmat[l_loc, k_loc] + fq0
+                cr = fp1 @ pterm[l_loc, k_loc] + fq1 @ qterm[l_loc, k_loc]
+                bmat[s, l, k] = y2r @ lam
+                bterm[s, l, k] = cr + y2r @ xi
 
-                lam = qmat[l_loc,k_loc] @ lam
-                xi = qmat[l_loc,k_loc] @ xi + qterm[l_loc,k_loc]
+                lam = qmat[l_loc, k_loc] @ lam
+                xi = qmat[l_loc, k_loc] @ xi + qterm[l_loc, k_loc]
 
-            ## TODO: this part must be improved
+            # TODO: this part must be improved
                 # Handeld more efficiently
                 # only add the 5 necessary steps for s: 0, l-1, l, k+l-1, k+l
 
     return pmat, qmat, pterm, qterm, bmat, bterm
 
 
-def preprocess(self, PU, MU, PR, MR, gg, fq1, fp1, fq0, verbose): 
+def preprocess(self, PU, MU, PR, MR, gg, fq1, fp1, fq0, verbose):
     """dispatcher to jitted preprocessing
     """
 
     l_max, k_max = self.lks
-    omg, lam, x_bar, zp, zq, zc = self.sys
+    omg, lam, x_bar = self.sys
 
     st = time.time()
-    self.precalc_mat = preprocess_jit(PU, MU, PR, MR, gg, fq1, fp1, fq0, omg, lam, x_bar, l_max, k_max)
+    self.precalc_mat = preprocess_jit(
+        PU, MU, PR, MR, gg, fq1, fp1, fq0, omg, lam, x_bar, l_max, k_max)
 
     if verbose:
-        print('[preprocess:]'.ljust(15, ' ')+' Preprocessing finished within %ss.' % np.round((time.time() - st), 3))
+        print('[preprocess:]'.ljust(
+            15, ' ')+' Preprocessing finished within %ss.' % np.round((time.time() - st), 3))
 
     return
 
@@ -205,9 +185,8 @@ def find_lk(bmat, bterm, x_bar, q):
                     # set error flag 'no solution + k_max reached'
                     flag = 2
                     break
-
-    if not k:
-        l = 1
+    else:
+        l = 0
 
     return l, k, flag
 
@@ -227,12 +206,12 @@ def t_func_jit(pmat, pterm, qmat, qterm, bmat, bterm, x_bar, zp, zq, zc, state, 
         l, k = set_l, set_k
         flag = 0
 
-    p = pmat[l,k] @ q + pterm[l,k]
-    q = qmat[l,k] @ q + qterm[l,k]
+    p = pmat[l, k] @ q + pterm[l, k]
+    q = qmat[l, k] @ q + qterm[l, k]
 
     # instead, I should either return p or obs
     if x_space:
-        p_or_obs = zp @ aca(p) + zq @ q + zc
+        p_or_obs = zp @ p + zq @ q + zc
     else:
         p_or_obs = p
 
