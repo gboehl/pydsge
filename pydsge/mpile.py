@@ -8,7 +8,7 @@
 import numpy as np
 import time
 from .stats import post_mean
-from .gensys import gen_sys
+from .gensys import gen_sys_from_yaml as gen_sys
 
 
 def posterior_sampler(self, nsamples, seed=0, verbose=True):

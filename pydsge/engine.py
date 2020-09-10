@@ -11,98 +11,165 @@ aca = np.ascontiguousarray
 
 
 @njit(cache=True, nogil=True)
-def preprocess_jit(A, N, J, cx, x_bar, ff0, ff1, l_max, k_max):
+def preprocess_jit(PU, MU, PR, MR, gg, fq1, fp1, fq0, omg, lam, x_bar, l_max, k_max):
     """jitted preprocessing of system matrices until (l_max, k_max)
     """
 
-    dimp, dimx = J.shape
-    dimq = dimx - dimp
-    s_max = l_max + k_max + 1
+    dimp, dimq = omg.shape
+    l_max += 1
+    k_max += 1
 
-    mat = np.empty((l_max, k_max, s_max, dimx, dimq))
-    term = np.empty((l_max, k_max, s_max, dimx))
-    bmat = np.empty((l_max, k_max, s_max, dimq))
-    bterm = np.empty((l_max, k_max, s_max))
-    core_mat = np.empty((l_max, s_max, dimx, dimx))
-    core_term = np.empty((s_max, dimx))
+    # cast matrices of unconstraint sys in nice form
+    Q, S = nl.qr(PU)
+    T = Q.T @ aca(MU)
 
-    core_mat[0, 0, :] = np.identity(dimx)
-    res = np.zeros((dimx, dimx))
+    S11i = nl.inv(S[:dimq,:dimq])
+    T[:dimq] = S11i @ T[:dimq]
+    S[:dimq] = S11i @ S[:dimq]
 
-    for s in range(s_max):
+    T22i = nl.inv(T[dimq:,dimq:])
+    T[dimq:] = T22i @ T[dimq:]
+    S[dimq:] = T22i @ S[dimq:]
 
-        if s:
-            core_mat[0, s, :] = core_mat[0, s-1, :] @ N
-            res += core_mat[0, s-1, :]
+    S[:dimq,dimq:] -= T[:dimq,dimq:] @ S[dimq:,dimq:]
+    T[:dimq,:dimq] -= T[:dimq,dimq:] @ T[dimq:,:dimq]
+    T[:dimq,dimq:] = 0
 
-        core_term[s, :] = res @ cx
+    # cast matrices of constraint sys in nice form
+    Q, V = nl.qr(PR)
+    W = Q.T @ MR
+    h = Q.T @ gg
 
-        for l in range(1, l_max):
+    V11i = nl.inv(V[:dimq,:dimq])
+    W[:dimq] = V11i @ W[:dimq]
+    V[:dimq] = V11i @ V[:dimq]
+    h[:dimq] = V11i @ h[:dimq]
 
-            core_mat[l, s, :] = core_mat[l-1, s, :] @ A
+    W22i = nl.inv(W[dimq:,dimq:])
+    W[dimq:] = W22i @ W[dimq:]
+    V[dimq:] = W22i @ V[dimq:]
+    h[dimq:] = W22i @ h[dimq:]
 
-    for l in range(l_max):
-
-        for k in range(k_max):
-
-            JN = J @ core_mat[l, k]
-            sterm = J @ core_term[k]
-
-            core = -nl.inv(JN[:, :dimp])
-
-            SS_mat = core @ aca(JN[:,dimp:])
-            SS_term = core @ sterm
-
-            for s in range(s_max):
-
-                doit = True
-                l0 = s
-                k0 = 0
-                s0 = 0
-
-                if s > l:
-                    l0 = l
-                    if s > l+k+1:
-                        continue
-                    elif s == l+k+1:
-                        k0 = k
-                        s0 = 1
-                    else:
-                        k0 = s-l
-                        s0 = 0
-
-                matrices = core_mat[l0, k0]
-                oterm = core_term[k0]
-
-                fin_mat = aca(matrices[:, :dimp]) @ SS_mat + aca(matrices[:, dimp:])
-                fin_term = aca(matrices[:, :dimp]) @ SS_term + oterm
-
-                mat[l, k, s] = core_mat[s0, 0] @ fin_mat
-                term[l, k, s] = core_mat[s0, 0] @ fin_term
-
-                if s:
-                    bmat[l, k, s-1, :] = ff0 @ aca(mat[l, k, s, dimp:]) + ff1 @ mat[l, k, s-1]
-                    bterm[l, k, s-1] = ff0 @ term[l, k, s, dimp:] + ff1 @ term[l, k, s-1]
-
-    return aca(mat[:,:,:2]), aca(term[:,:,:2]), bmat, bterm
+    h[:dimq] -= W[:dimq,dimq:] @ h[dimq:]
+    V[:dimq,dimq:] -= W[:dimq,dimq:] @ V[dimq:,dimq:]
+    W[:dimq,:dimq] -= W[:dimq,dimq:] @ W[dimq:,:dimq]
+    W[:dimq,dimq:] = 0
 
 
-def preprocess(self, verbose):
+    def get_lam(omg, psi, l):
+
+        A = S if l else V
+        B = T if l else W
+        c = np.zeros(dimq) if l else h[:dimq]
+
+        inv = nl.inv(np.eye(dimq) + A[:dimq,dimq:] @ omg)
+        lam = inv @ B[:dimq,:dimq]
+        xi = inv @ (c - A[:dimq,dimq:] @ psi)
+
+        return lam, xi
+
+
+    def get_omg(omg, psi, lam, xi, l):
+        
+        A = S if l else V
+        B = T if l else W
+        c = np.zeros(dimp) if l else h[dimq:]
+
+        psi = A[dimq:,dimq:] @ (omg @ xi + psi) - c
+        omg = A[dimq:,dimq:] @ omg @ lam - B[dimq:,:dimq]
+
+        return omg, psi
+
+
+    pmat = np.empty((l_max, k_max, dimp, dimq))
+    qmat = np.empty((l_max, k_max, dimq, dimq))
+    pterm = np.empty((l_max, k_max, dimp))
+    qterm = np.empty((l_max, k_max, dimq))
+
+    bmat = np.empty((l_max + k_max, l_max, k_max, dimq))
+    bterm = np.empty((l_max + k_max, l_max, k_max))
+
+    pmat[0,0] = omg
+    pterm[0,0] = np.zeros(dimp)
+    qmat[0,0] = lam
+    qterm[0,0] = np.zeros(dimq)
+
+    lam = np.eye(dimq)
+    xi = np.zeros(dimq)
+
+    for s in range(l_max + k_max):
+
+        y2r = fp1 @ pmat[0,0] + fq1 @ qmat[0,0] + fq0
+        cr = fp1 @ pterm[0,0] + fq1 @ qterm[0,0]
+
+        bmat[s,0,0] = y2r @ lam
+        bterm[s,0,0] = cr + y2r @ xi
+
+        lam = qmat[0,0] @ lam
+        xi = qmat[0,0] @ xi + qterm[0,0]
+
+    for k in range(1,k_max):
+        qmat[0,k], qterm[0,k] = get_lam(pmat[0,k-1], pterm[0,k-1], 0)
+        pmat[0,k], pterm[0,k] = get_omg(pmat[0,k-1], pterm[0,k-1], qmat[0,k], qterm[0,k], 0)
+
+        # initialize local lam, xi to iterate upon
+        lam = np.eye(dimq)
+        xi = np.zeros(dimq)
+
+        for s in range(l_max + k_max):
+
+            k_loc = max(min(k, k-s), 0)
+
+            y2r = fp1 @ pmat[0,k_loc] + fq1 @ qmat[0,k_loc] + fq0
+            cr = fp1 @ pterm[0,k_loc] + fq1 @ qterm[0,k_loc]
+            bmat[s,0,k] = y2r @ lam
+            bterm[s,0,k] = cr + y2r @ xi
+
+            lam = qmat[0,k_loc] @ lam
+            xi = qmat[0,k_loc] @ xi + qterm[0,k_loc]
+
+
+    for l in range(1,l_max):
+        for k in range(0, k_max):
+            qmat[l,k], qterm[l,k] = get_lam(pmat[l-1,k], pterm[l-1,k], l)
+            pmat[l,k], pterm[l,k] = get_omg(pmat[l-1,k], pterm[l-1,k], qmat[l,k], qterm[l,k], l)
+
+            # initialize local lam, xi to iterate upon
+            lam = np.eye(dimq)
+            xi = np.zeros(dimq)
+
+            for s in range(l_max + k_max):
+
+                l_loc = max(l-s, 0)
+                k_loc = max(min(k, k+l-s), 0)
+
+                y2r = fp1 @ pmat[l_loc,k_loc] + fq1 @ qmat[l_loc,k_loc] + fq0
+                cr = fp1 @ pterm[l_loc,k_loc] + fq1 @ qterm[l_loc,k_loc]
+                bmat[s,l,k] = y2r @ lam
+                bterm[s,l,k] = cr + y2r @ xi
+
+                lam = qmat[l_loc,k_loc] @ lam
+                xi = qmat[l_loc,k_loc] @ xi + qterm[l_loc,k_loc]
+
+            ## TODO: this part must be improved
+                # Handeld more efficiently
+                # only add the 5 necessary steps for s: 0, l-1, l, k+l-1, k+l
+
+    return pmat, qmat, pterm, qterm, bmat, bterm
+
+
+def preprocess(self, PU, MU, PR, MR, gg, fq1, fp1, fq0, verbose): 
     """dispatcher to jitted preprocessing
     """
 
     l_max, k_max = self.lks
-    A, N, J, cc, x_bar, ff0, ff1, S, aux = self.sys
-
-    cx = cc * x_bar
+    omg, lam, x_bar, zp, zq, zc = self.sys
 
     st = time.time()
-    self.precalc_mat = preprocess_jit(
-        A, N, J, cx, x_bar, ff0, ff1, l_max, k_max)
+    self.precalc_mat = preprocess_jit(PU, MU, PR, MR, gg, fq1, fp1, fq0, omg, lam, x_bar, l_max, k_max)
 
     if verbose:
-        print('[preprocess:]'.ljust(
-            15, ' ')+' Preprocessing finished within %ss.' % np.round((time.time() - st), 3))
+        print('[preprocess:]'.ljust(15, ' ')+' Preprocessing finished within %ss.' % np.round((time.time() - st), 3))
 
     return
 
@@ -112,7 +179,7 @@ def find_lk(bmat, bterm, x_bar, q):
     """iteration loop to find (l,k) given state q
     """
 
-    l_max, k_max, _ = bterm.shape
+    _, l_max, k_max = bterm.shape
 
     flag = 0
     l, k = 0, 0
@@ -146,16 +213,12 @@ def find_lk(bmat, bterm, x_bar, q):
 
 
 @njit(cache=True, nogil=True)
-def t_func_jit(mat, term, bmat, bterm, dimp, dimeps, x_bar, hx0, hy1, T, aux, state, shocks, set_l, set_k, x_space):
+def t_func_jit(pmat, pterm, qmat, qterm, bmat, bterm, x_bar, zp, zq, zc, state, shocks, set_l, set_k, x_space):
     """jitted transitiona function
     """
 
     q = aca(state)
-
-    if x_space:
-        q += aca(aux[:, -dimeps:]) @ aca(shocks)
-    else:
-        q = aux @ np.hstack((q, shocks))
+    q[-len(shocks):] += shocks
 
     if set_k == -1:
         # find (l,k) if requested
@@ -164,30 +227,30 @@ def t_func_jit(mat, term, bmat, bterm, dimp, dimeps, x_bar, hx0, hy1, T, aux, st
         l, k = set_l, set_k
         flag = 0
 
-    x0 = mat[l, k, 0] @ q + term[l, k, 0]  # x(-1)
-    x = mat[l, k, 1] @ q + term[l, k, 1]  # x
+    p = pmat[l,k] @ q + pterm[l,k]
+    q = qmat[l,k] @ q + qterm[l,k]
 
+    # instead, I should either return p or obs
     if x_space:
-        obs = hx0 @ np.hstack((x, x0)) + hy1
-        newstate = np.hstack((obs, x[dimp:]))
+        p_or_obs = zp @ aca(p) + zq @ q + zc
     else:
-        newstate = T @ np.hstack((x, x0))
+        p_or_obs = p
 
-    return newstate, x, x0, l, k, flag
+    return p_or_obs, q, l, k, flag
 
 
 @njit(nogil=True, cache=True)
 def check_cnst(bmat, bterm, s, l, k, q0):
     """constraint value in period s given CDR-state q0 under the assumptions (l,k)
     """
-    return bmat[l, k, s] @ q0 + bterm[l, k, s]
+    return bmat[s, l, k] @ q0 + bterm[s, l, k]
 
 
 @njit(nogil=True, cache=True)
 def bruite_wrapper(bmat, bterm, x_bar, q):
     """iterate over (l,k) until (l_max, k_max) and check if RE equilibrium
     """
-    l_max, k_max, _ = bterm.shape
+    _, l_max, k_max = bterm.shape
 
     for l in range(l_max):
         for k in range(1, k_max):
@@ -207,45 +270,3 @@ def bruite_wrapper(bmat, bterm, x_bar, q):
             return l, k
 
     return 999, 999
-
-
-def solve_p_cont(sys, evs, l, k, q):
-    """for continuous (l,k). Not in use for pydsge
-    """
-
-    A, N, JJ, cc, x_bar, ff0, ff1, S, aux = sys
-    vra, wa, vla, vrn, wn, vln = evs
-    J = JJ.astype(np.complex128)
-
-    dimx = J.shape[1]
-    dimp = J.shape[0]
-
-    mat = J @ vln*wn**k @ vrn @ vla*wa**l @ vra
-
-    ding = J @ nl.inv(np.eye(dimx) - N).astype(np.complex128)
-
-    term = ding @ (np.eye(dimx) - vln*wn**k @ vrn) @ (cc *
-                                                      x_bar).astype(np.complex128)
-
-    return -np.real(nl.inv(mat[:, :dimp]) @ (term + mat[:, dimp:] @ q.astype(np.complex128)))
-
-
-def move_q_cont(sys, evs, s, l, k, p, q):
-    """for continuous (l,k). Not in use for pydsge
-    """
-
-    A, N, J, cc, x_bar, ff0, ff1, S, aux = sys
-    vra, wa, vla, vrn, wn, vln = evs
-
-    dimx = J.shape[1]
-    dimp = J.shape[0]
-
-    pre = vla*wa**max(s-k-l, 0) @ vra
-    t1 = pre @ vln*wn**min(max(s-l, 0), k) @ vrn @ vla*wa**min(s, l) @ vra
-    ding = pre @ nl.inv(np.eye(dimx) - N).astype(np.complex128)
-
-    t2 = ding @ (np.eye(dimx) - vln*wn ** min(max(s-l, 0), k)
-                 @ vrn) @ (cc * x_bar).astype(np.complex128)
-    # t2 = pre @ nl.inv(np.eye(dimx) - N) @ (np.eye(dimx) - vln*wn** min(max(s-l,0),k) @ vrn) @ cc * x_bar
-
-    return np.real(t1[:, :dimp] @ p.astype(np.complex128) + t1[:, dimp:] @ q.astype(np.complex128) + t2)

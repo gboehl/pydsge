@@ -16,6 +16,11 @@ from .mpile import get_par, get_cov, set_par
 from .estimation import *
 
 
+# create a dummy DSGE instance
+class DSGE_DUMMY:
+    pass
+
+
 def vix(self, variables, dontfail=False):
     """Returns the indices of a list of variables
     """

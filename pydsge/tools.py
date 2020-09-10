@@ -37,31 +37,20 @@ def t_func(self, state, shocks=None, set_k=None, return_flag=None, return_k=Fals
     if verbose:
         st = time.time()
 
-    if linear:
 
-        F, E = self.lin_sys
-        newstate = F @ state
+    omg, lam, x_bar, zp, zq, zc = self.sys
+    pmat, qmat, pterm, qterm, bmat, bterm = self.precalc_mat
 
-        if shocks is not None:
-            newstate += E @ shocks
-
-        if return_k:
-            return newstate, (1, 0), 0
-        elif return_flag:
-            return newstate, 0
-        else:
-            return newstate
-
-    A, N, J, cc, x_bar, ff0, ff1, T, aux = self.sys
-    mat, term, bmat, bterm = self.precalc_mat
-
-    dimp, dimx = J.shape
+    dimq, dimp = omg.shape
     dimeps = self.neps
 
     if shocks is None:
         shocks = np.zeros(dimeps)
 
-    if set_k is None or isinstance(set_k, bool):
+    if linear:
+        set_k = 0
+        set_l = 0
+    elif set_k is None or isinstance(set_k, bool):
         set_k = -1
         set_l = -1
     elif isinstance(set_k, tuple):
@@ -72,12 +61,12 @@ def t_func(self, state, shocks=None, set_k=None, return_flag=None, return_k=Fals
     if return_flag is None:
         return_flag = not x_space
 
-    res, x, x0, l, k, flag = t_func_jit(mat, term, bmat, bterm, dimp, dimeps, x_bar, self.hx[0], self.hy[1], T[:-dimeps], aux, state, shocks, set_l, set_k, x_space)
+    pobs, q, l, k, flag = t_func_jit(pmat, pterm, qmat, qterm, bmat, bterm, x_bar, zp, zq, zc, state, shocks, set_l, set_k, x_space)
 
     if x_space:
-        newstate = res[self.nobs:], res[:self.nobs]
+        newstate = pobs, q
     else:
-        newstate = res
+        newstate = np.hstack((pobs,q))
 
     if verbose:
         print('[t_func:]'.ljust(15, ' ') +
@@ -131,6 +120,27 @@ def calc_obs(self, states, covs=None):
     return iv95_obs, iv95
 
 
+def traj(self, state, l=None, k=None, verbose=True):
+
+    omg, lam, x_bar, zp, zq, zc = self.sys
+    pmat, qmat, pterm, qterm, bmat, bterm = self.precalc_mat
+    
+    if k is None or l is None:
+        l, k, flag = find_lk(bmat, bterm, x_bar, state)
+
+        if verbose:
+            if flag == 0:
+                meaning = 'all good' 
+            elif flag == 1:
+                meaning = 'no solution'
+            elif flag == 2:
+                meaning = 'no solution, k_max reached'
+
+            print('[traj:]'.ljust(15, ' ') + 'l=%s, k=%s, flag is %s (%s).' %(l,k,flag, meaning))
+
+    return bmat[:,l,k-1] @ state + bterm[:,l,k-1]
+
+
 def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, set_k=False, verbose=True, debug=False, **args):
     """Simulate impulse responses
 
@@ -161,9 +171,10 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, set_k=False
 
     st = time.time()
     shocks = self.shocks
-    nstates = len(self.vv)
+    nstates = self.dimy
 
-    set_par = serializer(self.set_par)
+    if self.set_par is not None:
+        set_par = serializer(self.set_par)
     t_func = serializer(self.t_func)
 
     # accept all sorts of inputs
@@ -209,7 +220,7 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, set_k=False
 
             set_k_eff = max(set_k-t, 0) if set_k else set_k
 
-            st_vec, (l, k), flag = t_func(st_vec, shk_vec,
+            st_vec, (l, k), flag = t_func(st_vec[-self.dimq:], shk_vec,
                                           set_k=set_k_eff, linear=linear, return_k=True)
 
             superflag |= flag
