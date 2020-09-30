@@ -175,7 +175,8 @@ def gen_sys(self, AA0, BB0, CC0, DD0, fb0, fc0, fd0, ZZ0, ZZ1, l_max, k_max, ver
         fc0 = np.pad(fc0, (0, dimeps))
 
     vv0 = np.hstack((vv0, self.shocks))
-    ZZ0 = np.pad(ZZ0, ((0,0), (0,dimeps)))
+    if ZZ0 is not None:
+        ZZ0 = np.pad(ZZ0, ((0,0), (0,dimeps)))
 
     inq = ~fast0(CC0, 0) | ~fast0(fc0)
     inp = (~fast0(AA0, 0) | ~fast0(BB0, 0)) & ~inq
@@ -241,12 +242,13 @@ def gen_sys(self, AA0, BB0, CC0, DD0, fb0, fc0, fd0, ZZ0, ZZ1, l_max, k_max, ver
         zq = ZZ0[:, inq]
         zc = ZZ1
 
-    self.hx = zp, zq, zc
-    self.sys = omg, lam, self.x_bar
-
     fq0 = fc0[inq]
     fp1 = fb0[inp]
     fq1 = fb0[inq]
+
+    self.hx = zp, zq, zc
+    self.sys = omg, lam, self.x_bar
+    self.ff = fq1, fp1, fq0
 
     # preprocess all system matrices until (l_max, k_max)
     preprocess(self, PU, MU, PR, MR, gg, fq1, fp1, fq0, verbose)

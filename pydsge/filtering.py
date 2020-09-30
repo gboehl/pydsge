@@ -188,7 +188,7 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
         sample = [sample]
 
     fname = self.filter.name
-    verbose = max(verbose, 9*debug)
+    verbose = 9 if debug else verbose
 
     if hasattr(self, 'pool'):
         from .estimation import create_pool
@@ -198,6 +198,8 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
         raise NotImplementedError
 
     elif fname == 'KalmanFilter':
+        # TODO: additional smoothing should not be necessary
+        raise NotImplementedError
         if nsamples > 1:
             print('[extract:]'.ljust(
                 15, ' ')+' Setting `nsamples` to 1 as the linear filter is deterministic.')

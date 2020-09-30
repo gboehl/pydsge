@@ -121,7 +121,15 @@ def calc_obs(self, states, covs=None):
 def traj(self, state, l=None, k=None, verbose=True):
 
     omg, lam, x_bar = self.sys
+
     pmat, qmat, pterm, qterm, bmat, bterm = self.precalc_mat
+
+    if not hasattr(self, 'precalc_tmat'):
+
+        fq1, fp1, fq0 = self.ff
+        preprocess_tmats(self, fq1, fp1, fq0, verbose>1)
+
+    tmat, tterm = self.precalc_tmat
 
     if k is None or l is None:
         l, k, flag = find_lk(bmat, bterm, x_bar, state)
@@ -137,7 +145,7 @@ def traj(self, state, l=None, k=None, verbose=True):
             print('[traj:]'.ljust(15, ' ') +
                   'l=%s, k=%s, flag is %s (%s).' % (l, k, flag, meaning))
 
-    return bmat[:, l, k-1] @ state + bterm[:, l, k-1]
+    return tmat[:, l, k-1] @ state + tterm[:, l, k-1]
 
 
 def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, set_k=False, verbose=True, debug=False, **args):

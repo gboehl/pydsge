@@ -92,7 +92,8 @@ def preprocess_jit(PU, MU, PR, MR, gg, fq1, fp1, fq0, omg, lam, x_bar, l_max, k_
     qterm = np.empty((l_max, k_max, dimq))
 
     bmat = np.empty((l_max + k_max, l_max, k_max, dimq))
-    bterm = np.empty((l_max + k_max, l_max, k_max))
+    # bterm = np.empty((l_max + k_max, l_max, k_max))
+    bterm = np.ones((l_max + k_max, l_max, k_max)) * 9.89
 
     pmat[0, 0] = omg
     pterm[0, 0] = np.zeros(dimp)
@@ -116,6 +117,56 @@ def preprocess_jit(PU, MU, PR, MR, gg, fq1, fp1, fq0, omg, lam, x_bar, l_max, k_
             lam = np.eye(dimq)
             xi = np.zeros(dimq)
 
+            for s in range(l+k+1):
+
+                l_loc = max(l-s, 0)
+                k_loc = max(min(k, k+l-s), 0)
+
+                y2r = fp1 @ pmat[l_loc, k_loc] + fq1 @ qmat[l_loc, k_loc] + fq0
+                cr = fp1 @ pterm[l_loc, k_loc] + fq1 @ qterm[l_loc, k_loc]
+
+                if s == 0:
+                    bmat[0, l, k] = y2r @ lam
+                    bterm[0, l, k] = cr + y2r @ xi
+                elif s == l-1:
+                    bmat[1, l, k] = y2r @ lam
+                    bterm[1, l, k] = cr + y2r @ xi
+
+                if s == l:
+                    bmat[2, l, k] = y2r @ lam
+                    bterm[2, l, k] = cr + y2r @ xi
+                elif s == l+k-1:
+                    bmat[3, l, k] = y2r @ lam
+                    bterm[3, l, k] = cr + y2r @ xi
+                elif s == l+k:
+                    bmat[4, l, k] = y2r @ lam
+                    bterm[4, l, k] = cr + y2r @ xi
+
+                lam = qmat[l_loc, k_loc] @ lam
+                xi = qmat[l_loc, k_loc] @ xi + qterm[l_loc, k_loc]
+
+    return pmat, qmat, pterm, qterm, bmat, bterm
+
+
+@njit(cache=True, nogil=True)
+def preprocess_tmats_jit(pmat, pterm, qmat, qterm, fq1, fp1, fq0, omg, l_max, k_max):
+    """jitted preprocessing of system matrices until (l_max, k_max)
+    """
+
+    dimp, dimq = omg.shape
+    l_max += 1
+    k_max += 1
+
+    tmat = np.empty((l_max + k_max, l_max, k_max, dimq))
+    tterm = np.empty((l_max + k_max, l_max, k_max))
+
+    for l in range(0, l_max):
+        for k in range(0, k_max):
+
+            # initialize local lam, xi to iterate upon
+            lam = np.eye(dimq)
+            xi = np.zeros(dimq)
+
             for s in range(l_max + k_max):
 
                 l_loc = max(l-s, 0)
@@ -123,17 +174,13 @@ def preprocess_jit(PU, MU, PR, MR, gg, fq1, fp1, fq0, omg, lam, x_bar, l_max, k_
 
                 y2r = fp1 @ pmat[l_loc, k_loc] + fq1 @ qmat[l_loc, k_loc] + fq0
                 cr = fp1 @ pterm[l_loc, k_loc] + fq1 @ qterm[l_loc, k_loc]
-                bmat[s, l, k] = y2r @ lam
-                bterm[s, l, k] = cr + y2r @ xi
+                tmat[s, l, k] = y2r @ lam
+                tterm[s, l, k] = cr + y2r @ xi
 
                 lam = qmat[l_loc, k_loc] @ lam
                 xi = qmat[l_loc, k_loc] @ xi + qterm[l_loc, k_loc]
 
-            # TODO: this part must be improved
-                # Handeld more efficiently
-                # only add the 5 necessary steps for s: 0, l-1, l, k+l-1, k+l
-
-    return pmat, qmat, pterm, qterm, bmat, bterm
+    return tmat, tterm
 
 
 def preprocess(self, PU, MU, PR, MR, gg, fq1, fp1, fq0, verbose):
@@ -154,41 +201,22 @@ def preprocess(self, PU, MU, PR, MR, gg, fq1, fp1, fq0, verbose):
     return
 
 
-@njit(nogil=True, cache=True)
-def find_lk(bmat, bterm, x_bar, q):
-    """iteration loop to find (l,k) given state q
+def preprocess_tmats(self, fq1, fp1, fq0, verbose):
+    """dispatcher to jitted preprocessing
     """
 
-    _, l_max, k_max = bterm.shape
+    l_max, k_max = self.lks
+    omg, lam, x_bar = self.sys
 
-    flag = 0
-    l, k = 0, 0
+    st = time.time()
+    pmat, qmat, pterm, qterm, bmat, bterm = self.precalc_mat
+    self.precalc_tmat = preprocess_tmats_jit(pmat, pterm, qmat, qterm, fq1, fp1, fq0, omg, l_max, k_max)
 
-    # check if (0,0) is a solution
-    while check_cnst(bmat, bterm, l, l, 0, q) - x_bar > 0:
-        l += 1
-        if l == l_max:
-            break
+    if verbose:
+        print('[preprocess_tmats:]'.ljust(
+            15, ' ')+' Preprocessing finished within %ss.' % np.round((time.time() - st), 3))
 
-    # check if (0,0) is a solution
-    if l < l_max:
-        # needs to be wrapped so that both loops can be exited at once
-        l, k = bruite_wrapper(bmat, bterm, x_bar, q)
-
-        # if still no solution, use approximation
-        if l == 999:
-            flag = 1
-            l, k = 0, 0
-            while check_cnst(bmat, bterm, k, 0, k, q) - x_bar > 0:
-                k += 1
-                if k >= k_max:
-                    # set error flag 'no solution + k_max reached'
-                    flag = 2
-                    break
-    else:
-        l = 0
-
-    return l, k, flag
+    return
 
 
 @njit(cache=True, nogil=True)
@@ -219,10 +247,40 @@ def t_func_jit(pmat, pterm, qmat, qterm, bmat, bterm, x_bar, hxp, hxq, hxc, stat
 
 
 @njit(nogil=True, cache=True)
-def check_cnst(bmat, bterm, s, l, k, q0):
-    """constraint value in period s given CDR-state q0 under the assumptions (l,k)
+def find_lk(bmat, bterm, x_bar, q):
+    """iteration loop to find (l,k) given state q
     """
-    return bmat[s, l, k] @ q0 + bterm[s, l, k]
+
+    _, l_max, k_max = bterm.shape
+
+    flag = 0
+    l, k = 0, 0
+
+    # check if (0,0) is a solution
+    while check_cnst(bmat, bterm, 2, l, 0, q) - x_bar > 0:
+        l += 1
+        if l == l_max:
+            break
+
+    # check if (0,0) is a solution
+    if l < l_max:
+        # needs to be wrapped so that both loops can be exited at once
+        l, k = bruite_wrapper(bmat, bterm, x_bar, q)
+
+        # if still no solution, use approximation
+        if l == 999:
+            flag = 1
+            l, k = 0, 0
+            while check_cnst(bmat, bterm, 4, 0, k, q) - x_bar > 0:
+                k += 1
+                if k >= k_max:
+                    # set error flag 'no solution + k_max reached'
+                    flag = 2
+                    break
+    else:
+        l = 0
+
+    return l, k, flag
 
 
 @njit(nogil=True, cache=True)
@@ -239,13 +297,21 @@ def bruite_wrapper(bmat, bterm, x_bar, q):
                 if l > 1:
                     if check_cnst(bmat, bterm, l-1, l, k, q) - x_bar < 0:
                         continue
-            if check_cnst(bmat, bterm, k+l, l, k, q) - x_bar < 0:
+            if check_cnst(bmat, bterm, 4, l, k, q) - x_bar < 0:
                 continue
-            if check_cnst(bmat, bterm, l, l, k, q) - x_bar > 0:
+            if check_cnst(bmat, bterm, 2, l, k, q) - x_bar > 0:
                 continue
             if k > 1:
-                if check_cnst(bmat, bterm, k+l-1, l, k, q) - x_bar > 0:
+                if check_cnst(bmat, bterm, 3, l, k, q) - x_bar > 0:
                     continue
             return l, k
 
     return 999, 999
+
+
+@njit(nogil=True, cache=True)
+def check_cnst(bmat, bterm, s, l, k, q0):
+    """constraint value in period s given CDR-state q0 under the assumptions (l,k)
+    """
+    return bmat[s, l, k] @ q0 + bterm[s, l, k]
+
