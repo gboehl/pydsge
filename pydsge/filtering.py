@@ -31,7 +31,7 @@ def create_filter(self, P=None, R=None, N=None, ftype=None, seed=None, **fargs):
 
         from econsieve import KalmanFilter
 
-        f = KalmanFilter(dim_x=self.nvar+self.neps, dim_z=self.nobs)
+        f = KalmanFilter(dim_x=self.nvar, dim_z=self.nobs)
 
     elif ftype in ('PF', 'APF'):
 
@@ -85,12 +85,19 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, ve
 
     # assign latest transition & observation functions (of parameters)
     if self.filter.name == 'KalmanFilter':
-        F, E = self.lin_sys
-        EE = np.vstack((E, np.eye(self.neps)))
+        # F, E = self.lin_sys
+
+        pmat = self.precalc_mat[0]
+        qmat = self.precalc_mat[1]
+        F = np.vstack((pmat[1,0][:,:-self.neps], qmat[1, 0][:-self.neps,:-self.neps]))
+        F = np.pad(F, ((0,0), (0,self.dimp)))
+        E = np.vstack((pmat[1,0][:,-self.neps:], qmat[1, 0][:-self.neps,-self.neps:], np.eye(self.neps)))
+
+        # EE = np.vstack((E, np.eye(self.neps)))
+        EE = E
 
         self.filter.F = np.pad(F, ((0, self.neps), (0, self.neps)))
-        self.filter.H = np.pad(
-            self.hy[0], ((0, 0), (0, self.neps))), self.hy[1]
+        self.filter.H = np.hstack((self.hx[0], self.hx[1])), self.hx[2]
         self.filter.Q = EE @ self.filter.Q @ EE.T
 
     elif dispatch or self.filter.name == 'ParticleFilter':

@@ -52,7 +52,6 @@ def oix(self, observables):
 def get_eps_lin(self, x, xp, rcond=1e-14):
     """Get filter-implied (smoothed) shocks for linear model
     """
-
     return np.linalg.pinv(self.SIG, rcond) @ (x - self.lin_t_func@xp)
 
 

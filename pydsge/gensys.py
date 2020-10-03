@@ -210,15 +210,13 @@ def gen_sys(self, AA0, BB0, CC0, DD0, fb0, fc0, fd0, ZZ0, ZZ1, l_max, k_max, ver
 
     # check for Blanchard-Kahn
     if not dimq == sum(ouc(alp, bet)):
-        raise Exception('%s states but %s Evs' % (dimq, sum(ouc(alp, bet))))
+        raise Exception('%s states but %s Evs inside the unit circle.' % (dimq, sum(ouc(alp, bet))))
 
     S11 = SS[:dimq, :dimq]
     T11 = TT[:dimq, :dimq]
 
     Z11 = Z[:dimq, :dimq]
     Z21 = Z[dimq:, :dimq]
-    Z12 = Z[:dimq, dimq:]
-    Z22 = Z[dimq:, dimq:]
 
     omg = Z21 @ sl.inv(Z11)
     lam = Z11 @ sl.inv(S11) @ T11 @ sl.inv(Z11)
@@ -229,6 +227,7 @@ def gen_sys(self, AA0, BB0, CC0, DD0, fb0, fc0, fd0, ZZ0, ZZ1, l_max, k_max, ver
     self.vv = vv0
     self.nvar = len(self.vv)
     self.dimq = dimq
+    self.dimp = dimp
     self.dimy = dimy
     self.dimz = dimz
 
