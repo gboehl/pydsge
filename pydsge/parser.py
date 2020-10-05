@@ -180,8 +180,12 @@ class DSGE(dict):
             CC = zeros(no_var-1, no_var)
             PSI = zeros(no_var-1, evar)
 
-            bb_var = filter(lambda x: x.date <= 0,
-                            self['const_eq'].atoms(Variable))
+            bb_var = filter(lambda x: x.date <= 0, self['const_eq'].atoms(Variable))
+            bb_fwd = [x for x in self['const_eq'].atoms(Variable) if x.date > 0]
+
+            if bb_fwd:
+                raise NotImplementedError("Forward looking variables in the constraint equation are not (yet) implemented: ", *bb_fwd)
+
             full_var = sub_var + lvarl
 
             for v in bb_var:

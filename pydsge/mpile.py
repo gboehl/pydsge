@@ -361,3 +361,30 @@ def set_par(self, dummy=None, setpar=None, npar=None, verbose=False, roundto=5, 
         print('[set_par:]'.ljust(15, ' ') +
               ' Parameter(s):\n%s\n%s' % (pdict, pfdict))
     return get_par(self)
+
+
+def box_check(self, par=None):
+    """Check if parameterset lies outside the box constraints
+
+    Parameters
+    ----------
+    par : array or list, optional
+        The parameter set to check
+    """
+
+    if par is None:
+        par = self.par
+
+    for i, name in enumerate(self.fdict['prior_names']):
+
+        lb, ub = self.fdict['prior_bounds']
+
+        if par[i] < lb[i]:
+            print('[box_check:]'.ljust(
+                15, ' ') + ' Parameter %s of %s lower than lb of %s.' % (name, par[i].round(5), lb[i]))
+
+        if par[i] > ub[i]:
+            print('[box_check:]'.ljust(
+                15, ' ') + ' Parameter %s of %s higher than ub of %s.' % (name, par[i].round(5), ub[i]))
+
+    return

@@ -137,7 +137,7 @@ def gen_sys(self, AA0, BB0, CC0, DD0, fb0, fc0, fd0, ZZ0, ZZ1, l_max, k_max, ver
     vv0 = self.vv
 
     # z-space is the space of the original variables
-    dimz = len(vv0)
+    dimx = len(vv0)
     dimeps = len(self.shocks)
 
     # y-space is the space of the original variables augmented by the shocks
@@ -174,15 +174,14 @@ def gen_sys(self, AA0, BB0, CC0, DD0, fb0, fc0, fd0, ZZ0, ZZ1, l_max, k_max, ver
     else:
         fc0 = np.pad(fc0, (0, dimeps))
 
-    vv0 = np.hstack((vv0, self.shocks))
-    if ZZ0 is not None:
-        ZZ0 = np.pad(ZZ0, ((0,0), (0,dimeps)))
+    # vv0 = np.hstack((vv0, self.shocks))
+    # if ZZ0 is not None:
+        # ZZ0 = np.pad(ZZ0, ((0,0), (0,dimeps)))
 
     inq = ~fast0(CC0, 0) | ~fast0(fc0)
     inp = (~fast0(AA0, 0) | ~fast0(BB0, 0)) & ~inq
 
     # check dimensionality
-    dimy = len(vv0)
     dimq = sum(inq)
     dimp = sum(inp)
 
@@ -200,10 +199,10 @@ def gen_sys(self, AA0, BB0, CC0, DD0, fb0, fc0, fd0, ZZ0, ZZ1, l_max, k_max, ver
 
     PR = -np.hstack((BBR[:, inq], AA[:, inp]))
     MR = np.hstack((CCR[:, inq], BBR[:, inp]))
-    gg = np.pad([float(self.x_bar)], (dimy-1, 0))
+    gg = np.pad([float(self.x_bar)], (dimp+dimq-1, 0))
 
-    self.svv = vv0[inq]
-    self.cvv = vv0[inp]
+    self.svv = vv0[inq[:-dimeps]]
+    self.cvv = vv0[inp[:-dimeps]]
     vv0 = np.hstack((self.cvv, self.svv))
 
     SS, TT, alp, bet, Q, Z = sl.ordqz(PU, MU, sort='ouc')
@@ -223,13 +222,6 @@ def gen_sys(self, AA0, BB0, CC0, DD0, fb0, fc0, fd0, ZZ0, ZZ1, l_max, k_max, ver
 
     # finally add relevant stuff to the class
     dimeps = len(self.shocks)
-    # self.vv = vv0[:-dimeps]
-    self.vv = vv0
-    self.nvar = len(self.vv)
-    self.dimq = dimq
-    self.dimp = dimp
-    self.dimy = dimy
-    self.dimz = dimz
 
     if ZZ0 is None:
         # must create dummies
@@ -237,13 +229,20 @@ def gen_sys(self, AA0, BB0, CC0, DD0, fb0, fc0, fd0, ZZ0, ZZ1, l_max, k_max, ver
         zq = np.empty(dimq)
         zc = np.empty(1)
     else:
-        zp = ZZ0[:, inp]
-        zq = ZZ0[:, inq]
+        zp = ZZ0[:, inp[:-dimeps]]
+        zq = ZZ0[:, inq[:-dimeps]]
         zc = ZZ1
 
     fq0 = fc0[inq]
     fp1 = fb0[inp]
     fq1 = fb0[inq]
+
+    self.vv = vv0
+    self.dimx = len(vv0)
+    self.dimq = dimq
+    self.dimp = dimp
+    self.dimy = dimp+dimq
+    self.dimeps = dimeps
 
     self.hx = zp, zq, zc
     self.sys = omg, lam, self.x_bar

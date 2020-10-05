@@ -58,9 +58,9 @@ def t_func(self, state, shocks=None, set_k=None, return_flag=None, return_k=Fals
         set_l = int(not bool(set_k))
 
     if return_flag is None:
-        return_flag = not get_obs
+        return_flag = True
 
-    pobs, q, l, k, flag = t_func_jit(pmat, pterm, qmat, qterm, bmat, bterm, x_bar, *self.hx, state, shocks, set_l, set_k, get_obs)
+    pobs, q, l, k, flag = t_func_jit(pmat, pterm, qmat[:,:,:-self.dimeps], qterm[...,:-self.dimeps], bmat, bterm, x_bar, *self.hx, state, shocks, set_l, set_k, get_obs)
 
     if get_obs:
         newstate = q, pobs
@@ -178,7 +178,7 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, set_k=False
 
     st = time.time()
     shocks = self.shocks
-    nstates = self.dimy
+    nstates = self.dimx
 
     if self.set_par is not None:
         set_par = serializer(self.set_par)
@@ -227,7 +227,7 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, set_k=False
 
             set_k_eff = max(set_k-t, 0) if set_k else set_k
 
-            st_vec, (l, k), flag = t_func(st_vec[-self.dimq:], shk_vec,
+            st_vec, (l, k), flag = t_func(st_vec[-(self.dimq-self.dimeps):], shk_vec,
                                           set_k=set_k_eff, linear=linear, return_k=True)
 
             superflag |= flag
@@ -316,28 +316,24 @@ def simulate(self, source=None, mask=None, pars=None, resid=None, init=None, ope
         set_par(par, **args)
 
         X = [state]
-        Y = [obs(state)]
         K = []
         L = []
 
         for eps_t in eps:
 
-            state, (l, k), flag = t_func(
-                state, eps_t, return_k=True, linear=linear)
+            state, (l, k), flag = t_func(state[-(self.dimq-self.dimeps):], eps_t, return_k=True, linear=linear)
 
             superflag |= flag
 
             X.append(state)
-            Y.append(obs(state))
             L.append(l)
             K.append(k)
 
         X = np.array(X)
-        Y = np.array(Y)
         LK = np.array((L, K))
         K = np.array(K)
 
-        return X, Y, LK, superflag
+        return X, LK, superflag
 
     wrap = tqdm.tqdm if verbose else (lambda x, **kwarg: x)
 
@@ -360,6 +356,6 @@ def simulate(self, source=None, mask=None, pars=None, resid=None, init=None, ope
         print('[simulate:]'.ljust(
             15, ' ')+'No rational expectations solution found.')
 
-    X, Y, LK, flags = res
+    X, LK, flags = res
 
-    return X, Y, (LK[..., 0, :], LK[..., 1, :]), flags
+    return X, (LK[..., 0, :], LK[..., 1, :]), flags

@@ -11,14 +11,10 @@ from .mcmc import mcmc, tmcmc
 from .modesearch import cmaes
 from .filtering import *
 from .tools import *
+from .mpile import *
 from .gensys import gen_sys_from_yaml
-from .mpile import get_par, get_cov, set_par
 from .estimation import *
 
-
-# create a dummy DSGE instance
-class DSGE_DUMMY:
-    pass
 
 
 def vix(self, variables, dontfail=False):
@@ -52,7 +48,12 @@ def oix(self, observables):
 def get_eps_lin(self, x, xp, rcond=1e-14):
     """Get filter-implied (smoothed) shocks for linear model
     """
-    return np.linalg.pinv(self.SIG, rcond) @ (x - self.lin_t_func@xp)
+
+    qmat = self.precalc_mat[1]
+    F = qmat[1, 0][:,:-self.neps]
+    E = qmat[1, 0][:,-self.neps:]
+
+    return np.linalg.pinv(E, rcond) @ (x - F@xp)
 
 
 @property
@@ -441,7 +442,6 @@ DSGE.mdd = mdd
 DSGE.get_data = load_data
 DSGE.load_data = load_data
 DSGE.obs = calc_obs
-DSGE.box_check = box_check
 DSGE.rjfunc = rjfunc
 DSGE.bjfunc = bjfunc
 DSGE.get_sample = get_sample
@@ -453,10 +453,10 @@ DSGE.get_par = get_par
 DSGE.gp = get_par
 DSGE.get_cov = get_cov
 DSGE.set_par = set_par
+DSGE.box_check = box_check
 # from tools
 DSGE.t_func = t_func
 DSGE.o_func = o_func
-# DSGE.lin_sys = lin_sys
 DSGE.get_eps_lin = get_eps_lin
 DSGE.irfs = irfs
 DSGE.simulate = simulate

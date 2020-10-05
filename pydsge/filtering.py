@@ -31,7 +31,7 @@ def create_filter(self, P=None, R=None, N=None, ftype=None, seed=None, **fargs):
 
         from econsieve import KalmanFilter
 
-        f = KalmanFilter(dim_x=self.nvar, dim_z=self.nobs)
+        f = KalmanFilter(dim_x=self.dimx, dim_z=self.nobs)
 
     elif ftype in ('PF', 'APF'):
 
@@ -43,7 +43,7 @@ def create_filter(self, P=None, R=None, N=None, ftype=None, seed=None, **fargs):
             N = 10000
 
         aux_bs = ftype == 'APF'
-        f = ParticleFilter(N=N, dim_x=self.nvar,
+        f = ParticleFilter(N=N, dim_x=self.dimx,
                            dim_z=self.nobs, auxiliary_bootstrap=aux_bs)
 
     else:
@@ -53,7 +53,7 @@ def create_filter(self, P=None, R=None, N=None, ftype=None, seed=None, **fargs):
 
         if N is None:
             N = 500
-        f = TEnKF(N=N, dim_x=self.dimq, dim_z=self.nobs, seed=seed, **fargs)
+        f = TEnKF(N=N, dim_x=self.dimq-self.dimeps, dim_z=self.nobs, seed=seed, **fargs)
 
     if P is not None:
         f.P = P
@@ -83,22 +83,20 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, ve
 
     self.Z = np.array(self.data)
 
-    # assign latest transition & observation functions (of parameters)
+    # assign current transition & observation functions (of parameters)
     if self.filter.name == 'KalmanFilter':
-        # F, E = self.lin_sys
 
         pmat = self.precalc_mat[0]
         qmat = self.precalc_mat[1]
-        F = np.vstack((pmat[1,0][:,:-self.neps], qmat[1, 0][:-self.neps,:-self.neps]))
-        F = np.pad(F, ((0,0), (0,self.dimp)))
-        E = np.vstack((pmat[1,0][:,-self.neps:], qmat[1, 0][:-self.neps,-self.neps:], np.eye(self.neps)))
 
-        # EE = np.vstack((E, np.eye(self.neps)))
-        EE = E
+        F = np.vstack((pmat[1,0][:,:-self.neps], qmat[1, 0][:,:-self.neps]))
+        F = np.pad(F, ((0,0), (self.dimp,0)))
 
-        self.filter.F = np.pad(F, ((0, self.neps), (0, self.neps)))
-        self.filter.H = np.hstack((self.hx[0], self.hx[1])), self.hx[2]
-        self.filter.Q = EE @ self.filter.Q @ EE.T
+        E = np.vstack((pmat[1,0][:,-self.neps:], qmat[1, 0][:,-self.neps:]))
+
+        self.filter.F = F
+        self.filter.H = np.hstack((self.hx[0], self.hx[1][:,:-self.neps])), self.hx[2]
+        self.filter.Q = E @ self.filter.Q @ E.T
 
     elif dispatch or self.filter.name == 'ParticleFilter':
         from .engine import func_dispatch
@@ -110,7 +108,7 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, ve
     else:
         self.filter.t_func = lambda *x: self.t_func(*x, get_obs=True)
         self.filter.o_func = None
-    # self.filter.get_eps = self.get_eps_lin
+    self.filter.get_eps = self.get_eps_lin
 
     if self.filter.name == 'KalmanFilter':
 
@@ -123,9 +121,8 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, ve
         if get_ll:
             res = ll
         else:
-            eps = means[:, -self.neps:]
-            means = means[:, :-self.neps]
-            res = (means, covs, eps)
+            means = means
+            res = (means, covs)
 
     elif self.filter.name == 'ParticleFilter':
 
@@ -217,7 +214,7 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
     else:
         npas = serializer(self.filter.npas)
 
-    if self.filter.dim_x != self.nvar:
+    if self.filter.dim_x != self.dimq - self.dimeps:
         raise RuntimeError(
             'Shape mismatch between dimensionality of filter and model.')
 
@@ -228,7 +225,7 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
     run_filter = serializer(self.run_filter)
     t_func = serializer(self.t_func)
     obs = serializer(self.obs)
-    # filter_get_eps = serializer(self.get_eps_lin)
+    filter_get_eps = serializer(self.get_eps_lin)
     edim = len(self.shocks)
 
     sample = [(x, y) for x in sample for y in range(nsamples)]
@@ -255,7 +252,7 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
 
             return res, obs(res), covs, resid, 0
 
-        # get_eps = filter_get_eps if precalc else None
+        get_eps = filter_get_eps if precalc else None
 
         for natt in range(nattemps):
             np.random.seed(seed_loc)
@@ -264,7 +261,7 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
                 means, covs, resid, flags = npas(
                     get_eps=None, verbose=max(len(sample) == 1, verbose-1), seed=seed_loc, nsamples=1, **npasargs)
 
-                return means[0], obs(means[0]), covs, resid[0], flags
+                return means[0], covs, resid[0], flags
             except Exception as e:
                 ee = e
 
@@ -276,7 +273,7 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
                          1) else (lambda x, **kwarg: x)
     res = wrap(self.mapper(runner, sample), unit=' sample(s)',
                total=len(sample), dynamic_ncols=True)
-    means, obs, covs, resid, flags = map2arr(res)
+    means, covs, resid, flags = map2arr(res)
 
     if hasattr(self, 'pool') and self.pool:
         self.pool.close()
@@ -285,15 +282,13 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
         self.debug = debug
 
     if means.shape[0] == 1:
-        means = pd.DataFrame(means[0], index=self.data.index, columns=self.vv)
-        resid = pd.DataFrame(
-            resid[0], index=self.data.index[:-1], columns=self.shocks)
+        means = pd.DataFrame(means[0], index=self.data.index, columns=self.svv)
+        resid = pd.DataFrame(resid[0], index=self.data.index[:-1], columns=self.shocks)
 
     pars = np.array([s[0] for s in sample])
 
     edict = {'pars': pars.squeeze(),
              'means': means,
-             'obs': obs,
              'covs': covs,
              'resid': resid,
              'flags': flags}

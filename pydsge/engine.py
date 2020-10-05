@@ -92,8 +92,7 @@ def preprocess_jit(PU, MU, PR, MR, gg, fq1, fp1, fq0, omg, lam, x_bar, l_max, k_
     qterm = np.empty((l_max, k_max, dimq))
 
     bmat = np.empty((l_max + k_max, l_max, k_max, dimq))
-    # bterm = np.empty((l_max + k_max, l_max, k_max))
-    bterm = np.ones((l_max + k_max, l_max, k_max)) * 9.89
+    bterm = np.empty((l_max + k_max, l_max, k_max))
 
     pmat[0, 0] = omg
     pterm[0, 0] = np.zeros(dimp)
@@ -224,8 +223,7 @@ def t_func_jit(pmat, pterm, qmat, qterm, bmat, bterm, x_bar, hxp, hxq, hxc, stat
     """jitted transitiona function
     """
 
-    q = aca(state)
-    q[-len(shocks):] += shocks
+    q = np.hstack((state, shocks))
 
     if set_k == -1:
         # find (l,k) if requested
@@ -237,7 +235,7 @@ def t_func_jit(pmat, pterm, qmat, qterm, bmat, bterm, x_bar, hxp, hxq, hxc, stat
     p = pmat[l, k] @ q + pterm[l, k]
     q = qmat[l, k] @ q + qterm[l, k]
 
-    # instead, I should either return p or obs
+    # either return p or obs
     if x_space:
         p_or_obs = hxp @ p + hxq @ q + hxc
     else:
