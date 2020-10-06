@@ -17,7 +17,7 @@ def create_obs_cov(self, scale_obs=0.1):
     return obs_cov
 
 
-def create_filter(self, P=None, R=None, N=None, ftype=None, seed=None, **fargs):
+def create_filter(self, P=None, R=None, N=None, ftype=None, seed=None, incl_obs=False, **fargs):
 
     self.Z = np.array(self.data)
 
@@ -53,7 +53,8 @@ def create_filter(self, P=None, R=None, N=None, ftype=None, seed=None, **fargs):
 
         if N is None:
             N = 500
-        f = TEnKF(N=N, dim_x=self.dimq-self.dimeps, dim_z=self.nobs, seed=seed, **fargs)
+        f = TEnKF(N=N, dim_x=self.dimq-self.dimeps+incl_obs*self.nobs, dim_z=self.nobs, seed=seed, **fargs)
+        f.incl_obs = incl_obs
 
     if P is not None:
         f.P = P
@@ -89,13 +90,13 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, ve
         pmat = self.precalc_mat[0]
         qmat = self.precalc_mat[1]
 
-        F = np.vstack((pmat[1,0][:,:-self.neps], qmat[1, 0][:,:-self.neps]))
+        F = np.vstack((pmat[1,0][:,:-self.neps], qmat[1, 0][:-self.neps,:-self.neps]))
         F = np.pad(F, ((0,0), (self.dimp,0)))
 
-        E = np.vstack((pmat[1,0][:,-self.neps:], qmat[1, 0][:,-self.neps:]))
+        E = np.vstack((pmat[1,0][:,-self.neps:], qmat[1, 0][:-self.neps,-self.neps:]))
 
         self.filter.F = F
-        self.filter.H = np.hstack((self.hx[0], self.hx[1][:,:-self.neps])), self.hx[2]
+        self.filter.H = np.hstack((self.hx[0], self.hx[1])), self.hx[2]
         self.filter.Q = E @ self.filter.Q @ E.T
 
     elif dispatch or self.filter.name == 'ParticleFilter':
@@ -106,7 +107,7 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, ve
         self.filter.get_eps = get_eps_jit
 
     else:
-        self.filter.t_func = lambda *x: self.t_func(*x, get_obs=True)
+        self.filter.t_func = lambda *x: self.t_func(*x, get_obs=True, incl_obs=self.filter.incl_obs)
         self.filter.o_func = None
     self.filter.get_eps = self.get_eps_lin
 
@@ -202,8 +203,6 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
         raise NotImplementedError
 
     elif fname == 'KalmanFilter':
-        # TODO: additional smoothing should not be necessary
-        raise NotImplementedError
         if nsamples > 1:
             print('[extract:]'.ljust(
                 15, ' ')+' Setting `nsamples` to 1 as the linear filter is deterministic.')
@@ -214,12 +213,7 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
     else:
         npas = serializer(self.filter.npas)
 
-    if self.filter.dim_x != self.dimq - self.dimeps:
-        raise RuntimeError(
-            'Shape mismatch between dimensionality of filter and model.')
-
-    else:
-        self.debug |= debug
+    self.debug |= debug
 
     set_par = serializer(self.set_par)
     run_filter = serializer(self.run_filter)
@@ -240,8 +234,6 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
         res = run_filter(verbose=verbose > 2)
 
         if fname == 'KalmanFilter':
-            raise NotImplementedError(
-                'extraction for linear KF is rewritten via KF smoother. To be re-implemented.')
             means, covs = res
             res = means.copy()
             resid = np.empty((means.shape[0]-1, edim))
@@ -250,7 +242,7 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
                 resid[t] = filter_get_eps(x, res[t])
                 res[t+1] = t_func(res[t], resid[t], linear=True)[0]
 
-            return res, obs(res), covs, resid, 0
+            return res, covs, resid, 0
 
         get_eps = filter_get_eps if precalc else None
 
@@ -281,8 +273,12 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
     if fname == 'KalmanFilter':
         self.debug = debug
 
-    if means.shape[0] == 1:
-        means = pd.DataFrame(means[0], index=self.data.index, columns=self.svv)
+    elif means.shape[0] == 1:
+        if fname == 'KalmanFilter':
+            cols = self.vv
+        else:
+            cols = np.hstack((self.observables,self.svv))
+        means = pd.DataFrame(means[0], index=self.data.index, columns=cols)
         resid = pd.DataFrame(resid[0], index=self.data.index[:-1], columns=self.shocks)
 
     pars = np.array([s[0] for s in sample])

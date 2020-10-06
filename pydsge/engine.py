@@ -271,7 +271,7 @@ def find_lk(bmat, bterm, x_bar, q):
             l, k = 0, 0
             while check_cnst(bmat, bterm, 4, 0, k, q) - x_bar > 0:
                 k += 1
-                if k >= k_max:
+                if k == k_max-1:
                     # set error flag 'no solution + k_max reached'
                     flag = 2
                     break

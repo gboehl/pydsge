@@ -50,8 +50,15 @@ def get_eps_lin(self, x, xp, rcond=1e-14):
     """
 
     qmat = self.precalc_mat[1]
-    F = qmat[1, 0][:,:-self.neps]
-    E = qmat[1, 0][:,-self.neps:]
+
+    if self.filter.name == 'KalmanFilter':
+        pmat = self.precalc_mat[0]
+        F = self.filter.F
+        E = np.vstack((pmat[1,0][:,-self.neps:], qmat[1, 0][:-self.neps,-self.neps:]))
+
+    else:
+        F = qmat[1, 0][:,:-self.neps]
+        E = qmat[1, 0][:,-self.neps:]
 
     return np.linalg.pinv(E, rcond) @ (x - F@xp)
 

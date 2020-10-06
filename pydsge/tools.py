@@ -13,7 +13,7 @@ from .engine import *
 from decimal import Decimal
 
 
-def t_func(self, state, shocks=None, set_k=None, return_flag=None, return_k=False, get_obs=False, linear=False, verbose=False):
+def t_func(self, state, shocks=None, set_k=None, return_flag=None, return_k=False, get_obs=False, incl_obs=False, linear=False, verbose=False):
     """transition function
 
     Parameters
@@ -60,10 +60,13 @@ def t_func(self, state, shocks=None, set_k=None, return_flag=None, return_k=Fals
     if return_flag is None:
         return_flag = True
 
-    pobs, q, l, k, flag = t_func_jit(pmat, pterm, qmat[:,:,:-self.dimeps], qterm[...,:-self.dimeps], bmat, bterm, x_bar, *self.hx, state, shocks, set_l, set_k, get_obs)
+    pobs, q, l, k, flag = t_func_jit(pmat, pterm, aca(qmat[:,:,:-self.dimeps]), qterm[...,:-self.dimeps], bmat, bterm, x_bar, *self.hx, state[-dimq+dimeps:], shocks, set_l, set_k, get_obs)
 
     if get_obs:
-        newstate = q, pobs
+        if incl_obs:
+            newstate = np.hstack((pobs,q)), pobs
+        else:
+            newstate = q, pobs
     else:
         newstate = np.hstack((pobs, q))
 
@@ -105,7 +108,8 @@ def calc_obs(self, states, covs=None):
     """
 
     if covs is None:
-        return states @ self.hx[0].T + self.hx[1]
+        # return states @ self.hx[0].T + self.hx[1]
+        return states[:,:self.dimp] @ self.hx[0].T + states[:,self.dimp:] @ self.hx[1].T + self.hx[2]
 
     var = np.diagonal(covs, axis1=1, axis2=2)
     std = np.sqrt(var)
@@ -315,7 +319,7 @@ def simulate(self, source=None, mask=None, pars=None, resid=None, init=None, ope
 
         set_par(par, **args)
 
-        X = [state]
+        X = []
         K = []
         L = []
 

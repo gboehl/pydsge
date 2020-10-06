@@ -313,10 +313,11 @@ def set_par(self, dummy=None, setpar=None, npar=None, verbose=False, roundto=5, 
     args : keyword args
         Keyword arguments forwarded to the `gen_sys` call.
     """
+
     pfnames, pffunc = self.parafunc
     pars_str = [str(p) for p in self.parameters]
-    par = np.array(self.par) if hasattr(
-        self, 'par') else np.array(self.par_fix)
+    par = np.array(self.par) if hasattr( self, 'par') else np.array(self.par_fix)
+
     if setpar is None:
         if dummy is None:
             par = get_par(self, dummy=dummy, asdict=False, full=True,
@@ -343,23 +344,18 @@ def set_par(self, dummy=None, setpar=None, npar=None, verbose=False, roundto=5, 
     else:
         raise SyntaxError(
             "Parameter '%s' is not defined for this model." % dummy)
+
     gen_sys(self, par=list(par), verbose=verbose, **args)
+
     if hasattr(self, 'filter'):
-        # self.filter.eps_cov = self.QQ(self.ppar)
-        if self.filter.name == 'KalmanFilter':
-            # CO = self.SIG @ self.filter.eps_cov
-            print('rewörk!!')
-            Q = CO @ CO.T
-        elif self.filter.name == 'ParticleFilter':
-            raise NotImplementedError
-        else:
-            Q = self.QQ(self.ppar) @ self.QQ(self.ppar)
+        Q = self.QQ(self.ppar) @ self.QQ(self.ppar)
         self.filter.Q = Q
+
     if verbose:
         pdict = dict(zip(pars_str, np.round(self.par, roundto)))
         pfdict = dict(zip(pfnames, np.round(pffunc(self.par), roundto)))
-        print('[set_par:]'.ljust(15, ' ') +
-              ' Parameter(s):\n%s\n%s' % (pdict, pfdict))
+        print('[set_par:]'.ljust(15, ' ') + ' Parameter(s):\n%s\n%s' % (pdict, pfdict))
+
     return get_par(self)
 
 
