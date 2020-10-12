@@ -283,7 +283,7 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, set_k=False
                 if verbose:
                     _, (l_endo, k_endo), flag = t_func(st_vec[-(self.dimq-self.dimeps):], shk_vec, set_k=None, linear=linear, return_k=True)
                     if l_endo != set_k_eff[0] or k_endo != set_k_eff[1]:
-                        print('[irfs:]'.ljust(15, ' ') + 'Multiplicity found: new eql. %s coexits with old eql. %s.' %((l_endo,k_endo), set_k_eff))
+                        print('[irfs:]'.ljust(15, ' ') + 'Multiplicity found in period %s: new eql. %s coexits with old eql. %s.' %(t, (l_endo,k_endo), set_k_eff))
 
             elif set_k is None:
                 set_k_eff = None
