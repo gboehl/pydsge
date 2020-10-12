@@ -289,19 +289,16 @@ def bruite_wrapper(bmat, bterm, x_bar, q):
 
     for l in range(l_max):
         for k in range(1, k_max):
-            if l:
-                if check_cnst(bmat, bterm, 0, l, k, q) - x_bar < 0:
-                    continue
-                if l > 1:
-                    if check_cnst(bmat, bterm, l-1, l, k, q) - x_bar < 0:
-                        continue
+            if l and check_cnst(bmat, bterm, 0, l, k, q) - x_bar < 0:
+                continue
+            if l > 1 and check_cnst(bmat, bterm, 1, l, k, q) - x_bar < 0:
+                continue
             if check_cnst(bmat, bterm, 4, l, k, q) - x_bar < 0:
                 continue
             if check_cnst(bmat, bterm, 2, l, k, q) - x_bar > 0:
                 continue
-            if k > 1:
-                if check_cnst(bmat, bterm, 3, l, k, q) - x_bar > 0:
-                    continue
+            if k > 1 and check_cnst(bmat, bterm, 3, l, k, q) - x_bar > 0:
+                continue
             return l, k
 
     return 999, 999

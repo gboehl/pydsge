@@ -21,9 +21,9 @@ def t_func(self, state, shocks=None, set_k=None, return_flag=None, return_k=Fals
     state : array 
         full state in y-space
     shocks : array, optional
-        shock vector. If None, zero will be assumed
+        shock vector. If None, zero vector will be assumed (default)
     set_k : tuple of int, optional
-        set the expected number of periods if desired. Otherwise will be calculated endogenoulsy.
+        set the expected number of periods if desired. Otherwise will be calculated endogenoulsy (default).
     return_flag : bool, optional
         wheter to return error flags, defaults to True
     return_k : bool, optional
@@ -53,9 +53,11 @@ def t_func(self, state, shocks=None, set_k=None, return_flag=None, return_k=Fals
         set_k = -1
         set_l = -1
     elif isinstance(set_k, tuple):
-        set_l, set_k = set_k
+        # set_l, set_k = set_k
+        set_l, set_k = (int(set_v) for set_v in set_k)
     else:
         set_l = int(not bool(set_k))
+        set_k = int(set_k)
 
     if return_flag is None:
         return_flag = True
@@ -124,9 +126,22 @@ def calc_obs(self, states, covs=None):
 
 def traj(self, state, l=None, k=None, verbose=True):
 
-    omg, lam, x_bar = self.sys
+    if k is None or l is None:
 
-    pmat, qmat, pterm, qterm, bmat, bterm = self.precalc_mat
+        omg, lam, x_bar = self.sys
+        pmat, qmat, pterm, qterm, bmat, bterm = self.precalc_mat
+        l, k, flag = find_lk(bmat, bterm, x_bar, state)
+
+        if verbose:
+            if flag == 0:
+                meaning = ''
+            elif flag == 1:
+                meaning = ' (no solution)'
+            elif flag == 2:
+                meaning = ' (no solution, k_max reached)'
+
+            print('[traj:]'.ljust(15, ' ') +
+                  'l=%s, k=%s, flag is %s%s.' % (l, k, flag, meaning))
 
     if not hasattr(self, 'precalc_tmat'):
 
@@ -135,24 +150,46 @@ def traj(self, state, l=None, k=None, verbose=True):
 
     tmat, tterm = self.precalc_tmat
 
-    if k is None or l is None:
-        l, k, flag = find_lk(bmat, bterm, x_bar, state)
-
-        if verbose:
-            if flag == 0:
-                meaning = 'all good'
-            elif flag == 1:
-                meaning = 'no solution'
-            elif flag == 2:
-                meaning = 'no solution, k_max reached'
-
-            print('[traj:]'.ljust(15, ' ') +
-                  'l=%s, k=%s, flag is %s (%s).' % (l, k, flag, meaning))
-
     return tmat[:, l, k-1] @ state + tterm[:, l, k-1]
 
 
-def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, set_k=False, verbose=True, debug=False, **args):
+def k_map(self, state, l=None, k=None, verbose=True):
+
+    omg, lam, x_bar = self.sys
+
+    if k is None:
+        pmat, qmat, pterm, qterm, bmat, bterm = self.precalc_mat
+        l_endo, k, flag = find_lk(bmat, bterm, x_bar, state)
+
+        l = l or l_endo
+
+        if verbose:
+            if flag == 0:
+                meaning = ''
+            elif flag == 1:
+                meaning = ' (no solution)'
+            elif flag == 2:
+                meaning = ' (no solution, k_max reached)'
+
+            print('[k_map:]'.ljust(15, ' ') +
+                  'l=%s, k=%s, flag is %s%s.' % (l, k, flag, meaning))
+    else:
+        l = l or 0
+
+    if not hasattr(self, 'precalc_tmat'):
+
+        fq1, fp1, fq0 = self.ff
+        preprocess_tmats(self, fq1, fp1, fq0, verbose>1)
+
+    l_max, k_max = self.lks
+    tmat, tterm = self.precalc_tmat
+
+    LS = np.array([tmat[i+k, i, k] @ state + tterm[i+k, i, k] for i in range(l_max)])
+    KS = np.array([tmat[l+i, l, i] @ state + tterm[l+i, l, i] for i in range(k_max)])
+    return LS - x_bar, KS - x_bar
+
+
+def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, set_k=False, force_init_equil=True, verbose=True, debug=False, **args):
     """Simulate impulse responses
 
     Parameters
@@ -160,14 +197,23 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, set_k=False
 
     shocklist : tuple or list of tuples
         Tuple of (shockname, size, period)
-    T : int
+    T : int, optional
         Simulation horizon. (default: 30)
+    linear : bool, optional
+        Simulate linear model (default: False)
+    set_k: int, optional
+        Enforce a `k` (defaults to False)
+    force_init_equil:
+        If set to `False`, the equilibrium will be recalculated every iteration. This may be problematic if there is multiplicity because the algoritm selects the equilibrium with the lowest (l,k) (defaults to True)
+    verbose : bool or int, optional
+        Level of verbosity (default: 1)
 
     Returns
     -------
     DataFrame, tuple(int,int)
         The simulated series as a pandas.DataFrame object and the expected durations at the constraint
     """
+
 
     from grgrlib.core import serializer
 
@@ -216,6 +262,7 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, set_k=False
         st_vec = state if state is not None else np.zeros(nstates)
 
         superflag = False
+        l,k = 0,0
 
         for t in range(T):
 
@@ -229,10 +276,27 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, set_k=False
                     shock_arg = shocks.index(shock)
                     shk_vec[shock_arg] = shocksize
 
-            set_k_eff = max(set_k-t, 0) if set_k else set_k
+            # force_init_equil will force recalculation of l,k only if the shock vec is not empty
+            if force_init_equil and not np.any(shk_vec):
+                set_k_eff = (l-1, k) if l else (l, max(k-1,0))
 
-            st_vec, (l, k), flag = t_func(st_vec[-(self.dimq-self.dimeps):], shk_vec,
-                                          set_k=set_k_eff, linear=linear, return_k=True)
+                if verbose:
+                    _, (l_endo, k_endo), flag = t_func(st_vec[-(self.dimq-self.dimeps):], shk_vec, set_k=None, linear=linear, return_k=True)
+                    if l_endo != set_k_eff[0] or k_endo != set_k_eff[1]:
+                        print('[irfs:]'.ljust(15, ' ') + 'Multiplicity found: new eql. %s coexits with old eql. %s.' %((l_endo,k_endo), set_k_eff))
+
+            elif set_k is None:
+                set_k_eff = None
+            elif isinstance(set_k, tuple):
+                set_l_eff, set_k_eff = set_k
+                if set_l_eff-t >= 0:
+                    set_k_eff = set_l_eff-t, set_k_eff
+                else:
+                    set_k_eff = 0, max(set_k_eff+set_l_eff-t, 0)
+            else:
+                set_k_eff = max(set_k-t, 0) if set_k else set_k
+
+            st_vec, (l, k), flag = t_func(st_vec[-(self.dimq-self.dimeps):], shk_vec, set_k=set_k_eff, linear=linear, return_k=True)
 
             superflag |= flag
 
@@ -257,7 +321,7 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, set_k=False
         print('[irfs:]'.ljust(15, ' ') + 'Simulation took ',
               np.round((time.time() - st), 5), ' seconds.')
 
-    return X, (L, K), flag
+    return X, np.vstack((L, K)), flag
 
 
 @property

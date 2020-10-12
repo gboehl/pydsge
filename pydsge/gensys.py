@@ -15,7 +15,7 @@ aca = np.ascontiguousarray
 
 def gen_sys_from_dict(mdict, l_max=None, k_max=None, verbose=True):
 
-    from .tools import t_func, irfs, traj
+    from .tools import t_func, irfs, traj, k_map
 
     # create a dummy DSGE instance
     class DSGE_DUMMY:
@@ -24,6 +24,7 @@ def gen_sys_from_dict(mdict, l_max=None, k_max=None, verbose=True):
     DSGE_DUMMY.irfs = irfs
     DSGE_DUMMY.t_func = t_func
     DSGE_DUMMY.traj = traj
+    DSGE_DUMMY.k_map = k_map
 
     self = DSGE_DUMMY()
     self.debug = True
@@ -173,10 +174,6 @@ def gen_sys(self, AA0, BB0, CC0, DD0, fb0, fc0, fd0, ZZ0, ZZ1, l_max, k_max, ver
         fc0 = -np.hstack((fc0, fd0))
     else:
         fc0 = np.pad(fc0, (0, dimeps))
-
-    # vv0 = np.hstack((vv0, self.shocks))
-    # if ZZ0 is not None:
-        # ZZ0 = np.pad(ZZ0, ((0,0), (0,dimeps)))
 
     inq = ~fast0(CC0, 0) | ~fast0(fc0)
     inp = (~fast0(AA0, 0) | ~fast0(BB0, 0)) & ~inq
