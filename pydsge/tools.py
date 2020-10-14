@@ -293,11 +293,14 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, set_k=False
                     set_k_eff = set_l_eff-t, set_k_eff
                 else:
                     set_k_eff = 0, max(set_k_eff+set_l_eff-t, 0)
+            elif set_k:
+                set_k_eff = 0, max(set_k-t, 0)
             else:
-                set_k_eff = 0, max(set_k-t, 0) if set_k else set_k
+                set_k_eff = set_k
 
-            if set_k_eff and set_k_eff[0] > self.lks[0] or set_k_eff[1] > self.lks[1]:
-                raise IndexError('set_k exceeds l_max (%s vs. %s).' %(set_k_eff, self.lks))
+            if set_k_eff: 
+                if set_k_eff[0] > self.lks[0] or set_k_eff[1] > self.lks[1]:
+                    raise IndexError('set_k exceeds l_max (%s vs. %s).' %(set_k_eff, self.lks))
 
             st_vec, (l, k), flag = t_func(st_vec[-(self.dimq-self.dimeps):], shk_vec, set_k=set_k_eff, linear=linear, return_k=True)
 
