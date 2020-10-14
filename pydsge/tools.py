@@ -53,7 +53,6 @@ def t_func(self, state, shocks=None, set_k=None, return_flag=None, return_k=Fals
         set_k = -1
         set_l = -1
     elif isinstance(set_k, tuple):
-        # set_l, set_k = set_k
         set_l, set_k = (int(set_v) for set_v in set_k)
     else:
         set_l = int(not bool(set_k))
@@ -189,7 +188,7 @@ def k_map(self, state, l=None, k=None, verbose=True):
     return LS - x_bar, KS - x_bar
 
 
-def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, set_k=False, force_init_equil=True, verbose=True, debug=False, **args):
+def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, set_k=False, force_init_equil=None, verbose=True, debug=False, **args):
     """Simulate impulse responses
 
     Parameters
@@ -214,10 +213,11 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, set_k=False
         The simulated series as a pandas.DataFrame object and the expected durations at the constraint
     """
 
-
     from grgrlib.core import serializer
 
     self.debug |= debug
+    if force_init_equil is None:
+        force_init_equil = not bool(np.any(set_k))
 
     if not isinstance(shocklist, list):
         shocklist = [shocklist, ]
@@ -294,9 +294,15 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, set_k=False
                 else:
                     set_k_eff = 0, max(set_k_eff+set_l_eff-t, 0)
             else:
-                set_k_eff = max(set_k-t, 0) if set_k else set_k
+                set_k_eff = 0, max(set_k-t, 0) if set_k else set_k
+
+            if set_k_eff and set_k_eff[0] > self.lks[0] or set_k_eff[1] > self.lks[1]:
+                raise IndexError('set_k exceeds l_max (%s vs. %s).' %(set_k_eff, self.lks))
 
             st_vec, (l, k), flag = t_func(st_vec[-(self.dimq-self.dimeps):], shk_vec, set_k=set_k_eff, linear=linear, return_k=True)
+
+            if flag and verbose > 1:
+                print('[irfs:]'.ljust(15, ' ') + 'No rational expectations solution found in period %s (error flag %s).' %(t,flag))
 
             superflag |= flag
 
@@ -313,7 +319,7 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, set_k=False
         X, L, K, flag = runner(pars)
         X = pd.DataFrame(X, columns=self.vv)
 
-    if np.any(flag) and verbose:
+    if np.any(flag) and verbose == 1:
         print('[irfs:]'.ljust(15, ' ') +
               'No rational expectations solution found at least once.')
 

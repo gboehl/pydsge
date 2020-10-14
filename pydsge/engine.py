@@ -4,10 +4,12 @@
 import numpy as np
 import numpy.linalg as nl
 import time
+import sys
 from .parser import DSGE as dsge
-from numba import njit
+from numba import njit, prange
 
 aca = np.ascontiguousarray
+si_eps = sys.float_info.epsilon
 
 
 @njit(cache=True, nogil=True)
@@ -41,8 +43,7 @@ def get_omg(omg, psi, lam, xi, S, T, V, W, h, l):
     return omg, psi
 
 
-@njit(cache=True, nogil=True)
-def preprocess_jit(PU, MU, PR, MR, gg, fq1, fp1, fq0, omg, lam, x_bar, l_max, k_max):
+def preprocess_jittable(PU, MU, PR, MR, gg, fq1, fp1, fq0, omg, lam, x_bar, l_max, k_max):
     """jitted preprocessing of system matrices until (l_max, k_max)
     """
 
@@ -54,11 +55,19 @@ def preprocess_jit(PU, MU, PR, MR, gg, fq1, fp1, fq0, omg, lam, x_bar, l_max, k_
     Q, S = nl.qr(PU)
     T = aca(Q.T) @ aca(MU)
 
-    S11i = nl.inv(S[:dimq, :dimq])
+    S11 = S[:dimq, :dimq]
+    if nl.cond(S11) > 1/si_eps:
+        print('[preprocess:]'.ljust( 15, ' ')+' WARNING: at least one state indetermined')
+
+    S11i = nl.inv(S11)
     T[:dimq] = S11i @ T[:dimq]
     S[:dimq] = S11i @ aca(S[:dimq])
 
-    T22i = nl.inv(T[dimq:, dimq:])
+    T22 = T[dimq:, dimq:]
+    if nl.cond(T22) > 1/si_eps:
+        print('[preprocess:]'.ljust( 15, ' ')+' WARNING: at least one control indetermined')
+
+    T22i = nl.inv(T22)
     T[dimq:] = T22i @ T[dimq:]
     S[dimq:] = T22i @ aca(S[dimq:])
 
@@ -91,9 +100,6 @@ def preprocess_jit(PU, MU, PR, MR, gg, fq1, fp1, fq0, omg, lam, x_bar, l_max, k_
     pterm = np.empty((l_max, k_max, dimp))
     qterm = np.empty((l_max, k_max, dimq))
 
-    bmat = np.empty((l_max + k_max, l_max, k_max, dimq))
-    bterm = np.empty((l_max + k_max, l_max, k_max))
-
     pmat[0, 0] = omg
     pterm[0, 0] = np.zeros(dimp)
     qmat[0, 0] = lam
@@ -104,13 +110,19 @@ def preprocess_jit(PU, MU, PR, MR, gg, fq1, fp1, fq0, omg, lam, x_bar, l_max, k_
 
             if k or l:  # TODO: l necessary here?
 
-                k_last = k if l else max(k-1, 0)
                 l_last = max(l-1, 0)
+                k_last = k if l else max(k-1, 0)
 
                 qmat[l, k], qterm[l, k] = get_lam(
                     pmat[l_last, k_last], pterm[l_last, k_last], S, T, V, W, h, l)
                 pmat[l, k], pterm[l, k] = get_omg(
                     pmat[l_last, k_last], pterm[l_last, k_last], qmat[l, k], qterm[l, k], S, T, V, W, h, l)
+
+    bmat = np.empty((l_max + k_max, l_max, k_max, dimq))
+    bterm = np.empty((l_max + k_max, l_max, k_max))
+
+    for l in prange(0, l_max):
+        for k in range(0, k_max):
 
             # initialize local lam, xi to iterate upon
             lam = np.eye(dimq)
@@ -147,7 +159,11 @@ def preprocess_jit(PU, MU, PR, MR, gg, fq1, fp1, fq0, omg, lam, x_bar, l_max, k_
     return pmat, qmat, pterm, qterm, bmat, bterm
 
 
-@njit(cache=True, nogil=True)
+preprocess_jit = njit(preprocess_jittable, cache=True, nogil=True)
+preprocess_jit_parallel = njit(preprocess_jittable, cache=True, nogil=True, parallel=True)
+
+
+@njit(cache=True, nogil=True, parallel=True)
 def preprocess_tmats_jit(pmat, pterm, qmat, qterm, fq1, fp1, fq0, omg, l_max, k_max):
     """jitted preprocessing of system matrices until (l_max, k_max)
     """
@@ -159,7 +175,7 @@ def preprocess_tmats_jit(pmat, pterm, qmat, qterm, fq1, fp1, fq0, omg, l_max, k_
     tmat = np.empty((l_max + k_max, l_max, k_max, dimq))
     tterm = np.empty((l_max + k_max, l_max, k_max))
 
-    for l in range(0, l_max):
+    for l in prange(0, l_max):
         for k in range(0, k_max):
 
             # initialize local lam, xi to iterate upon
@@ -182,7 +198,7 @@ def preprocess_tmats_jit(pmat, pterm, qmat, qterm, fq1, fp1, fq0, omg, l_max, k_
     return tmat, tterm
 
 
-def preprocess(self, PU, MU, PR, MR, gg, fq1, fp1, fq0, verbose):
+def preprocess(self, PU, MU, PR, MR, gg, fq1, fp1, fq0, parallel=False, verbose=False):
     """dispatcher to jitted preprocessing
     """
 
@@ -190,8 +206,8 @@ def preprocess(self, PU, MU, PR, MR, gg, fq1, fp1, fq0, verbose):
     omg, lam, x_bar = self.sys
 
     st = time.time()
-    self.precalc_mat = preprocess_jit(
-        PU, MU, PR, MR, gg, fq1, fp1, fq0, omg, lam, x_bar, l_max, k_max)
+    preprocess_jit_loc = preprocess_jit_parallel if parallel else preprocess_jit
+    self.precalc_mat = preprocess_jit_loc(PU, MU, PR, MR, gg, fq1, fp1, fq0, omg, lam, x_bar, l_max, k_max)
 
     if verbose:
         print('[preprocess:]'.ljust(
@@ -309,4 +325,3 @@ def check_cnst(bmat, bterm, s, l, k, q0):
     """constraint value in period s given CDR-state q0 under the assumptions (l,k)
     """
     return bmat[s, l, k] @ q0 + bterm[s, l, k]
-

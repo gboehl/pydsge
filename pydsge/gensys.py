@@ -13,7 +13,7 @@ from .engine import preprocess
 aca = np.ascontiguousarray
 
 
-def gen_sys_from_dict(mdict, l_max=None, k_max=None, verbose=True):
+def gen_sys_from_dict(mdict, l_max=None, k_max=None, parallel=True, verbose=True):
 
     from .tools import t_func, irfs, traj, k_map
 
@@ -46,10 +46,10 @@ def gen_sys_from_dict(mdict, l_max=None, k_max=None, verbose=True):
     ZZ1 = mdict.get('ZZ1')
     fd = mdict.get('fd')
 
-    return gen_sys(self, mdict['AA'], mdict['BB'], mdict['CC'], mdict['DD'], mdict['fb'], mdict['fc'], fd, ZZ0, ZZ1, l_max, k_max, verbose)
+    return gen_sys(self, mdict['AA'], mdict['BB'], mdict['CC'], mdict['DD'], mdict['fb'], mdict['fc'], fd, ZZ0, ZZ1, l_max, k_max, parallel, verbose)
 
 
-def gen_sys_from_yaml(self, par=None, l_max=None, k_max=None, verbose=True):
+def gen_sys_from_yaml(self, par=None, l_max=None, k_max=None, parallel=False, verbose=True):
 
     self.par = self.p0() if par is None else list(par)
     try:
@@ -87,10 +87,10 @@ def gen_sys_from_yaml(self, par=None, l_max=None, k_max=None, verbose=True):
     ZZ0 = self.ZZ0(self.ppar).astype(float)
     ZZ1 = self.ZZ1(self.ppar).squeeze().astype(float)
 
-    return gen_sys(self, AA0, BB0, CC0, DD0, fb0, fc0, fd0, ZZ0, ZZ1, l_max, k_max, verbose)
+    return gen_sys(self, AA0, BB0, CC0, DD0, fb0, fc0, fd0, ZZ0, ZZ1, l_max, k_max, parallel, verbose)
 
 
-def gen_sys(self, AA0, BB0, CC0, DD0, fb0, fc0, fd0, ZZ0, ZZ1, l_max, k_max, verbose):
+def gen_sys(self, AA0, BB0, CC0, DD0, fb0, fc0, fd0, ZZ0, ZZ1, l_max, k_max, parallel, verbose):
     """Generate system matrices expressed in the one-sided, first-order compressed dimensionality reduction given a set of parameters. 
 
     Details can be found in "Efficient Solution of Models with Occasionally Binding Constraints" (Gregor Boehl).
@@ -246,7 +246,7 @@ def gen_sys(self, AA0, BB0, CC0, DD0, fb0, fc0, fd0, ZZ0, ZZ1, l_max, k_max, ver
     self.ff = fq1, fp1, fq0
 
     # preprocess all system matrices until (l_max, k_max)
-    preprocess(self, PU, MU, PR, MR, gg, fq1, fp1, fq0, verbose)
+    preprocess(self, PU, MU, PR, MR, gg, fq1, fp1, fq0, parallel, verbose)
 
     if verbose:
         print('[get_sys:]'.ljust(15, ' ')+' Creation of system matrices finished in %ss.' %
