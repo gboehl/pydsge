@@ -318,7 +318,7 @@ def simulate(self, source=None, mask=None, pars=None, resid=None, init=None, ope
 
         set_par(par, **args)
 
-        X = [state]
+        X = [state] 
         L,K = [], []
 
         for eps_t in eps:

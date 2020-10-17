@@ -4,6 +4,7 @@
 import time
 import numpy as np
 import pandas as pd
+from econsieve import KalmanFilter, TEnKF
 from grgrlib.core import timeprint
 from econsieve.stats import logpdf
 
@@ -17,26 +18,24 @@ def create_obs_cov(self, scale_obs=0.1):
     return obs_cov
 
 
-def create_filter(self, P=None, R=None, N=None, ftype=None, seed=None, include_controls=True, **fargs):
+def create_filter(self, P=None, R=None, N=None, ftype=None, seed=None, incl_obs=False, include_controls=True, **fargs):
 
     self.Z = np.array(self.data)
 
     if ftype == 'KalmanFilter':
         ftype = 'KF'
-    if ftype == 'ParticleFilter':
+    elif ftype == 'ParticleFilter':
         ftype = 'PF'
-    if ftype == 'AuxiliaryParticleFilter':
+    elif ftype == 'AuxiliaryParticleFilter':
         ftype = 'APF'
-    if ftype == 'KF':
 
-        from econsieve import KalmanFilter
+    if ftype == 'KF':
 
         f = KalmanFilter(dim_x=self.dimx, dim_z=self.nobs)
 
     elif ftype in ('PF', 'APF'):
 
-        print(
-            'Warning: Particle filter is experimental and currently not under development.')
+        print('Warning: Particle filter is experimental and currently not under development.')
         from .pfilter import ParticleFilter
 
         if N is None:
@@ -48,14 +47,13 @@ def create_filter(self, P=None, R=None, N=None, ftype=None, seed=None, include_c
     else:
         ftype = 'TEnKF'
 
-        from econsieve import TEnKF
-
         if N is None:
             N = 500
 
         dimx = self.dimx if include_controls else self.dimq-self.dimeps
         f = TEnKF(N=N, dim_x=dimx, dim_z=self.nobs, seed=seed, **fargs)
         f.include_controls = include_controls
+
 
     if P is not None:
         f.P = P
@@ -112,6 +110,7 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, ve
     elif self.filter.include_controls:
         self.filter.t_func = self.t_func
         self.filter.o_func = self.o_func
+
     else:
         self.filter.t_func = lambda *x: self.t_func(*x, get_obs=True)
         self.filter.o_func = None
@@ -171,7 +170,7 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, ve
 
 
 def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, verbose=True, debug=False, l_max=None, k_max=None, **npasargs):
-    """Extract the re-fitted timeseries of smoothed shocks.
+    """Extract the timeseries of (smoothed) shocks.
 
     Parameters
     ----------
@@ -226,8 +225,9 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
 
     set_par = serializer(self.set_par)
     run_filter = serializer(self.run_filter)
-
     t_func = serializer(self.t_func)
+    edim = len(self.shocks)
+
     obs_func = serializer(self.obs)
     filter_get_eps = serializer(self.get_eps_lin)
 
@@ -256,10 +256,8 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
 
             return res, covs, resid, 0
 
-        # np.random.shuffle(res)
-
-        # sample = np.dstack((obs_func(res), res[...,dimp:]))
-        sample = res
+        np.random.shuffle(res)
+        sample = np.dstack((obs_func(res), res[...,dimp:]))
         inits = res[:,0,:]
 
         def t_func_loc(states, eps):
@@ -271,11 +269,8 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
         for natt in range(nattemps):
             np.random.seed(seed_loc)
             seed_loc = np.random.randint(2**31)  # win explodes with 2**32
-            # if 1:
             try:
                 init, resid, flags = npas(func=t_func_loc, X=sample, init_states=inits, verbose=max(len(sample) == 1, verbose-1), seed=seed_loc, nsamples=1, **npasargs)
-                # init, resid, flags = npas(func=None, X=None, init_states=None, verbose=max(len(sample) == 1, verbose-1), seed=seed_loc, nsamples=1, **npasargs)
-                # init, resid, flags = npas(verbose=max(len(sample) == 1, verbose-1), seed=seed_loc, nsamples=1, **npasargs)
 
                 return init, resid[0], flags
 
@@ -283,11 +278,13 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
                 raised_error = e
 
         import sys
-        raise type(raised_error)(str(raised_error) + ' (after %s unsuccessful attemps).' %(natt+1)).with_traceback(sys.exc_info()[2])
+        raise type(raised_error)(str(raised_error) + ' (after %s unsuccessful attemps).' %
+                       (natt+1)).with_traceback(sys.exc_info()[2])
 
-    wrap = tqdm.tqdm if (verbose and len(sample) > 1) else (lambda x, **kwarg: x)
-    res = wrap(self.mapper(runner, sample), unit=' sample(s)', total=len(sample), dynamic_ncols=True)
-
+    wrap = tqdm.tqdm if (verbose and len(sample) >
+                         1) else (lambda x, **kwarg: x)
+    res = wrap(self.mapper(runner, sample), unit=' sample(s)',
+               total=len(sample), dynamic_ncols=True)
     init, resid, flags = map2arr(res)
 
     if hasattr(self, 'pool') and self.pool:
@@ -295,9 +292,10 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
 
     if fname == 'KalmanFilter':
         self.debug = debug
+        means = pd.DataFrame(means[0], index=self.data.index, columns=self.vv)
 
-    # elif resid.shape[0] == 1:
-        # resid[0] = pd.DataFrame(resid[0], index=self.data.index[:-1], columns=self.shocks)
+    if resid.shape[0] == 1:
+        resid[0] = pd.DataFrame(resid[0], index=self.data.index[:-1], columns=self.shocks)
 
     edict = {'pars': np.array([s[0] for s in sample]),
              'init': init,
