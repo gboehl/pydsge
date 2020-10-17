@@ -206,7 +206,8 @@ def gen_sys(self, AA0, BB0, CC0, DD0, fb0, fc0, fd0, ZZ0, ZZ1, l_max, k_max, par
 
     # check for Blanchard-Kahn
     if not dimq == sum(ouc(alp, bet)):
-        raise Exception('%s states but %s Evs inside the unit circle.' % (dimq, sum(ouc(alp, bet))))
+        raise Exception('%s states but %s Evs inside the unit circle.' % (
+            dimq, sum(ouc(alp, bet))))
 
     S11 = SS[:dimq, :dimq]
     T11 = TT[:dimq, :dimq]

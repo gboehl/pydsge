@@ -316,7 +316,8 @@ def set_par(self, dummy=None, setpar=None, npar=None, verbose=False, roundto=5, 
 
     pfnames, pffunc = self.parafunc
     pars_str = [str(p) for p in self.parameters]
-    par = np.array(self.par) if hasattr( self, 'par') else np.array(self.par_fix)
+    par = np.array(self.par) if hasattr(
+        self, 'par') else np.array(self.par_fix)
 
     if setpar is None:
         if dummy is None:
@@ -354,7 +355,8 @@ def set_par(self, dummy=None, setpar=None, npar=None, verbose=False, roundto=5, 
     if verbose:
         pdict = dict(zip(pars_str, np.round(self.par, roundto)))
         pfdict = dict(zip(pfnames, np.round(pffunc(self.par), roundto)))
-        print('[set_par:]'.ljust(15, ' ') + ' Parameter(s):\n%s\n%s' % (pdict, pfdict))
+        print('[set_par:]'.ljust(15, ' ') +
+              ' Parameter(s):\n%s\n%s' % (pdict, pfdict))
 
     return get_par(self)
 

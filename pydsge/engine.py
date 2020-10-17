@@ -57,7 +57,8 @@ def preprocess_jittable(PU, MU, PR, MR, gg, fq1, fp1, fq0, omg, lam, x_bar, l_ma
 
     S11 = S[:dimq, :dimq]
     if nl.cond(S11) > 1/si_eps:
-        print('[preprocess:]'.ljust( 15, ' ')+' WARNING: at least one state indetermined')
+        print('[preprocess:]'.ljust(15, ' ') +
+              ' WARNING: at least one state indetermined')
 
     S11i = nl.inv(S11)
     T[:dimq] = S11i @ T[:dimq]
@@ -65,7 +66,8 @@ def preprocess_jittable(PU, MU, PR, MR, gg, fq1, fp1, fq0, omg, lam, x_bar, l_ma
 
     T22 = T[dimq:, dimq:]
     if nl.cond(T22) > 1/si_eps:
-        print('[preprocess:]'.ljust( 15, ' ')+' WARNING: at least one control indetermined')
+        print('[preprocess:]'.ljust(15, ' ') +
+              ' WARNING: at least one control indetermined')
 
     T22i = nl.inv(T22)
     T[dimq:] = T22i @ T[dimq:]
@@ -160,7 +162,8 @@ def preprocess_jittable(PU, MU, PR, MR, gg, fq1, fp1, fq0, omg, lam, x_bar, l_ma
 
 
 preprocess_jit = njit(preprocess_jittable, cache=True, nogil=True)
-preprocess_jit_parallel = njit(preprocess_jittable, cache=True, nogil=True, parallel=True)
+preprocess_jit_parallel = njit(
+    preprocess_jittable, cache=True, nogil=True, parallel=True)
 
 
 @njit(cache=True, nogil=True, parallel=True)
@@ -207,7 +210,8 @@ def preprocess(self, PU, MU, PR, MR, gg, fq1, fp1, fq0, parallel=False, verbose=
 
     st = time.time()
     preprocess_jit_loc = preprocess_jit_parallel if parallel else preprocess_jit
-    self.precalc_mat = preprocess_jit_loc(PU, MU, PR, MR, gg, fq1, fp1, fq0, omg, lam, x_bar, l_max, k_max)
+    self.precalc_mat = preprocess_jit_loc(
+        PU, MU, PR, MR, gg, fq1, fp1, fq0, omg, lam, x_bar, l_max, k_max)
 
     if verbose:
         print('[preprocess:]'.ljust(
@@ -225,7 +229,8 @@ def preprocess_tmats(self, fq1, fp1, fq0, verbose):
 
     st = time.time()
     pmat, qmat, pterm, qterm, bmat, bterm = self.precalc_mat
-    self.precalc_tmat = preprocess_tmats_jit(pmat, pterm, qmat, qterm, fq1, fp1, fq0, omg, l_max, k_max)
+    self.precalc_tmat = preprocess_tmats_jit(
+        pmat, pterm, qmat, qterm, fq1, fp1, fq0, omg, l_max, k_max)
 
     if verbose:
         print('[preprocess_tmats:]'.ljust(

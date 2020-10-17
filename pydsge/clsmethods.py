@@ -16,7 +16,6 @@ from .gensys import gen_sys_from_yaml
 from .estimation import *
 
 
-
 def vix(self, variables, dontfail=False):
     """Returns the indices of a list of variables
     """
@@ -54,11 +53,12 @@ def get_eps_lin(self, x, xp, rcond=1e-14):
     if self.filter.name == 'KalmanFilter':
         pmat = self.precalc_mat[0]
         F = self.filter.F
-        E = np.vstack((pmat[1,0][:,-self.neps:], qmat[1, 0][:-self.neps,-self.neps:]))
+        E = np.vstack((pmat[1, 0][:, -self.neps:],
+                       qmat[1, 0][:-self.neps, -self.neps:]))
 
     else:
-        F = qmat[1, 0][:,:-self.neps]
-        E = qmat[1, 0][:,-self.neps:]
+        F = qmat[1, 0][:, :-self.neps]
+        E = qmat[1, 0][:, -self.neps:]
 
     return np.linalg.pinv(E, rcond) @ (x - F@xp)
 

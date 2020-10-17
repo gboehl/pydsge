@@ -35,14 +35,16 @@ def create_filter(self, P=None, R=None, N=None, ftype=None, seed=None, incl_obs=
 
     elif ftype in ('PF', 'APF'):
 
-        print('Warning: Particle filter is experimental and currently not under development.')
+        print(
+            'Warning: Particle filter is experimental and currently not under development.')
         from .pfilter import ParticleFilter
 
         if N is None:
             N = 10000
 
         aux_bs = ftype == 'APF'
-        f = ParticleFilter(N=N, dim_x=self.dimx, dim_z=self.nobs, auxiliary_bootstrap=aux_bs)
+        f = ParticleFilter(N=N, dim_x=self.dimx,
+                           dim_z=self.nobs, auxiliary_bootstrap=aux_bs)
 
     else:
         ftype = 'TEnKF'
@@ -53,7 +55,6 @@ def create_filter(self, P=None, R=None, N=None, ftype=None, seed=None, incl_obs=
         dimx = self.dimx if include_controls else self.dimq-self.dimeps
         f = TEnKF(N=N, dim_x=dimx, dim_z=self.nobs, seed=seed, **fargs)
         f.include_controls = include_controls
-
 
     if P is not None:
         f.P = P
@@ -89,10 +90,12 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, ve
         pmat = self.precalc_mat[0]
         qmat = self.precalc_mat[1]
 
-        F = np.vstack((pmat[1,0][:,:-self.neps], qmat[1, 0][:-self.neps,:-self.neps]))
-        F = np.pad(F, ((0,0), (self.dimp,0)))
+        F = np.vstack((pmat[1, 0][:, :-self.neps],
+                       qmat[1, 0][:-self.neps, :-self.neps]))
+        F = np.pad(F, ((0, 0), (self.dimp, 0)))
 
-        E = np.vstack((pmat[1,0][:,-self.neps:], qmat[1, 0][:-self.neps,-self.neps:]))
+        E = np.vstack((pmat[1, 0][:, -self.neps:],
+                       qmat[1, 0][:-self.neps, -self.neps:]))
 
         self.filter.F = F
         self.filter.H = np.hstack((self.hx[0], self.hx[1])), self.hx[2]
@@ -201,7 +204,8 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
     verbose = 9 if debug else verbose
 
     if not self.filter.include_controls:
-        raise Exception('[extract:]'.ljust(15, ' ')+' Filter must be created with the `include_controls` keyword set to `True`')
+        raise Exception('[extract:]'.ljust(
+            15, ' ')+' Filter must be created with the `include_controls` keyword set to `True`')
 
     if hasattr(self, 'pool'):
         from .estimation import create_pool
@@ -257,20 +261,21 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
             return res, covs, resid, 0
 
         np.random.shuffle(res)
-        sample = np.dstack((obs_func(res), res[...,dimp:]))
-        inits = res[:,0,:]
+        sample = np.dstack((obs_func(res), res[..., dimp:]))
+        inits = res[:, 0, :]
 
         def t_func_loc(states, eps):
 
             (q, pobs), flag = t_func(states, eps, get_obs=True)
 
-            return np.hstack((pobs,q)), flag
+            return np.hstack((pobs, q)), flag
 
         for natt in range(nattemps):
             np.random.seed(seed_loc)
             seed_loc = np.random.randint(2**31)  # win explodes with 2**32
             try:
-                init, resid, flags = npas(func=t_func_loc, X=sample, init_states=inits, verbose=max(len(sample) == 1, verbose-1), seed=seed_loc, nsamples=1, **npasargs)
+                init, resid, flags = npas(func=t_func_loc, X=sample, init_states=inits, verbose=max(
+                    len(sample) == 1, verbose-1), seed=seed_loc, nsamples=1, **npasargs)
 
                 return init, resid[0], flags
 
@@ -279,7 +284,7 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
 
         import sys
         raise type(raised_error)(str(raised_error) + ' (after %s unsuccessful attemps).' %
-                       (natt+1)).with_traceback(sys.exc_info()[2])
+                                 (natt+1)).with_traceback(sys.exc_info()[2])
 
     wrap = tqdm.tqdm if (verbose and len(sample) >
                          1) else (lambda x, **kwarg: x)
@@ -295,7 +300,8 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
         means = pd.DataFrame(means[0], index=self.data.index, columns=self.vv)
 
     if resid.shape[0] == 1:
-        resid[0] = pd.DataFrame(resid[0], index=self.data.index[:-1], columns=self.shocks)
+        resid[0] = pd.DataFrame(
+            resid[0], index=self.data.index[:-1], columns=self.shocks)
 
     edict = {'pars': np.array([s[0] for s in sample]),
              'init': init,

@@ -61,7 +61,8 @@ def t_func(self, state, shocks=None, set_k=None, return_flag=None, return_k=Fals
     if return_flag is None:
         return_flag = True
 
-    pobs, q, l, k, flag = t_func_jit(pmat, pterm, aca(qmat[:,:,:-self.dimeps]), qterm[...,:-self.dimeps], bmat, bterm, x_bar, *self.hx, state[-dimq+dimeps:], shocks, set_l, set_k, get_obs)
+    pobs, q, l, k, flag = t_func_jit(pmat, pterm, aca(
+        qmat[:, :, :-self.dimeps]), qterm[..., :-self.dimeps], bmat, bterm, x_bar, *self.hx, state[-dimq+dimeps:], shocks, set_l, set_k, get_obs)
 
     newstate = (q, pobs) if get_obs else np.hstack((pobs, q))
 
@@ -87,7 +88,8 @@ def o_func(self, state, covs=None):
         Series of covariance matrices. If provided, 95% intervals will be calculated, including the intervals of the states
     """
 
-    obs = state[...,:self.dimp] @ self.hx[0].T + state[...,self.dimp:] @ self.hx[1].T + self.hx[2]
+    obs = state[..., :self.dimp] @ self.hx[0].T + \
+        state[..., self.dimp:] @ self.hx[1].T + self.hx[2]
 
     if np.ndim(state) <= 1:
         data = self.data.index if hasattr(self, 'data') else None
@@ -181,7 +183,7 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, set_k=False
 
         supererrflag = False
         supermultflag = False
-        l,k = 0,0
+        l, k = 0, 0
 
         for t in range(T):
 
@@ -197,15 +199,17 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, set_k=False
 
             # force_init_equil will force recalculation of l,k only if the shock vec is not empty
             if force_init_equil and not np.any(shk_vec):
-                set_k_eff = (l-1, k) if l else (l, max(k-1,0))
+                set_k_eff = (l-1, k) if l else (l, max(k-1, 0))
 
-                _, (l_endo, k_endo), flag = t_func(st_vec[-(self.dimq-self.dimeps):], shk_vec, set_k=None, linear=linear, return_k=True)
+                _, (l_endo, k_endo), flag = t_func(
+                    st_vec[-(self.dimq-self.dimeps):], shk_vec, set_k=None, linear=linear, return_k=True)
 
                 multflag = l_endo != set_k_eff[0] or k_endo != set_k_eff[1]
                 supermultflag |= multflag
 
                 if verbose > 1 and multflag:
-                        print('[irfs:]'.ljust(15, ' ') + 'Multiplicity found in period %s: new eql. %s coexits with old eql. %s.' %(t, (l_endo,k_endo), set_k_eff))
+                    print('[irfs:]'.ljust(
+                        15, ' ') + 'Multiplicity found in period %s: new eql. %s coexits with old eql. %s.' % (t, (l_endo, k_endo), set_k_eff))
 
             elif set_k is None:
                 set_k_eff = None
@@ -220,14 +224,17 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, set_k=False
             else:
                 set_k_eff = set_k
 
-            if set_k_eff: 
+            if set_k_eff:
                 if set_k_eff[0] > self.lks[0] or set_k_eff[1] > self.lks[1]:
-                    raise IndexError('set_k exceeds l_max (%s vs. %s).' %(set_k_eff, self.lks))
+                    raise IndexError(
+                        'set_k exceeds l_max (%s vs. %s).' % (set_k_eff, self.lks))
 
-            st_vec, (l, k), flag = t_func(st_vec[-(self.dimq-self.dimeps):], shk_vec, set_k=set_k_eff, linear=linear, return_k=True)
+            st_vec, (l, k), flag = t_func(
+                st_vec[-(self.dimq-self.dimeps):], shk_vec, set_k=set_k_eff, linear=linear, return_k=True)
 
             if flag and verbose > 1:
-                print('[irfs:]'.ljust(15, ' ') + 'No rational expectations solution found in period %s (error flag %s).' %(t,flag))
+                print('[irfs:]'.ljust(
+                    15, ' ') + 'No rational expectations solution found in period %s (error flag %s).' % (t, flag))
 
             supererrflag |= flag
 
@@ -246,8 +253,10 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, set_k=False
 
     if verbose == 1:
 
-        errmess = 'No rational expectations solution(s) found.' if np.any(flag) else ''
-        multmess = 'Multiplicity/Multiplicities found.' if np.any(multflag) else ''
+        errmess = 'No rational expectations solution(s) found.' if np.any(
+            flag) else ''
+        multmess = 'Multiplicity/Multiplicities found.' if np.any(
+            multflag) else ''
 
         if errmess or multmess:
             print('[irfs:]'.ljust(15, ' ') + multmess + errmess)
@@ -318,12 +327,13 @@ def simulate(self, source=None, mask=None, pars=None, resid=None, init=None, ope
 
         set_par(par, **args)
 
-        X = [state] 
-        L,K = [], []
+        X = [state]
+        L, K = [], []
 
         for eps_t in eps:
 
-            state, (l, k), flag = t_func(state, eps_t, return_k=True, linear=linear)
+            state, (l, k), flag = t_func(
+                state, eps_t, return_k=True, linear=linear)
 
             superflag |= flag
 
@@ -338,7 +348,8 @@ def simulate(self, source=None, mask=None, pars=None, resid=None, init=None, ope
         return X, LK, superflag
 
     wrap = tqdm.tqdm if verbose else (lambda x, **kwarg: x)
-    res = wrap(self.mapper(runner, zip(*sample)), unit=' sample(s)', total=len(source['pars']), dynamic_ncols=True)
+    res = wrap(self.mapper(runner, zip(*sample)), unit=' sample(s)',
+               total=len(source['pars']), dynamic_ncols=True)
 
     X, LK, flags = map2arr(res)
 
@@ -349,7 +360,6 @@ def simulate(self, source=None, mask=None, pars=None, resid=None, init=None, ope
     if np.any(flags) and verbose:
         print('[simulate:]'.ljust(
             15, ' ')+'No rational expectations solution found (at least once).')
-
 
     return X, (LK[..., 0, :], LK[..., 1, :]), flags
 
@@ -376,7 +386,7 @@ def traj(self, state, l=None, k=None, verbose=True):
     if not hasattr(self, 'precalc_tmat'):
 
         fq1, fp1, fq0 = self.ff
-        preprocess_tmats(self, fq1, fp1, fq0, verbose>1)
+        preprocess_tmats(self, fq1, fp1, fq0, verbose > 1)
 
     tmat, tterm = self.precalc_tmat
 
@@ -409,12 +419,13 @@ def k_map(self, state, l=None, k=None, verbose=True):
     if not hasattr(self, 'precalc_tmat'):
 
         fq1, fp1, fq0 = self.ff
-        preprocess_tmats(self, fq1, fp1, fq0, verbose>1)
+        preprocess_tmats(self, fq1, fp1, fq0, verbose > 1)
 
     l_max, k_max = self.lks
     tmat, tterm = self.precalc_tmat
 
-    LS = np.array([tmat[i+k, i, k] @ state + tterm[i+k, i, k] for i in range(l_max)])
-    KS = np.array([tmat[l+i, l, i] @ state + tterm[l+i, l, i] for i in range(k_max)])
+    LS = np.array([tmat[i+k, i, k] @ state + tterm[i+k, i, k]
+                   for i in range(l_max)])
+    KS = np.array([tmat[l+i, l, i] @ state + tterm[l+i, l, i]
+                   for i in range(k_max)])
     return LS - x_bar, KS - x_bar
-
