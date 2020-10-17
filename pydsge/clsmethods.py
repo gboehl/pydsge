@@ -448,7 +448,6 @@ DSGE.info = info_m
 DSGE.mdd = mdd
 DSGE.get_data = load_data
 DSGE.load_data = load_data
-DSGE.obs = calc_obs
 DSGE.rjfunc = rjfunc
 DSGE.bjfunc = bjfunc
 DSGE.get_sample = get_sample
@@ -464,6 +463,7 @@ DSGE.box_check = box_check
 # from tools
 DSGE.t_func = t_func
 DSGE.o_func = o_func
+DSGE.obs = o_func
 DSGE.get_eps_lin = get_eps_lin
 DSGE.irfs = irfs
 DSGE.simulate = simulate

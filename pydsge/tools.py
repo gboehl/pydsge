@@ -13,7 +13,7 @@ from .engine import *
 from decimal import Decimal
 
 
-def t_func(self, state, shocks=None, set_k=None, return_flag=None, return_k=False, get_obs=False, incl_obs=False, linear=False, verbose=False):
+def t_func(self, state, shocks=None, set_k=None, return_flag=None, return_k=False, get_obs=False, linear=False, verbose=False):
     """transition function
 
     Parameters
@@ -63,13 +63,7 @@ def t_func(self, state, shocks=None, set_k=None, return_flag=None, return_k=Fals
 
     pobs, q, l, k, flag = t_func_jit(pmat, pterm, aca(qmat[:,:,:-self.dimeps]), qterm[...,:-self.dimeps], bmat, bterm, x_bar, *self.hx, state[-dimq+dimeps:], shocks, set_l, set_k, get_obs)
 
-    if get_obs:
-        if incl_obs:
-            newstate = np.hstack((pobs,q)), pobs
-        else:
-            newstate = q, pobs
-    else:
-        newstate = np.hstack((pobs, q))
+    newstate = (q, pobs) if get_obs else np.hstack((pobs, q))
 
     if verbose:
         print('[t_func:]'.ljust(15, ' ') +
@@ -83,109 +77,33 @@ def t_func(self, state, shocks=None, set_k=None, return_flag=None, return_k=Fals
         return newstate
 
 
-def o_func(self, state):
-    """
-    observation function
-    """
-
-    raise NotImplementedError()
-
-    obs = state @ self.hx[0].T + self.hx[1]
-    if np.ndim(state) <= 1:
-        data = self.data.index if hasattr(self, 'data') else None
-        obs = pd.DataFrame(obs, index=data, columns=self.observables)
-
-    return obs
-
-
-def calc_obs(self, states, covs=None):
+def o_func(self, state, covs=None):
     """Get observables from state representation
 
     Parameters
     ----------
-    states : array
+    state : array
     covs : array, optional
-        Series of covariance matrices. If provided, 95% intervals will be calculated.
+        Series of covariance matrices. If provided, 95% intervals will be calculated, including the intervals of the states
     """
 
+    obs = state[...,:self.dimp] @ self.hx[0].T + state[...,self.dimp:] @ self.hx[1].T + self.hx[2]
+
+    if np.ndim(state) <= 1:
+        data = self.data.index if hasattr(self, 'data') else None
+        obs = pd.DataFrame(obs, index=data, columns=self.observables)
+
     if covs is None:
-        # return states @ self.hx[0].T + self.hx[1]
-        return states[:,:self.dimp] @ self.hx[0].T + states[:,self.dimp:] @ self.hx[1].T + self.hx[2]
+        return obs
 
     var = np.diagonal(covs, axis1=1, axis2=2)
     std = np.sqrt(var)
-    iv95 = np.stack((states - 1.96*std, states, states + 1.96*std))
+    iv95 = np.stack((state - 1.96*std, state, state + 1.96*std))
 
-    obs = (self.hx[0] @ states.T).T + self.hx[1]
-    std_obs = (self.hx[0] @ std.T).T
+    std_obs = (np.hstack((self.hx[0], self.hx[1])) @ std.T).T
     iv95_obs = np.stack((obs - 1.96*std_obs, obs, obs + 1.96*std_obs))
 
     return iv95_obs, iv95
-
-
-def traj(self, state, l=None, k=None, verbose=True):
-
-    if k is None or l is None:
-
-        omg, lam, x_bar = self.sys
-        pmat, qmat, pterm, qterm, bmat, bterm = self.precalc_mat
-        l, k, flag = find_lk(bmat, bterm, x_bar, state)
-
-        if verbose:
-            if flag == 0:
-                meaning = ''
-            elif flag == 1:
-                meaning = ' (no solution)'
-            elif flag == 2:
-                meaning = ' (no solution, k_max reached)'
-
-            print('[traj:]'.ljust(15, ' ') +
-                  'l=%s, k=%s, flag is %s%s.' % (l, k, flag, meaning))
-
-    if not hasattr(self, 'precalc_tmat'):
-
-        fq1, fp1, fq0 = self.ff
-        preprocess_tmats(self, fq1, fp1, fq0, verbose>1)
-
-    tmat, tterm = self.precalc_tmat
-
-    return tmat[:, l, k-1] @ state + tterm[:, l, k-1]
-
-
-def k_map(self, state, l=None, k=None, verbose=True):
-
-    omg, lam, x_bar = self.sys
-
-    if k is None:
-        pmat, qmat, pterm, qterm, bmat, bterm = self.precalc_mat
-        l_endo, k, flag = find_lk(bmat, bterm, x_bar, state)
-
-        l = l or l_endo
-
-        if verbose:
-            if flag == 0:
-                meaning = ''
-            elif flag == 1:
-                meaning = ' (no solution)'
-            elif flag == 2:
-                meaning = ' (no solution, k_max reached)'
-
-            print('[k_map:]'.ljust(15, ' ') +
-                  'l=%s, k=%s, flag is %s%s.' % (l, k, flag, meaning))
-    else:
-        l = l or 0
-
-    if not hasattr(self, 'precalc_tmat'):
-
-        fq1, fp1, fq0 = self.ff
-        preprocess_tmats(self, fq1, fp1, fq0, verbose>1)
-
-    l_max, k_max = self.lks
-    tmat, tterm = self.precalc_tmat
-
-    LS = np.array([tmat[i+k, i, k] @ state + tterm[i+k, i, k] for i in range(l_max)])
-    KS = np.array([tmat[l+i, l, i] @ state + tterm[l+i, l, i] for i in range(k_max)])
-    return LS - x_bar, KS - x_bar
 
 
 def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, set_k=False, force_init_equil=None, verbose=True, debug=False, **args):
@@ -261,7 +179,8 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, set_k=False
 
         st_vec = state if state is not None else np.zeros(nstates)
 
-        superflag = False
+        supererrflag = False
+        supermultflag = False
         l,k = 0,0
 
         for t in range(T):
@@ -280,9 +199,12 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, set_k=False
             if force_init_equil and not np.any(shk_vec):
                 set_k_eff = (l-1, k) if l else (l, max(k-1,0))
 
-                if verbose:
-                    _, (l_endo, k_endo), flag = t_func(st_vec[-(self.dimq-self.dimeps):], shk_vec, set_k=None, linear=linear, return_k=True)
-                    if l_endo != set_k_eff[0] or k_endo != set_k_eff[1]:
+                _, (l_endo, k_endo), flag = t_func(st_vec[-(self.dimq-self.dimeps):], shk_vec, set_k=None, linear=linear, return_k=True)
+
+                multflag = l_endo != set_k_eff[0] or k_endo != set_k_eff[1]
+                supermultflag |= multflag
+
+                if verbose > 1 and multflag:
                         print('[irfs:]'.ljust(15, ' ') + 'Multiplicity found in period %s: new eql. %s coexits with old eql. %s.' %(t, (l_endo,k_endo), set_k_eff))
 
             elif set_k is None:
@@ -307,26 +229,30 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, set_k=False
             if flag and verbose > 1:
                 print('[irfs:]'.ljust(15, ' ') + 'No rational expectations solution found in period %s (error flag %s).' %(t,flag))
 
-            superflag |= flag
+            supererrflag |= flag
 
             X[t, :] = st_vec
             L[t] = l
             K[t] = k
 
-        return X, L, K, superflag
+        return X, L, K, supererrflag, supermultflag
 
     if pars is not None and np.ndim(pars) > 1:
         res = self.mapper(runner, pars)
-        X, L, K, flag = map2arr(res)
+        X, L, K, flag, multflag = map2arr(res)
     else:
-        X, L, K, flag = runner(pars)
+        X, L, K, flag, multflag = runner(pars)
         X = pd.DataFrame(X, columns=self.vv)
 
-    if np.any(flag) and verbose == 1:
-        print('[irfs:]'.ljust(15, ' ') +
-              'No rational expectations solution found at least once.')
+    if verbose == 1:
 
-    if verbose > 1:
+        errmess = 'No rational expectations solution(s) found.' if np.any(flag) else ''
+        multmess = 'Multiplicity/Multiplicities found.' if np.any(multflag) else ''
+
+        if errmess or multmess:
+            print('[irfs:]'.ljust(15, ' ') + multmess + errmess)
+
+    if verbose > 2:
         print('[irfs:]'.ljust(15, ' ') + 'Simulation took ',
               np.round((time.time() - st), 5), ' seconds.')
 
@@ -365,7 +291,7 @@ def simulate(self, source=None, mask=None, pars=None, resid=None, init=None, ope
 
     pars = pars if pars is not None else source['pars']
     resi = resid if resid is not None else source['resid']
-    init = init if init is not None else np.array(source['means'])[..., 0, :]
+    init = init if init is not None else source['init']
 
     sample = pars, resi, init
 
@@ -392,13 +318,12 @@ def simulate(self, source=None, mask=None, pars=None, resid=None, init=None, ope
 
         set_par(par, **args)
 
-        X = []
-        K = []
-        L = []
+        X = [state]
+        L,K = [], []
 
         for eps_t in eps:
 
-            state, (l, k), flag = t_func(state[-(self.dimq-self.dimeps):], eps_t, return_k=True, linear=linear)
+            state, (l, k), flag = t_func(state, eps_t, return_k=True, linear=linear)
 
             superflag |= flag
 
@@ -413,26 +338,83 @@ def simulate(self, source=None, mask=None, pars=None, resid=None, init=None, ope
         return X, LK, superflag
 
     wrap = tqdm.tqdm if verbose else (lambda x, **kwarg: x)
+    res = wrap(self.mapper(runner, zip(*sample)), unit=' sample(s)', total=len(source['pars']), dynamic_ncols=True)
 
-    if np.ndim(resi) > 2 or np.ndim(pars) > 1 or np.ndim(init) > 2:
-
-        res = wrap(self.mapper(runner, zip(*sample)), unit=' sample(s)',
-                   total=len(source['pars']), dynamic_ncols=True)
-        res = map2arr(res)
-
-    else:
-        res = runner(sample)
-
-    superflag = np.any(res[-1])
+    X, LK, flags = map2arr(res)
 
     if verbose:
         print('[simulate:]'.ljust(15, ' ')+'Simulation took ',
               time.time() - st, ' seconds.')
 
-    if superflag and verbose:
+    if np.any(flags) and verbose:
         print('[simulate:]'.ljust(
-            15, ' ')+'No rational expectations solution found.')
+            15, ' ')+'No rational expectations solution found (at least once).')
 
-    X, LK, flags = res
 
     return X, (LK[..., 0, :], LK[..., 1, :]), flags
+
+
+def traj(self, state, l=None, k=None, verbose=True):
+
+    if k is None or l is None:
+
+        omg, lam, x_bar = self.sys
+        pmat, qmat, pterm, qterm, bmat, bterm = self.precalc_mat
+        l, k, flag = find_lk(bmat, bterm, x_bar, state)
+
+        if verbose:
+            if flag == 0:
+                meaning = ''
+            elif flag == 1:
+                meaning = ' (no solution)'
+            elif flag == 2:
+                meaning = ' (no solution, k_max reached)'
+
+            print('[traj:]'.ljust(15, ' ') +
+                  'l=%s, k=%s, flag is %s%s.' % (l, k, flag, meaning))
+
+    if not hasattr(self, 'precalc_tmat'):
+
+        fq1, fp1, fq0 = self.ff
+        preprocess_tmats(self, fq1, fp1, fq0, verbose>1)
+
+    tmat, tterm = self.precalc_tmat
+
+    return tmat[:, l, k-1] @ state + tterm[:, l, k-1]
+
+
+def k_map(self, state, l=None, k=None, verbose=True):
+
+    omg, lam, x_bar = self.sys
+
+    if k is None:
+        pmat, qmat, pterm, qterm, bmat, bterm = self.precalc_mat
+        l_endo, k, flag = find_lk(bmat, bterm, x_bar, state)
+
+        l = l or l_endo
+
+        if verbose:
+            if flag == 0:
+                meaning = ''
+            elif flag == 1:
+                meaning = ' (no solution)'
+            elif flag == 2:
+                meaning = ' (no solution, k_max reached)'
+
+            print('[k_map:]'.ljust(15, ' ') +
+                  'l=%s, k=%s, flag is %s%s.' % (l, k, flag, meaning))
+    else:
+        l = l or 0
+
+    if not hasattr(self, 'precalc_tmat'):
+
+        fq1, fp1, fq0 = self.ff
+        preprocess_tmats(self, fq1, fp1, fq0, verbose>1)
+
+    l_max, k_max = self.lks
+    tmat, tterm = self.precalc_tmat
+
+    LS = np.array([tmat[i+k, i, k] @ state + tterm[i+k, i, k] for i in range(l_max)])
+    KS = np.array([tmat[l+i, l, i] @ state + tterm[l+i, l, i] for i in range(k_max)])
+    return LS - x_bar, KS - x_bar
+
