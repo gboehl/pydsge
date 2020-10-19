@@ -77,7 +77,7 @@ def get_ll(self, **args):
     return run_filter(self, smoother=False, get_ll=True, **args)
 
 
-def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, verbose=False):
+def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, seed=None, verbose=False):
 
     if verbose:
         st = time.time()
@@ -150,7 +150,7 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, ve
     else:
 
         res = self.filter.batch_filter(
-            self.Z, calc_ll=get_ll, store=smoother, verbose=verbose > 0)
+            self.Z, calc_ll=get_ll, store=smoother, seed=seed, verbose=verbose > 0)
 
         if smoother:
             res = self.filter.rts_smoother(res, rcond=rcond)
@@ -200,6 +200,8 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
     if np.ndim(sample) <= 1:
         sample = [sample]
 
+    np.random.seed(seed)
+
     fname = self.filter.name
     verbose = 9 if debug else verbose
 
@@ -238,7 +240,8 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
     dimeps = self.dimeps
     dimp = self.dimp
 
-    sample = [(x, y) for x in sample for y in range(nsamples)]
+    seeds = np.random.randint(2**31, size=nsamples)  # win explodes with 2**32
+    sample = [(x, y) for x in sample for y in seeds]
 
     def runner(arg):
 
@@ -247,7 +250,7 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
         if par is not None:
             set_par(par, l_max=l_max, k_max=k_max)
 
-        res = run_filter(verbose=verbose > 2)
+        res = run_filter(verbose=verbose > 2, seed=seed_loc)
 
         if fname == 'KalmanFilter':
             means, covs = res
@@ -271,8 +274,6 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
             return np.hstack((pobs, q)), flag
 
         for natt in range(nattemps):
-            np.random.seed(seed_loc)
-            seed_loc = np.random.randint(2**31)  # win explodes with 2**32
             try:
                 init, resid, flags = npas(func=t_func_loc, X=sample, init_states=inits, verbose=max(
                     len(sample) == 1, verbose-1), seed=seed_loc, nsamples=1, **npasargs)

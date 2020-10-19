@@ -418,56 +418,54 @@ def nhd(self, eps_dict, **args):
     """Calculates the normalized historic decomposition, based on normalized counterfactuals
     """
 
-    states = eps_dict['means']
+    states = eps_dict['init']
     pars = eps_dict['pars']
     resids = eps_dict['resid']
-    if np.ndim(states) == 2:
-        states = np.expand_dims(states, 0)
-        pars = np.expand_dims(pars, 0)
-        resids = np.expand_dims(resids, 0)
 
     nsamples = pars.shape[0]
-    hc = np.empty((nsamples, len(self.shocks), len(self.data), len(self.vv)))
-    nstates = np.empty((nsamples, len(self.data), len(self.vv)))
-    rcons = np.empty(len(self.shocks))
+    hd = np.empty((nsamples, self.dimeps, self.data.shape[0], self.dimx))
+    means = np.empty((nsamples, self.data.shape[0], self.dimx))
+    rcons = np.empty(self.dimeps)
 
     for i in range(nsamples):
 
         self.set_par(pars[i], **args)
 
-        mat, term = self.precalc_mat
-        A, N, J, cc, x_bar, ff, S, aux = self.sys
+        pmat, qmat, pterm, qterm, bmat, bterm = self.precalc_mat
+        qmat = qmat[:, :, :-self.dimeps]
+        qterm = qterm[..., :-self.dimeps]
 
-        state = states[i][0]
+        state = states[i]
+        means[i,0,:] = state
 
-        hc[i, :, 0] = state/len(self.shocks)
+        hd[i, :, 0, :] = state/self.dimeps
 
         for t, resid in enumerate(resids[i]):
             state, (l, k), _ = self.t_func(state, resid, return_k=True)
+            means[i,t+1,:] = state
 
             # for each shock:
-            for s in range(len(self.shocks)):
+            for s in range(self.dimeps):
 
-                eps = np.zeros(len(self.shocks))
+                eps = np.zeros(self.dimeps)
                 eps[s] = resid[s]
 
-                v = hc[i, s, t] + self.SIG @ eps
-                hc[i, s, t+1, :] = (mat[l, k, 1] @ v)[J.shape[0]:]
+                v = np.hstack((hd[i, s, t, -self.dimq+self.dimeps:], eps))
+                p = pmat[l, k] @ v 
+                q = qmat[l, k] @ v
+                hd[i, s, t+1, :] = np.hstack((p, q))
 
                 if k:
-                    rcons[s] = bmat[l, k, 1] @ v
+                    rcons[s] = bmat[0, l, k] @ v
 
             if k and rcons.sum():
                 for s in range(len(self.shocks)):
                     # proportional to relative contribution to constaint spell duration
-                    hc[i, s, t+1, :] += rcons[s] / \
-                        rcons.sum()*term[l, k, 1][J.shape[0]:]
+                    hd[i, s, t+1, :] += rcons[s] / rcons.sum()*np.hstack((pterm[l,k], qterm[l,k]))
 
     # as a list of DataFrames
-    hd = [pd.DataFrame(h, index=self.data.index, columns=self.vv)
-          for h in hc.mean(axis=0)]
-    means = pd.DataFrame(states.mean(
-        axis=0), index=self.data.index, columns=self.vv)
+    hd = [pd.DataFrame(h, index=self.data.index, columns=self.vv) for h in hd.mean(axis=0)]
+    means = pd.DataFrame(means.mean(axis=0), index=self.data.index, columns=self.vv)
 
     return hd, means
 
