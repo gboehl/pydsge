@@ -18,7 +18,7 @@ def create_obs_cov(self, scale_obs=0.1):
     return obs_cov
 
 
-def create_filter(self, P=None, R=None, N=None, ftype=None, seed=None, incl_obs=False, include_controls=True, **fargs):
+def create_filter(self, P=None, R=None, N=None, ftype=None, seed=None, incl_obs=False, reduced_form=False, **fargs):
 
     self.Z = np.array(self.data)
 
@@ -52,9 +52,9 @@ def create_filter(self, P=None, R=None, N=None, ftype=None, seed=None, incl_obs=
         if N is None:
             N = 500
 
-        dimx = self.dimx if include_controls else self.dimq-self.dimeps
+        dimx = self.dimq-self.dimeps if reduced_form else self.dimx
         f = TEnKF(N=N, dim_x=dimx, dim_z=self.nobs, seed=seed, **fargs)
-        f.include_controls = include_controls
+        f.reduced_form = reduced_form
 
     if P is not None:
         f.P = P
@@ -110,13 +110,14 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, se
         self.filter.o_func = o_func_jit
         self.filter.get_eps = get_eps_jit
 
-    elif self.filter.include_controls:
+    elif self.filter.reduced_form:
+        self.filter.t_func = lambda *x: self.t_func(*x, get_obs=True)
+        self.filter.o_func = None
+
+    else:
         self.filter.t_func = self.t_func
         self.filter.o_func = self.o_func
 
-    else:
-        self.filter.t_func = lambda *x: self.t_func(*x, get_obs=True)
-        self.filter.o_func = None
     self.filter.get_eps = self.get_eps_lin
 
     if self.filter.name == 'KalmanFilter':
@@ -221,9 +222,9 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
         self.debug = True
 
     else:
-        if not self.filter.include_controls:
+        if self.filter.reduced_form:
             raise Exception('[extract:]'.ljust(
-                15, ' ')+' Filter must be created with the `include_controls` keyword set to `True`')
+                15, ' ')+' Extraction does not work with a reduced form filter.')
 
         npas = serializer(self.filter.npas)
 

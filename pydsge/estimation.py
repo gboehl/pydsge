@@ -54,6 +54,8 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
             linear = self.fdict['linear']
         else:
             linear = False
+    elif linear:
+        l_max, k_max = 1, 0
 
     if seed is None:
         if 'seed' in self.fdict.keys():
@@ -70,8 +72,7 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
 
     set_par(self, 'prior_mean', verbose=verbose > 3, l_max=l_max, k_max=k_max)
 
-    self.create_filter(
-        N=N, ftype='KalmanFilter' if linear else None, **filterargs)
+    self.create_filter(N=N, ftype='KalmanFilter' if linear else None, reduced_form=True, **filterargs)
 
     if 'filter_R' in self.fdict.keys():
         self.filter.R = self.fdict['filter_R']
@@ -120,24 +121,9 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
                 par_fix[prior_arg] = parameters
                 par_active_lst = list(par_fix)
 
-                if not linear:
-                    if self.filter.name == 'KalmanFilter':
-                        raise AttributeError('[estimation:]'.ljust(
-                            15, ' ') + 'Missmatch between linearity choice (filter vs. lprob)')
-                    # these max vals should be sufficient given we're dealing with stochastic linearization
-                    # the gen_sys and following part replicates call to set_par, redundant
-                    self.gen_sys(par=par_active_lst, l_max=l_max, k_max=k_max,
-                                 verbose=verbose > 3)
-                    self.filter.Q = self.QQ(self.ppar) @ self.QQ(self.ppar)
-                else:
-                    if not self.filter.name == 'KalmanFilter':
-                        raise AttributeError('[estimation:]'.ljust(
-                            15, ' ') + 'Missmatch between linearity choice (filter vs. lprob)')
-                    # the gen_sys and following part replicates call to set_par, redundant
-                    self.gen_sys(par=par_active_lst, l_max=1, k_max=0,
-                                 verbose=verbose > 3)
-                    CO = self.SIG @ self.QQ(self.ppar)
-                    self.filter.Q = CO @ CO.T
+                # the gen_sys and following part replicates call to set_par, redundant
+                self.gen_sys(par=par_active_lst, l_max=l_max, k_max=k_max, verbose=verbose > 3)
+                self.filter.Q = self.QQ(self.ppar) @ self.QQ(self.ppar)
 
                 ll = get_ll(self, verbose=verbose > 3, dispatch=dispatch)
 

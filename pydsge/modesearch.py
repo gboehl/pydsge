@@ -617,139 +617,7 @@ def swarms(self, algos, linear=None, pop_size=100, ngen=500, mig_share=.1, seed=
     return xsw
 
 
-def cmaes2(self, p0=None, sigma=None, pop_size=None, seeds=3, seed=None, stagtol=150, ftol=5e-4, xtol=2e-4, burnin=False, linear=None, lprob_seed=None, use_cloudpickle=False, ncores=None, cma_callback=None, verbose=True, debug=False):
-    """Find mode using CMA-ES from pycma.
-
-    Parameters
-    ----------
-    pop_size : int
-        Size of each population. (Default: number of dimensions)
-    seeds : in, optional
-        Number of different seeds tried. (Default: 3)
-    """
-
-    print('[pmdm:]'.ljust(15, ' ') + "WARNING: I have not used this function for quite a while, it is unmaintained and probably malfunctioning! `cmaes` is likely to do a better job.")
-
-    import cma
-    import pathos
-
-    np.random.seed(seed or self.fdict['seed'])
-
-    if isinstance(seeds, int):
-        if burnin:
-            seeds += 1
-        seeds = np.random.randint(2**31, size=seeds)  # win explodes with 2**32
-
-    ncores = pathos.multiprocessing.cpu_count()
-
-    bnd = np.array(self.fdict['prior_bounds'])
-    p0 = get_par(self, 'prior_mean', full=False,
-                 asdict=False) if p0 is None else p0
-    p0 = (p0 - bnd[0])/(bnd[1] - bnd[0])
-    sigma = sigma or .2
-
-    pop_size = pop_size or ncores*np.ceil(len(p0)/ncores)
-
-    opt_dict = {
-        'popsize': ncores if burnin else pop_size,
-        'tolstagnation': stagtol,
-        'tolfun': ftol,
-        'tolx': xtol,
-        'bounds': [0, 1],
-        'verb_disp': 2000,
-        'verbose': verbose}
-
-    if not use_cloudpickle:
-        global lprob_global
-    else:
-        import cloudpickle as cpickle
-        lprob_dump = cpickle.dumps(self.lprob)
-        lprob_global = cpickle.loads(lprob_dump)
-
-    def lprob(par): return lprob_global(
-        par, linear=linear, lprob_seed=lprob_seed or 'set')
-
-    def lprob_scaled(x): return -lprob((bnd[1] - bnd[0])*x + bnd[0])
-    nhandler = None if lprob_seed == 'set' else cma.NoiseHandler(
-        len(p0), parallel=True)
-
-    if not debug:
-        pool = pathos.pools.ProcessPool(ncores)
-        pool.clear()
-        mapper = pool.imap
-    else:
-        mapper = map
-
-    if not debug and verbose < 2:
-        np.warnings.filterwarnings('ignore')
-
-    def lprob_pooled(X): return list(mapper(lprob_scaled, list(X)))
-
-    f_max = -np.inf
-
-    print('[cma-es:]'.ljust(15, ' ') + 'Starting mode search over %s seeds...' %
-          (seeds if isinstance(seeds, int) else len(seeds)))
-
-    f_hist = []
-    x_hist = []
-
-    for s in seeds:
-
-        opt_dict['seed'] = s
-        res = cma.fmin(None, p0, sigma, parallel_objective=lprob_pooled,
-                       options=opt_dict, noise_handler=nhandler, callback=cma_callback)
-
-        repair = res[-2].boundary_handler.repair
-        x_scaled = res[0] * (bnd[1] - bnd[0]) + bnd[0]
-        f_hist.append(-res[1])
-        x_hist.append(x_scaled)
-
-        check_bnd = np.bitwise_or(res[0] < 1e-3, res[0] > 1-1e-3)
-
-        if -res[1] < f_max:
-            print('[cma-es:]'.ljust(15, ' ') +
-                  'Current solution of %s rejected at seed %s.' % (np.round(-res[1], 4), s))
-
-        elif check_bnd.any():
-            print('[cma-es:]'.ljust(15, ' ') + 'Current solution of %s rejected at seed %s because %s is at the bound.' %
-                  (np.round(-res[1], 4), s, np.array(self.prior_names)[check_bnd]))
-
-        else:
-            f_max = -res[1]
-            x_max_scaled = x_scaled
-            if verbose:
-                print('[cma-es:]'.ljust(15, ' ') +
-                      'Updating best solution to %s at seed %s.' % (np.round(f_max, 4), s))
-
-        if verbose:
-            from .clsmethods import mode_summary
-            mode_summary(self, data_cmaes=(f_hist, x_hist))
-            print('')
-
-        opt_dict['popsize'] = pop_size
-
-    np.warnings.filterwarnings('default')
-
-    self.fdict['cmaes_mode_x'] = x_max_scaled
-    self.fdict['cmaes_mode_f'] = f_max
-    self.fdict['cmaes_history'] = f_hist, x_hist, seeds
-    self.fdict['cmaes_dict'] = opt_dict
-
-    if 'mode_f' in self.fdict.keys() and f_max < self.fdict['mode_f']:
-        if done:
-            print('[swarms:]'.ljust(
-                15, ' ') + " New mode of %s is below old mode of %s. Rejecting..." % (f_max, self.fdict['mode_f']))
-    else:
-        self.fdict['mode_x'] = x_max_scaled
-        self.fdict['mode_f'] = f_max
-
-    if not debug:
-        pool.close()
-
-    return f_max, x_max_scaled
-
-
-def cmaes(self, p0=None, sigma=None, pop_size=None, restart_factor=2, seeds=3, seed=None, linear=None, lprob_seed=None, update_freq=1000, verbose=True, **args):
+def cmaes(self, p0=None, sigma=None, pop_size=None, restart_factor=2, seeds=3, seed=None, linear=None, lprob_seed=None, update_freq=1000, verbose=True, debug=False, **args):
     """Find mode using CMA-ES from grgrlib.
 
     Parameters
@@ -779,6 +647,7 @@ def cmaes(self, p0=None, sigma=None, pop_size=None, restart_factor=2, seeds=3, s
         from .estimation import create_pool
         create_pool(self)
 
+    self.debug |= debug
     lprob_global = serializer(self.lprob)
 
     def lprob(par): return lprob_global(
@@ -808,7 +677,7 @@ def cmaes(self, p0=None, sigma=None, pop_size=None, restart_factor=2, seeds=3, s
 
         np.random.seed(s)
         res = fmin(lprob_scaled, p0, sigma, popsize=pop_size,
-                   verbose=verbose, mapper=self.mapper, **args)
+                   verbose=verbose, mapper=self.mapper, debug=debug, **args)
 
         x_scaled = res[0] * (bnd[1] - bnd[0]) + bnd[0]
         f_hist.append(-res[1])

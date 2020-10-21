@@ -112,7 +112,7 @@ def gen_sys(self, AA0, BB0, CC0, DD0, fb0, fc0, fd0, ZZ0, ZZ1, l_max, k_max, par
 
     # set default values of l_max & k_max
     if l_max is not None:
-        if l_max < 2:
+        if l_max < 2 and k_max > 0:
             print('[get_sys:]'.ljust(15, ' ') +
                   ' `l_max` must be at least 2 (is %s). Correcting...' % l_max)
             l_max = 2

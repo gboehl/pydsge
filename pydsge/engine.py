@@ -91,11 +91,11 @@ def preprocess_jittable(S, T, V, W, h, fq1, fp1, fq0, omg, lam, x_bar, l_max, k_
                 pmat[l, k], pterm[l, k] = get_omg(
                     pmat[l_last, k_last], pterm[l_last, k_last], qmat[l, k], qterm[l, k], S, T, V, W, h, l)
 
-    bmat = np.empty((l_max + k_max, l_max, k_max, dimq))
-    bterm = np.empty((l_max + k_max, l_max, k_max))
+    bmat = np.empty((5, l_max, k_max, dimq))
+    bterm = np.empty((5, l_max, k_max))
 
-    for l in prange(0, l_max):
-        for k in range(0, k_max):
+    for l in range(0, l_max):
+        for k in prange(0, k_max):
 
             # initialize local lam, xi to iterate upon
             lam = np.eye(dimq)
@@ -112,17 +112,16 @@ def preprocess_jittable(S, T, V, W, h, fq1, fp1, fq0, omg, lam, x_bar, l_max, k_
                 if s == 0:
                     bmat[0, l, k] = y2r @ lam
                     bterm[0, l, k] = cr + y2r @ xi
-                elif s == l-1:
+                if s == l-1:
                     bmat[1, l, k] = y2r @ lam
                     bterm[1, l, k] = cr + y2r @ xi
-
                 if s == l:
                     bmat[2, l, k] = y2r @ lam
                     bterm[2, l, k] = cr + y2r @ xi
-                elif s == l+k-1:
+                if s == l+k-1:
                     bmat[3, l, k] = y2r @ lam
                     bterm[3, l, k] = cr + y2r @ xi
-                elif s == l+k:
+                if s == l+k:
                     bmat[4, l, k] = y2r @ lam
                     bterm[4, l, k] = cr + y2r @ xi
 
