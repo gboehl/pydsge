@@ -37,15 +37,15 @@ def get_omg(omg, psi, lam, xi, S, T, V, W, h, l):
     B = T if l else W
     c = np.zeros(dimp) if l else h[dimq:]
 
-    psi = (A[dimq:, :dimq] + aca(A[dimq:, dimq:]) @ omg) @ xi + aca(A[dimq:, dimq:]) @ psi - c
-    omg = (A[dimq:, :dimq] + aca(A[dimq:, dimq:]) @ omg) @ lam - aca(B[dimq:, :dimq])
+    psi = (A[dimq:, :dimq] + aca(A[dimq:, dimq:]) @
+           omg) @ xi + aca(A[dimq:, dimq:]) @ psi - c
+    omg = (A[dimq:, :dimq] + aca(A[dimq:, dimq:])
+           @ omg) @ lam - aca(B[dimq:, :dimq])
 
     return omg, psi
 
-import scipy.linalg as sl
-from grgrlib import *
 
-def preprocess_jittable(PU, MU, PR, MR, gg, fq1, fp1, fq0, omg, lam, x_bar, l_max, k_max):
+def preprocess_jittable(S, T, V, W, h, fq1, fp1, fq0, omg, lam, x_bar, l_max, k_max):
     """jitted preprocessing of system matrices until (l_max, k_max)
     """
 
@@ -53,30 +53,18 @@ def preprocess_jittable(PU, MU, PR, MR, gg, fq1, fp1, fq0, omg, lam, x_bar, l_ma
     l_max += 1
     k_max += 1
 
-    # cast matrices of unconstraint sys in nice form
-    R, Q = sl.rq(MU.T)
-    T = R.T
-    S = aca(Q) @ aca(PU)
-
     T22 = T[dimq:, dimq:]
     if nl.cond(T22) > 1/si_eps:
         print('[preprocess:]'.ljust(15, ' ') +
               ' WARNING: at least one control indetermined')
 
     T22i = nl.inv(T22)
-    T[dimq:] = T22i @ T[dimq:]
+    T[dimq:] = T22i @ aca(T[dimq:])
     S[dimq:] = T22i @ aca(S[dimq:])
-    # NOTE: if this still does not work, keep in mind that I can solve for s_t by QR'ing A first and do the whole process. Then redo it for d...
-
-    # cast matrices of constraint sys in nice form
-    R, Q = sl.rq(MR.T)
-    W = R.T
-    V = aca(Q) @ aca(PR)
-    h = aca(Q) @ gg
 
     W22 = W[dimq:, dimq:]
     W22i = nl.inv(W22)
-    W[dimq:] = W22i @ W[dimq:]
+    W[dimq:] = W22i @ aca(W[dimq:])
     V[dimq:] = W22i @ aca(V[dimq:])
     h[dimq:] = W22i @ aca(h[dimq:])
 

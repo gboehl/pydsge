@@ -198,6 +198,16 @@ def gen_sys(self, AA0, BB0, CC0, DD0, fb0, fc0, fd0, ZZ0, ZZ1, l_max, k_max, par
     MR = np.hstack((CCR[:, inq], BBR[:, inp]))
     gg = np.pad([float(self.x_bar)], (dimp+dimq-1, 0))
 
+    # avoid QL in jitted funcs
+    R, Q = sl.rq(MU.T)
+    MU = R.T
+    PU = Q @ aca(PU)
+
+    R, Q = sl.rq(MR.T)
+    MR = R.T
+    PR = Q @ aca(PR)
+    gg = Q @ gg
+
     self.svv = vv0[inq[:-dimeps]]
     self.cvv = vv0[inp[:-dimeps]]
     vv0 = np.hstack((self.cvv, self.svv))

@@ -211,33 +211,28 @@ class DSGE(dict):
 
         eq_i = 0
         for eq in self['perturb_eq']:
-            # ->
-            A_var = filter(lambda x: x.date > 0, eq.atoms(Variable))
 
+            A_var = filter(lambda x: x.date > 0, eq.atoms(Variable))
             for v in A_var:
                 v_j = fvarl.index(v)
                 AA[eq_i, v_j] = (eq).set_eq_zero.diff(v).subs(subs_dict)
 
             B_var = filter(lambda x: x.date == 0, eq.atoms(Variable))
-
             for v in B_var:
                 v_j = sub_var.index(v)
                 BB[eq_i, v_j] = (eq).set_eq_zero.diff(v).subs(subs_dict)
 
             C_var = filter(lambda x: x.date < 0, eq.atoms(Variable))
-
             for v in C_var:
                 v_j = lvarl.index(v)
                 CC[eq_i, v_j] = eq.set_eq_zero.diff(v).subs(subs_dict)
 
             shocks = filter(lambda x: x, eq.atoms(Shock))
-
             for s in shocks:
                 s_j = slist.index(s)
                 PSI[eq_i, s_j] = -eq.set_eq_zero.diff(s).subs(subs_dict)
 
             eq_i += 1
-            # <-
 
         ZZ0 = zeros(ovar, no_var)
         ZZ1 = zeros(ovar, 1)
