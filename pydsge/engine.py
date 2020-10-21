@@ -21,7 +21,7 @@ def get_lam(omg, psi, S, T, V, W, h, l):
     B = T if l else W
     c = np.zeros(dimq) if l else h[:dimq]
 
-    inv = nl.inv(np.eye(dimq) + aca(A[:dimq, dimq:]) @ omg)
+    inv = nl.inv(A[:dimq, :dimq] + aca(A[:dimq, dimq:]) @ omg)
     lam = inv @ aca(B[:dimq, :dimq])
     xi = inv @ (c - aca(A[:dimq, dimq:]) @ psi)
 
@@ -37,11 +37,13 @@ def get_omg(omg, psi, lam, xi, S, T, V, W, h, l):
     B = T if l else W
     c = np.zeros(dimp) if l else h[dimq:]
 
-    psi = aca(A[dimq:, dimq:]) @ (omg @ xi + psi) - c
-    omg = aca(A[dimq:, dimq:]) @ omg @ lam - aca(B[dimq:, :dimq])
+    psi = (A[dimq:, :dimq] + aca(A[dimq:, dimq:]) @ omg) @ xi + aca(A[dimq:, dimq:]) @ psi - c
+    omg = (A[dimq:, :dimq] + aca(A[dimq:, dimq:]) @ omg) @ lam - aca(B[dimq:, :dimq])
 
     return omg, psi
 
+import scipy.linalg as sl
+from grgrlib import *
 
 def preprocess_jittable(PU, MU, PR, MR, gg, fq1, fp1, fq0, omg, lam, x_bar, l_max, k_max):
     """jitted preprocessing of system matrices until (l_max, k_max)
@@ -52,17 +54,9 @@ def preprocess_jittable(PU, MU, PR, MR, gg, fq1, fp1, fq0, omg, lam, x_bar, l_ma
     k_max += 1
 
     # cast matrices of unconstraint sys in nice form
-    Q, S = nl.qr(PU)
-    T = aca(Q.T) @ aca(MU)
-
-    S11 = S[:dimq, :dimq]
-    if nl.cond(S11) > 1/si_eps:
-        print('[preprocess:]'.ljust(15, ' ') +
-              ' WARNING: at least one state indetermined')
-
-    S11i = nl.inv(S11)
-    T[:dimq] = S11i @ T[:dimq]
-    S[:dimq] = S11i @ aca(S[:dimq])
+    R, Q = sl.rq(MU.T)
+    T = R.T
+    S = aca(Q) @ aca(PU)
 
     T22 = T[dimq:, dimq:]
     if nl.cond(T22) > 1/si_eps:
@@ -72,30 +66,19 @@ def preprocess_jittable(PU, MU, PR, MR, gg, fq1, fp1, fq0, omg, lam, x_bar, l_ma
     T22i = nl.inv(T22)
     T[dimq:] = T22i @ T[dimq:]
     S[dimq:] = T22i @ aca(S[dimq:])
-
-    S[:dimq, dimq:] -= aca(T[:dimq, dimq:]) @ aca(S[dimq:, dimq:])
-    T[:dimq, :dimq] -= aca(T[:dimq, dimq:]) @ aca(T[dimq:, :dimq])
-    T[:dimq, dimq:] = 0
+    # NOTE: if this still does not work, keep in mind that I can solve for s_t by QR'ing A first and do the whole process. Then redo it for d...
 
     # cast matrices of constraint sys in nice form
-    Q, V = nl.qr(PR)
-    W = aca(Q.T) @ aca(MR)
-    h = aca(Q.T) @ gg
+    R, Q = sl.rq(MR.T)
+    W = R.T
+    V = aca(Q) @ aca(PR)
+    h = aca(Q) @ gg
 
-    V11i = nl.inv(V[:dimq, :dimq])
-    W[:dimq] = V11i @ W[:dimq]
-    V[:dimq] = V11i @ aca(V[:dimq])
-    h[:dimq] = V11i @ h[:dimq]
-
-    W22i = nl.inv(W[dimq:, dimq:])
+    W22 = W[dimq:, dimq:]
+    W22i = nl.inv(W22)
     W[dimq:] = W22i @ W[dimq:]
     V[dimq:] = W22i @ aca(V[dimq:])
     h[dimq:] = W22i @ aca(h[dimq:])
-
-    h[:dimq] -= aca(W[:dimq, dimq:]) @ h[dimq:]
-    V[:dimq, dimq:] -= aca(W[:dimq, dimq:]) @ aca(V[dimq:, dimq:])
-    W[:dimq, :dimq] -= aca(W[:dimq, dimq:]) @ aca(W[dimq:, :dimq])
-    W[:dimq, dimq:] = 0
 
     pmat = np.empty((l_max, k_max, dimp, dimq))
     qmat = np.empty((l_max, k_max, dimq, dimq))

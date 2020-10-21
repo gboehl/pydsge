@@ -253,13 +253,13 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, set_k=False
 
     if verbose == 1:
 
-        errmess = 'No rational expectations solution(s) found.' if np.any(
+        errmess = ' No rational expectations solution(s) found.' if np.any(
             flag) else ''
-        multmess = 'Multiplicity/Multiplicities found.' if np.any(
+        multmess = ' Multiplicity/Multiplicities found.' if np.any(
             multflag) else ''
 
         if errmess or multmess:
-            print('[irfs:]'.ljust(15, ' ') + multmess + errmess)
+            print('[irfs:]'.ljust(14, ' ') + multmess + errmess)
 
     if verbose > 2:
         print('[irfs:]'.ljust(15, ' ') + 'Simulation took ',
