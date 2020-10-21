@@ -414,7 +414,7 @@ def mbcs_index(self, vd, verbose=True):
     return mbs
 
 
-def nhd(self, eps_dict, **args):
+def nhd(self, eps_dict, linear=False, **args):
     """Calculates the normalized historic decomposition, based on normalized counterfactuals
     """
 
@@ -436,13 +436,14 @@ def nhd(self, eps_dict, **args):
         qterm = qterm[..., :-self.dimeps]
 
         state = states[i]
-        means[i,0,:] = state
+        means[i, 0, :] = state
 
         hd[i, :, 0, :] = state/self.dimeps
 
         for t, resid in enumerate(resids[i]):
-            state, (l, k), _ = self.t_func(state, resid, return_k=True)
-            means[i,t+1,:] = state
+            state, (l, k), _ = self.t_func(
+                state, resid, return_k=True, linear=linear)
+            means[i, t+1, :] = state
 
             # for each shock:
             for s in range(self.dimeps):
@@ -451,7 +452,7 @@ def nhd(self, eps_dict, **args):
                 eps[s] = resid[s]
 
                 v = np.hstack((hd[i, s, t, -self.dimq+self.dimeps:], eps))
-                p = pmat[l, k] @ v 
+                p = pmat[l, k] @ v
                 q = qmat[l, k] @ v
                 hd[i, s, t+1, :] = np.hstack((p, q))
 
@@ -461,11 +462,14 @@ def nhd(self, eps_dict, **args):
             if k and rcons.sum():
                 for s in range(len(self.shocks)):
                     # proportional to relative contribution to constaint spell duration
-                    hd[i, s, t+1, :] += rcons[s] / rcons.sum()*np.hstack((pterm[l,k], qterm[l,k]))
+                    hd[i, s, t+1, :] += rcons[s] / \
+                        rcons.sum()*np.hstack((pterm[l, k], qterm[l, k]))
 
     # as a list of DataFrames
-    hd = [pd.DataFrame(h, index=self.data.index, columns=self.vv) for h in hd.mean(axis=0)]
-    means = pd.DataFrame(means.mean(axis=0), index=self.data.index, columns=self.vv)
+    hd = [pd.DataFrame(h, index=self.data.index, columns=self.vv)
+          for h in hd.mean(axis=0)]
+    means = pd.DataFrame(means.mean(
+        axis=0), index=self.data.index, columns=self.vv)
 
     return hd, means
 

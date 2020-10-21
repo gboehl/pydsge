@@ -205,10 +205,6 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
     fname = self.filter.name
     verbose = 9 if debug else verbose
 
-    if not self.filter.include_controls:
-        raise Exception('[extract:]'.ljust(
-            15, ' ')+' Filter must be created with the `include_controls` keyword set to `True`')
-
     if hasattr(self, 'pool'):
         from .estimation import create_pool
         create_pool(self)
@@ -219,12 +215,16 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
     elif fname == 'KalmanFilter':
         if nsamples > 1:
             print('[extract:]'.ljust(
-                15, ' ')+' Setting `nsamples` to 1 as the linear filter is deterministic.')
+                15, ' ')+' Setting `nsamples` to 1 as the linear filter does not rely on sampling.')
         nsamples = 1
         debug = not hasattr(self, 'debug') or self.debug
         self.debug = True
 
     else:
+        if not self.filter.include_controls:
+            raise Exception('[extract:]'.ljust(
+                15, ' ')+' Filter must be created with the `include_controls` keyword set to `True`')
+
         npas = serializer(self.filter.npas)
 
     self.debug |= debug
@@ -261,7 +261,7 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
                 resid[t] = filter_get_eps(x, res[t])
                 res[t+1] = t_func(res[t], resid[t], linear=True)[0]
 
-            return res, covs, resid, 0
+            return res[0], resid, 0
 
         np.random.shuffle(res)
         sample = np.dstack((obs_func(res), res[..., dimp:]))
@@ -298,7 +298,6 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
 
     if fname == 'KalmanFilter':
         self.debug = debug
-        means = pd.DataFrame(means[0], index=self.data.index, columns=self.vv)
 
     if resid.shape[0] == 1:
         resid[0] = pd.DataFrame(

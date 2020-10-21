@@ -143,7 +143,6 @@ def save_meta(self, filename=None, verbose=True):
         self.fdict['filter_R'] = self.filter.R
         self.fdict['filter_P'] = self.filter.P
 
-    # np.savez(filename, **self.fdict)
     np.savez_compressed(filename, **self.fdict)
 
     if verbose:
