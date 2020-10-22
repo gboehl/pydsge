@@ -81,7 +81,7 @@ def preprocess_jittable(S, T, V, W, h, fq1, fp1, fq0, omg, lam, x_bar, l_max, k_
     for l in range(0, l_max):
         for k in range(0, k_max):
 
-            if k or l:  # TODO: l necessary here?
+            if k or l:
 
                 l_last = max(l-1, 0)
                 k_last = k if l else max(k-1, 0)

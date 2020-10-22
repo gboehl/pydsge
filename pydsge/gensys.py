@@ -15,7 +15,7 @@ aca = np.ascontiguousarray
 
 def gen_sys_from_dict(mdict, l_max=None, k_max=None, parallel=True, verbose=True):
 
-    from .tools import t_func, irfs, traj, k_map
+    from .tools import t_func, irfs, traj, k_map, shock2state
 
     # create a dummy DSGE instance
     class DSGE_DUMMY:
@@ -25,6 +25,7 @@ def gen_sys_from_dict(mdict, l_max=None, k_max=None, parallel=True, verbose=True
     DSGE_DUMMY.t_func = t_func
     DSGE_DUMMY.traj = traj
     DSGE_DUMMY.k_map = k_map
+    DSGE_DUMMY.shock2state = shock2state
 
     self = DSGE_DUMMY()
     self.debug = True

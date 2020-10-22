@@ -268,6 +268,17 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, set_k=False
     return X, np.vstack((L, K)), flag
 
 
+def shock2state(self, shock):
+    """create state vector given shock and size
+    """
+
+    stype, ssize = shock[:2]
+    state = np.zeros(self.dimq)
+    state[-self.dimeps:][list(self.shocks).index(stype)] = ssize
+
+    return state
+
+
 @property
 def mask(self, verbose=False):
 

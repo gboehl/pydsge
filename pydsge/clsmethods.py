@@ -462,10 +462,13 @@ DSGE.box_check = box_check
 # from tools
 DSGE.t_func = t_func
 DSGE.o_func = o_func
-DSGE.obs = o_func
-DSGE.get_eps_lin = get_eps_lin
 DSGE.irfs = irfs
 DSGE.simulate = simulate
+DSGE.shock2state = shock2state
+DSGE.obs = o_func
+DSGE.get_eps_lin = get_eps_lin
+DSGE.k_map = k_map
+DSGE.traj = traj
 # from mcmc
 DSGE.mcmc = mcmc
 DSGE.tmcmc = tmcmc
