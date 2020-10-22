@@ -231,8 +231,8 @@ def preprocess_tmats_jit(pmat, pterm, qmat, qterm, fq1, fp1, fq0, omg, l_max, k_
     tmat = np.empty((l_max + k_max, l_max, k_max, dimq))
     tterm = np.empty((l_max + k_max, l_max, k_max))
 
-    for l in prange(0, l_max):
-        for k in range(0, k_max):
+    for l in range(0, l_max):
+        for k in prange(0, k_max):
 
             # initialize local lam, xi to iterate upon
             lam = np.eye(dimq)
