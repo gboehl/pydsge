@@ -138,8 +138,6 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
 
     for result in sampler.sample(p0, iterations=nsteps, **samplerargs):
 
-        # cnt = sampler.iteration
-
         if not verbose:
             lls = list(result)[1]
             maf = np.mean(sampler.acceptance_fraction[-update_freq:])*100

@@ -18,7 +18,7 @@ def create_obs_cov(self, scale_obs=0.1):
     return obs_cov
 
 
-def create_filter(self, P=None, R=None, N=None, ftype=None, seed=None, incl_obs=False, reduced_form=False, **fargs):
+def create_filter(self, R=None, N=None, ftype=None, seed=None, incl_obs=False, reduced_form=False, **fargs):
 
     self.Z = np.array(self.data)
 
@@ -56,16 +56,11 @@ def create_filter(self, P=None, R=None, N=None, ftype=None, seed=None, incl_obs=
         f = TEnKF(N=N, dim_x=dimx, dim_z=self.nobs, seed=seed, **fargs)
         f.reduced_form = reduced_form
 
-    if P is not None:
-        f.P = P
-    elif hasattr(self, 'P'):
-        f.P = self.P
-    else:
-        f.P *= 1e1
-    f.init_P = f.P
-
     if R is not None:
         f.R = R
+
+    f.P *= 1e1
+    f.init_P = f.P
 
     f.Q = self.QQ(self.ppar) @ self.QQ(self.ppar)
     self.filter = f
@@ -149,7 +144,6 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, se
             res = self.filter.smoother(smoother)
 
     else:
-
         res = self.filter.batch_filter(
             self.Z, calc_ll=get_ll, store=smoother, seed=seed, verbose=verbose > 0)
 
@@ -223,8 +217,10 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
 
     else:
         if self.filter.reduced_form:
-            raise Exception('[extract:]'.ljust(
-                15, ' ')+' Extraction does not work with a reduced form filter.')
+            self.create_filter(R = self.filter.R, N=self.filter.N, reduced_form=False)
+
+            print('[extract:]'.ljust(
+                15, ' ')+' Extraction requires filter in non-reduced form. Recreating filter instance.')
 
         npas = serializer(self.filter.npas)
 

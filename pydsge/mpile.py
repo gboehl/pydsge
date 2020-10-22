@@ -109,7 +109,7 @@ def prior_sampler(self, nsamples, seed=0, test_lprob=False, lks=None, verbose=Tr
 
                 except Exception as e:
                     if verbose > 1:
-                        print(str(e)+'(%s) ' % no)
+                        print(str(e)+' (%s) ' % no)
 
         return pdraw, no
 
