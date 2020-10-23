@@ -72,7 +72,8 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
 
     set_par(self, 'prior_mean', verbose=verbose > 3, l_max=l_max, k_max=k_max)
 
-    self.create_filter(N=N, ftype='KalmanFilter' if linear else None, reduced_form=True, **filterargs)
+    self.create_filter(
+        N=N, ftype='KalmanFilter' if linear else None, reduced_form=True, **filterargs)
 
     if 'filter_R' in self.fdict.keys():
         self.filter.R = self.fdict['filter_R']
@@ -122,7 +123,8 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
                 par_active_lst = list(par_fix)
 
                 # the gen_sys and following part replicates call to set_par, redundant
-                self.gen_sys(par=par_active_lst, l_max=l_max, k_max=k_max, verbose=verbose > 3)
+                self.gen_sys(par=par_active_lst, l_max=l_max,
+                             k_max=k_max, verbose=verbose > 3)
                 self.filter.Q = self.QQ(self.ppar) @ self.QQ(self.ppar)
 
                 ll = get_ll(self, verbose=verbose > 3, dispatch=dispatch)

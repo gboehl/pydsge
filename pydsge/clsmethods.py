@@ -143,7 +143,8 @@ def save_meta(self, filename=None, verbose=True):
         self.fdict['filter_R'] = self.filter.R
         self.fdict['filter_P'] = self.filter.P
 
-    self.fdict['cmaes_history'] = np.array(self.fdict.get('cmaes_history'), dtype='object')
+    self.fdict['cmaes_history'] = np.array(
+        self.fdict.get('cmaes_history'), dtype='object')
 
     np.savez_compressed(filename, **self.fdict)
 
