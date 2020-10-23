@@ -217,7 +217,8 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, ver
 
     else:
         if self.filter.reduced_form:
-            self.create_filter(R = self.filter.R, N=self.filter.N, reduced_form=False)
+            self.create_filter(
+                R=self.filter.R, N=self.filter.N, reduced_form=False)
 
             print('[extract:]'.ljust(
                 15, ' ')+' Extraction requires filter in non-reduced form. Recreating filter instance.')

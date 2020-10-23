@@ -47,10 +47,10 @@ def gen_sys_from_dict(mdict, l_max=None, k_max=None, parallel=True, verbose=True
     ZZ1 = mdict.get('ZZ1')
     fd = mdict.get('fd')
 
-    return gen_sys(self, mdict['AA'], mdict['BB'], mdict['CC'], mdict['DD'], mdict['fb'], mdict['fc'], fd, ZZ0, ZZ1, l_max, k_max, parallel, verbose)
+    return gen_sys(self, mdict['AA'], mdict['BB'], mdict['CC'], mdict['DD'], mdict['fb'], mdict['fc'], fd, ZZ0, ZZ1, l_max, k_max, False, parallel, verbose)
 
 
-def gen_sys_from_yaml(self, par=None, l_max=None, k_max=None, parallel=False, verbose=True):
+def gen_sys_from_yaml(self, par=None, l_max=None, k_max=None, get_hx_only=False, parallel=False, verbose=True):
 
     self.par = self.p0() if par is None else list(par)
     try:
@@ -88,10 +88,10 @@ def gen_sys_from_yaml(self, par=None, l_max=None, k_max=None, parallel=False, ve
     ZZ0 = self.ZZ0(self.ppar).astype(float)
     ZZ1 = self.ZZ1(self.ppar).squeeze().astype(float)
 
-    return gen_sys(self, AA0, BB0, CC0, DD0, fb0, fc0, fd0, ZZ0, ZZ1, l_max, k_max, parallel, verbose)
+    return gen_sys(self, AA0, BB0, CC0, DD0, fb0, fc0, fd0, ZZ0, ZZ1, l_max, k_max, get_hx_only, parallel, verbose)
 
 
-def gen_sys(self, AA0, BB0, CC0, DD0, fb0, fc0, fd0, ZZ0, ZZ1, l_max, k_max, parallel, verbose):
+def gen_sys(self, AA0, BB0, CC0, DD0, fb0, fc0, fd0, ZZ0, ZZ1, l_max, k_max, get_hx_only, parallel, verbose):
     """Generate system matrices expressed in the one-sided, first-order compressed dimensionality reduction given a set of parameters. 
 
     Details can be found in "Efficient Solution of Models with Occasionally Binding Constraints" (Gregor Boehl).
@@ -183,6 +183,17 @@ def gen_sys(self, AA0, BB0, CC0, DD0, fb0, fc0, fd0, ZZ0, ZZ1, l_max, k_max, par
     dimq = sum(inq)
     dimp = sum(inp)
 
+    # create hx. Do this early so that the procedure can be stopped if get_hx_only
+    if ZZ0 is None:
+        # must create dummies
+        zp = np.empty(dimp)
+        zq = np.empty(dimq)
+        zc = np.empty(1)
+    else:
+        zp = ZZ0[:, inp[:-dimeps]]
+        zq = ZZ0[:, inq[:-dimeps]]
+        zc = ZZ1
+
     AA = np.pad(AA0, ((0, 1), (0, 0)))
     BBU = np.vstack((BB0, fb0))
     CCU = np.vstack((CC0, fc0))
@@ -191,6 +202,20 @@ def gen_sys(self, AA0, BB0, CC0, DD0, fb0, fc0, fd0, ZZ0, ZZ1, l_max, k_max, par
     BBR[-1, list(vv0).index(str(self.const_var))] = -1
 
     fb0[list(vv0).index(str(self.const_var))] = 0
+
+    self.svv = vv0[inq[:-dimeps]]
+    self.cvv = vv0[inp[:-dimeps]]
+    self.vv = np.hstack((self.cvv, self.svv))
+
+    self.dimx = len(self.vv)
+    self.dimq = dimq
+    self.dimp = dimp
+    self.dimy = dimp+dimq
+    self.dimeps = dimeps
+    self.hx = zp, zq, zc
+
+    if get_hx_only:
+        return self
 
     PU = -np.hstack((BBU[:, inq], AA[:, inp]))
     MU = np.hstack((CCU[:, inq], BBU[:, inp]))
@@ -209,10 +234,6 @@ def gen_sys(self, AA0, BB0, CC0, DD0, fb0, fc0, fd0, ZZ0, ZZ1, l_max, k_max, par
     PR = Q @ aca(PR)
     gg = Q @ gg
 
-    self.svv = vv0[inq[:-dimeps]]
-    self.cvv = vv0[inp[:-dimeps]]
-    vv0 = np.hstack((self.cvv, self.svv))
-
     SS, TT, alp, bet, Q, Z = sl.ordqz(PU, MU, sort='ouc')
 
     # check for Blanchard-Kahn
@@ -230,30 +251,11 @@ def gen_sys(self, AA0, BB0, CC0, DD0, fb0, fc0, fd0, ZZ0, ZZ1, l_max, k_max, par
     lam = Z11 @ sl.inv(S11) @ T11 @ sl.inv(Z11)
 
     # finally add relevant stuff to the class
-    dimeps = len(self.shocks)
-
-    if ZZ0 is None:
-        # must create dummies
-        zp = np.empty(dimp)
-        zq = np.empty(dimq)
-        zc = np.empty(1)
-    else:
-        zp = ZZ0[:, inp[:-dimeps]]
-        zq = ZZ0[:, inq[:-dimeps]]
-        zc = ZZ1
 
     fq0 = fc0[inq]
     fp1 = fb0[inp]
     fq1 = fb0[inq]
 
-    self.vv = vv0
-    self.dimx = len(vv0)
-    self.dimq = dimq
-    self.dimp = dimp
-    self.dimy = dimp+dimq
-    self.dimeps = dimeps
-
-    self.hx = zp, zq, zc
     self.sys = omg, lam, self.x_bar
     self.ff = fq1, fp1, fq0
 

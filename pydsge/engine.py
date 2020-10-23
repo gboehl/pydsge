@@ -130,8 +130,10 @@ def preprocess_jittable(S, T, V, W, h, fq1, fp1, fq0, omg, lam, x_bar, l_max, k_
 
     return pmat, qmat, pterm, qterm, bmat, bterm
 
+
 preprocess_jit = njit(preprocess_jittable, cache=True, nogil=True)
-preprocess_jit_parallel = njit(preprocess_jittable, cache=True, nogil=True, parallel=True)
+preprocess_jit_parallel = njit(
+    preprocess_jittable, cache=True, nogil=True, parallel=True)
 
 
 @njit(cache=True, nogil=True, parallel=True)
