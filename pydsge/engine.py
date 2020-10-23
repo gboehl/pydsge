@@ -297,17 +297,17 @@ def t_func_jit(pmat, pterm, qmat, qterm, bmat, bterm, x_bar, hxp, hxq, hxc, stat
     """jitted transitiona function
     """
 
-    q = np.hstack((state, shocks))
+    s = np.hstack((state, shocks))
 
     if set_k == -1:
         # find (l,k) if requested
-        l, k, flag = find_lk(bmat, bterm, x_bar, q)
+        l, k, flag = find_lk(bmat, bterm, x_bar, s)
     else:
         l, k = set_l, set_k
         flag = 0
 
-    p = pmat[l, k] @ q + pterm[l, k]
-    q = qmat[l, k] @ q + qterm[l, k]
+    p = pmat[l, k] @ s + pterm[l, k]
+    q = qmat[l, k] @ s + qterm[l, k]
 
     # either return p or obs
     if x_space:

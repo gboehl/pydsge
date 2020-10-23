@@ -61,8 +61,7 @@ def t_func(self, state, shocks=None, set_k=None, return_flag=None, return_k=Fals
     if return_flag is None:
         return_flag = True
 
-    pobs, q, l, k, flag = t_func_jit(pmat, pterm, aca(
-        qmat[:, :, :-dimeps]), qterm[..., :-dimeps], bmat, bterm, x_bar, *self.hx, state[-dimq+dimeps:], shocks, set_l, set_k, get_obs)
+    pobs, q, l, k, flag = t_func_jit(pmat, pterm, qmat[:, :, :-dimeps], qterm[..., :-dimeps], bmat, bterm, x_bar, *self.hx, state[-dimq+dimeps:], shocks, set_l, set_k, get_obs)
 
     newstate = (q, pobs) if get_obs else np.hstack((pobs, q))
 
