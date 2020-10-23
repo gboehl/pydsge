@@ -71,7 +71,11 @@ def prior_sampler(self, nsamples, seed=0, test_lprob=False, lks=None, verbose=Tr
     if test_lprob and not hasattr(self, 'ndim'):
         self.prep_estim(load_R=True, verbose=verbose > 2)
 
-    frozen_prior = get_prior(self.prior, verbose=verbose)[0]
+    frozen_prior = self.fdict.get('frozen_prior') 
+
+    if not np.any(frozen_prior)
+        frozen_prior = self.fdict.get('frozen_prior') 
+        
     self.debug |= debug
 
     if hasattr(self, 'pool'):

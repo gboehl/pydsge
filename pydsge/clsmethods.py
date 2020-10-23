@@ -235,7 +235,7 @@ def mode_summary(self, data_cmaes=None, verbose=True):
 
         for s, p in enumerate(x_cmaes):
             df_inp['run %s: mode' % s] = list(p) + [f_cmaes[s]]
-    except KeyError:
+    except (KeyError, IndexError):
         pass
 
     df = pd.DataFrame(df_inp)
