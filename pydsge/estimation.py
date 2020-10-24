@@ -68,7 +68,7 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
     self.fdict['seed'] = seed
 
     self.debug |= debug
-    self.Z = np.array(self.data)
+    # self.Z = np.array(self.data)
 
     set_par(self, 'prior_mean', verbose=verbose > 3, l_max=l_max, k_max=k_max)
 
@@ -162,6 +162,8 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
         lp = lprior(par)
 
         if np.isinf(lp):
+            if verbose:
+                print('[lprob:]'.ljust(15, ' ') + " prior is -inf.")
             return lp
 
         if linear is None:
@@ -192,7 +194,7 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
 
         if verbose:
             print('[lprob:]'.ljust(15, ' ') + " Sample took %ss, ll is %s, temp is %s." %
-                  (np.round(time.time() - st, 3), np.round(ll, 4), np.round(temp, 3)))
+                  (np.round(time.time() - st, 3), np.round(ll, 4), np.round(temp, 4)))
 
         return ll
 
