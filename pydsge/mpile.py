@@ -64,7 +64,6 @@ def prior_sampler(self, nsamples, seed=0, test_lprob=False, lks=None, verbose=Tr
 
     import tqdm
     from grgrlib import map2arr, serializer
-    from .stats import get_prior
 
     l_max, k_max = lks or (None, None)
 
@@ -73,8 +72,9 @@ def prior_sampler(self, nsamples, seed=0, test_lprob=False, lks=None, verbose=Tr
 
     frozen_prior = self.fdict.get('frozen_prior') 
 
-    if not np.any(frozen_prior)
-        frozen_prior = self.fdict.get('frozen_prior') 
+    if not np.any(frozen_prior):
+        from .stats import get_prior
+        frozen_prior = get_prior(self.prior, verbose=verbose)[0]
         
     self.debug |= debug
 
