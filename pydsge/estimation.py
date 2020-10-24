@@ -9,10 +9,10 @@ import time
 import tqdm
 from .stats import get_prior
 from .filtering import get_ll
-from .core import get_par, set_par
+from .mpile import get_par, set_par
 
 
-def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=False, dispatch=False, ncores=None, reduce_sys=True, l_max=3, k_max=16, pre_func=None, verbose=True, debug=False, **filterargs):
+def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=False, dispatch=False, ncores=None, l_max=3, k_max=16, verbose=True, debug=False, **filterargs):
     """Initializes the tools necessary for estimation
 
     ...
@@ -54,6 +54,8 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
             linear = self.fdict['linear']
         else:
             linear = False
+    elif linear:
+        l_max, k_max = 1, 0
 
     if seed is None:
         if 'seed' in self.fdict.keys():
@@ -68,11 +70,10 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
     self.debug |= debug
     # self.Z = np.array(self.data)
 
-    set_par(self, 'prior_mean', reduce_sys=reduce_sys,
-            verbose=verbose > 3, l_max=l_max, k_max=k_max)
+    set_par(self, 'prior_mean', verbose=verbose > 3, l_max=l_max, k_max=k_max)
 
     self.create_filter(
-        N=N, ftype='KalmanFilter' if linear else None, **filterargs)
+        N=N, ftype='KalmanFilter' if linear else None, reduced_form=True, **filterargs)
 
     if 'filter_R' in self.fdict.keys():
         self.filter.R = self.fdict['filter_R']
@@ -121,27 +122,10 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
                 par_fix[prior_arg] = parameters
                 par_active_lst = list(par_fix)
 
-                if not linear:
-                    if self.filter.name == 'KalmanFilter':
-                        raise AttributeError('[estimation:]'.ljust(
-                            15, ' ') + 'Missmatch between linearity choice (filter vs. lprob)')
-                    # these max vals should be sufficient given we're dealing with stochastic linearization
-                    # the get_sys and following part replicates call to set_par, redundant
-                    self.get_sys(par=par_active_lst, l_max=l_max, k_max=k_max,
-                                 reduce_sys=True, verbose=verbose > 3)
-                    self.filter.Q = self.QQ(self.ppar) @ self.QQ(self.ppar)
-                else:
-                    if not self.filter.name == 'KalmanFilter':
-                        raise AttributeError('[estimation:]'.ljust(
-                            15, ' ') + 'Missmatch between linearity choice (filter vs. lprob)')
-                    # the get_sys and following part replicates call to set_par, redundant
-                    self.get_sys(par=par_active_lst, linear=True,
-                                 reduce_sys=True, verbose=verbose > 3)
-                    CO = self.SIG @ self.QQ(self.ppar)
-                    self.filter.Q = CO @ CO.T
-
-                if pre_func is not None:
-                    pre_func(self)
+                # the gen_sys and following part replicates call to set_par, redundant
+                self.gen_sys(par=par_active_lst, l_max=l_max,
+                             k_max=k_max, verbose=verbose > 3)
+                self.filter.Q = self.QQ(self.ppar) @ self.QQ(self.ppar)
 
                 ll = get_ll(self, verbose=verbose > 3, dispatch=dispatch)
 
@@ -273,30 +257,3 @@ def mapper(self):
         return self.pool.imap
     else:
         return map
-
-
-def box_check(self, par=None):
-    """Check if parameterset lies outside the box constraints
-
-    Parameters
-    ----------
-    par : array or list, optional
-        The parameter set to check
-    """
-
-    if par is None:
-        par = self.par
-
-    for i, name in enumerate(self.fdict['prior_names']):
-
-        lb, ub = self.fdict['prior_bounds']
-
-        if par[i] < lb[i]:
-            print('[box_check:]'.ljust(
-                15, ' ') + ' Parameter %s of %s lower than lb of %s.' % (name, par[i].round(5), lb[i]))
-
-        if par[i] > ub[i]:
-            print('[box_check:]'.ljust(
-                15, ' ') + ' Parameter %s of %s higher than ub of %s.' % (name, par[i].round(5), ub[i]))
-
-    return

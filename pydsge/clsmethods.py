@@ -11,7 +11,8 @@ from .mcmc import mcmc, tmcmc
 from .modesearch import cmaes
 from .filtering import *
 from .tools import *
-from .core import get_sys, get_par, get_cov, set_par
+from .mpile import *
+from .gensys import gen_sys_from_yaml
 from .estimation import *
 
 
@@ -47,7 +48,19 @@ def get_eps_lin(self, x, xp, rcond=1e-14):
     """Get filter-implied (smoothed) shocks for linear model
     """
 
-    return np.linalg.pinv(self.SIG, rcond) @ (x - self.lin_t_func@xp)
+    qmat = self.precalc_mat[1]
+
+    if self.filter.name == 'KalmanFilter':
+        pmat = self.precalc_mat[0]
+        F = self.filter.F
+        E = np.vstack((pmat[1, 0][:, -self.neps:],
+                       qmat[1, 0][:-self.neps, -self.neps:]))
+
+    else:
+        F = qmat[1, 0][:, :-self.neps]
+        E = qmat[1, 0][:, -self.neps:]
+
+    return np.linalg.pinv(E, rcond) @ (x - F@xp)
 
 
 @property
@@ -130,7 +143,9 @@ def save_meta(self, filename=None, verbose=True):
         self.fdict['filter_R'] = self.filter.R
         self.fdict['filter_P'] = self.filter.P
 
-    # np.savez(filename, **self.fdict)
+    self.fdict['cmaes_history'] = np.array(
+        self.fdict.get('cmaes_history'), dtype='object')
+
     np.savez_compressed(filename, **self.fdict)
 
     if verbose:
@@ -155,12 +170,11 @@ def save_rdict(self, rdict, path=None, suffix='', verbose=True):
     if not os.path.isabs(path):
         path = os.path.join(self.path, path)
 
-    # np.savez(path + suffix, **rdict)
     np.savez_compressed(path + suffix, **rdict)
 
     if verbose:
         print('[save_rdict:]'.ljust(15, ' ') +
-              " Results saved as '%s'" %(path + suffix))
+              " Results saved as '%s'" % (path + suffix))
     return
 
 
@@ -222,7 +236,7 @@ def mode_summary(self, data_cmaes=None, verbose=True):
 
         for s, p in enumerate(x_cmaes):
             df_inp['run %s: mode' % s] = list(p) + [f_cmaes[s]]
-    except KeyError:
+    except (KeyError, IndexError):
         pass
 
     df = pd.DataFrame(df_inp)
@@ -436,26 +450,28 @@ DSGE.info = info_m
 DSGE.mdd = mdd
 DSGE.get_data = load_data
 DSGE.load_data = load_data
-DSGE.obs = calc_obs
-DSGE.box_check = box_check
 DSGE.rjfunc = rjfunc
 DSGE.bjfunc = bjfunc
 DSGE.get_sample = get_sample
 DSGE.create_pool = create_pool
-# from core
+# from gensys
+DSGE.gen_sys = gen_sys_from_yaml
+# from mpile
 DSGE.get_par = get_par
 DSGE.gp = get_par
-DSGE.get_sys = get_sys
 DSGE.get_cov = get_cov
 DSGE.set_par = set_par
+DSGE.box_check = box_check
 # from tools
 DSGE.t_func = t_func
 DSGE.o_func = o_func
-DSGE.lin_t_func = lin_t_func
-DSGE.lin_o_func = lin_o_func
-DSGE.get_eps_lin = get_eps_lin
 DSGE.irfs = irfs
 DSGE.simulate = simulate
+DSGE.shock2state = shock2state
+DSGE.obs = o_func
+DSGE.get_eps_lin = get_eps_lin
+DSGE.k_map = k_map
+DSGE.traj = traj
 # from mcmc
 DSGE.mcmc = mcmc
 DSGE.tmcmc = tmcmc

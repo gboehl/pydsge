@@ -57,25 +57,6 @@ class DSGE(dict):
                 Equation(fv(-1) - lag_fv - self['re_errors'][i], 0))
             i += 1
 
-        # if 'make_log' in self.keys():
-            # self['perturb_eq'] = []
-            # sub_dict = dict()
-            # sub_dict.update({v: Variable(v.name+'ss')*sympy.exp(v)
-            # for v in self['make_log']})
-            # sub_dict.update({v(-1): Variable(v.name+'ss') *
-            # sympy.exp(v(-1)) for v in self['make_log']})
-            # sub_dict.update({v(1): Variable(v.name+'ss')*sympy.exp(v(1))
-            # for v in self['make_log']})
-
-            # for eq in self.equations:
-            # peq = eq.subs(sub_dict)
-            # self['perturb_eq'].append(peq)
-
-            # self['ss_ordering'] = [Variable(v.name+'ss')
-            # for v in self['make_log']]
-
-        # else:
-            # self['perturb_eq'] = self['equations']
         self['perturb_eq'] = self['equations']
 
         context = {}
@@ -132,7 +113,7 @@ class DSGE(dict):
         return len(self['fvars'])
 
     @property
-    def ny(self):
+    def nobs(self):
         return len(self['observables'])
 
     @property
@@ -191,14 +172,22 @@ class DSGE(dict):
         no_lvar = len(lvarl)
 
         bb = zeros(1, no_var+no_lvar)
+        bb_PSI = zeros(1, evar)
 
         if self['const_var']:
             AA = zeros(no_var-1, no_var)
             BB = zeros(no_var-1, no_var)
             CC = zeros(no_var-1, no_var)
             PSI = zeros(no_var-1, evar)
+
             bb_var = filter(lambda x: x.date <= 0,
                             self['const_eq'].atoms(Variable))
+            bb_fwd = [x for x in self['const_eq'].atoms(
+                Variable) if x.date > 0]
+
+            if bb_fwd:
+                raise NotImplementedError(
+                    "Forward looking variables in the constraint equation are not (yet) implemented: ", *bb_fwd)
 
             full_var = sub_var + lvarl
 
@@ -206,6 +195,14 @@ class DSGE(dict):
                 v_j = full_var.index(v)
                 bb[v_j] = -(self['const_eq']
                             ).set_eq_zero.diff(v).subs(subs_dict)
+
+            shocks = filter(lambda x: x, self['const_eq'].atoms(Shock))
+
+            for s in shocks:
+                s_j = slist.index(s)
+                bb_PSI[s_j] = -(self['const_eq']
+                                ).set_eq_zero.diff(s).subs(subs_dict)
+
         else:
             AA = zeros(no_var, no_var)
             BB = zeros(no_var, no_var)
@@ -214,47 +211,42 @@ class DSGE(dict):
 
         eq_i = 0
         for eq in self['perturb_eq']:
-            # ->
-            A_var = filter(lambda x: x.date > 0, eq.atoms(Variable))
 
+            A_var = filter(lambda x: x.date > 0, eq.atoms(Variable))
             for v in A_var:
                 v_j = fvarl.index(v)
                 AA[eq_i, v_j] = (eq).set_eq_zero.diff(v).subs(subs_dict)
 
             B_var = filter(lambda x: x.date == 0, eq.atoms(Variable))
-
             for v in B_var:
                 v_j = sub_var.index(v)
                 BB[eq_i, v_j] = (eq).set_eq_zero.diff(v).subs(subs_dict)
 
             C_var = filter(lambda x: x.date < 0, eq.atoms(Variable))
-
             for v in C_var:
                 v_j = lvarl.index(v)
                 CC[eq_i, v_j] = eq.set_eq_zero.diff(v).subs(subs_dict)
 
             shocks = filter(lambda x: x, eq.atoms(Shock))
-
             for s in shocks:
                 s_j = slist.index(s)
                 PSI[eq_i, s_j] = -eq.set_eq_zero.diff(s).subs(subs_dict)
 
             eq_i += 1
-            # <-
 
-        DD = zeros(ovar, 1)
-        ZZ = zeros(ovar, no_var)
+        ZZ0 = zeros(ovar, no_var)
+        ZZ1 = zeros(ovar, 1)
 
         eq_i = 0
         for obs in self['observables']:
             eq = self['obs_equations'][str(obs)]
-            DD[eq_i, 0] = eq.subs(subs_dict)
+            ZZ1[eq_i, 0] = eq.subs(subs_dict)
 
             curr_var = filter(lambda x: x.date >= 0, eq.atoms(Variable))
 
             for v in curr_var:
                 v_j = vlist.index(v)
-                ZZ[eq_i, v_j] = eq.diff(v).subs(subs_dict)
+                ZZ0[eq_i, v_j] = eq.diff(v).subs(subs_dict)
 
                 if self.const_var is v:
                     self.const_obs = obs
@@ -353,37 +345,19 @@ class DSGE(dict):
                                 raise SyntaxError(
                                     "Definitions of `para_func` seem to be circular. Last error: "+error_msg)
 
-        # print(context)
-        # DD = DD.subs(subs_dict)
-        # ZZ = ZZ.subs(subs_dict)
+        ZZ0 = lambdify([self.parameters+self['other_para']], ZZ0)
+        ZZ1 = lambdify([self.parameters+self['other_para']], ZZ1)
 
-        DD = lambdify([self.parameters+self['other_para']], DD)
-        ZZ = lambdify([self.parameters+self['other_para']], ZZ)
-
-        # , modules={'ImmutableDenseMatrix': np.array})#'numpy')
         PSI = lambdify([self.parameters+self['other_para']], PSI)
-        # PPI = lambdify([self.parameters+self['other_para']], PPI)#, modules={'ImmutableDenseMatrix': np.array})#'numpy')
 
-        # ->
-        # , modules={'ImmutableDenseMatrix': np.array})#'numpy')
         AA = lambdify([self.parameters+self['other_para']], AA)
-        # , modules={'ImmutableDenseMatrix': np.array})#'numpy')
         BB = lambdify([self.parameters+self['other_para']], BB)
-        # , modules={'ImmutableDenseMatrix': np.array})#'numpy')
         CC = lambdify([self.parameters+self['other_para']], CC)
-        # , modules={'ImmutableDenseMatrix': np.array})#'numpy')
         bb = lambdify([self.parameters+self['other_para']], bb)
-        # <-
+        bb_PSI = lambdify([self.parameters+self['other_para']], bb_PSI)
 
         psi = lambdify([self.parameters], [ss[str(px)]
                                            for px in self['other_para']])  # , modules=context_f)
-
-        # disable this
-        # def add_para_func(f):
-        # return f
-
-        # def full_compile(px):
-        # return list(px) + psi(list(px))
 
         def compile(px):
             return list(px) + psi(list(px))
@@ -391,29 +365,15 @@ class DSGE(dict):
         self.pcompile = compile
         self.parafunc = [p.name for p in self['other_para']], psi
         self.psi = psi
-        # self.PSI = add_para_func(PSI)
         self.PSI = PSI
 
-        # self.DD = add_para_func(DD)
-        # self.ZZ = add_para_func(ZZ)
-        # # ->
-        # self.AA = add_para_func(AA)
-        # self.BB = add_para_func(BB)
-        # self.CC = add_para_func(CC)
-        # self.bb = add_para_func(bb)
-        # <-
-
-        self.DD = DD
-        self.ZZ = ZZ
-        # # ->
+        self.ZZ0 = ZZ0
+        self.ZZ1 = ZZ1
         self.AA = AA
         self.BB = BB
         self.CC = CC
         self.bb = bb
-        # <-
-
-        # QQ = self['covariance'].subs(subs_dict)
-        # HH = self['measurement_errors'].subs(subs_dict)
+        self.bb_PSI = bb_PSI
 
         QQ = lambdify([self.parameters+self['other_para']], self['covariance'])
         HH = lambdify([self.parameters+self['other_para']],
@@ -701,8 +661,8 @@ class DSGE(dict):
                 equations.append(Equation(var_s, s))
 
                 subs1 = [s(-i) for i in np.arange(1, abs(max_lag_exo[s])+1)]
-                # subs2 = [var_s(-i) for i in np.arange(1, abs(max_lag_exo[s])+1)]
-                subs2 = [var_s(-i-1) for i in np.arange(1, abs(max_lag_exo[s])+1)]
+                subs2 = [var_s(-i)
+                         for i in np.arange(1, abs(max_lag_exo[s])+1)]
                 subs_dict = dict(zip(subs1, subs2))
                 equations = [eq.subs(subs_dict) for eq in equations]
 
@@ -850,6 +810,7 @@ class DSGE(dict):
         model.prior_arg = [p_names.index(pp) for pp in model.prior.keys()]
         model.prior_names = [str(pp) for pp in model.prior.keys()]
         model.observables = [str(o) for o in observables]
-        model.oo = np.array(model.observables)
+        model.vo = np.array(model.observables)
+        model.ve = np.array(model.shocks)
 
         return model
