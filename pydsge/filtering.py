@@ -284,11 +284,11 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, acc
                 raised_error = e
 
         if accept_failure:
-            print('[extract:]'.ljust(15, ' ') + "got an error: '%s' (after %s unsuccessful attemps)." %(ee,natt+1))
+            print('[extract:]'.ljust(15, ' ') + "got an error: '%s' (after %s unsuccessful attemps)." %(raised_error,natt+1))
             return None
         else:
             import sys
-            raise type(ee)(str(ee) + ' (after %s unsuccessful attemps).' % (natt+1)).with_traceback(sys.exc_info()[2])
+            raise type(raised_error)(str(raised_error) + ' (after %s unsuccessful attemps).' % (natt+1)).with_traceback(sys.exc_info()[2])
 
     wrap = tqdm.tqdm if (verbose and len(sample) >
                          1) else (lambda x, **kwarg: x)
