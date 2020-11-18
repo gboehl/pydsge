@@ -15,7 +15,7 @@ The dependencies are listed in the setup.py file. Note that this package depends
 The code does *not* work with Python 2.x!
 
 
-Outline
+Documentation
 -------
 
 There is some `preliminary documentation <https://pydsge.readthedocs.io/en/latest/index.html>`_ out there.
