@@ -13,11 +13,12 @@ import scipy.optimize as sso
 import cloudpickle as cpickle
 from sys import platform
 from copy import deepcopy
+from .clsmethods import DSGE_RAW
 from .symbols import Variable, Equation, Shock, Parameter, TSymbol
 from sympy.matrices import Matrix, zeros
 
 
-class DSGE(dict):
+class DSGE(DSGE_RAW):
     """Base class. Every model is an instance of the DSGE class and inherents its methods.
     """
 
@@ -136,7 +137,7 @@ class DSGE(dict):
         for v in self['var_ordering']:
             if v in nvars:
                 print('[DSGE.read:]'.ljust(15, ' ') +
-                      'Warning: variable `%s` defined twice.' % v)
+                      ' variable `%s` is defined twice...' % v)
             else:
                 nvars.append(v)
         self['var_ordering'] = nvars
@@ -160,10 +161,6 @@ class DSGE(dict):
         rvar = len(self['re_errors'])
         ovar = len(self['observables'])
 
-        # PSI  = zeros(svar, evar)
-        # PPI  = zeros(svar, rvar)
-
-        # ->
         sub_var = self['var_ordering']
         fvarl = [l(+1) for l in sub_var]
         lvarl = [l(-1) for l in sub_var]
@@ -253,14 +250,9 @@ class DSGE(dict):
 
             eq_i += 1
 
-        # print ""
         from collections import OrderedDict
-        # subs_dict = []
-        context = dict([(p.name, p) for p in self.parameters])
-        # context['exp'] = sympy.exp
-        # context['log'] = sympy.log
-        # context['sqrt'] = sympy.sqrt
 
+        context = dict([(p.name, p) for p in self.parameters])
         sol_dict = {}
 
         def ctf_reducer(f):
@@ -308,18 +300,7 @@ class DSGE(dict):
                 context[func[0]] = implemented_function(
                     func[0], ctf_reducer(func[1]))
 
-        # context_f = {}
-        # context_f['exp'] = np.exp
-        # if 'helper_func' in self['__data__']['declarations']:
-            # from imp import load_source
-            # f = self['__data__']['declarations']['helper_func']['file']
-            # module = load_source('helper_func', f)
-            # for n in self['__data__']['declarations']['helper_func']['names']:
-                # context[n] = sympy.Function(n)  # getattr(module, n)
-                # context_f[n] = getattr(module, n)
         ss = {}
-
-        # print(context['lamp_p'])
         checker = np.zeros_like(self['other_para'], dtype=bool)
         suc_loop = True
 
@@ -379,9 +360,6 @@ class DSGE(dict):
         HH = lambdify([self.parameters+self['other_para']],
                       self['measurement_errors'])
 
-        # self.QQ = add_para_func(QQ)
-        # self.HH = add_para_func(HH)
-
         self.QQ = QQ
         self.HH = HH
 
@@ -433,7 +411,7 @@ class DSGE(dict):
             pmodel.debug = platform == "darwin" or platform == "win32"
             if pmodel.debug:
                 print('[DSGE:]'.ljust(
-                    15, ' ') + 'Parallelization disabled under Windows and Mac due to a problem with pickling some of the symbolic elements. Sorry...')
+                    15, ' ') + ' Parallelization disabled under Windows and Mac due to a problem with pickling some of the symbolic elements. Sorry...')
 
             processed_raw_model = deepcopy(pmodel)
 
@@ -444,7 +422,7 @@ class DSGE(dict):
             else:
                 str(duration) + 's'
             print('[DSGE:]'.ljust(15, ' ') +
-                  'Reading and parsing done in %s.' % duration)
+                  ' Reading and parsing done in %s.' % duration)
 
         return pmodel
 
@@ -504,14 +482,14 @@ class DSGE(dict):
         pmodel.debug = platform == "darwin" or platform == "win32"
         if pmodel.debug:
             print('[DSGE:]'.ljust(
-                15, ' ') + 'Parallelization disabled under Windows and Mac due to a problem with pickling some of the symbolic elements. Sorry...')
+                15, ' ') + ' Parallelization disabled under Windows and Mac due to a problem with pickling some of the symbolic elements. Sorry...')
 
         for ob in pmodel.fdict.keys():
             if str(pmodel.fdict[ob]) == 'None':
                 pmodel.fdict[ob] = None
 
         if verbose:
-            print('[DSGE:]'.ljust(15, ' ')+'Loading and parsing done in %ss.' %
+            print('[DSGE:]'.ljust(15, ' ')+' Loading and parsing done in %ss.' %
                   np.round(time.time()-st, 5))
 
         return pmodel
@@ -590,14 +568,6 @@ class DSGE(dict):
         steady_state = [0]
         init_values = [0]
 
-        # for f in [sympy.log, sympy.exp,
-        # sympy.sin, sympy.cos, sympy.tan,
-        # sympy.asin, sympy.acos, sympy.atan,
-        # sympy.sinh, sympy.cosh, sympy.tanh,
-        # sympy.pi, sympy.sign]:
-        # context[str(f)] = f
-
-        # context['sqrt'] = sympy.sqrt
         context['__builtins__'] = None
 
         equations = []
@@ -743,7 +713,6 @@ class DSGE(dict):
                 QQ[indj, indi] = QQ[indi, indj]
 
         nobs = len(obs_equations)
-        # HH = sympy.zeros(nobs, nobs)
         HH = zeros(nobs, nobs)
 
         if measurement_errors is not None:

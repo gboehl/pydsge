@@ -5,7 +5,6 @@ import numpy as np
 import numpy.linalg as nl
 import time
 import sys
-from .parser import DSGE as dsge
 from numba import njit, prange
 
 aca = np.ascontiguousarray
@@ -37,10 +36,9 @@ def get_omg(omg, psi, lam, xi, S, T, V, W, h, l):
     B = T if l else W
     c = np.zeros(dimp) if l else h[dimq:]
 
-    psi = (A[dimq:, :dimq] + aca(A[dimq:, dimq:]) @
-           omg) @ xi + aca(A[dimq:, dimq:]) @ psi - c
-    omg = (A[dimq:, :dimq] + aca(A[dimq:, dimq:])
-           @ omg) @ lam - aca(B[dimq:, :dimq])
+    dum = (A[dimq:, :dimq] + aca(A[dimq:, dimq:]) @ omg)
+    psi = dum @ xi + aca(A[dimq:, dimq:]) @ psi - c
+    omg = dum @ lam - aca(B[dimq:, :dimq])
 
     return omg, psi
 
