@@ -263,14 +263,10 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, set_k=False
         X = pd.DataFrame(X, columns=self.vv)
 
     if verbose == 1:
-
-        errmess = ' No rational expectations solution(s) found.' if np.any(
-            flag) else ''
-        multmess = ' Multiplicity/Multiplicities found.' if np.any(
-            multflag) else ''
-
-        if errmess or multmess:
-            print('[irfs:]'.ljust(14, ' ') + multmess + errmess)
+        if np.any(flag):
+            print('[irfs:]'.ljust(14, ' ') + ' No rational expectations solution(s) found.')
+        elif np.any(multflag):
+            print('[irfs:]'.ljust(14, ' ') + ' Multiplicity/Multiplicities found.')
 
     if verbose > 2:
         print('[irfs:]'.ljust(15, ' ') + 'Simulation took ',
