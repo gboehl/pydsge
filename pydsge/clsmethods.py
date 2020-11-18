@@ -4,7 +4,7 @@
 import os
 import numpy as np
 import pandas as pd
-from .parser import DSGE
+# from .parser import DSGE
 from .stats import summary, gfevd, mbcs_index, nhd, mdd
 from .plots import posteriorplot, traceplot
 from .mcmc import mcmc, tmcmc
@@ -12,9 +12,10 @@ from .modesearch import cmaes
 from .filtering import *
 from .tools import *
 from .mpile import *
-from .gensys import gen_sys_from_yaml
 from .estimation import *
 
+class DSGE_RAW(dict):
+    pass
 
 def vix(self, variables, dontfail=False):
     """Returns the indices of a list of variables
@@ -305,6 +306,20 @@ def mcmc_summary(self, chain=None, tune=None, calc_mdd=True, calc_ll_stats=False
     return res
 
 
+def posterior2csv(self, path=None, tune=None, **args):
+
+    tune = tune or self.get_tune
+    path = path or os.path.join(self.path, self.name+'_posterior.csv')
+
+    chain = self.get_chain()
+    post = chain[-tune:].reshape(-1,chain.shape[-1])
+
+    vd = pd.DataFrame(post.T, index=self.prior_names)
+    vd.to_csv(path)
+
+    return
+
+
 def info_m(self, verbose=True, **args):
 
     try:
@@ -438,64 +453,63 @@ def get_sample(self, size, chain=None):
     return sample[res]
 
 
-DSGE.vix = vix
-DSGE.oix = oix
-DSGE.get_tune = get_tune
-DSGE.save = save_meta
-DSGE.mapper = mapper
-DSGE.mode_summary = mode_summary
-DSGE.swarm_summary = swarm_summary
-DSGE.mcmc_summary = mcmc_summary
-DSGE.info = info_m
-DSGE.mdd = mdd
-DSGE.get_data = load_data
-DSGE.load_data = load_data
-DSGE.rjfunc = rjfunc
-DSGE.bjfunc = bjfunc
-DSGE.get_sample = get_sample
-DSGE.create_pool = create_pool
-# from gensys
-DSGE.gen_sys = gen_sys_from_yaml
+DSGE_RAW.vix = vix
+DSGE_RAW.oix = oix
+DSGE_RAW.get_tune = get_tune
+DSGE_RAW.save = save_meta
+DSGE_RAW.mapper = mapper
+DSGE_RAW.mode_summary = mode_summary
+DSGE_RAW.swarm_summary = swarm_summary
+DSGE_RAW.mcmc_summary = mcmc_summary
+DSGE_RAW.info = info_m
+DSGE_RAW.mdd = mdd
+DSGE_RAW.get_data = load_data
+DSGE_RAW.load_data = load_data
+DSGE_RAW.rjfunc = rjfunc
+DSGE_RAW.bjfunc = bjfunc
+DSGE_RAW.get_sample = get_sample
+DSGE_RAW.create_pool = create_pool
+DSGE_RAW.posterior2csv = posterior2csv
 # from mpile
-DSGE.get_par = get_par
-DSGE.gp = get_par
-DSGE.get_cov = get_cov
-DSGE.set_par = set_par
-DSGE.box_check = box_check
+DSGE_RAW.get_par = get_par
+DSGE_RAW.gp = get_par
+DSGE_RAW.get_cov = get_cov
+DSGE_RAW.set_par = set_par
+DSGE_RAW.box_check = box_check
 # from tools
-DSGE.t_func = t_func
-DSGE.o_func = o_func
-DSGE.irfs = irfs
-DSGE.simulate = simulate
-DSGE.shock2state = shock2state
-DSGE.obs = o_func
-DSGE.get_eps_lin = get_eps_lin
-DSGE.k_map = k_map
-DSGE.traj = traj
+DSGE_RAW.t_func = t_func
+DSGE_RAW.o_func = o_func
+DSGE_RAW.irfs = irfs
+DSGE_RAW.simulate = simulate
+DSGE_RAW.shock2state = shock2state
+DSGE_RAW.obs = o_func
+DSGE_RAW.get_eps_lin = get_eps_lin
+DSGE_RAW.k_map = k_map
+DSGE_RAW.traj = traj
 # from mcmc
-DSGE.mcmc = mcmc
-DSGE.tmcmc = tmcmc
+DSGE_RAW.mcmc = mcmc
+DSGE_RAW.tmcmc = tmcmc
 # from estimation
-DSGE.prep_estim = prep_estim
-DSGE.load_estim = prep_estim
-DSGE.lprob = lprob
+DSGE_RAW.prep_estim = prep_estim
+DSGE_RAW.load_estim = prep_estim
+DSGE_RAW.lprob = lprob
 # from modesearch
-DSGE.cmaes = cmaes
+DSGE_RAW.cmaes = cmaes
 # from filter
-DSGE.create_filter = create_filter
-DSGE.run_filter = run_filter
-DSGE.get_ll = get_ll
+DSGE_RAW.create_filter = create_filter
+DSGE_RAW.run_filter = run_filter
+DSGE_RAW.get_ll = get_ll
 # from plot
-DSGE.traceplot = traceplot_m
-DSGE.posteriorplot = posteriorplot_m
+DSGE_RAW.traceplot = traceplot_m
+DSGE_RAW.posteriorplot = posteriorplot_m
 # from misc
-DSGE.get_chain = get_chain
-DSGE.get_log_prob = get_log_prob
-DSGE.extract = extract
-DSGE.create_obs_cov = create_obs_cov
-DSGE.mask = mask
-DSGE.load_rdict = load_rdict
-DSGE.save_rdict = save_rdict
-DSGE.gfevd = gfevd
-DSGE.mbcs_index = mbcs_index
-DSGE.nhd = nhd
+DSGE_RAW.get_chain = get_chain
+DSGE_RAW.get_log_prob = get_log_prob
+DSGE_RAW.extract = extract
+DSGE_RAW.create_obs_cov = create_obs_cov
+DSGE_RAW.mask = mask
+DSGE_RAW.load_rdict = load_rdict
+DSGE_RAW.save_rdict = save_rdict
+DSGE_RAW.gfevd = gfevd
+DSGE_RAW.mbcs_index = mbcs_index
+DSGE_RAW.nhd = nhd

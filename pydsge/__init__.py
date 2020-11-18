@@ -3,11 +3,8 @@
 
 import logging
 import os
-from .clsmethods import DSGE
-from .gensys import gen_sys_from_dict
+from .gensys import DSGE, gen_sys_from_dict
 from .plots import sort_nhd
-from pandas.plotting import register_matplotlib_converters
-register_matplotlib_converters()
 
 logging.basicConfig(level=logging.INFO)
 

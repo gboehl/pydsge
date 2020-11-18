@@ -8,7 +8,6 @@
 import numpy as np
 import time
 from .stats import post_mean
-from .gensys import gen_sys_from_yaml as gen_sys
 
 
 def posterior_sampler(self, nsamples, seed=0, verbose=True):
@@ -70,12 +69,12 @@ def prior_sampler(self, nsamples, seed=0, test_lprob=False, lks=None, verbose=Tr
     if test_lprob and not hasattr(self, 'ndim'):
         self.prep_estim(load_R=True, verbose=verbose > 2)
 
-    frozen_prior = self.fdict.get('frozen_prior') 
+    frozen_prior = self.fdict.get('frozen_prior')
 
     if not np.any(frozen_prior):
         from .stats import get_prior
         frozen_prior = get_prior(self.prior, verbose=verbose)[0]
-        
+
     self.debug |= debug
 
     if hasattr(self, 'pool'):
@@ -172,6 +171,8 @@ def get_par(self, dummy=None, npar=None, asdict=False, full=True, nsamples=1, ve
     array or dict
         Numpy array of parameters or dict of parameters
     """
+    from .gensys import gen_sys_from_yaml as gen_sys
+
     if not hasattr(self, 'par'):
         gen_sys(self, verbose=verbose, **args)
     pfnames, pffunc = self.parafunc
@@ -317,6 +318,7 @@ def set_par(self, dummy=None, setpar=None, npar=None, verbose=False, roundto=5, 
     args : keyword args
         Keyword arguments forwarded to the `gen_sys` call.
     """
+    from .gensys import gen_sys_from_yaml as gen_sys
 
     pfnames, pffunc = self.parafunc
     pars_str = [str(p) for p in self.parameters]

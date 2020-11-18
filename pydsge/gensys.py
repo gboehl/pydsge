@@ -7,8 +7,10 @@
 import time
 import numpy as np
 import scipy.linalg as sl
-from grgrlib import fast0, eig, re_bk, shredder, ouc
+from grgrlib import fast0, ouc
 from .engine import preprocess
+from .clsmethods import DSGE_RAW
+from .parser import DSGE
 
 aca = np.ascontiguousarray
 
@@ -18,14 +20,8 @@ def gen_sys_from_dict(mdict, l_max=None, k_max=None, parallel=True, verbose=True
     from .tools import t_func, irfs, traj, k_map, shock2state
 
     # create a dummy DSGE instance
-    class DSGE_DUMMY:
+    class DSGE_DUMMY(DSGE_RAW):
         pass
-
-    DSGE_DUMMY.irfs = irfs
-    DSGE_DUMMY.t_func = t_func
-    DSGE_DUMMY.traj = traj
-    DSGE_DUMMY.k_map = k_map
-    DSGE_DUMMY.shock2state = shock2state
 
     self = DSGE_DUMMY()
     self.debug = True
@@ -267,3 +263,5 @@ def gen_sys(self, AA0, BB0, CC0, DD0, fb0, fc0, fd0, ZZ0, ZZ1, l_max, k_max, get
               np.round(time.time() - st, 3))
 
     return self
+
+DSGE.gen_sys = gen_sys_from_yaml
