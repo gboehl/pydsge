@@ -377,7 +377,7 @@ def load_data(self, df, start=None, end=None):
         raise TypeError('Type of input data must be a `pandas.DataFrame`.')
 
     if self is not None:
-        for o in self['observables']:
+        for o in self.observables:
             if str(o) not in df.keys():
                 raise KeyError('%s is not in the data!' % o)
 
