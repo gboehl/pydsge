@@ -4,7 +4,6 @@
 import os
 import numpy as np
 import pandas as pd
-# from .parser import DSGE
 from .stats import summary, gfevd, mbcs_index, nhd, mdd
 from .plots import posteriorplot, traceplot
 from .mcmc import mcmc, tmcmc
@@ -237,7 +236,7 @@ def mode_summary(self, data_cmaes=None, verbose=True):
 
         for s, p in enumerate(x_cmaes):
             df_inp['run %s: mode' % s] = list(p) + [f_cmaes[s]]
-    except (KeyError, IndexError):
+    except (TypeError, KeyError, IndexError):
         pass
 
     df = pd.DataFrame(df_inp)
