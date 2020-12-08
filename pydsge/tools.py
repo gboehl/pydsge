@@ -8,6 +8,7 @@ import os
 import numpy as np
 import pandas as pd
 import time
+import tqdm
 from grgrlib import fast0, map2arr
 from .engine import *
 from decimal import Decimal
@@ -344,6 +345,7 @@ def simulate(self, source=None, mask=None, pars=None, resid=None, init=None, ope
 
     t_func = serializer(self.t_func)
     obs = serializer(self.obs)
+    vv_orig = self.vv.copy()
 
     def runner(arg):
 
@@ -354,7 +356,9 @@ def simulate(self, source=None, mask=None, pars=None, resid=None, init=None, ope
             eps = np.where(np.isnan(mask), eps, operation(np.array(mask), eps))
 
         if set_par is not None:
-            set_par(par, **args)
+            _, vv = set_par(par, return_vv=True, **args)
+            if not np.all(vv == vv_orig):
+                raise Exception('The ordering of variables has changed given different parameters.')
 
         X = [state]
         L, K = [], []
@@ -382,7 +386,7 @@ def simulate(self, source=None, mask=None, pars=None, resid=None, init=None, ope
 
     X, LK, flags = map2arr(res)
 
-    if verbose:
+    if verbose > 1:
         print('[simulate:]'.ljust(15, ' ')+'Simulation took ',
               time.time() - st, ' seconds.')
 

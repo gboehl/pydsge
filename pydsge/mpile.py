@@ -298,7 +298,7 @@ def get_cov(self, npar=None, **args):
     return get_par(self, dummy='cov_mat', npar=npar, **args)
 
 
-def set_par(self, dummy=None, setpar=None, npar=None, verbose=False, roundto=5, **args):
+def set_par(self, dummy=None, setpar=None, npar=None, verbose=False, return_vv=False, roundto=5, **args):
     """Set the current parameter values.
 
     In essence, this is a wrapper around `get_par` which also compiles the transition function with the desired parameters.
@@ -343,6 +343,8 @@ def set_par(self, dummy=None, setpar=None, npar=None, verbose=False, roundto=5, 
                 npar[self.prior_names.index(dummy)] = setpar
             else:
                 npar[pars_str.index(dummy)] = setpar
+            if return_vv:
+                return npar, self.vv
             return npar
         par[pars_str.index(dummy)] = setpar
     elif dummy in pfnames:
@@ -364,6 +366,8 @@ def set_par(self, dummy=None, setpar=None, npar=None, verbose=False, roundto=5, 
         print('[set_par:]'.ljust(15, ' ') +
               ' Parameter(s):\n%s\n%s' % (pdict, pfdict))
 
+    if return_vv:
+        return get_par(self), self.vv
     return get_par(self)
 
 

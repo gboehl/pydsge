@@ -50,7 +50,7 @@ def create_filter(self, R=None, N=None, ftype=None, seed=None, incl_obs=False, r
         ftype = 'TEnKF'
 
         if N is None:
-            N = 500
+            N = int((self.dimq-self.dimeps)**2/2) + 1
 
         dimx = self.dimq-self.dimeps if reduced_form else self.dimx
         f = TEnKF(N=N, dim_x=dimx, dim_z=self.nobs, seed=seed, **fargs)
