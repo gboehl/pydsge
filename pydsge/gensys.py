@@ -7,6 +7,7 @@
 import time
 import numpy as np
 import scipy.linalg as sl
+import cloudpickle as cpickle
 from grgrlib import fast0, ouc
 from .engine import preprocess
 from .clsmethods import DSGE_RAW
@@ -16,6 +17,22 @@ aca = np.ascontiguousarray
 
 
 def gen_sys_from_dict(mdict, l_max=None, k_max=None, parallel=True, verbose=True):
+
+    global processed_mdicts
+
+    # add l/k max to dict
+    mdict['l_max'] = l_max
+    mdict['k_max'] = k_max
+
+    # check if dict has already been processed. If so, load it
+    if 'processed_mdicts' in globals():
+        mdict_dump = cpickle.dumps(mdict)
+        if mdict_dump in processed_mdicts:
+            if verbose:
+                print('[get_sys:]'.ljust(15, ' ') + ' Model dict was already processed. Loading from cache.')
+            return processed_mdicts[mdict_dump]
+    else:
+        processed_mdicts = {}
 
     from .tools import t_func, irfs, traj, k_map, shock2state
 
@@ -43,7 +60,11 @@ def gen_sys_from_dict(mdict, l_max=None, k_max=None, parallel=True, verbose=True
     ZZ1 = mdict.get('ZZ1')
     fd = mdict.get('fd')
 
-    return gen_sys(self, mdict['AA'], mdict['BB'], mdict['CC'], mdict['DD'], mdict['fb'], mdict['fc'], fd, ZZ0, ZZ1, l_max, k_max, False, parallel, verbose)
+    res_sys = gen_sys(self, mdict['AA'], mdict['BB'], mdict['CC'], mdict['DD'], mdict['fb'], mdict['fc'], fd, ZZ0, ZZ1, l_max, k_max, False, parallel, verbose)
+
+    processed_mdicts[cpickle.dumps(mdict)] = res_sys
+
+    return res_sys
 
 
 def gen_sys_from_yaml(self, par=None, l_max=None, k_max=None, get_hx_only=False, parallel=False, verbose=True):
