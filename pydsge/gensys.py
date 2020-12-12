@@ -43,6 +43,7 @@ def gen_sys_from_dict(mdict, l_max=None, k_max=None, parallel=True, verbose=True
     self = DSGE_DUMMY()
     self.debug = True
     self.set_par = None
+    self.fdict = mdict
 
     # fix value of x_bar
     if 'x_bar' in mdict:
@@ -55,6 +56,10 @@ def gen_sys_from_dict(mdict, l_max=None, k_max=None, parallel=True, verbose=True
     self.shocks = mdict['shocks']
     self.neps = len(mdict['shocks'])
     self.const_var = mdict['const_var']
+
+    self.observables = mdict.get('observables')
+    if self.observables:
+        self.nobs = len(mdict.get('observables'))
 
     ZZ0 = mdict.get('ZZ0')
     ZZ1 = mdict.get('ZZ1')

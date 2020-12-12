@@ -100,8 +100,12 @@ def o_func(self, state, covs=None, pars=None):
 
         return np.array(obs)
 
-    obs = state[..., :self.dimp] @ self.hx[0].T + \
-        state[..., self.dimp:] @ self.hx[1].T + self.hx[2]
+    try:
+        obs = state[..., :self.dimp] @ self.hx[0].T + \
+            state[..., self.dimp:] @ self.hx[1].T + self.hx[2]
+    except ValueError as e:
+        raise ValueError(
+            str(e) + ' you probably want to use the filter with `reduced_form=False`.')
 
     if np.ndim(state) <= 1:
         data = self.data.index if hasattr(self, 'data') else None
@@ -265,9 +269,11 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, set_k=False
 
     if verbose == 1:
         if np.any(flag):
-            print('[irfs:]'.ljust(14, ' ') + ' No rational expectations solution(s) found.')
+            print('[irfs:]'.ljust(14, ' ') +
+                  ' No rational expectations solution(s) found.')
         elif np.any(multflag):
-            print('[irfs:]'.ljust(14, ' ') + ' Multiplicity/Multiplicities found.')
+            print('[irfs:]'.ljust(14, ' ') +
+                  ' Multiplicity/Multiplicities found.')
 
     if verbose > 2:
         print('[irfs:]'.ljust(15, ' ') + 'Simulation took ',
@@ -332,7 +338,11 @@ def simulate(self, source=None, mask=None, pars=None, resid=None, init=None, ope
         from .estimation import create_pool
         create_pool(self)
 
-    set_par = serializer(self.set_par)
+    if self.set_par is not None:
+        set_par = serializer(self.set_par)
+    else:
+        set_par = None
+
     t_func = serializer(self.t_func)
     obs = serializer(self.obs)
     vv_orig = self.vv.copy()
@@ -345,10 +355,10 @@ def simulate(self, source=None, mask=None, pars=None, resid=None, init=None, ope
         if mask is not None:
             eps = np.where(np.isnan(mask), eps, operation(np.array(mask), eps))
 
-        _, vv = set_par(par, return_vv=True, **args)
-
-        if not np.all(vv == vv_orig):
-            raise Exception('The ordering of variables has changed given different parameters.')
+        if set_par is not None:
+            _, vv = set_par(par, return_vv=True, **args)
+            if not np.all(vv == vv_orig):
+                raise Exception('The ordering of variables has changed given different parameters.')
 
         X = [state]
         L, K = [], []
