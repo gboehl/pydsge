@@ -71,11 +71,11 @@ def create_filter(self, R=None, N=None, ftype=None, seed=None, incl_obs=False, r
     return f
 
 
-def get_ll(self, **args):
-    return run_filter(self, smoother=False, get_ll=True, **args)
+def get_ll(self, fast=False, test=False, **args):
+    return run_filter(self, fast=False, test=False, smoother=False, get_ll=True, **args)
 
 
-def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, seed=None, verbose=False):
+def run_filter(self, smoother=True,  fast=False, test=False, get_ll=False, dispatch=None, rcond=1e-14, seed=None, verbose=False):
 
     if verbose:
         st = time.time()
@@ -107,10 +107,26 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, se
         self.filter.t_func = t_func_jit
         self.filter.o_func = o_func_jit
         self.filter.get_eps = get_eps_jit
+####   test
+    elif test and self.filter.name == 'TEnKF':
+        from .engine import t_func_jit
+        self.filter.t_func_jit = t_func_jit
+        self.filter.t_func = lambda *x: self.t_func(*x, get_obs=True)
+        self.filter.o_func = None
+        self.filter.sys = self.sys
+        self.filter.precalc_mat = self.precalc_mat
+        self.filter.hx = self.hx
+        self.filter.neps = self.neps
+        self.filter.dimp = self.dimp
+        self.filter.fast = fast
+        self.filter.batch_filter = self.filter.batch_filter_felber
+####
+
 
     elif self.filter.reduced_form:
         self.filter.t_func = lambda *x: self.t_func(*x, get_obs=True)
         self.filter.o_func = None
+        self.filter.batch_filter = self.filter.batch_filter_boehl
 
     else:
         self.filter.t_func = self.t_func

@@ -5,13 +5,25 @@ import numpy as np
 import numpy.linalg as nl
 import time
 import sys
-from numba import njit, prange
+from numba import njit, prange, types, float64, boolean, void, optional, types, int32
 
 aca = np.ascontiguousarray
 si_eps = sys.float_info.epsilon
 
 
-@njit(cache=True, nogil=True)
+#signatures for preprocess_jittable
+#preprocess signature needs to be handled at the definition of the function, thus it requuires to adapt preprocess_jit and preprocess_jit_parallel
+
+####contiguity of some arrays changed to improve perfor,mance and surpress warnings
+signature_preprocess = types.Tuple((float64[:,:,:,:], float64[:,:,:,:], float64[:,:,:], float64[:,:,:], float64[:,:,:,:], float64[:,:,:]))(float64[:,:], float64[:,:], float64[:,:], float64[:,:], float64[:], float64[:], float64[:], float64[:], float64[:,:], float64[:,:], float64, int32, int32)
+
+signature_get_lam = types.Tuple((float64[:,:], float64[:,]))(float64[:,:], float64[:,], float64[:,:], float64[:,:], float64[:,:], float64[:,:], float64[:], int32)
+
+signature_get_omg = types.Tuple((float64[:,:], float64[:,]))(float64[:,:], float64[:,], float64[:,:], float64[:], float64[:,:], float64[:,:], float64[:,:], float64[:,:], float64[:], int32)
+
+#
+
+@njit(signature_get_lam, cache=True, nogil=True)
 def get_lam(omg, psi, S, T, V, W, h, l):
 
     dimp, dimq = omg.shape
@@ -20,14 +32,14 @@ def get_lam(omg, psi, S, T, V, W, h, l):
     B = T if l else W
     c = np.zeros(dimq) if l else h[:dimq]
 
-    inv = nl.inv(A[:dimq, :dimq] + aca(A[:dimq, dimq:]) @ omg)
+    inv = nl.inv(A[:dimq, :dimq] + aca(A[:dimq, dimq:]) @ aca(omg))
     lam = inv @ aca(B[:dimq, :dimq])
-    xi = inv @ (c - aca(A[:dimq, dimq:]) @ psi)
+    xi = inv @ (c - aca(A[:dimq, dimq:]) @ aca(psi))
 
     return lam, xi
 
 
-@njit(cache=True, nogil=True)
+@njit(signature_get_omg, cache=True, nogil=True)
 def get_omg(omg, psi, lam, xi, S, T, V, W, h, l):
 
     dimp, dimq = omg.shape
@@ -36,9 +48,9 @@ def get_omg(omg, psi, lam, xi, S, T, V, W, h, l):
     B = T if l else W
     c = np.zeros(dimp) if l else h[dimq:]
 
-    dum = (A[dimq:, :dimq] + aca(A[dimq:, dimq:]) @ omg)
-    psi = dum @ xi + aca(A[dimq:, dimq:]) @ psi - c
-    omg = dum @ lam - aca(B[dimq:, :dimq])
+    dum = (A[dimq:, :dimq] + aca(A[dimq:, dimq:]) @ aca(omg))
+    psi = dum @ aca(xi) + aca(A[dimq:, dimq:]) @ aca(psi) - c
+    omg = dum @ aca(lam) - aca(B[dimq:, :dimq])
 
     return omg, psi
 
@@ -83,12 +95,14 @@ def preprocess_jittable(S, T, V, W, h, fq1, fp1, fq0, omg, lam, x_bar, l_max, k_
 
                 l_last = max(l-1, 0)
                 k_last = k if l else max(k-1, 0)
-
+                lam_input = [pmat[l_last, k_last], pterm[l_last, k_last], S, T, V, W, h, l]
                 qmat[l, k], qterm[l, k] = get_lam(
                     pmat[l_last, k_last], pterm[l_last, k_last], S, T, V, W, h, l)
+                lam_out = [qmat[l, k], qterm[l, k]]
+                omg_input = [pmat[l_last, k_last], pterm[l_last, k_last], qmat[l, k], qterm[l, k], S, T, V, W, h, l]
                 pmat[l, k], pterm[l, k] = get_omg(
                     pmat[l_last, k_last], pterm[l_last, k_last], qmat[l, k], qterm[l, k], S, T, V, W, h, l)
-
+                omg_out = [pmat[l, k], pterm[l, k]]
     bmat = np.empty((5, l_max, k_max, dimq))
     bterm = np.empty((5, l_max, k_max))
 
@@ -126,7 +140,7 @@ def preprocess_jittable(S, T, V, W, h, fq1, fp1, fq0, omg, lam, x_bar, l_max, k_
                 lam = qmat[l_loc, k_loc] @ lam
                 xi = qmat[l_loc, k_loc] @ xi + qterm[l_loc, k_loc]
 
-    return pmat, qmat, pterm, qterm, bmat, bterm
+    return pmat, qmat, pterm, qterm, bmat, bterm, lam_input, omg_input, lam_out, omg_out
 
 
 preprocess_jit = njit(preprocess_jittable, cache=True, nogil=True)
@@ -298,3 +312,549 @@ def check_cnst(bmat, bterm, s, l, k, q0):
     """constraint value in period s given CDR-state q0 under the assumptions (l,k)
     """
     return bmat[s, l, k] @ q0 + bterm[s, l, k]
+
+
+
+#### benchmarking
+
+import pickle
+
+
+with open("pydsge/preprocess_input", "rb") as file:
+    preprocess_input = pickle.load(file)
+preprocess_input
+
+#define siganture
+tf_jit = njit(preprocess_jittable)
+pmat, qmat, pterm, qterm, bmat, bterm, lam_input, omg_input, lam_out, omg_out = preprocess_jittable(*preprocess_input)
+lam_input
+
+
+for e in omg_input:
+
+    print(type(e))
+    print(e.shape)
+
+for e in omg_out:
+
+    print(type(e))
+    print(e.shape)
+
+
+
+###Benchmark get_omg
+
+#no siganture
+
+@njit(cache=True, nogil=True)
+def get_omg_ns(omg, psi, lam, xi, S, T, V, W, h, l):
+
+    dimp, dimq = omg.shape
+
+    A = S if l else V
+    B = T if l else W
+    c = np.zeros(dimp) if l else h[dimq:]
+
+    dum = (A[dimq:, :dimq] + aca(A[dimq:, dimq:]) @ omg)
+    psi = dum @ xi + aca(A[dimq:, dimq:]) @ psi - c
+    omg = dum @ lam - aca(B[dimq:, :dimq])
+
+    return omg, psi
+
+#compilation time
+start = time.time()
+get_omg_ns(*omg_input)
+t_c = (time.time() - start)
+t_c
+
+#execution time
+start = time.time()
+for n in range(1000000):
+    get_omg_ns(*omg_input)
+t_e = (time.time() - start)
+t_e
+
+
+#with numba siganture and optimal array contiguity
+
+@njit(signature_get_omg, cache=True, nogil=True)
+def get_omg(omg, psi, lam, xi, S, T, V, W, h, l):
+
+    dimp, dimq = omg.shape
+
+    A = S if l else V
+    B = T if l else W
+    c = np.zeros(dimp) if l else h[dimq:]
+
+    dum = (A[dimq:, :dimq] + aca(A[dimq:, dimq:]) @ aca(omg))
+    psi = dum @ aca(xi) + aca(A[dimq:, dimq:]) @ aca(psi) - c
+    omg = dum @ aca(lam) - aca(B[dimq:, :dimq])
+
+    return omg, psi
+
+#compilation time
+start = time.time()
+get_omgs1(*omg_input)
+st_c = (time.time() - start)
+st_c
+
+#execution time
+start = time.time()
+for n in range(1000000):
+    get_omgs1(*omg_input)
+st1_e = (time.time() - start)
+t_e/st1_e
+
+
+
+### this version are left here for robustness, bothe were checked and their perofrmace was worse than #with numba siganture and optimal array contiguity
+
+# #with numba siganture and  WITHOUT optimal array contiguity
+#
+# @njit(signature_get_omg, cache=True, nogil=True)
+# def get_omgs(omg, psi, lam, xi, S, T, V, W, h, l):
+#
+#     dimp, dimq = omg.shape
+#
+#     A = S if l else V
+#     B = T if l else W
+#     c = np.zeros(dimp) if l else h[dimq:]
+#
+#     dum = (A[dimq:, :dimq] + aca(A[dimq:, dimq:]) @ omg)
+#     psi = dum @ xi + aca(A[dimq:, dimq:]) @ psi - c
+#     omg = dum @ lam - aca(B[dimq:, :dimq])
+#
+#     return omg, psi
+#
+# #compilation time
+# start = time.time()
+# get_omgs(*omg_input)
+# st_c = (time.time() - start)
+# st_c
+#
+# #execution time
+# start = time.time()
+# for n in range(1000000):
+#     get_omgs(*omg_input)
+# st_e = (time.time() - start)
+# st_e
+#
+#
+# t_e/st_e
+
+# # NO siganture and optimal array contiguity
+# @njit(cache=True, nogil=True)
+# def get_omgs2(omg, psi, lam, xi, S, T, V, W, h, l):
+#
+#     dimp, dimq = omg.shape
+#
+#     A = S if l else V
+#     B = T if l else W
+#     c = np.zeros(dimp) if l else h[dimq:]
+#
+#     dum = (A[dimq:, :dimq] + aca(A[dimq:, dimq:]) @ aca(omg))
+#     psi = dum @ aca(xi) + aca(A[dimq:, dimq:]) @ aca(psi) - c
+#     omg = dum @ aca(lam) - aca(B[dimq:, :dimq])
+#
+#     return omg, psi
+#
+# #compilation time
+# start = time.time()
+# get_omgs2(*omg_input)
+# st_c = (time.time() - start)
+# st_c
+#
+# #execution time
+# start = time.time()
+# for n in range(1000000):
+#     get_omgs2(*omg_input)
+# st2_e = (time.time() - start)
+# t_e/st2_e
+#
+
+
+###Benchmark get_lam
+#no siganture
+
+@njit(cache=True, nogil=True)
+def get_lam_ns(omg, psi, S, T, V, W, h, l):
+
+    dimp, dimq = omg.shape
+
+    A = S if l else V
+    B = T if l else W
+    c = np.zeros(dimq) if l else h[:dimq]
+
+    inv = nl.inv(A[:dimq, :dimq] + aca(A[:dimq, dimq:]) @ omg)
+    lam = inv @ aca(B[:dimq, :dimq])
+    xi = inv @ (c - aca(A[:dimq, dimq:]) @ psi)
+
+    return lam, xi
+
+#compilation time
+start = time.time()
+get_lam_ns(*lam_input)
+t_c = (time.time() - start)
+t_c
+
+#execution time
+start = time.time()
+for n in range(1000000):
+    get_lam_ns(*lam_input)
+t_e = (time.time() - start)
+t_e
+
+
+
+#with numba siganture and optimal array contiguity
+
+@njit(signature_get_lam, cache=True, nogil=True)
+def get_lam(omg, psi, S, T, V, W, h, l):
+
+    dimp, dimq = omg.shape
+
+    A = S if l else V
+    B = T if l else W
+    c = np.zeros(dimq) if l else h[:dimq]
+
+    inv = nl.inv(A[:dimq, :dimq] + aca(A[:dimq, dimq:]) @ aca(omg))
+    lam = inv @ aca(B[:dimq, :dimq])
+    xi = inv @ (c - aca(A[:dimq, dimq:]) @ aca(psi))
+
+    return lam, xi
+
+#compilation time
+start = time.time()
+get_lam(*lam_input)
+st_c = (time.time() - start)
+st_c
+
+#execution time
+start = time.time()
+for n in range(1000000):
+    get_lam(*lam_input)
+st_e = (time.time() - start)
+st_e
+
+#performance diff
+
+t_e/st_e
+
+
+### Benchmark preprocess jittable
+
+#no signature
+@njit(cache=True, nogil=True)
+def preprocess_jittable(S, T, V, W, h, fq1, fp1, fq0, omg, lam, x_bar, l_max, k_max):
+    """jitted preprocessing of system matrices until (l_max, k_max)
+    """
+
+    dimp, dimq = omg.shape
+    l_max += 1
+    k_max += 1
+
+    T22 = T[dimq:, dimq:]
+    if nl.cond(T22) > 1/si_eps:
+        print('[preprocess:]'.ljust(15, ' ') +
+              ' WARNING: at least one control indetermined')
+
+    T22i = nl.inv(T22)
+    T[dimq:] = T22i @ aca(T[dimq:])
+    S[dimq:] = T22i @ aca(S[dimq:])
+
+    W22 = W[dimq:, dimq:]
+    W22i = nl.inv(W22)
+    W[dimq:] = W22i @ aca(W[dimq:])
+    V[dimq:] = W22i @ aca(V[dimq:])
+    h[dimq:] = W22i @ aca(h[dimq:])
+
+    pmat = np.empty((l_max, k_max, dimp, dimq))
+    qmat = np.empty((l_max, k_max, dimq, dimq))
+    pterm = np.empty((l_max, k_max, dimp))
+    qterm = np.empty((l_max, k_max, dimq))
+
+    pmat[0, 0] = omg
+    pterm[0, 0] = np.zeros(dimp)
+    qmat[0, 0] = lam
+    qterm[0, 0] = np.zeros(dimq)
+
+    for l in range(0, l_max):
+        for k in range(0, k_max):
+
+            if k or l:
+
+                l_last = max(l-1, 0)
+                k_last = k if l else max(k-1, 0)
+
+                qmat[l, k], qterm[l, k] = get_lam(
+                    pmat[l_last, k_last], pterm[l_last, k_last], S, T, V, W, h, l)
+                pmat[l, k], pterm[l, k] = get_omg(
+                    pmat[l_last, k_last], pterm[l_last, k_last], qmat[l, k], qterm[l, k], S, T, V, W, h, l)
+
+    bmat = np.empty((5, l_max, k_max, dimq))
+    bterm = np.empty((5, l_max, k_max))
+
+    for l in range(0, l_max):
+        for k in prange(0, k_max):
+
+            # initialize local lam, xi to iterate upon
+            lam = np.eye(dimq)
+            xi = np.zeros(dimq)
+
+            for s in range(l+k+1):
+
+                l_loc = max(l-s, 0)
+                k_loc = max(min(k, k+l-s), 0)
+
+                y2r = fp1 @ pmat[l_loc, k_loc] + fq1 @ qmat[l_loc, k_loc] + fq0
+                cr = fp1 @ pterm[l_loc, k_loc] + fq1 @ qterm[l_loc, k_loc]
+
+                if s == 0:
+                    bmat[0, l, k] = y2r @ lam
+                    bterm[0, l, k] = cr + y2r @ xi
+                if s == l-1:
+                    bmat[1, l, k] = y2r @ lam
+                    bterm[1, l, k] = cr + y2r @ xi
+                if s == l:
+                    bmat[2, l, k] = y2r @ lam
+                    bterm[2, l, k] = cr + y2r @ xi
+                if s == l+k-1:
+                    bmat[3, l, k] = y2r @ lam
+                    bterm[3, l, k] = cr + y2r @ xi
+                if s == l+k:
+                    bmat[4, l, k] = y2r @ lam
+                    bterm[4, l, k] = cr + y2r @ xi
+
+                lam = qmat[l_loc, k_loc] @ lam
+                xi = qmat[l_loc, k_loc] @ xi + qterm[l_loc, k_loc]
+
+    return pmat, qmat, pterm, qterm, bmat, bterm
+
+
+#compilation time
+start = time.time()
+preprocess_jittable(*preprocess_input)
+t_c = (time.time() - start)
+t_c
+
+#execution time
+start = time.time()
+for n in range(10000):
+    preprocess_jittable(*preprocess_input)
+t_e = (time.time() - start)
+t_e
+
+
+#with numba siganture and optimal array contiguity
+
+@njit(signature_preprocess, cache=True, nogil=True)
+def preprocess_jittable1(S, T, V, W, h, fq1, fp1, fq0, omg, lam, x_bar, l_max, k_max):
+    """jitted preprocessing of system matrices until (l_max, k_max)
+    """
+    fq1 = aca(fq1)
+    fp1 = aca(fp1)
+
+    dimp, dimq = omg.shape
+    l_max += 1
+    k_max += 1
+
+    T22 = T[dimq:, dimq:]
+    if nl.cond(T22) > 1/si_eps:
+        print('[preprocess:]'.ljust(15, ' ') +
+              ' WARNING: at least one control indetermined')
+
+    T22i = nl.inv(T22)
+    T[dimq:] = T22i @ aca(T[dimq:])
+    S[dimq:] = T22i @ aca(S[dimq:])
+
+    W22 = W[dimq:, dimq:]
+    W22i = nl.inv(W22)
+    W[dimq:] = W22i @ aca(W[dimq:])
+    V[dimq:] = W22i @ aca(V[dimq:])
+    h[dimq:] = W22i @ aca(h[dimq:])
+
+    pmat = np.empty((l_max, k_max, dimp, dimq))
+    qmat = np.empty((l_max, k_max, dimq, dimq))
+    pterm = np.empty((l_max, k_max, dimp))
+    qterm = np.empty((l_max, k_max, dimq))
+
+    pmat[0, 0] = omg
+    pterm[0, 0] = np.zeros(dimp)
+    qmat[0, 0] = lam
+    qterm[0, 0] = np.zeros(dimq)
+
+    for l in range(0, l_max):
+        for k in range(0, k_max):
+
+            if k or l:
+
+                l_last = max(l-1, 0)
+                k_last = k if l else max(k-1, 0)
+
+                qmat[l, k], qterm[l, k] = get_lam(
+                    pmat[l_last, k_last], pterm[l_last, k_last], S, T, V, W, h, l)
+                pmat[l, k], pterm[l, k] = get_omg(
+                    pmat[l_last, k_last], pterm[l_last, k_last], qmat[l, k], qterm[l, k], S, T, V, W, h, l)
+
+    bmat = np.empty((5, l_max, k_max, dimq))
+    bterm = np.empty((5, l_max, k_max))
+
+    for l in range(0, l_max):
+        for k in prange(0, k_max):
+
+            # initialize local lam, xi to iterate upon
+            lam = np.eye(dimq)
+            xi = np.zeros(dimq)
+
+            for s in range(l+k+1):
+
+                l_loc = max(l-s, 0)
+                k_loc = max(min(k, k+l-s), 0)
+
+                y2r = fp1 @ pmat[l_loc, k_loc] + fq1 @ qmat[l_loc, k_loc] + fq0
+                cr = fp1 @ pterm[l_loc, k_loc] + fq1 @ qterm[l_loc, k_loc]
+
+                if s == 0:
+                    bmat[0, l, k] = y2r @ lam
+                    bterm[0, l, k] = cr + y2r @ xi
+                if s == l-1:
+                    bmat[1, l, k] = y2r @ lam
+                    bterm[1, l, k] = cr + y2r @ xi
+                if s == l:
+                    bmat[2, l, k] = y2r @ lam
+                    bterm[2, l, k] = cr + y2r @ xi
+                if s == l+k-1:
+                    bmat[3, l, k] = y2r @ lam
+                    bterm[3, l, k] = cr + y2r @ xi
+                if s == l+k:
+                    bmat[4, l, k] = y2r @ lam
+                    bterm[4, l, k] = cr + y2r @ xi
+
+                lam = qmat[l_loc, k_loc] @ lam
+                xi = qmat[l_loc, k_loc] @ xi + qterm[l_loc, k_loc]
+
+    return pmat, qmat, pterm, qterm, bmat, bterm
+
+
+#compilation time
+start = time.time()
+preprocess_jittable1(*preprocess_input)
+st_c = (time.time() - start)
+st_c
+
+#execution time
+start = time.time()
+for n in range(10000):
+    preprocess_jittable1(*preprocess_input)
+st_e = (time.time() - start)
+st_e
+
+t_e/st_e
+
+
+
+
+
+@njit(cache=True, nogil=True)
+def preprocess_jittable1(S, T, V, W, h, fq1, fp1, fq0, omg, lam, x_bar, l_max, k_max):
+    """jitted preprocessing of system matrices until (l_max, k_max)
+    """
+    fq1 = aca(fq1)
+    fp1 = aca(fp1)
+
+    dimp, dimq = omg.shape
+    l_max += 1
+    k_max += 1
+
+    T22 = T[dimq:, dimq:]
+    if nl.cond(T22) > 1/si_eps:
+        print('[preprocess:]'.ljust(15, ' ') +
+              ' WARNING: at least one control indetermined')
+
+    T22i = nl.inv(T22)
+    T[dimq:] = T22i @ aca(T[dimq:])
+    S[dimq:] = T22i @ aca(S[dimq:])
+
+    W22 = W[dimq:, dimq:]
+    W22i = nl.inv(W22)
+    W[dimq:] = W22i @ aca(W[dimq:])
+    V[dimq:] = W22i @ aca(V[dimq:])
+    h[dimq:] = W22i @ aca(h[dimq:])
+
+    pmat = np.empty((l_max, k_max, dimp, dimq))
+    qmat = np.empty((l_max, k_max, dimq, dimq))
+    pterm = np.empty((l_max, k_max, dimp))
+    qterm = np.empty((l_max, k_max, dimq))
+
+    pmat[0, 0] = omg
+    pterm[0, 0] = np.zeros(dimp)
+    qmat[0, 0] = lam
+    qterm[0, 0] = np.zeros(dimq)
+
+    for l in range(0, l_max):
+        for k in range(0, k_max):
+
+            if k or l:
+
+                l_last = max(l-1, 0)
+                k_last = k if l else max(k-1, 0)
+
+                qmat[l, k], qterm[l, k] = get_lam(
+                    pmat[l_last, k_last], pterm[l_last, k_last], S, T, V, W, h, l)
+                pmat[l, k], pterm[l, k] = get_omg(
+                    pmat[l_last, k_last], pterm[l_last, k_last], qmat[l, k], qterm[l, k], S, T, V, W, h, l)
+
+    bmat = np.empty((5, l_max, k_max, dimq))
+    bterm = np.empty((5, l_max, k_max))
+
+    for l in range(0, l_max):
+        for k in prange(0, k_max):
+
+            # initialize local lam, xi to iterate upon
+            lam = np.eye(dimq)
+            xi = np.zeros(dimq)
+
+            for s in range(l+k+1):
+
+                l_loc = max(l-s, 0)
+                k_loc = max(min(k, k+l-s), 0)
+
+                y2r = fp1 @ pmat[l_loc, k_loc] + fq1 @ qmat[l_loc, k_loc] + fq0
+                cr = fp1 @ pterm[l_loc, k_loc] + fq1 @ qterm[l_loc, k_loc]
+
+                if s == 0:
+                    bmat[0, l, k] = y2r @ lam
+                    bterm[0, l, k] = cr + y2r @ xi
+                if s == l-1:
+                    bmat[1, l, k] = y2r @ lam
+                    bterm[1, l, k] = cr + y2r @ xi
+                if s == l:
+                    bmat[2, l, k] = y2r @ lam
+                    bterm[2, l, k] = cr + y2r @ xi
+                if s == l+k-1:
+                    bmat[3, l, k] = y2r @ lam
+                    bterm[3, l, k] = cr + y2r @ xi
+                if s == l+k:
+                    bmat[4, l, k] = y2r @ lam
+                    bterm[4, l, k] = cr + y2r @ xi
+
+                lam = qmat[l_loc, k_loc] @ lam
+                xi = qmat[l_loc, k_loc] @ xi + qterm[l_loc, k_loc]
+
+    return pmat, qmat, pterm, qterm, bmat, bterm
+
+
+#compilation time
+start = time.time()
+preprocess_jittable1(*preprocess_input)
+st_c = (time.time() - start)
+st_c
+
+#execution time
+start = time.time()
+for n in range(10000):
+    preprocess_jittable1(*preprocess_input)
+st1_e = (time.time() - start)
+st1_e
+
+st1_e/st_e
