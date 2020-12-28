@@ -380,7 +380,6 @@ def load_data(self, df, start=None, end=None):
             if str(o) not in df.keys():
                 raise KeyError('%s is not in the data!' % o)
 
-    if self is not None:
         d = df[self.observables]
 
     if start is not None:

@@ -62,7 +62,10 @@ def create_filter(self, R=None, N=None, ftype=None, seed=None, incl_obs=False, r
     f.P *= 1e1
     f.init_P = f.P
 
-    f.Q = self.QQ(self.ppar) @ self.QQ(self.ppar)
+    try:
+        f.Q = self.QQ(self.ppar) @ self.QQ(self.ppar)
+    except AttributeError:
+        f.Q = self.fdict['QQ'] @ self.fdict['QQ']
     self.filter = f
 
     return f
@@ -189,8 +192,8 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, acc
     import os
     from grgrlib.core import map2arr, serializer
 
-    if sample is None:
-        sample = self.par
+    # if sample is None:
+        # sample = self.par
 
     if np.ndim(sample) <= 1:
         sample = [sample]
@@ -227,7 +230,9 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, acc
 
     self.debug |= debug
 
-    set_par = serializer(self.set_par)
+    if sample[0] is not None:
+        set_par = serializer(self.set_par)
+
     run_filter = serializer(self.run_filter)
     t_func = serializer(self.t_func)
     edim = len(self.shocks)
