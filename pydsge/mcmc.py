@@ -369,7 +369,6 @@ def tmcmc(self, nsteps, nwalks, ntemps, target, update_freq=False, test_lprob=Fa
                 full=False, verbose=verbose > 1)
 
     pbar = tqdm.tqdm(total=ntemps, unit='temp(s)', dynamic_ncols=True)
-    sweat = False
     tmp = 0
 
     for i in range(ntemps):
@@ -385,11 +384,9 @@ def tmcmc(self, nsteps, nwalks, ntemps, target, update_freq=False, test_lprob=Fa
 
         if tmp >= 1:
             # print only once
-            if not sweat:
-                pbar.write('[tmcmc:]'.ljust(
-                    15, ' ') + "Increasing temperature to %s°. Too hot! I'm out..." % np.round(100*tmp, 3))
-            sweat = True
+            pbar.write('[tmcmc:]'.ljust(15, ' ') + "Increasing temperature to %s°. Too hot! I'm out..." % np.round(100*tmp, 3))
             pbar.update()
+            self.temp = 1
             # skip for-loop to exit
             continue
 
