@@ -8,7 +8,7 @@ import time
 import numpy as np
 import scipy.linalg as sl
 import cloudpickle as cpickle
-from grgrlib import fast0, ouc
+from grgrlib import fast0, ouc, klein, speed_kills
 from .engine import preprocess
 from .clsmethods import DSGE_RAW
 from .parser import DSGE
@@ -16,7 +16,7 @@ from .parser import DSGE
 aca = np.ascontiguousarray
 
 
-def gen_sys_from_dict(mdict, l_max=None, k_max=None, parallel=True, verbose=True):
+def gen_sys_from_dict(mdict, l_max=None, k_max=None, parallel=True, force_processing=False, verbose=True):
 
     global processed_mdicts
 
@@ -25,7 +25,7 @@ def gen_sys_from_dict(mdict, l_max=None, k_max=None, parallel=True, verbose=True
     mdict['k_max'] = k_max
 
     # check if dict has already been processed. If so, load it
-    if 'processed_mdicts' in globals():
+    if not force_processing and 'processed_mdicts' in globals():
         mdict_dump = cpickle.dumps(mdict)
         if mdict_dump in processed_mdicts:
             if verbose:
@@ -256,21 +256,12 @@ def gen_sys(self, AA0, BB0, CC0, DD0, fb0, fc0, fd0, ZZ0, ZZ1, l_max, k_max, get
     PR = Q @ aca(PR)
     gg = Q @ gg
 
-    SS, TT, alp, bet, Q, Z = sl.ordqz(PU, MU, sort='ouc')
+    solver = 'klein' # to be implemented
 
-    # check for Blanchard-Kahn
-    if not dimq == sum(ouc(alp, bet)):
-        raise Exception('%s states but %s Evs inside the unit circle.' % (
-            dimq, sum(ouc(alp, bet))))
-
-    S11 = SS[:dimq, :dimq]
-    T11 = TT[:dimq, :dimq]
-
-    Z11 = Z[:dimq, :dimq]
-    Z21 = Z[dimq:, :dimq]
-
-    omg = Z21 @ sl.inv(Z11)
-    lam = Z11 @ sl.inv(S11) @ T11 @ sl.inv(Z11)
+    if solver == 'speed_kills':
+        omg, lam = speed_kills(PU, MU, dimp, dimq, tol=1e-4)
+    else:
+        omg, lam = klein(PU, MU, nstates=dimq, verbose=verbose, force=False)
 
     # finally add relevant stuff to the class
 

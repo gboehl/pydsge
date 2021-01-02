@@ -360,7 +360,7 @@ def set_par(self, dummy=None, setpar=None, npar=None, verbose=False, return_vv=F
         Q = self.QQ(self.ppar) @ self.QQ(self.ppar)
         self.filter.Q = Q
 
-    if verbose:
+    if verbose > 1:
         pdict = dict(zip(pars_str, np.round(self.par, roundto)))
         pfdict = dict(zip(pfnames, np.round(pffunc(self.par), roundto)))
         print('[set_par:]'.ljust(15, ' ') +

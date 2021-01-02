@@ -3,9 +3,11 @@
 
 import logging
 import os
+import numpy as np
 from .gensys import DSGE, gen_sys_from_dict
 from .plots import sort_nhd
 
+np.set_printoptions(threshold=np.inf)
 logging.basicConfig(level=logging.INFO)
 
 pth = os.path.dirname(__file__)

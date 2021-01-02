@@ -183,7 +183,7 @@ def preprocess(self, PU, MU, PR, MR, gg, fq1, fp1, fq0, parallel=False, verbose=
 
     if verbose:
         print('[preprocess:]'.ljust(
-            15, ' ')+' Preprocessing finished within %ss.' % np.round((time.time() - st), 3))
+            15, ' ')+' Preprocessing finished within %ss.' % np.round((time.time() - st), 5))
 
     return
 
@@ -202,7 +202,7 @@ def preprocess_tmats(self, fq1, fp1, fq0, verbose):
 
     if verbose:
         print('[preprocess_tmats:]'.ljust(
-            15, ' ')+' Preprocessing finished within %ss.' % np.round((time.time() - st), 3))
+            15, ' ')+' Preprocessing finished within %ss.' % np.round((time.time() - st), 5))
 
     return
 
