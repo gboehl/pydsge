@@ -72,10 +72,10 @@ def create_filter(self, R=None, N=None, ftype=None, seed=None, incl_obs=False, r
 
 
 def get_ll(self, fast=False, test=False, **args):
-    return run_filter(self, fast=False, test=False, smoother=False, get_ll=True, **args)
+    return run_filter(self, fast=fast, test=test, smoother=False, get_ll=True, **args)
 
 
-def run_filter(self, smoother=True,  fast=False, test=False, get_ll=False, dispatch=None, rcond=1e-14, seed=None, verbose=False):
+def run_filter(self, smoother=True, fast=False, test=False, get_ll=False, dispatch=None, rcond=1e-14, seed=None, verbose=False):
 
     if verbose:
         st = time.time()
@@ -107,6 +107,7 @@ def run_filter(self, smoother=True,  fast=False, test=False, get_ll=False, dispa
         self.filter.t_func = t_func_jit
         self.filter.o_func = o_func_jit
         self.filter.get_eps = get_eps_jit
+
 ####   test
     elif test and self.filter.name == 'TEnKF':
         from .engine import t_func_jit
@@ -119,15 +120,15 @@ def run_filter(self, smoother=True,  fast=False, test=False, get_ll=False, dispa
         self.filter.neps = self.neps
         self.filter.dimp = self.dimp
         self.filter.fast = fast
-        self.filter.batch_filter = self.filter.batch_filter_felber
+        self.filter.test = test
+        #self.filter.batch_filter = self.filter.batch_filter_felber
 ####
 
 
     elif self.filter.reduced_form:
         self.filter.t_func = lambda *x: self.t_func(*x, get_obs=True)
         self.filter.o_func = None
-        self.filter.batch_filter = self.filter.batch_filter_boehl
-
+        self.filter.test = False
     else:
         self.filter.t_func = self.t_func
         self.filter.o_func = self.o_func

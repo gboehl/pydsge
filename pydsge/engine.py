@@ -5,7 +5,7 @@ import numpy as np
 import numpy.linalg as nl
 import time
 import sys
-from numba import njit, prange, types, float64, boolean, void, optional, types, int32
+from numba import njit, prange, types, float64, types, int32
 
 aca = np.ascontiguousarray
 si_eps = sys.float_info.epsilon
@@ -56,6 +56,8 @@ def preprocess_jit(S, T, V, W, h, fq1, fp1, fq0, omg, lam, x_bar, l_max, k_max):
     dimp, dimq = omg.shape
     l_max += 1
     k_max += 1
+    fp1 = aca(fp1)
+    fq1 = aca(fq1)
 
     T22 = T[dimq:, dimq:]
     if nl.cond(T22) > 1/si_eps:
@@ -142,7 +144,8 @@ def preprocess_jit_parallel(S, T, V, W, h, fq1, fp1, fq0, omg, lam, x_bar, l_max
     dimp, dimq = omg.shape
     l_max += 1
     k_max += 1
-
+    fp1 = aca(fp1)
+    fq1 = aca(fq1)
     T22 = T[dimq:, dimq:]
     if nl.cond(T22) > 1/si_eps:
         print('[preprocess:]'.ljust(15, ' ') +
@@ -310,8 +313,8 @@ def t_func_jit(pmat, pterm, qmat, qterm, bmat, bterm, x_bar, hxp, hxq, hxc, stat
         l, k = set_l, set_k
         flag = 0
 
-    p = pmat[l, k] @ s + pterm[l, k]
-    q = qmat[l, k] @ s + qterm[l, k]
+    p = aca(pmat[l, k]) @ s + pterm[l, k]
+    q = aca(qmat[l, k]) @ s + qterm[l, k]
 
     # either return p or obs
     if x_space:
