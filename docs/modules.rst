@@ -8,6 +8,13 @@ Module Documentation
    :undoc-members:
    :show-inheritance:
 
+``pydsge.mpile``
+------------------
+.. automodule:: pydsge.mpile
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 ``pydsge.engine``
 ------------------
 .. automodule:: pydsge.engine
