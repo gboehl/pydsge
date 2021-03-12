@@ -191,9 +191,9 @@ def get_par(self, dummy=None, npar=None, asdict=False, full=True, nsamples=1, ve
             par_cand = get_par(self, 'best', asdict=False, full=False,
                                verbose=verbose, **args)
 
-    elif not isinstance(dummy, str) or len(dummy) == len(self.par_fix):
+    elif not isinstance(dummy, str) and len(dummy) == len(self.par_fix):
         par_cand = dummy[self.prior_arg]
-    elif not isinstance(dummy, str) or len(dummy) == len(self.prior_arg):
+    elif not isinstance(dummy, str) and len(dummy) == len(self.prior_arg):
         par_cand = dummy
     else:
         if dummy in pars_str:

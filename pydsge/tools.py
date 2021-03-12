@@ -250,7 +250,7 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, set_k=False
 
             if flag and verbose > 1:
                 print('[irfs:]'.ljust(
-                    15, ' ') + 'No rational expectations solution found in period %s (error flag %s).' % (t, flag))
+                    15, ' ') + 'No OBC solution found in period %s (error flag %s).' % (t, flag))
 
             supererrflag |= flag
 
@@ -270,7 +270,7 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, set_k=False
     if verbose == 1:
         if np.any(flag):
             print('[irfs:]'.ljust(14, ' ') +
-                  ' No rational expectations solution(s) found.')
+                  ' No OBC solution(s) found.')
         elif np.any(multflag):
             print('[irfs:]'.ljust(14, ' ') +
                   ' Multiplicity/Multiplicities found.')
@@ -392,7 +392,7 @@ def simulate(self, source=None, mask=None, pars=None, resid=None, init=None, ope
 
     if np.any(flags) and verbose:
         print('[simulate:]'.ljust(
-            15, ' ')+'No rational expectations solution found (at least once).')
+            15, ' ')+'No OBC solution found (at least once).')
 
     return X, (LK[..., 0, :], LK[..., 1, :]), flags
 
