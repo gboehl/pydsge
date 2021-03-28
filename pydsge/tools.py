@@ -105,7 +105,7 @@ def o_func(self, state, covs=None, pars=None):
             state[..., self.dimp:] @ self.hx[1].T + self.hx[2]
     except ValueError as e:
         raise ValueError(
-            str(e) + ' you probably want to use the filter with `reduced_form=False`.')
+            str(e) + ' you probably want to use the filter/`load_estim` with `reduced_form=False`.')
 
     if np.ndim(state) <= 1:
         data = self.data.index if hasattr(self, 'data') else None

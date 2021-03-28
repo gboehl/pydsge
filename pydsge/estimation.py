@@ -63,6 +63,9 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
         else:
             seed = 0
 
+    if not 'reduced_form' in filterargs:
+        filterargs['reduced_form'] = True
+
     self.fdict['filter_n'] = N
     self.fdict['linear'] = linear
     self.fdict['seed'] = seed
@@ -73,7 +76,7 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
     set_par(self, 'prior_mean', verbose=verbose > 3, l_max=l_max, k_max=k_max)
 
     self.create_filter(
-        N=N, ftype='KalmanFilter' if linear else None, reduced_form=True, **filterargs)
+        N=N, ftype='KalmanFilter' if linear else None, **filterargs)
 
     if 'filter_R' in self.fdict.keys():
         self.filter.R = self.fdict['filter_R']
