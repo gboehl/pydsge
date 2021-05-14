@@ -13,8 +13,10 @@ from .tools import *
 from .mpile import *
 from .estimation import *
 
+
 class DSGE_RAW(dict):
     pass
+
 
 def vix(self, variables, dontfail=False):
     """Returns the indices of a list of variables
@@ -311,7 +313,7 @@ def posterior2csv(self, path=None, tune=None, **args):
     path = path or os.path.join(self.path, self.name+'_posterior.csv')
 
     chain = self.get_chain()
-    post = chain[-tune:].reshape(-1,chain.shape[-1])
+    post = chain[-tune:].reshape(-1, chain.shape[-1])
 
     vd = pd.DataFrame(post.T, index=self.prior_names)
     vd.to_csv(path)

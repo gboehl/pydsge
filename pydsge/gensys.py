@@ -29,7 +29,8 @@ def gen_sys_from_dict(mdict, l_max=None, k_max=None, parallel=True, force_proces
         mdict_dump = cpickle.dumps(mdict)
         if mdict_dump in processed_mdicts:
             if verbose:
-                print('[get_sys:]'.ljust(15, ' ') + ' Model dict was already processed. Loading from cache.')
+                print('[get_sys:]'.ljust(15, ' ') +
+                      ' Model dict was already processed. Loading from cache.')
             return processed_mdicts[mdict_dump]
     else:
         processed_mdicts = {}
@@ -65,7 +66,8 @@ def gen_sys_from_dict(mdict, l_max=None, k_max=None, parallel=True, force_proces
     ZZ1 = mdict.get('ZZ1')
     fd = mdict.get('fd')
 
-    res_sys = gen_sys(self, mdict['AA'], mdict['BB'], mdict['CC'], mdict['DD'], mdict['fb'], mdict['fc'], fd, ZZ0, ZZ1, l_max, k_max, False, parallel, verbose)
+    res_sys = gen_sys(self, mdict['AA'], mdict['BB'], mdict['CC'], mdict['DD'],
+                      mdict['fb'], mdict['fc'], fd, ZZ0, ZZ1, l_max, k_max, False, parallel, verbose)
 
     processed_mdicts[cpickle.dumps(mdict)] = res_sys
 
@@ -256,7 +258,7 @@ def gen_sys(self, AA0, BB0, CC0, DD0, fb0, fc0, fd0, ZZ0, ZZ1, l_max, k_max, get
     PR = Q @ aca(PR)
     gg = Q @ gg
 
-    solver = 'klein' # to be implemented
+    solver = 'klein'  # to be implemented
 
     if solver == 'speed_kills':
         omg, lam = speed_kills(PU, MU, dimp, dimq, tol=1e-4)
@@ -280,5 +282,6 @@ def gen_sys(self, AA0, BB0, CC0, DD0, fb0, fc0, fd0, ZZ0, ZZ1, l_max, k_max, get
               np.round(time.time() - st, 3))
 
     return self
+
 
 DSGE.gen_sys = gen_sys_from_yaml

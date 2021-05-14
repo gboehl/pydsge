@@ -384,7 +384,8 @@ def tmcmc(self, nsteps, nwalks, ntemps, target, update_freq=False, test_lprob=Fa
 
         if tmp >= 1:
             # print only once
-            pbar.write('[tmcmc:]'.ljust(15, ' ') + "Increasing temperature to %s°. Too hot! I'm out..." % np.round(100*tmp, 3))
+            pbar.write('[tmcmc:]'.ljust(
+                15, ' ') + "Increasing temperature to %s°. Too hot! I'm out..." % np.round(100*tmp, 3))
             pbar.update()
             self.temp = 1
             # skip for-loop to exit

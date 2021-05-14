@@ -3,6 +3,7 @@
 
 import time
 import numpy as np
+import scipy.linalg as sl
 import pandas as pd
 from econsieve import KalmanFilter, TEnKF
 from grgrlib.core import timeprint
@@ -59,8 +60,8 @@ def create_filter(self, R=None, N=None, ftype=None, seed=None, incl_obs=False, r
     if R is not None:
         f.R = R
 
-    f.P *= 1e1
-    f.init_P = f.P
+    # use lyapunov equation as default. Otherwise to be defined manually via `*.filter.p`
+    f.P = None
 
     try:
         f.Q = self.QQ(self.ppar) @ self.QQ(self.ppar)
@@ -92,14 +93,16 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, se
                        qmat[1, 0][:-self.neps, :-self.neps]))
         F = np.pad(F, ((0, 0), (self.dimp, 0)))
 
-        E = np.vstack((pmat[1, 0][:, -self.neps:],
-                       qmat[1, 0][:-self.neps, -self.neps:]))
-
         self.filter.F = F
         self.filter.H = np.hstack((self.hx[0], self.hx[1])), self.hx[2]
 
         if self.filter.Q.shape[0] == self.neps:
+            E = np.vstack((pmat[1, 0][:, -self.neps:],
+                          qmat[1, 0][:-self.neps, -self.neps:]))
             self.filter.Q = E @ self.filter.Q @ E.T
+
+        if self.filter.P is None:
+            self.filter.P = sl.solve_discrete_lyapunov(F.T, self.filter.Q)
 
     elif dispatch or self.filter.name == 'ParticleFilter':
         from .engine import func_dispatch
@@ -112,9 +115,32 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, se
         self.filter.t_func = lambda *x: self.t_func(*x, get_obs=True)
         self.filter.o_func = None
 
+        if self.filter.P is None:
+            qmat = self.precalc_mat[1]
+            F = qmat[1, 0][:-self.neps, :-self.neps]
+            E = qmat[1, 0][:-self.neps, -self.neps:]
+
+            Q = E @ self.filter.Q @ E.T
+
+            self.filter.P = sl.solve_discrete_lyapunov(F.T, Q)
+
     else:
         self.filter.t_func = self.t_func
         self.filter.o_func = self.o_func
+
+        if self.filter.P is None:
+            pmat = self.precalc_mat[0]
+            qmat = self.precalc_mat[1]
+
+            F = np.vstack((pmat[1, 0][:, :-self.neps],
+                           qmat[1, 0][:-self.neps, :-self.neps]))
+            F = np.pad(F, ((0, 0), (self.dimp, 0)))
+
+            E = np.vstack((pmat[1, 0][:, -self.neps:],
+                          qmat[1, 0][:-self.neps, -self.neps:]))
+            Q = E @ self.filter.Q @ E.T
+
+            self.filter.P = sl.solve_discrete_lyapunov(F.T, Q)
 
     self.filter.get_eps = self.get_eps_lin
 
@@ -193,7 +219,7 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, acc
     from grgrlib.core import map2arr, serializer
 
     # if sample is None:
-        # sample = self.par
+    # sample = self.par
 
     if np.ndim(sample) <= 1:
         sample = [sample]
@@ -289,11 +315,13 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, acc
                 raised_error = e
 
         if accept_failure:
-            print('[extract:]'.ljust(15, ' ') + "got an error: '%s' (after %s unsuccessful attemps)." %(raised_error,natt+1))
+            print('[extract:]'.ljust(
+                15, ' ') + "got an error: '%s' (after %s unsuccessful attemps)." % (raised_error, natt+1))
             return None
         else:
             import sys
-            raise type(raised_error)(str(raised_error) + ' (after %s unsuccessful attemps).' % (natt+1)).with_traceback(sys.exc_info()[2])
+            raise type(raised_error)(str(raised_error) + ' (after %s unsuccessful attemps).' %
+                                     (natt+1)).with_traceback(sys.exc_info()[2])
 
     wrap = tqdm.tqdm if (verbose and len(sample) >
                          1) else (lambda x, **kwarg: x)
