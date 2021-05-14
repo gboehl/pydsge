@@ -61,7 +61,7 @@ def create_filter(self, R=None, N=None, ftype=None, seed=None, incl_obs=False, r
         f.R = R
 
     # use lyapunov equation as default. Otherwise to be defined manually via `*.filter.p`
-    f.P = None
+    f.P_init = None
 
     try:
         f.Q = self.QQ(self.ppar) @ self.QQ(self.ppar)
@@ -101,8 +101,10 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, se
                           qmat[1, 0][:-self.neps, -self.neps:]))
             self.filter.Q = E @ self.filter.Q @ E.T
 
-        if self.filter.P is None:
+        if self.filter.P_init is None:
             self.filter.P = sl.solve_discrete_lyapunov(F.T, self.filter.Q)
+        else:
+            self.filter.P = self.filter.P_init 
 
     elif dispatch or self.filter.name == 'ParticleFilter':
         from .engine import func_dispatch
@@ -115,7 +117,7 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, se
         self.filter.t_func = lambda *x: self.t_func(*x, get_obs=True)
         self.filter.o_func = None
 
-        if self.filter.P is None:
+        if self.filter.P_init is None:
             qmat = self.precalc_mat[1]
             F = qmat[1, 0][:-self.neps, :-self.neps]
             E = qmat[1, 0][:-self.neps, -self.neps:]
@@ -123,12 +125,14 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, se
             Q = E @ self.filter.Q @ E.T
 
             self.filter.P = sl.solve_discrete_lyapunov(F.T, Q)
+        else:
+            self.filter.P = self.filter.P_init 
 
     else:
         self.filter.t_func = self.t_func
         self.filter.o_func = self.o_func
 
-        if self.filter.P is None:
+        if self.filter.P_init is None:
             pmat = self.precalc_mat[0]
             qmat = self.precalc_mat[1]
 
@@ -141,6 +145,8 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, se
             Q = E @ self.filter.Q @ E.T
 
             self.filter.P = sl.solve_discrete_lyapunov(F.T, Q)
+        else:
+            self.filter.P = self.filter.P_init 
 
     self.filter.get_eps = self.get_eps_lin
 
