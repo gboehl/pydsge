@@ -298,7 +298,7 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, acc
                 resid[t] = filter_get_eps(x, res[t])
                 res[t+1] = t_func(res[t], resid[t], linear=True)[0]
 
-            return res[0], resid, 0
+            return par, res[0], resid, 0
 
         np.random.shuffle(res)
         sample = np.dstack((obs_func(res), res[..., dimp:]))
@@ -315,7 +315,7 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, acc
                 init, resid, flags = npas(func=t_func_loc, X=sample, init_states=inits, verbose=max(
                     len(sample) == 1, verbose-1), seed=seed_loc, nsamples=1, **npasargs)
 
-                return init, resid[0], flags
+                return par, init, resid[0], flags
 
             except Exception as e:
                 raised_error = e
@@ -333,7 +333,7 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, acc
                          1) else (lambda x, **kwarg: x)
     res = wrap(self.mapper(runner, sample), unit=' sample(s)',
                total=len(sample), dynamic_ncols=True)
-    init, resid, flags = map2arr(res)
+    pars, init, resid, flags = map2arr(res)
 
     if hasattr(self, 'pool') and self.pool:
         self.pool.close()
@@ -345,7 +345,7 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, acc
         resid[0] = pd.DataFrame(
             resid[0], index=self.data.index[:-1], columns=self.shocks)
 
-    edict = {'pars': np.array([s[0] for s in sample]),
+    edict = {'pars': pars,
              'init': init,
              'resid': resid,
              'flags': flags}
