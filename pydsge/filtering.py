@@ -82,6 +82,7 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, se
         st = time.time()
 
     self.Z = np.array(self.data)
+    dimp = self.dimp
 
     # assign current transition & observation functions (of parameters)
     if self.filter.name == 'KalmanFilter':
@@ -91,7 +92,7 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, se
 
         F = np.vstack((pmat[1, 0][:, :-self.neps],
                        qmat[1, 0][:-self.neps, :-self.neps]))
-        F = np.pad(F, ((0, 0), (self.dimp, 0)))
+        F = np.pad(F, ((0, 0), (dimp, 0)))
 
         self.filter.F = F
         self.filter.H = np.hstack((self.hx[0], self.hx[1])), self.hx[2]
@@ -102,7 +103,8 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, se
             self.filter.Q = E @ self.filter.Q @ E.T
 
         if self.filter.P_init is None:
-            self.filter.P = sl.solve_discrete_lyapunov(F.T, self.filter.Q)
+            p4 = sl.solve_discrete_lyapunov(F[dimp:,dimp:], self.filter.Q[dimp:,dimp:])
+            self.filter.P = F[:,dimp:] @ p4 @ F.T[dimp:] + self.filter.Q
         else:
             self.filter.P = self.filter.P_init 
 
@@ -124,7 +126,7 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, se
 
             Q = E @ self.filter.Q @ E.T
 
-            self.filter.P = sl.solve_discrete_lyapunov(F.T, Q)
+            self.filter.P = sl.solve_discrete_lyapunov(F, Q)
         else:
             self.filter.P = self.filter.P_init 
 
@@ -138,13 +140,13 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, se
 
             F = np.vstack((pmat[1, 0][:, :-self.neps],
                            qmat[1, 0][:-self.neps, :-self.neps]))
-            F = np.pad(F, ((0, 0), (self.dimp, 0)))
 
             E = np.vstack((pmat[1, 0][:, -self.neps:],
                           qmat[1, 0][:-self.neps, -self.neps:]))
             Q = E @ self.filter.Q @ E.T
 
-            self.filter.P = sl.solve_discrete_lyapunov(F.T, Q)
+            p4 = sl.solve_discrete_lyapunov(F[dimp:,:], Q[dimp:,dimp:])
+            self.filter.P = F @ p4 @ F.T + Q
         else:
             self.filter.P = self.filter.P_init 
 
