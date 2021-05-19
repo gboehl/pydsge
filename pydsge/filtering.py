@@ -19,6 +19,23 @@ def create_obs_cov(self, scale_obs=0.1):
     return obs_cov
 
 
+def get_p_init_lyapunov(self, Q):
+
+    pmat = self.precalc_mat[0]
+    qmat = self.precalc_mat[1]
+
+    F = np.vstack((pmat[1, 0][:, :-self.neps],
+                   qmat[1, 0][:-self.neps, :-self.neps]))
+
+    E = np.vstack((pmat[1, 0][:, -self.neps:],
+                  qmat[1, 0][:-self.neps, -self.neps:]))
+    Q = E @ Q @ E.T
+
+    p4 = sl.solve_discrete_lyapunov(F[self.dimp:,:], Q[self.dimp:,self.dimp:])
+
+    return F @ p4 @ F.T + Q
+
+
 def create_filter(self, R=None, N=None, ftype=None, seed=None, incl_obs=False, reduced_form=False, **fargs):
 
     self.Z = np.array(self.data)
@@ -61,7 +78,7 @@ def create_filter(self, R=None, N=None, ftype=None, seed=None, incl_obs=False, r
         f.R = R
 
     # use lyapunov equation as default. Otherwise to be defined manually via `*.filter.p`
-    f.P_init = None
+    f.init_cov = None
 
     try:
         f.Q = self.QQ(self.ppar) @ self.QQ(self.ppar)
@@ -76,13 +93,16 @@ def get_ll(self, **args):
     return run_filter(self, smoother=False, get_ll=True, **args)
 
 
-def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, seed=None, verbose=False):
+def run_filter(self, smoother=True, get_ll=False, init_cov=None, dispatch=None, rcond=1e-14, seed=None, verbose=False):
 
     if verbose:
         st = time.time()
 
     self.Z = np.array(self.data)
     dimp = self.dimp
+
+    if init_cov is not None:
+        self.filter.init_cov = init_cov 
 
     # assign current transition & observation functions (of parameters)
     if self.filter.name == 'KalmanFilter':
@@ -102,11 +122,11 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, se
                           qmat[1, 0][:-self.neps, -self.neps:]))
             self.filter.Q = E @ self.filter.Q @ E.T
 
-        if self.filter.P_init is None:
+        if self.filter.init_cov is None:
             p4 = sl.solve_discrete_lyapunov(F[dimp:,dimp:], self.filter.Q[dimp:,dimp:])
             self.filter.P = F[:,dimp:] @ p4 @ F.T[dimp:] + self.filter.Q
         else:
-            self.filter.P = self.filter.P_init 
+            self.filter.P = self.filter.init_cov 
 
     elif dispatch or self.filter.name == 'ParticleFilter':
         from .engine import func_dispatch
@@ -119,7 +139,7 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, se
         self.filter.t_func = lambda *x: self.t_func(*x, get_obs=True)
         self.filter.o_func = None
 
-        if self.filter.P_init is None:
+        if self.filter.init_cov is None:
             qmat = self.precalc_mat[1]
             F = qmat[1, 0][:-self.neps, :-self.neps]
             E = qmat[1, 0][:-self.neps, -self.neps:]
@@ -128,27 +148,16 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, se
 
             self.filter.P = sl.solve_discrete_lyapunov(F, Q)
         else:
-            self.filter.P = self.filter.P_init 
+            self.filter.P = self.filter.init_cov 
 
     else:
         self.filter.t_func = self.t_func
         self.filter.o_func = self.o_func
 
-        if self.filter.P_init is None:
-            pmat = self.precalc_mat[0]
-            qmat = self.precalc_mat[1]
-
-            F = np.vstack((pmat[1, 0][:, :-self.neps],
-                           qmat[1, 0][:-self.neps, :-self.neps]))
-
-            E = np.vstack((pmat[1, 0][:, -self.neps:],
-                          qmat[1, 0][:-self.neps, -self.neps:]))
-            Q = E @ self.filter.Q @ E.T
-
-            p4 = sl.solve_discrete_lyapunov(F[dimp:,:], Q[dimp:,dimp:])
-            self.filter.P = F @ p4 @ F.T + Q
+        if self.filter.init_cov is None:
+            self.filter.P = get_p_init_lyapunov(self, self.filter.Q)
         else:
-            self.filter.P = self.filter.P_init 
+            self.filter.P = self.filter.init_cov
 
     self.filter.get_eps = self.get_eps_lin
 
@@ -204,7 +213,7 @@ def run_filter(self, smoother=True, get_ll=False, dispatch=None, rcond=1e-14, se
     return res
 
 
-def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, accept_failure=False, verbose=True, debug=False, l_max=None, k_max=None, **npasargs):
+def extract(self, sample=None, nsamples=1, init_cov=None, precalc=True, seed=0, nattemps=4, accept_failure=False, verbose=True, debug=False, l_max=None, k_max=None, **npasargs):
     """Extract the timeseries of (smoothed) shocks.
 
     Parameters
@@ -289,7 +298,7 @@ def extract(self, sample=None, nsamples=1, precalc=True, seed=0, nattemps=4, acc
         if par is not None:
             set_par(par, l_max=l_max, k_max=k_max)
 
-        res = run_filter(verbose=verbose > 2, seed=seed_loc)
+        res = run_filter(verbose=verbose > 2, seed=seed_loc, init_cov=init_cov)
 
         if fname == 'KalmanFilter':
             means, covs = res

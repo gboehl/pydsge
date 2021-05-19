@@ -497,6 +497,7 @@ DSGE_RAW.lprob = lprob
 DSGE_RAW.cmaes = cmaes
 # from filter
 DSGE_RAW.create_filter = create_filter
+DSGE_RAW.get_p_init_lyapunov = get_p_init_lyapunov
 DSGE_RAW.run_filter = run_filter
 DSGE_RAW.get_ll = get_ll
 # from plot
