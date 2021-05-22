@@ -164,8 +164,8 @@ def save_rdict(self, rdict, path=None, suffix='', verbose=True):
     if not isinstance(path, str):
         path = self.name + '_res'
 
-    if path[-4] == '.npz':
-        path = path[-4]
+    if path[-4:] == '.npz':
+        path = path[:-4]
 
     if not os.path.isabs(path):
         path = os.path.join(self.path, path)
