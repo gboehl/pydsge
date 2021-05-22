@@ -578,7 +578,8 @@ class DSGE(DSGE_RAW):
             raw_equations = model_yaml['equations']
 
         if len(raw_equations) + 1 != len(var_ordering):
-            raise SyntaxError("I got %s variables but %s equations" %(len(var_ordering), len(raw_equations)+1))
+            raise SyntaxError("I got %s variables but %s equations" % (
+                len(var_ordering), len(raw_equations)+1))
 
         for eq in raw_equations:
             if '=' in eq:

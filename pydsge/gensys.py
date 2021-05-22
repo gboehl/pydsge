@@ -29,7 +29,8 @@ def gen_sys_from_dict(mdict, l_max=None, k_max=None, parallel=True, force_proces
         mdict_dump = cpickle.dumps(mdict)
         if mdict_dump in processed_mdicts:
             if verbose:
-                print('[get_sys:]'.ljust(15, ' ') + ' Model dict was already processed. Loading from cache.')
+                print('[get_sys:]'.ljust(15, ' ') +
+                      ' Model dict was already processed. Loading from cache.')
             return processed_mdicts[mdict_dump]
     else:
         processed_mdicts = {}
@@ -53,7 +54,7 @@ def gen_sys_from_dict(mdict, l_max=None, k_max=None, parallel=True, force_proces
         self.x_bar = -1
 
     self.vv = mdict['vars']
-    self.shocks = mdict['shocks']
+    self.shocks = list(mdict['shocks'])
     self.neps = len(mdict['shocks'])
     self.const_var = mdict['const_var']
 
@@ -65,7 +66,12 @@ def gen_sys_from_dict(mdict, l_max=None, k_max=None, parallel=True, force_proces
     ZZ1 = mdict.get('ZZ1')
     fd = mdict.get('fd')
 
-    res_sys = gen_sys(self, mdict['AA'], mdict['BB'], mdict['CC'], mdict['DD'], mdict['fb'], mdict['fc'], fd, ZZ0, ZZ1, l_max, k_max, False, parallel, verbose)
+    solution = mdict.get('gx'), mdict.get('hx')
+    if solution[0] is None:
+        solution = 'klein'
+
+    res_sys = gen_sys(self, mdict['AA'], mdict['BB'], mdict['CC'], mdict['DD'],
+                      mdict['fb'], mdict['fc'], fd, ZZ0, ZZ1, l_max, k_max, solution, False, parallel, verbose)
 
     processed_mdicts[cpickle.dumps(mdict)] = res_sys
 
@@ -110,10 +116,10 @@ def gen_sys_from_yaml(self, par=None, l_max=None, k_max=None, get_hx_only=False,
     ZZ0 = self.ZZ0(self.ppar).astype(float)
     ZZ1 = self.ZZ1(self.ppar).squeeze().astype(float)
 
-    return gen_sys(self, AA0, BB0, CC0, DD0, fb0, fc0, fd0, ZZ0, ZZ1, l_max, k_max, get_hx_only, parallel, verbose)
+    return gen_sys(self, AA0, BB0, CC0, DD0, fb0, fc0, fd0, ZZ0, ZZ1, l_max, k_max, 'klein', get_hx_only, parallel, verbose)
 
 
-def gen_sys(self, AA0, BB0, CC0, DD0, fb0, fc0, fd0, ZZ0, ZZ1, l_max, k_max, get_hx_only, parallel, verbose):
+def gen_sys(self, AA0, BB0, CC0, DD0, fb0, fc0, fd0, ZZ0, ZZ1, l_max, k_max, solution, get_hx_only, parallel, verbose):
     """Generate system matrices expressed in the one-sided, first-order compressed dimensionality reduction given a set of parameters. 
 
     Details can be found in "Efficient Solution of Models with Occasionally Binding Constraints" (Gregor Boehl).
@@ -256,12 +262,16 @@ def gen_sys(self, AA0, BB0, CC0, DD0, fb0, fc0, fd0, ZZ0, ZZ1, l_max, k_max, get
     PR = Q @ aca(PR)
     gg = Q @ gg
 
-    solver = 'klein' # to be implemented
+    if solution is None:
+        solution = 'klein'
 
-    if solver == 'speed_kills':
-        omg, lam = speed_kills(PU, MU, dimp, dimq, tol=1e-4)
+    if isinstance(solution, str):
+        if solution == 'speed_kills':
+            omg, lam = speed_kills(PU, MU, dimp, dimq, tol=1e-4)
+        else:
+            omg, lam = klein(PU, MU, nstates=dimq, verbose=verbose, force=False)
     else:
-        omg, lam = klein(PU, MU, nstates=dimq, verbose=verbose, force=False)
+        omg, lam = solution
 
     # finally add relevant stuff to the class
 
@@ -280,5 +290,6 @@ def gen_sys(self, AA0, BB0, CC0, DD0, fb0, fc0, fd0, ZZ0, ZZ1, l_max, k_max, get
               np.round(time.time() - st, 3))
 
     return self
+
 
 DSGE.gen_sys = gen_sys_from_yaml

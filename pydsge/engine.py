@@ -263,7 +263,7 @@ def find_lk(bmat, bterm, x_bar, q):
             while True:
                 k += 1
                 if not loop_type:
-                    # first iterate until r < r_bar 
+                    # first iterate until r < r_bar
                     loop_type = check_cnst(bmat, bterm, 4, 0, k, q) - x_bar < 0
                 elif check_cnst(bmat, bterm, 4, 0, k, q) - x_bar > 0:
                     # then iterate until r > r_bar again

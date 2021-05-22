@@ -268,7 +268,7 @@ def get_par(self, dummy=None, npar=None, asdict=False, full=True, nsamples=1, ve
             else:
                 self.par = old_par
                 raise KeyError(
-                    "Parameter or parametrization '%s' does not exist." % dummy)
+                    "Parameter or parametrization '%s' does not fit/exist." % dummy)
     if full:
         if isinstance(dummy, str) and dummy in ('prior', 'post', 'posterior'):
             par = np.tile(pars, (nsamples, 1))

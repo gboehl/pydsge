@@ -358,7 +358,8 @@ def simulate(self, source=None, mask=None, pars=None, resid=None, init=None, ope
         if set_par is not None:
             _, vv = set_par(par, return_vv=True, **args)
             if not np.all(vv == vv_orig):
-                raise Exception('The ordering of variables has changed given different parameters.')
+                raise Exception(
+                    'The ordering of variables has changed given different parameters.')
 
         X = [state]
         L, K = [], []
