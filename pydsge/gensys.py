@@ -5,6 +5,7 @@
 """
 
 import time
+import sys
 import numpy as np
 import scipy.linalg as sl
 import cloudpickle as cpickle
@@ -83,9 +84,11 @@ def gen_sys_from_yaml(self, par=None, l_max=None, k_max=None, get_hx_only=False,
     self.par = self.p0() if par is None else list(par)
     try:
         self.ppar = self.pcompile(self.par)  # parsed par
-    except TypeError:
-        raise SyntaxError(
-            "At least one parameter is a function of other parameters, and should be declared in `parafunc`.")
+    except TypeError as error:
+        raise type(error)(
+            str(error) +
+            " (maybe one (or serveral) parameter is a function of other parameters, and should be declared in `parafunc`?)"
+        ).with_traceback(sys.exc_info()[2])
 
     if not self.const_var:
         raise NotImplementedError('Package is only meant to work with OBCs')

@@ -306,6 +306,7 @@ class DSGE(DSGE_RAW):
 
         while ~checker.all():
 
+            # print(checker)
             # raise if loop was unsuccessful
             raise_error = not suc_loop
             suc_loop = False  # set to check if any progress in loop
@@ -317,14 +318,17 @@ class DSGE(DSGE_RAW):
                         context[str(p)] = ss[str(p)]
                         checker[i] = True
                         suc_loop = True  # loop was successful
-                    except NameError as e:
+                    except NameError as error:
                         if raise_error:
                             error_msg = str(e)
                             if not os.path.exists(self.func_file):
                                 fname = os.path.basename(self.func_file)
                                 error_msg += ' (info: a file named `%s` was not found)' % fname
-                                raise SyntaxError(
-                                    "Definitions of `para_func` seem to be circular. Last error: "+error_msg)
+                            raise type(error)(
+                                str(error) +
+                                "(are definitions in `para_func` circular?)"
+                            ).with_traceback(sys.exc_info()[2])
+
 
         ZZ0 = lambdify([self.parameters+self['other_para']], ZZ0)
         ZZ1 = lambdify([self.parameters+self['other_para']], ZZ1)
@@ -385,7 +389,16 @@ class DSGE(DSGE_RAW):
         use_cached = False
 
         if 'processed_raw_model' in globals():
-            use_cached = processed_raw_model.fdict['yaml_raw'] == mtxt
+
+            use_cached = True
+            func_file = mfile[:-5] + '_funcs.py'
+
+            if os.path.exists(func_file):
+                ff = open(func_file)
+                ftxt = ff.read()
+                use_cached &= processed_raw_model.fdict.get('ffile_raw') == ftxt
+
+            use_cached &= processed_raw_model.fdict['yaml_raw'] == mtxt
 
         if use_cached:
             pmodel = deepcopy(processed_raw_model)

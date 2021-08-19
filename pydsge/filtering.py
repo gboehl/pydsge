@@ -235,8 +235,11 @@ def extract(self, sample=None, nsamples=1, init_cov=None, precalc=True, seed=0, 
     import os
     from grgrlib.core import map2arr, serializer
 
-    # if sample is None:
-    # sample = self.par
+    if sample is None:
+        if type(self).__name__ == "DSGE_DUMMY":
+            sample = None
+        else:
+            sample = self.par
 
     if np.ndim(sample) <= 1:
         sample = [sample]
