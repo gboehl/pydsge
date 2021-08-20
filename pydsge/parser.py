@@ -7,6 +7,7 @@ import yaml
 import itertools
 import sympy
 import time
+import sys
 import numpy as np
 import scipy.stats as sst
 import scipy.optimize as sso
@@ -320,13 +321,13 @@ class DSGE(DSGE_RAW):
                         suc_loop = True  # loop was successful
                     except NameError as error:
                         if raise_error:
-                            error_msg = str(e)
+                            error_msg = str(error)
                             if not os.path.exists(self.func_file):
                                 fname = os.path.basename(self.func_file)
                                 error_msg += ' (info: a file named `%s` was not found)' % fname
                             raise type(error)(
                                 str(error) +
-                                "(are definitions in `para_func` circular?)"
+                                " (are definitions in `para_func` circular?)"
                             ).with_traceback(sys.exc_info()[2])
 
 
@@ -524,11 +525,11 @@ class DSGE(DSGE_RAW):
         name = dec['name']
 
         var_ordering = [Variable(v) for v in dec['variables']]
-        par_ordering = [Parameter(v) for v in dec['parameters']]
-        shk_ordering = [Shock(v) for v in dec['shocks']]
+        par_ordering = [Parameter(v) for v in cal['parameters']]
+        shk_ordering = [Shock(v) for v in cal['covariances']]
 
-        if 'para_func' in dec:
-            other_para = [Parameter(v) for v in dec['para_func']]
+        if 'parafunc' in cal:
+            other_para = [Parameter(v) for v in cal['parafunc']]
         else:
             other_para = []
 
@@ -536,17 +537,14 @@ class DSGE(DSGE_RAW):
                    par_ordering + shk_ordering + other_para]
         context = dict(context)
 
-        if 'observables' in dec:
-            observables = [Variable(v) for v in dec['observables']]
-        else:
-            observables = []
         if 'observables' in model_yaml['equations']:
+            observables = [Variable(v) for v in model_yaml['equations']['observables']]
             obs_equations = model_yaml['equations']['observables']
         else:
+            observables = []
             obs_equations = dict()
 
         if 'constrained' in dec:
-            # c_var       = [Variable(v) for v in dec['constrained']]
             c_var = Variable(dec['constrained'][0])
             # only one constraint allowed
             raw_const = model_yaml['equations']['constraint'][0]
