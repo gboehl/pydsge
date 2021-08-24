@@ -269,7 +269,7 @@ class DSGE(DSGE_RAW):
                     return res
 
             return reducer
-
+        
         # standard functions
         context['exp'] = implemented_function('exp', np.exp)
         context['log'] = implemented_function('log', np.log)
@@ -295,7 +295,7 @@ class DSGE(DSGE_RAW):
             spec.loader.exec_module(module)
 
             funcs_list = [o for o in inspect.getmembers(
-                module) if inspect.isfunction(o[1])]
+                module) if inspect.isroutine(o[1])]
 
             for func in funcs_list:
                 context[func[0]] = implemented_function(
