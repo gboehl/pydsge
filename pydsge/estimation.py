@@ -90,8 +90,8 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
             15, ' ') + 'likelihood of initial values is zero.')
 
     if verbose:
-        print('[estimation:]'.ljust(15, ' ') + ' Model operational. %s states, %s observables, %s data points.' %
-              (len(self.vv), len(self.observables), len(self.data)))
+        print('[estimation:]'.ljust(15, ' ') + ' Model operational. %s states, %s observables, %s shocks, %s data points.' %
+              (len(self.vv), len(self.observables), len(self.shocks), len(self.data)))
 
     prior = self.prior
     par_fix = self.par_fix.copy()
