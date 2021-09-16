@@ -46,25 +46,6 @@ def oix(self, observables):
     return [list(self.observables).index(v) for v in observables]
 
 
-def get_eps_lin(self, x, xp, rcond=1e-14):
-    """Get filter-implied (smoothed) shocks for linear model
-    """
-
-    qmat = self.precalc_mat[1]
-
-    if self.filter.name == 'KalmanFilter':
-        pmat = self.precalc_mat[0]
-        F = self.filter.F
-        E = np.vstack((pmat[1, 0][:, -self.neps:],
-                       qmat[1, 0][:-self.neps, -self.neps:]))
-
-    else:
-        F = qmat[1, 0][:, :-self.neps]
-        E = qmat[1, 0][:, -self.neps:]
-
-    return np.linalg.pinv(E, rcond) @ (x - F@xp)
-
-
 @property
 def get_tune(self):
 

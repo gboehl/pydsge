@@ -36,6 +36,25 @@ def get_p_init_lyapunov(self, Q):
     return F @ p4 @ F.T + Q
 
 
+def get_eps_lin(self, x, xp, rcond=1e-14):
+    """Get filter-implied (smoothed) shocks for linear model
+    """
+
+    qmat = self.precalc_mat[1]
+
+    if self.filter.name == 'KalmanFilter':
+        pmat = self.precalc_mat[0]
+        F = self.filter.F
+        E = np.vstack((pmat[1, 0][:, -self.neps:],
+                       qmat[1, 0][:-self.neps, -self.neps:]))
+
+    else:
+        F = qmat[1, 0][:, :-self.neps]
+        E = qmat[1, 0][:, -self.neps:]
+
+    return np.linalg.pinv(E, rcond) @ (x - F@xp)
+
+
 def create_filter(self, R=None, N=None, ftype=None, seed=None, incl_obs=False, reduced_form=False, **fargs):
 
     self.Z = np.array(self.data)
@@ -167,7 +186,7 @@ def run_filter(self, smoother=True, get_ll=False, init_cov=None, dispatch=None, 
 
         if smoother:
             means, covs, _, _ = self.filter.rts_smoother(
-                means, covs, inv=np.linalg.pinv)
+                means, covs, inv=lambda x: np.linalg.pinv(x, rcond=rcond))
 
         if get_ll:
             res = ll
