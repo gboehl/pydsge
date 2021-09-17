@@ -85,7 +85,7 @@ def get_chain(self, get_acceptance_fraction=False, get_log_prob=False, backend_f
 
     chain = reader.get_chain(flat=flat)
 
-    return self.bjfunc(chain)
+    return chain
 
 
 def get_log_prob(self, **args):
@@ -370,40 +370,13 @@ def load_data(self, df, start=None, end=None):
     return d
 
 
-def lprob(self, par, linear=None, verbose=False):
+# def lprob(self, par, linear=None, verbose=False):
 
-    if not hasattr(self, 'ndim'):
-        self.prep_estim(linear=linear, load_R=True, verbose=verbose)
-        linear = self.filter.name == 'KalmanFilter'
+    # if not hasattr(self, 'ndim'):
+        # self.prep_estim(linear=linear, load_R=True, verbose=verbose)
+        # linear = self.filter.name == 'KalmanFilter'
 
-    return self.lprob(par, linear=linear, verbose=verbose)
-
-
-def bjfunc(self, x):
-
-    bnd = np.array(self.fdict['prior_bounds'])
-
-    if not 'biject' in self.fdict.keys():
-        return x
-
-    if not self.fdict['biject']:
-        return x
-
-    x = 1/(1 + np.exp(x))
-    return (bnd[1] - bnd[0])*x + bnd[0]
-
-
-def rjfunc(self, x):
-    bnd = np.array(self.fdict['prior_bounds'])
-
-    if not 'biject' in self.fdict.keys():
-        return x
-
-    if not self.fdict['biject']:
-        return x
-
-    x = (x - bnd[0])/(bnd[1] - bnd[0])
-    return np.log(1/x - 1)
+    # return self.lprob(par, linear=linear, verbose=verbose)
 
 
 def get_sample(self, size, chain=None):
@@ -434,8 +407,6 @@ DSGE_RAW.info = info_m
 DSGE_RAW.mdd = mdd
 DSGE_RAW.get_data = load_data
 DSGE_RAW.load_data = load_data
-DSGE_RAW.rjfunc = rjfunc
-DSGE_RAW.bjfunc = bjfunc
 DSGE_RAW.get_sample = get_sample
 DSGE_RAW.create_pool = create_pool
 DSGE_RAW.posterior2csv = posterior2csv
@@ -461,7 +432,7 @@ DSGE_RAW.tmcmc = tmcmc
 # from estimation
 DSGE_RAW.prep_estim = prep_estim
 DSGE_RAW.load_estim = prep_estim
-DSGE_RAW.lprob = lprob
+# DSGE_RAW.lprob = lprob
 # from modesearch
 DSGE_RAW.cmaes = cmaes
 # from filter
