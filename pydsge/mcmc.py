@@ -11,9 +11,8 @@ from datetime import datetime
 from .mpile import get_par
 
 
-def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=False, seed=None, backend=True, suffix=None, linear=None, resume=False, append=False, update_freq=None, lprob_seed=None, biject=False, report=None, verbose=False, debug=False, **samplerargs):
+def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=False, seed=None, backend=True, suffix=None, linear=None, resume=False, append=False, update_freq=None, lprob_seed=None, report=None, verbose=False, debug=False, **samplerargs):
 
-    import pathos
     import emcee
 
     if not hasattr(self, 'ndim'):
@@ -37,8 +36,6 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
     if 'description' in self.fdict.keys():
         self.description = self.fdict['description']
 
-    self.fdict['biject'] = biject
-
     from grgrlib.core import serializer
 
     if hasattr(self, 'pool'):
@@ -54,20 +51,6 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
         par, linear=linear, verbose=verbose, temp=temp, lprob_seed=lprob_seed or 'set')
 
     bnd = np.array(self.fdict['prior_bounds'])
-
-    def bjfunc(x):
-        if not biject:
-            return x
-        x = 1/(1 + np.exp(x))
-        return (bnd[1] - bnd[0])*x + bnd[0]
-
-    def rjfunc(x):
-        if not biject:
-            return x
-        x = (x - bnd[0])/(bnd[1] - bnd[0])
-        return np.log(1/x - 1)
-
-    def lprob_scaled(x): return lprob(bjfunc(x))
 
     if self.pool:
         self.pool.clear()
@@ -94,7 +77,7 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
             suffix = str(suffix) if suffix else '_sampler.h5'
             backend = os.path.join(self.path, self.name+suffix)
 
-            if os.path.exists(backend):
+            if os.path.exists(backend) and not (resume or append):
                 print('[mcmc:]'.ljust(15, ' ') + " HDF backend at %s already exists. Deleting..." %backend)
                 os.remove(backend)
 
@@ -108,7 +91,7 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
                 backend.reset(nwalks, self.ndim)
             except KeyError as e:
                 raise KeyError(
-                    str(e) + '. Your `*.h5` file is likeli to be damaged...')
+                    str(e) + '. Your `*.h5` file is likely to be damaged...')
     else:
         backend = None
 
@@ -116,10 +99,10 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
         nwalks = backend.get_chain().shape[1]
 
     if debug:
-        sampler = emcee.EnsembleSampler(nwalks, self.ndim, lprob_scaled)
+        sampler = emcee.EnsembleSampler(nwalks, self.ndim, lprob)
     else:
         sampler = emcee.EnsembleSampler(
-            nwalks, self.ndim, lprob_scaled, moves=moves, pool=self.pool, backend=backend)
+            nwalks, self.ndim, lprob, moves=moves, pool=self.pool, backend=backend)
 
     if resume and not p0:
         p0 = sampler.get_last_sample()
@@ -136,7 +119,6 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
         pbar = tqdm.tqdm(total=nsteps, unit='sample(s)', dynamic_ncols=True)
         report = report or pbar.write
 
-    p0 = rjfunc(p0) if biject else p0
     old_tau = np.inf
     cnt = 0
 
@@ -173,7 +155,7 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
             tau_sign = '>' if max_tau > sampler.iteration/50 else '<'
             dev_sign = '>' if dev_tau > .01 else '<'
 
-            self.mcmc_summary(chain=bjfunc(sample), tune=update_freq,
+            self.mcmc_summary(chain=sample, tune=update_freq,
                               calc_mdd=False, calc_ll_stats=True, out=lambda x: report(str(x)))
 
             report("Convergence stats: tau is in (%s,%s) (%s%s) and change is %s (%s0.01)." % (
@@ -201,7 +183,7 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
 
     arg_max = log_probs.argmax()
     mode_f = log_probs.flat[arg_max]
-    mode_x = bjfunc(chain[arg_max].flatten())
+    mode_x = chain[arg_max].flatten()
 
     if temp == 1:
 
@@ -215,136 +197,6 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
             self.fdict['mode_x'] = mode_x
             self.fdict['mode_f'] = mode_f
 
-    self.fdict['datetime'] = str(datetime.now())
-
-    return
-
-
-def kdes(self, p0=None, nsteps=3000, nwalks=None, tune=None, seed=None, linear=None, resume=False, verbose=False, debug=False):
-
-    import pathos
-    import kombine
-    from grgrlib.patches import kombine_run_mcmc
-
-    kombine.Sampler.run_mcmc = kombine_run_mcmc
-
-    if not hasattr(self, 'ndim'):
-        # if it seems to be missing, lets do it.
-        # but without guarantee...
-        self.prep_estim(load_R=True)
-
-    if seed is None:
-        seed = self.fdict['seed']
-
-    np.random.seed(seed)
-
-    if tune is None:
-        self.tune = None
-
-    if linear is None:
-        linear = self.filter.name == 'KalmanFilter'
-
-    if nwalks is None:
-        nwalks = 120
-
-    if 'description' in self.fdict.keys():
-        self.description = self.fdict['description']
-
-    if not use_cloudpickle:
-        # globals are *evil*
-        global lprob_global
-    else:
-        import cloudpickle as cpickle
-        lprob_dump = cpickle.dumps(self.lprob)
-        lprob_global = cpickle.loads(lprob_dump)
-
-    def lprob(par): return lprob_global(par, linear, verbose)
-
-    if self.pool:
-        self.pool.clear()
-
-    if debug:
-        sampler = kombine.Sampler(nwalks, self.ndim, lprob)
-    else:
-        sampler = kombine.Sampler(
-            nwalks, self.ndim, lprob, pool=self.pool)
-
-        if self.pool:
-            self.pool.close()
-
-    if p0 is not None:
-        pass
-    elif resume:
-        # should work, but not tested
-        p0 = self.fdict['kdes_chain'][-1]
-    else:
-        p0 = get_par(self, 'best', asdict=False, full=True,
-                     nsample=nwalks, verbose=verbose)
-
-    if not verbose:
-        np.warnings.filterwarnings('ignore')
-
-    if not verbose:
-        pbar = tqdm.tqdm(total=nsteps, unit='sample(s)', dynamic_ncols=True)
-
-    if nsteps < 500:
-        nsteps_burnin = nsteps
-        nsteps_mcmc = 0
-    elif nsteps < 1000:
-        nsteps_burnin = 500
-        nsteps_mcmc = nsteps - nsteps_burnin
-    else:
-        nsteps_mcmc = 500
-        nsteps_burnin = nsteps - nsteps_mcmc
-
-    tune = max(500, nsteps_burnin)
-
-    p, post, q = sampler.burnin(
-        p0, max_steps=nsteps_burnin, pbar=pbar, verbose=verbose)
-
-    if nsteps_mcmc:
-        p, post, q = sampler.run_mcmc(nsteps_mcmc, pbar=pbar)
-
-    acls = np.ceil(
-        2/np.mean(sampler.acceptance[-tune:], axis=0) - 1).astype(int)
-    samples = np.concatenate(
-        [sampler.chain[-tune::acl, c].reshape(-1, 2) for c, acl in enumerate(acls)])
-
-    # samples = sampler.get_samples()
-
-    kdes_chain = sampler.chain
-    kdes_sample = samples.reshape(1, -1, self.ndim)
-
-    self.kdes_chain = kdes_chain
-    self.kdes_sample = kdes_sample
-    self.fdict['tune'] = tune
-    self.fdict['kdes_chain'] = kdes_chain
-    self.fdict['kdes_sample'] = kdes_sample
-
-    pbar.close()
-
-    if not verbose:
-        np.warnings.filterwarnings('default')
-
-    log_probs = sampler.get_log_prob()[self.tune:]
-    chain = sampler.get_chain()[self.tune:]
-    chain = chain.reshape(-1, chain.shape[-1])
-
-    arg_max = log_probs.argmax()
-    mode_f = log_probs.flat[arg_max]
-    mode_x = chain[arg_max]
-
-    self.fdict['kombine_mode_x'] = mode_x
-    self.fdict['kombine_mode_f'] = mode_f
-
-    if 'mode_f' in self.fdict.keys() and mode_f < self.fdict['mode_f']:
-        print('[kombine:]'.ljust(15, ' ') + " New mode of %s is below old mode of %s. Rejecting..." %
-              (mode_f, self.fdict['mode_f']))
-    else:
-        self.fdict['mode_x'] = mode_x
-        self.fdict['mode_f'] = mode_x
-
-    self.sampler = sampler
     self.fdict['datetime'] = str(datetime.now())
 
     return
@@ -380,9 +232,7 @@ def tmcmc(self, nsteps, nwalks, ntemps, target, update_freq=False, test_lprob=Fa
         # update tmp
         ll = self.lprob(x)
         lp = self.lprior(x)
-        # li = ll - lp
 
-        # tmp = (target - lp)/li
         tmp = tmp*(ntemps-i-1)/(ntemps-i) + (target - lp)/(ntemps-i)/(ll - lp)
         aim = lp + (ll - lp)*tmp
 
