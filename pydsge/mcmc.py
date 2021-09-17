@@ -78,7 +78,8 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
             backend = os.path.join(self.path, self.name+suffix)
 
             if os.path.exists(backend) and not (resume or append):
-                print('[mcmc:]'.ljust(15, ' ') + " HDF backend at %s already exists. Deleting..." %backend)
+                print('[mcmc:]'.ljust(15, ' ') +
+                      " HDF backend at %s already exists. Deleting..." % backend)
                 os.remove(backend)
 
         backend = emcee.backends.HDFBackend(backend)
