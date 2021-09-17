@@ -231,17 +231,6 @@ def mode_summary(self, data_cmaes=None, verbose=True):
     return df
 
 
-def swarm_summary(self, verbose=True, **args):
-
-    res = summary(self, store=self.fdict['swarms'],
-                  bounds=self.fdict['prior_bounds'], **args)
-
-    if verbose:
-        print(res.round(3))
-
-    return res
-
-
 def mcmc_summary(self, chain=None, tune=None, calc_mdd=True, calc_ll_stats=False, calc_maf=True, out=print, verbose=True, **args):
 
     try:
@@ -440,7 +429,6 @@ DSGE_RAW.get_tune = get_tune
 DSGE_RAW.save = save_meta
 DSGE_RAW.mapper = mapper
 DSGE_RAW.mode_summary = mode_summary
-DSGE_RAW.swarm_summary = swarm_summary
 DSGE_RAW.mcmc_summary = mcmc_summary
 DSGE_RAW.info = info_m
 DSGE_RAW.mdd = mdd
