@@ -11,7 +11,7 @@ from datetime import datetime
 from .mpile import get_par
 
 
-def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=False, seed=None, backend=True, suffix=None, linear=None, resume=False, append=False, update_freq=None, lprob_seed=None, report=None, verbose=False, debug=False, **samplerargs):
+def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=False, seed=None, backend=True, suffix=None, linear=None, resume=False, append=False, update_freq=None, lprob_seed=None, report=None, maintenance_interval=10, verbose=False, debug=False, **samplerargs):
 
     import emcee
 
@@ -168,6 +168,10 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
 
         if not verbose:
             pbar.update(1)
+
+        # avoid mem leakage
+        if cnt and not cnt % maintenance_interval:
+            self.pool.clear()
 
         cnt += 1
 
