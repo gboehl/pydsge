@@ -211,8 +211,7 @@ def prep_estim(self, N=None, linear=None, load_R=False, seed=None, eval_priors=F
     else:
         self.pool = None
 
-    # return
-    return lprob
+    return
 
 
 def create_pool(self, ncores=None, threadpool_limit=None):

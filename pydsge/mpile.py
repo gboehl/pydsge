@@ -62,7 +62,8 @@ def prior_sampler(self, nsamples, seed=0, test_lprob=False, lks=None, verbose=Tr
     """
 
     import tqdm
-    from grgrlib import map2arr, serializer
+    from grgrlib.core import map2arr
+    from grgrlib.multiprocessing import serializer
 
     l_max, k_max = lks or (None, None)
 

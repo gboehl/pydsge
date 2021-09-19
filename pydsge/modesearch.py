@@ -5,6 +5,7 @@ import os
 import time
 import tqdm
 import numpy as np
+from grgrlib.multiprocessing import serializer
 from .mpile import get_par
 from .stats import summary, pmdm_report
 
@@ -221,7 +222,6 @@ def cmaes(self, p0=None, sigma=None, pop_size=None, restart_factor=2, seeds=3, s
     """
 
     from grgrlib.optimize import cmaes as fmin
-    from grgrlib.core import serializer
 
     np.random.seed(seed or self.fdict['seed'])
 
