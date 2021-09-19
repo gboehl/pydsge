@@ -7,6 +7,7 @@ import scipy.linalg as sl
 import pandas as pd
 from econsieve import KalmanFilter, TEnKF
 from grgrlib.core import timeprint
+from grgrlib.multiprocessing import serializer
 from econsieve.stats import logpdf
 
 
@@ -252,7 +253,7 @@ def extract(self, sample=None, nsamples=1, init_cov=None, precalc=True, seed=0, 
 
     import tqdm
     import os
-    from grgrlib.core import map2arr, serializer
+    from grgrlib.core import map2arr
 
     if sample is None:
         if type(self).__name__ == "DSGE_DUMMY":

@@ -65,8 +65,7 @@ def get_chain(self, get_acceptance_fraction=False, get_log_prob=False, backend_f
         else:
             backend_file = os.path.join(self.path, self.name+'_sampler.h5')
 
-    if backend_file:
-
+    else:
         if not os.path.exists(backend_file):
             raise NameError(
                 "A backend file named `%s` could not be found." % backend_file)
@@ -344,6 +343,8 @@ def load_data(self, df, start=None, end=None):
 
     """
 
+    import cloudpickle as cpickle
+
     if not isinstance(df, pd.DataFrame):
         raise TypeError('Type of input data must be a `pandas.DataFrame`.')
 
@@ -362,21 +363,11 @@ def load_data(self, df, start=None, end=None):
 
     d = d.loc[start:end]
 
-    import cloudpickle as cpickle
     self.data = d
     self.fdict['data'] = cpickle.dumps(d, protocol=4)
     self.fdict['obs'] = self.observables
 
     return d
-
-
-# def lprob(self, par, linear=None, verbose=False):
-
-    # if not hasattr(self, 'ndim'):
-        # self.prep_estim(linear=linear, load_R=True, verbose=verbose)
-        # linear = self.filter.name == 'KalmanFilter'
-
-    # return self.lprob(par, linear=linear, verbose=verbose)
 
 
 def get_sample(self, size, chain=None):

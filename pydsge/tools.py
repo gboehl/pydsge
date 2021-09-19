@@ -10,6 +10,7 @@ import pandas as pd
 import time
 import tqdm
 from grgrlib import fast0, map2arr
+from grgrlib.multiprocessing import serializer
 from .engine import *
 from decimal import Decimal
 
@@ -148,8 +149,6 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, set_k=False
     DataFrame, tuple(int,int)
         The simulated series as a pandas.DataFrame object and the expected durations at the constraint
     """
-
-    from grgrlib.core import serializer
 
     self.debug |= debug
     if force_init_equil is None:
@@ -321,8 +320,6 @@ def simulate(self, source=None, mask=None, pars=None, resid=None, init=None, ope
         mask : array
             Mask for eps. Each non-None element will be replaced.
     """
-    from grgrlib.core import serializer
-
     pars = pars if pars is not None else source['pars']
     resi = resid if resid is not None else source['resid']
     init = init if init is not None else source['init']

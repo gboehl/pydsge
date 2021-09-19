@@ -36,7 +36,7 @@ def mcmc(self, p0=None, nsteps=3000, nwalks=None, tune=None, moves=None, temp=Fa
     if 'description' in self.fdict.keys():
         self.description = self.fdict['description']
 
-    from grgrlib.core import serializer
+    from grgrlib.multiprocessing import serializer
 
     if hasattr(self, 'pool'):
         from .estimation import create_pool
