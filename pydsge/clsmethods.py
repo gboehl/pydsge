@@ -65,7 +65,7 @@ def get_chain(self, get_acceptance_fraction=False, get_log_prob=False, backend_f
         else:
             backend_file = os.path.join(self.path, self.name+'_sampler.h5')
 
-    else:
+    if backend_file:
         if not os.path.exists(backend_file):
             raise NameError(
                 "A backend file named `%s` could not be found." % backend_file)
