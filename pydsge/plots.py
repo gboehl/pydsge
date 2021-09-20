@@ -105,9 +105,7 @@ def get_axis(ax, default_rows, default_columns, **default_kwargs):
     return fig, ax
 
 
-def traceplot(trace, varnames, tune, figsize=None,
-              combined=False, max_no=3, priors=None,
-              prior_alpha=.8, prior_style='--', draw_lines=False, bw=4.5, axp=None):
+def traceplot(trace, varnames, tune, figsize=None, combined=False, max_no=3, priors=None, draw_lines=True, bw=4.5, text_size=None, ax=None, **kwargs):
 
     # inspired by pymc3 with kisses
 
@@ -122,10 +120,11 @@ def traceplot(trace, varnames, tune, figsize=None,
             priors_chunk = priors[ic:ic + max_no]
 
         if figsize is None:
-            figsize_loc = (8, len(vnames_chunk) * 2)
+            figsize_loc = (9, len(vnames_chunk) * 2.5)
         else:
             figsize_loc = figsize
-        fig, ax = get_axis(axp, len(vnames_chunk), 2,
+
+        fig, ax_loc = get_axis(ax, len(vnames_chunk), 2,
                            squeeze=False, figsize=figsize_loc)
 
         for i, v in enumerate(vnames_chunk):
@@ -136,35 +135,23 @@ def traceplot(trace, varnames, tune, figsize=None,
                 prior = None
 
             d = trace_chunk[..., i]
-
-            if d.ndim > 2:
-                d_stream = d.reshape(-1, d.shape[-1])
-            else:
-                d_stream = d
+            d_stream = d.reshape(-1, d.shape[-1])
 
             width = len(d_stream)
 
-            if not np.isclose(d, 0).all():
+            tr_values = d[-tune:].flatten()
+            plot_posterior_op(tr_values, ax=ax_loc[i,0], bw=bw, prior=prior,  text_size=scale_text(figsize, text_size), **kwargs)
 
-                artists = kdeplot_op(
-                    ax[i, 0], d_stream[-tune:], bw, prior, prior_alpha, prior_style)[0]
-                colors = [a[0].get_color() for a in artists]
-
-            else:
-
-                ax[i, 0].set_visible(False)
-
-            ax[i, 0].set_title(str(v))
-            ax[i, 1].set_title(str(v))
+            ax_loc[i, 1].set_title(str(v), loc='left')
 
             auxtune = d.shape[0] - tune
 
             if draw_lines:
-                ax[i, 1].plot(range(0, auxtune+1), d[:auxtune+1],
+                ax_loc[i, 1].plot(range(0, auxtune+1), d[:auxtune+1],
                               c='maroon', alpha=0.03)
-                ax[i, 1].plot(range(auxtune, width), d[auxtune:],
-                              c='maroon', alpha=0.045)
-                ax[i, 1].plot([auxtune, auxtune], [np.mean(d_stream, 1)[auxtune] - np.std(d_stream, 1)[auxtune]*3,
+                ax_loc[i, 1].plot(range(auxtune, width), d[auxtune:],
+                              c='C0', alpha=0.045)
+                ax_loc[i, 1].plot([auxtune, auxtune], [np.mean(d_stream, 1)[auxtune] - np.std(d_stream, 1)[auxtune]*3,
                                                    np.mean(d_stream, 1)[auxtune] + np.std(d_stream, 1)[auxtune]*3], '--', alpha=.4, color='k')
 
             else:
@@ -173,37 +160,37 @@ def traceplot(trace, varnames, tune, figsize=None,
                 means = np.mean(d_stream, axis=1)
                 medis = np.median(d_stream, axis=1)
 
-                ax[i, 1].fill_between(
+                ax_loc[i, 1].fill_between(
                     range(0, auxtune+1), *i95s[:, :auxtune+1], lw=0, alpha=.1, color='C1')
-                ax[i, 1].fill_between(
+                ax_loc[i, 1].fill_between(
                     range(auxtune, width), *i95s[:, auxtune:], lw=0, alpha=.2, color='C1')
-                ax[i, 1].fill_between(
+                ax_loc[i, 1].fill_between(
                     range(0, auxtune+1), *i66s[:, :auxtune+1], lw=0, alpha=.3, color='C1')
-                ax[i, 1].fill_between(
+                ax_loc[i, 1].fill_between(
                     range(auxtune, width), *i66s[:, auxtune:], lw=0, alpha=.4, color='C1')
-                ax[i, 1].plot(range(auxtune, width),
+                ax_loc[i, 1].plot(range(auxtune, width),
                               means[auxtune:], lw=2, c='C0')
-                ax[i, 1].plot(range(0, auxtune+1),
+                ax_loc[i, 1].plot(range(0, auxtune+1),
                               means[:auxtune+1], lw=2, c='C0', alpha=.5)
 
-                ax[i, 1].plot([auxtune, auxtune], [np.mean(d_stream, 1)[auxtune] - np.std(d_stream, 1)[auxtune]*3,
+                ax_loc[i, 1].plot([auxtune, auxtune], [np.mean(d_stream, 1)[auxtune] - np.std(d_stream, 1)[auxtune]*3,
                                                    np.mean(d_stream, 1)[auxtune] + np.std(d_stream, 1)[auxtune]*3],
                               '--', alpha=.4, color='k')
 
-            ax[i, 0].set_ylabel("Frequency")
-            ax[i, 1].set_ylabel("Sample value")
-            ax[i, 0].set_ylim(bottom=0)
+            ax_loc[i, 0].set_ylabel("Frequency")
+            ax_loc[i, 1].set_ylabel("Sample value")
+            ax_loc[i, 0].set_ylim(bottom=0)
 
         plt.tight_layout()
 
-        axs.append(ax)
+        axs.append(ax_loc)
         figs.append(fig)
 
     return figs, axs
 
 
-def plot_posterior_op(trace_values, ax, bw, kde_plot, point_estimate, round_to,
-                      alpha_level, ref_val, rope, text_size=16, **kwargs):
+def plot_posterior_op(trace_values, ax, bw, prior, kde_plot=False, point_estimate='mean', round_to=3,
+                      alpha_level=0.05, ref_val=None, rope=None, text_size=16, **kwargs):
     """Artist to draw posterior."""
 
     from .stats import calc_min_interval as hpd
@@ -286,15 +273,19 @@ def plot_posterior_op(trace_values, ax, bw, kde_plot, point_estimate, round_to,
             d[key] = value
 
     if kde_plot and isinstance(trace_values[0], float):
-        kdeplot(trace_values, alpha=kwargs.pop(
-            'alpha', 0.35), bw=bw, ax=ax, **kwargs)
+        kdeplot_op(ax, trace_values, bw=bw, prior_alpha=kwargs.pop(
+            'alpha', 0.35), **kwargs)
 
     else:
         set_key_if_doesnt_exist(kwargs, 'bins', 30)
         set_key_if_doesnt_exist(kwargs, 'edgecolor', 'w')
         set_key_if_doesnt_exist(kwargs, 'align', 'right')
         set_key_if_doesnt_exist(kwargs, 'color', '#87ceeb')
-        ax.hist(trace_values, **kwargs)
+        ax.hist(trace_values, density=True, **kwargs)
+
+    if prior is not None:
+        x = np.linspace(*ax.get_xlim(), 100)
+        ax.plot(x, prior.pdf(x), '--', c='C1', alpha=.8)
 
     plot_height = ax.get_ylim()[1]
 
@@ -319,9 +310,7 @@ def scale_text(figsize, text_size):
         return text_size
 
 
-def posteriorplot(trace, varnames=None, tune=0, figsize=None, max_no=4, text_size=None,
-                  alpha_level=0.05, round_to=3, point_estimate='mean', ropep=None,
-                  ref_val=None, kde_plot=False, bw=4.5, axp=None, **kwargs):
+def posteriorplot(trace, varnames=None, tune=0, figsize=None, max_no=4, text_size=None, ropep=None, ref_val=None, bw=4.5, ax=None, **kwargs):
 
     axs = []
     figs = []
@@ -354,7 +343,7 @@ def posteriorplot(trace, varnames=None, tune=0, figsize=None, max_no=4, text_siz
                     ax = ax[:-1]
             return fig, ax
 
-        if axp is None:
+        if ax is None:
             fig, ax = create_axes_grid(figsize, vnames_chunk)
         else:
             ax = apx
@@ -374,8 +363,7 @@ def posteriorplot(trace, varnames=None, tune=0, figsize=None, max_no=4, text_siz
             print('Given axis does not match number of plots')
         for idx, (a, v) in enumerate(zip(np.atleast_1d(ax), vnames_chunk)):
             tr_values = trace_chunk[-tune:, :, idx].flatten()
-            plot_posterior_op(tr_values, ax=a, bw=bw, kde_plot=kde_plot,
-                              point_estimate=point_estimate, round_to=round_to,
+            plot_posterior_op(tr_values, ax=a, bw=bw, prior=None, round_to=round_to,
                               alpha_level=alpha_level, ref_val=ref_val[idx],
                               rope=rope[idx], text_size=scale_text(figsize, text_size), **kwargs)
             a.set_title(v, fontsize=scale_text(figsize, text_size))
@@ -386,65 +374,6 @@ def posteriorplot(trace, varnames=None, tune=0, figsize=None, max_no=4, text_siz
         figs.append(fig)
 
     return figs, axs
-
-
-def swarm_champ(self, ax=None, **plotargs):
-
-    if ax is None:
-        fig, ax = plt.subplots()
-    else:
-        fig = None
-
-    fs = self.fdict['swarm_history'][0]
-
-    ax.plot(fs.flatten(), lw=2, **plotargs)
-
-    if fig is not None:
-        fig.tight_layout()
-
-        return fig, ax
-
-    return ax
-
-
-def swarm_plot(self, ax=None, **pplotargs):
-
-    from grgrlib import pplot
-
-    xs = self.fdict['swarm_history'][1]
-
-    return pplot(xs, labels=self.prior_names, ax=ax, **pplotargs)
-
-
-def swarm_rank(self, figsize=None, ax=None):
-
-    from collections import Counter
-
-    names = self.fdict['swarm_history'][2][0]
-    alls = self.fdict['swarms'][2][0]
-    names = Counter(list(names) + list(alls))
-    names = {key: names[key] - 1 for key in names.keys()}
-
-    if figsize is None:
-        figsize = (8, .3*len(names))
-
-    ndict = dict(sorted(names.items(), key=lambda x: x[1]))
-    height = ndict.values()
-    bars = ndict.keys()
-    y_pos = np.arange(len(bars))
-
-    if ax is None:
-        fig, ax = plt.subplots(figsize=figsize)
-    else:
-        fig = None
-
-    ax.barh(y_pos, list(height), tick_label=list(bars))
-
-    if fig is not None:
-        fig.tight_layout()
-        return fig, ax
-
-    return ax
 
 
 def sort_nhd(hd):
