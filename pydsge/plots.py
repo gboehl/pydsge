@@ -3,6 +3,7 @@
 
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
+from matplotlib.lines import Line2D
 import numpy as np
 
 
@@ -39,7 +40,7 @@ def fast_kde(x, bw=4.5):
     dx = (xmax - xmin) / (nx - 1)
     std_x = entropy((x - xmin) / dx) * bw
     if ~np.isfinite(std_x):
-        std_x = 0.
+        std_x = 0.0
     grid, _ = np.histogram(x, bins=nx)
 
     scotts_factor = n ** (-0.2)
@@ -47,8 +48,8 @@ def fast_kde(x, bw=4.5):
     kernel = gaussian(kern_nx, scotts_factor * std_x)
 
     npad = min(nx, 2 * kern_nx)
-    grid = np.concatenate([grid[npad: 0: -1], grid, grid[nx: nx - npad: -1]])
-    density = convolve(grid, kernel, mode='same')[npad: npad + nx]
+    grid = np.concatenate([grid[npad:0:-1], grid, grid[nx : nx - npad : -1]])
+    density = convolve(grid, kernel, mode="same")[npad : npad + nx]
 
     norm_factor = n * dx * (2 * np.pi * std_x ** 2 * scotts_factor ** 2) ** 0.5
 
@@ -57,7 +58,7 @@ def fast_kde(x, bw=4.5):
     return density, xmin, xmax
 
 
-def kdeplot_op(ax, data, bw, prior=None, prior_alpha=1, prior_style='--'):
+def kdeplot_op(ax, data, bw, prior=None, prior_alpha=1, prior_style="--"):
     """Get a list of density and likelihood plots, if a prior is provided."""
     ls = []
     pls = []
@@ -77,9 +78,13 @@ def kdeplot_op(ax, data, bw, prior=None, prior_alpha=1, prior_style='--'):
     ls.append(ax.plot(x, density))
 
     if errored:
-        ax.text(.27, .47, 'WARNING: KDE plot failed for: ' + ','.join(errored),
-                bbox={'facecolor': 'red', 'alpha': 0.5, 'pad': 10},
-                style='italic')
+        ax.text(
+            0.27,
+            0.47,
+            "WARNING: KDE plot failed for: " + ",".join(errored),
+            bbox={"facecolor": "red", "alpha": 0.5, "pad": 10},
+            style="italic",
+        )
 
     return ls, pls
 
@@ -101,102 +106,188 @@ def get_axis(ax, default_rows, default_columns, **default_kwargs):
     if ax is None:
         fig, ax = plt.subplots(*default_shape, **default_kwargs)
     elif ax.shape != default_shape:
-        raise ValueError('Subplots with shape %r required' % (default_shape,))
+        raise ValueError("Subplots with shape %r required" % (default_shape,))
     return fig, ax
 
 
-def traceplot(trace, varnames, tune, figsize=None, combined=False, max_no=3, priors=None, draw_lines=True, bw=4.5, text_size=None, ax=None, **kwargs):
+def traceplot(
+    trace,
+    varnames,
+    tune,
+    figsize=None,
+    combined=False,
+    plots_per_fig=3,
+    priors=None,
+    draw_each_trace=True,
+    bw=4.5,
+    text_size=None,
+    display_additinal_info=False,
+    **kwargs
+):
 
     # inspired by pymc3 with kisses
 
+    if figsize is None:
+        figsize = (9, plots_per_fig * 2.5)
+
+    width = trace.shape[0]
+    tune = width - tune
+
+    custom_lines_hist = [
+        Line2D([0], [0], linestyle="-", color="C0", lw=1),
+        Line2D([0], [0], linestyle="--", color="C1", lw=1),
+    ]
+
+    custom_lines_trace = [
+        Line2D([0], [0], linestyle="-", color="maroon", lw=1),
+        Line2D([0], [0], linestyle="-", color="C0", lw=1),
+    ]
+
     axs = []
     figs = []
+    subfigs = []
 
-    for ic in range(0, len(varnames), max_no):
+    for chunk in range(0, len(varnames), plots_per_fig):
 
-        vnames_chunk = varnames[ic:ic + max_no]
-        trace_chunk = trace[..., ic:ic + max_no]
-        if priors is not None:
-            priors_chunk = priors[ic:ic + max_no]
+        figs.append(plt.figure(constrained_layout=True, figsize=figsize))
+        subfigs.append(figs[-1].subfigures(plots_per_fig, 1, wspace=0.07))
 
-        if figsize is None:
-            figsize_loc = (9, len(vnames_chunk) * 2.5)
-        else:
-            figsize_loc = figsize
+        for i in range(plots_per_fig):
 
-        fig, ax_loc = get_axis(ax, len(vnames_chunk), 2,
-                           squeeze=False, figsize=figsize_loc)
-
-        for i, v in enumerate(vnames_chunk):
+            axs.append(subfigs[-1][i].subplots(1, 2))
+            data = trace[..., chunk + i]
 
             if priors is not None:
-                prior = priors_chunk[i]
+                prior = priors[chunk + i]
             else:
                 prior = None
 
-            d = trace_chunk[..., i]
-            d_stream = d.reshape(-1, d.shape[-1])
-
-            width = len(d_stream)
-
-            tr_values = d[-tune:].flatten()
-            plot_posterior_op(tr_values, ax=ax_loc[i,0], bw=bw, prior=prior,  text_size=scale_text(figsize, text_size), **kwargs)
-
-            ax_loc[i, 1].set_title(str(v), loc='left')
-
-            auxtune = d.shape[0] - tune
-
-            if draw_lines:
-                ax_loc[i, 1].plot(range(0, auxtune+1), d[:auxtune+1],
-                              c='maroon', alpha=0.03)
-                ax_loc[i, 1].plot(range(auxtune, width), d[auxtune:],
-                              c='C0', alpha=0.045)
-                ax_loc[i, 1].plot([auxtune, auxtune], [np.mean(d_stream, 1)[auxtune] - np.std(d_stream, 1)[auxtune]*3,
-                                                   np.mean(d_stream, 1)[auxtune] + np.std(d_stream, 1)[auxtune]*3], '--', alpha=.4, color='k')
+            posterior = data[-tune:].flatten()
+            plot_posterior_op(
+                posterior,
+                ax=axs[-1][0],
+                bw=bw,
+                prior=prior,
+                text_size=scale_text(figsize, text_size),
+                display_additinal_info=display_additinal_info,
+                **kwargs
+            )
+            if draw_each_trace:
+                axs[-1][1].plot(
+                    range(0, tune + 1), data[: tune + 1], c="maroon", alpha=0.03
+                )
+                axs[-1][1].plot(range(tune, width), data[tune:], c="C0", alpha=0.045)
+                axs[-1][1].plot(
+                    [tune, tune],
+                    [
+                        np.mean(data, 1)[tune] - np.std(data, 1)[tune] * 3,
+                        np.mean(data, 1)[tune] + np.std(data, 1)[tune] * 3,
+                    ],
+                    "--",
+                    alpha=0.4,
+                    color="k",
+                )
 
             else:
-                i95s = np.percentile(d_stream, [2.5, 97.5], axis=1)
-                i66s = np.percentile(d_stream, [17, 83], axis=1)
-                means = np.mean(d_stream, axis=1)
-                medis = np.median(d_stream, axis=1)
+                i95s = np.percentile(data, [2.5, 97.5], axis=1)
+                i66s = np.percentile(data, [17, 83], axis=1)
+                means = np.mean(data, axis=1)
+                medis = np.median(data, axis=1)
 
-                ax_loc[i, 1].fill_between(
-                    range(0, auxtune+1), *i95s[:, :auxtune+1], lw=0, alpha=.1, color='C1')
-                ax_loc[i, 1].fill_between(
-                    range(auxtune, width), *i95s[:, auxtune:], lw=0, alpha=.2, color='C1')
-                ax_loc[i, 1].fill_between(
-                    range(0, auxtune+1), *i66s[:, :auxtune+1], lw=0, alpha=.3, color='C1')
-                ax_loc[i, 1].fill_between(
-                    range(auxtune, width), *i66s[:, auxtune:], lw=0, alpha=.4, color='C1')
-                ax_loc[i, 1].plot(range(auxtune, width),
-                              means[auxtune:], lw=2, c='C0')
-                ax_loc[i, 1].plot(range(0, auxtune+1),
-                              means[:auxtune+1], lw=2, c='C0', alpha=.5)
+                axs[-1][1].fill_between(
+                    range(0, tune + 1),
+                    *i95s[:, : tune + 1],
+                    lw=0,
+                    alpha=0.1,
+                    color="C1"
+                )
+                axs[-1][1].fill_between(
+                    range(tune, width), *i95s[:, tune:], lw=0, alpha=0.2, color="C1"
+                )
+                axs[-1][1].fill_between(
+                    range(0, tune + 1),
+                    *i66s[:, : tune + 1],
+                    lw=0,
+                    alpha=0.3,
+                    color="C1"
+                )
+                axs[-1][1].fill_between(
+                    range(tune, width), *i66s[:, tune:], lw=0, alpha=0.4, color="C1"
+                )
+                axs[-1][1].plot(range(tune, width), means[tune:], lw=2, c="C0")
+                axs[-1][1].plot(
+                    range(0, tune + 1), means[: tune + 1], lw=2, c="C0", alpha=0.5
+                )
 
-                ax_loc[i, 1].plot([auxtune, auxtune], [np.mean(d_stream, 1)[auxtune] - np.std(d_stream, 1)[auxtune]*3,
-                                                   np.mean(d_stream, 1)[auxtune] + np.std(d_stream, 1)[auxtune]*3],
-                              '--', alpha=.4, color='k')
+                axs[-1][1].plot(
+                    [tune, tune],
+                    [
+                        np.mean(data, 1)[tune] - np.std(data, 1)[tune] * 3,
+                        np.mean(data, 1)[tune] + np.std(data, 1)[tune] * 3,
+                    ],
+                    "--",
+                    alpha=0.4,
+                    color="k",
+                )
 
-            ax_loc[i, 0].set_ylabel("Frequency")
-            ax_loc[i, 1].set_ylabel("Sample value")
-            ax_loc[i, 0].set_ylim(bottom=0)
+            axs[-1][0].tick_params(
+                axis="x",
+                direction="out",
+                width=1,
+                length=3,
+                color="0.5",
+                labelsize=scale_text(figsize, text_size),
+            )
+            axs[-1][1].tick_params(
+                axis="x",
+                direction="out",
+                width=1,
+                length=3,
+                color="0.5",
+                labelsize=scale_text(figsize, text_size),
+            )
+            axs[-1][1].tick_params(
+                axis="y",
+                width=1,
+                length=0,
+                color="0.5",
+                labelsize=scale_text(figsize, text_size),
+            )
 
-        plt.tight_layout()
+            axs[-1][0].set_ylabel("Frequency")
+            axs[-1][1].set_ylabel("Sample value")
+            axs[-1][0].set_ylim(bottom=0)
 
-        axs.append(ax_loc)
-        figs.append(fig)
+            subfigs[-1][i].suptitle(str(varnames[chunk + i]))
 
-    return figs, axs
+        if priors is not None:
+            axs[-1][0].legend(custom_lines_hist, ["Prior", "Posterior"])
+            axs[-1][1].legend(custom_lines_trace, ["Burn-in", "Posterior"])
+
+    return figs, subfigs, axs
 
 
-def plot_posterior_op(trace_values, ax, bw, prior, kde_plot=False, point_estimate='mean', round_to=3,
-                      alpha_level=0.05, ref_val=None, rope=None, text_size=16, **kwargs):
+def plot_posterior_op(
+    trace_values,
+    ax,
+    bw,
+    prior,
+    kde_plot=False,
+    point_estimate="mean",
+    round_to=3,
+    alpha_level=0.05,
+    ref_val=None,
+    rope=None,
+    text_size=16,
+    display_additinal_info=False,
+    **kwargs
+):
     """Artist to draw posterior."""
 
     from .stats import calc_min_interval as hpd
 
     def format_as_percent(x, round_to=0):
-        return '{0:.{1:d}f}%'.format(100 * x, round_to)
+        return "{0:.{1:d}f}%".format(100 * x, round_to)
 
     def display_ref_val(ref_val):
         less_than_ref_probability = (trace_values < ref_val).mean()
@@ -204,98 +295,131 @@ def plot_posterior_op(trace_values, ax, bw, prior, kde_plot=False, point_estimat
         ref_in_posterior = "{} <{:g}< {}".format(
             format_as_percent(less_than_ref_probability, 1),
             ref_val,
-            format_as_percent(greater_than_ref_probability, 1))
-        ax.axvline(ref_val, bottom=0.02, ymax=.75, color='g',
-                   linewidth=4, alpha=0.65)
-        ax.text(trace_values.mean(), plot_height * 0.6, ref_in_posterior,
-                size=text_size, horizontalalignment='center')
+            format_as_percent(greater_than_ref_probability, 1),
+        )
+        ax.axvline(ref_val, bottom=0.02, ymax=0.75, color="g", linewidth=4, alpha=0.65)
+        ax.text(
+            trace_values.mean(),
+            plot_height * 0.6,
+            ref_in_posterior,
+            size=text_size,
+            horizontalalignment="center",
+        )
 
     def display_rope(rope):
-        ax.plot(rope, (plot_height * 0.02, plot_height * 0.02),
-                linewidth=20, color='r', alpha=0.75)
-        text_props = dict(
-            size=text_size, horizontalalignment='center', color='r')
+        ax.plot(
+            rope,
+            (plot_height * 0.02, plot_height * 0.02),
+            linewidth=20,
+            color="r",
+            alpha=0.75,
+        )
+        text_props = dict(size=text_size, horizontalalignment="center", color="r")
         ax.text(rope[0], plot_height * 0.14, rope[0], **text_props)
         ax.text(rope[1], plot_height * 0.14, rope[1], **text_props)
 
     def display_point_estimate():
         if not point_estimate:
             return
-        if point_estimate not in ('mode', 'mean', 'median'):
-            raise ValueError(
-                "Point Estimate should be in ('mode','mean','median')")
-        if point_estimate == 'mean':
+        if point_estimate not in ("mode", "mean", "median"):
+            raise ValueError("Point Estimate should be in ('mode','mean','median')")
+        if point_estimate == "mean":
             point_value = trace_values.mean()
-        elif point_estimate == 'mode':
+        elif point_estimate == "mode":
             if isinstance(trace_values[0], float):
                 density, l, u = fast_kde(trace_values, bw)
                 x = np.linspace(l, u, len(density))
                 point_value = x[np.argmax(density)]
             else:
                 point_value = mode(trace_values.round(round_to))[0][0]
-        elif point_estimate == 'median':
+        elif point_estimate == "median":
             point_value = np.median(trace_values)
-        point_text = '{point_estimate}={point_value:.{round_to}f}'.format(point_estimate=point_estimate,
-                                                                          point_value=point_value, round_to=round_to)
+        point_text = "{point_estimate}={point_value:.{round_to}f}".format(
+            point_estimate=point_estimate, point_value=point_value, round_to=round_to
+        )
 
-        ax.text(point_value, plot_height * 0.8, point_text,
-                size=text_size, horizontalalignment='center')
+        ax.text(
+            point_value,
+            plot_height * 0.8,
+            point_text,
+            size=text_size,
+            horizontalalignment="center",
+        )
 
     def display_hpd():
         sorted_trace_values = np.sort(trace_values)
         hpd_intervals = hpd(sorted_trace_values, alpha=alpha_level)
-        ax.plot(hpd_intervals, (plot_height * 0.02,
-                                plot_height * 0.02), linewidth=4, color='k')
-        ax.text(hpd_intervals[0], plot_height * 0.07,
-                hpd_intervals[0].round(round_to),
-                size=text_size, horizontalalignment='right')
-        ax.text(hpd_intervals[1], plot_height * 0.07,
-                hpd_intervals[1].round(round_to),
-                size=text_size, horizontalalignment='left')
-        ax.text((hpd_intervals[0] + hpd_intervals[1]) / 2, plot_height * 0.2,
-                format_as_percent(1 - alpha_level) + ' HPD',
-                size=text_size, horizontalalignment='center')
+        ax.plot(
+            hpd_intervals,
+            (plot_height * 0.02, plot_height * 0.02),
+            linewidth=4,
+            color="k",
+        )
+        ax.text(
+            hpd_intervals[0],
+            plot_height * 0.07,
+            hpd_intervals[0].round(round_to),
+            size=text_size,
+            horizontalalignment="right",
+        )
+        ax.text(
+            hpd_intervals[1],
+            plot_height * 0.07,
+            hpd_intervals[1].round(round_to),
+            size=text_size,
+            horizontalalignment="left",
+        )
+        ax.text(
+            (hpd_intervals[0] + hpd_intervals[1]) / 2,
+            plot_height * 0.2,
+            format_as_percent(1 - alpha_level) + " HPD",
+            size=text_size,
+            horizontalalignment="center",
+        )
 
     def format_axes():
         ax.yaxis.set_ticklabels([])
-        ax.spines['top'].set_visible(False)
-        ax.spines['right'].set_visible(False)
-        ax.spines['left'].set_visible(False)
-        ax.spines['bottom'].set_visible(True)
-        ax.yaxis.set_ticks_position('none')
-        ax.xaxis.set_ticks_position('bottom')
-        ax.tick_params(axis='x', direction='out', width=1, length=3,
-                       color='0.5', labelsize=text_size)
-        ax.spines['bottom'].set_color('0.5')
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
+        ax.spines["left"].set_visible(False)
+        ax.spines["bottom"].set_visible(True)
+        ax.yaxis.set_ticks_position("none")
+        ax.xaxis.set_ticks_position("bottom")
+        # ax.tick_params(axis='x', direction='out', width=1, length=3,
+        # color='0.5', labelsize=text_size)
+        ax.spines["bottom"].set_color("0.5")
 
     def set_key_if_doesnt_exist(d, key, value):
         if key not in d:
             d[key] = value
 
     if kde_plot and isinstance(trace_values[0], float):
-        kdeplot_op(ax, trace_values, bw=bw, prior_alpha=kwargs.pop(
-            'alpha', 0.35), **kwargs)
+        kdeplot_op(
+            ax, trace_values, bw=bw, prior_alpha=kwargs.pop("alpha", 0.35), **kwargs
+        )
 
     else:
-        set_key_if_doesnt_exist(kwargs, 'bins', 30)
-        set_key_if_doesnt_exist(kwargs, 'edgecolor', 'w')
-        set_key_if_doesnt_exist(kwargs, 'align', 'right')
-        set_key_if_doesnt_exist(kwargs, 'color', '#87ceeb')
+        set_key_if_doesnt_exist(kwargs, "bins", 30)
+        set_key_if_doesnt_exist(kwargs, "edgecolor", "w")
+        set_key_if_doesnt_exist(kwargs, "align", "right")
+        set_key_if_doesnt_exist(kwargs, "color", "#87ceeb")
         ax.hist(trace_values, density=True, **kwargs)
 
     if prior is not None:
         x = np.linspace(*ax.get_xlim(), 100)
-        ax.plot(x, prior.pdf(x), '--', c='C1', alpha=.8)
+        ax.plot(x, prior.pdf(x), "--", c="C1", alpha=0.8)
 
     plot_height = ax.get_ylim()[1]
 
     format_axes()
-    display_hpd()
-    display_point_estimate()
-    if ref_val is not None:
-        display_ref_val(ref_val)
-    if rope is not None:
-        display_rope(rope)
+
+    if display_additinal_info:
+        display_hpd()
+        display_point_estimate()
+        if ref_val is not None:
+            display_ref_val(ref_val)
+        if rope is not None:
+            display_rope(rope)
 
 
 def scale_text(figsize, text_size):
@@ -310,7 +434,19 @@ def scale_text(figsize, text_size):
         return text_size
 
 
-def posteriorplot(trace, varnames=None, tune=0, figsize=None, max_no=4, text_size=None, ropep=None, ref_val=None, bw=4.5, ax=None, **kwargs):
+def posteriorplot(
+    trace,
+    varnames=None,
+    tune=0,
+    figsize=None,
+    plots_per_fig=4,
+    text_size=None,
+    ropep=None,
+    ref_val=None,
+    bw=4.5,
+    ax=None,
+    **kwargs
+):
 
     axs = []
     figs = []
@@ -320,13 +456,13 @@ def posteriorplot(trace, varnames=None, tune=0, figsize=None, max_no=4, text_siz
     else:
         dim = trace.shape[-1]
 
-    for ic in range(0, dim, max_no):
+    for ic in range(0, dim, plots_per_fig):
 
         if varnames is not None:
-            vnames_chunk = varnames[ic:ic + max_no]
+            vnames_chunk = varnames[ic : ic + plots_per_fig]
         else:
-            vnames_chunk = [None]*min(max_no, dim-ic)
-        trace_chunk = trace[..., ic:ic + max_no]
+            vnames_chunk = [None] * min(plots_per_fig, dim - ic)
+        trace_chunk = trace[..., ic : ic + plots_per_fig]
 
         def create_axes_grid(figsize, traces):
             l_trace = len(traces)
@@ -335,7 +471,7 @@ def posteriorplot(trace, varnames=None, tune=0, figsize=None, max_no=4, text_siz
             else:
                 n = np.ceil(l_trace / 2.0).astype(int)
                 if figsize is None:
-                    figsize_loc = (8, len(vnames_chunk)*1.5)
+                    figsize_loc = (8, len(vnames_chunk) * 1.5)
                 fig, ax = plt.subplots(n, 2, figsize=figsize_loc)
                 ax = ax.reshape(2 * n)
                 if l_trace % 2 == 1:
@@ -360,12 +496,21 @@ def posteriorplot(trace, varnames=None, tune=0, figsize=None, max_no=4, text_siz
             rope = [rope] * var_num
 
         if len(np.atleast_1d(ax).flatten()) != len(vnames_chunk):
-            print('Given axis does not match number of plots')
+            print("Given axis does not match number of plots")
         for idx, (a, v) in enumerate(zip(np.atleast_1d(ax), vnames_chunk)):
             tr_values = trace_chunk[-tune:, :, idx].flatten()
-            plot_posterior_op(tr_values, ax=a, bw=bw, prior=None, round_to=round_to,
-                              alpha_level=alpha_level, ref_val=ref_val[idx],
-                              rope=rope[idx], text_size=scale_text(figsize, text_size), **kwargs)
+            plot_posterior_op(
+                tr_values,
+                ax=a,
+                bw=bw,
+                prior=None,
+                round_to=round_to,
+                alpha_level=alpha_level,
+                ref_val=ref_val[idx],
+                rope=rope[idx],
+                text_size=scale_text(figsize, text_size),
+                **kwargs
+            )
             a.set_title(v, fontsize=scale_text(figsize, text_size))
 
         plt.tight_layout()
@@ -377,8 +522,7 @@ def posteriorplot(trace, varnames=None, tune=0, figsize=None, max_no=4, text_siz
 
 
 def sort_nhd(hd):
-    """Sort the normalized historical decomposition into negative and positive contributions
-    """
+    """Sort the normalized historical decomposition into negative and positive contributions"""
 
     hmin = np.zeros_like(hd[0])
     hmax = np.zeros_like(hd[0])
@@ -387,9 +531,9 @@ def sort_nhd(hd):
 
     for h in hd:
         newmax = hmax + np.where(h > 0, h, 0)
-        hmaxt += np.stack((hmax, newmax)),
+        hmaxt += (np.stack((hmax, newmax)),)
         newmin = hmin + np.where(h < 0, h, 0)
-        hmint += np.stack((hmin, newmin)),
+        hmint += (np.stack((hmin, newmin)),)
         hmin = newmin
         hmax = newmax
 
