@@ -133,6 +133,9 @@ def traceplot(
     width = trace.shape[0]
     tune = width - tune
 
+    if priors is None:
+        priors = [None] * len(varnames)
+
     custom_lines_hist = [
         Line2D([0], [0], linestyle="-", color="C0", lw=1),
         Line2D([0], [0], linestyle="--", color="C1", lw=1),
@@ -157,17 +160,12 @@ def traceplot(
             axs.append(subfigs[-1][i].subplots(1, 2))
             data = trace[..., chunk + i]
 
-            if priors is not None:
-                prior = priors[chunk + i]
-            else:
-                prior = None
-
             posterior = data[-tune:].flatten()
             plot_posterior_op(
                 posterior,
                 ax=axs[-1][0],
                 bw=bw,
-                prior=prior,
+                prior=priors[chunk + i],
                 text_size=scale_text(figsize, text_size),
                 display_additinal_info=display_additinal_info,
                 **kwargs
@@ -260,8 +258,8 @@ def traceplot(
 
             subfigs[-1][i].suptitle(str(varnames[chunk + i]))
 
-        if priors is not None:
-            axs[-1][0].legend(custom_lines_hist, ["Prior", "Posterior"])
+        if priors[chunk] is not None:
+            axs[-1][0].legend(custom_lines_hist, ["Posterior", "Prior"])
             axs[-1][1].legend(custom_lines_trace, ["Burn-in", "Posterior"])
 
     return figs, subfigs, axs
