@@ -155,7 +155,7 @@ def traceplot(
         figs.append(plt.figure(constrained_layout=True, figsize=figsize))
         subfigs.append(figs[-1].subfigures(plots_per_fig, 1, wspace=0.07))
 
-        for i in range(plots_per_fig):
+        for i in range(min(3,len(varnames[chunk:]))):
 
             axs.append(subfigs[-1][i].subplots(1, 2))
             data = trace[..., chunk + i]
