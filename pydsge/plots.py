@@ -128,10 +128,12 @@ def traceplot(
     # inspired by pymc3 with kisses
 
     if figsize is None:
-        figsize = (9, plots_per_fig * 2.5)
+        figsize = 9, plots_per_fig * 2.5
 
     width = trace.shape[0]
     tune = width - tune
+
+    iterablator = lambda x: [x] if len(x) - 1 else x
 
     if priors is None:
         priors = [None] * len(varnames)
@@ -152,10 +154,18 @@ def traceplot(
 
     for chunk in range(0, len(varnames), plots_per_fig):
 
-        figs.append(plt.figure(constrained_layout=True, figsize=figsize))
-        subfigs.append(figs[-1].subfigures(plots_per_fig, 1, wspace=0.07))
+        eff_ppf = min(plots_per_fig,len(varnames[chunk:]))
+        eff_figsize = figsize[0], figsize[1]*eff_ppf/plots_per_fig
 
-        for i in range(min(3,len(varnames[chunk:]))):
+        figs.append(plt.figure(constrained_layout=True, figsize=eff_figsize))
+        subfig = figs[-1].subfigures(eff_ppf, 1, wspace=0.07)
+
+        if eff_ppf == 1:
+            subfig = [subfig]
+
+        subfigs.append(subfig)
+
+        for i in range(eff_ppf):
 
             axs.append(subfigs[-1][i].subplots(1, 2))
             data = trace[..., chunk + i]
