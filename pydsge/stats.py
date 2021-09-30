@@ -426,7 +426,8 @@ def nhd(self, eps_dict, linear=False, **args):
     means = np.empty((nsamples, self.data.shape[0], self.dimx))
     rcons = np.empty(self.dimeps)
 
-    for i in range(nsamples):
+    # not paralellized
+    for i in tqdm.tqdm(range(nsamples), unit=' sample(s)', dynamic_ncols=True):
 
         self.set_par(pars[i], **args)
 
