@@ -1,3 +1,18 @@
+Metadata-Version: 2.1
+Name: pydsge
+Version: 0.0.1
+Summary: Solve, filter and estimate DSGE models with occasionaly binding constraints
+Home-page: https://pydsge.readthedocs.io/en/latest/index.html
+Author: Gregor Boehl
+Author-email: admin@gregorboehl.com
+License: MIT
+Platform: UNKNOWN
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Description-Content-Type: text/x-rst
+License-File: LICENSE
+
 
 pydsge
 ======
@@ -54,3 +69,5 @@ References
 ----------
 
 Boehl, Gregor (2020). `Efficient Solution, Filtering and Estimation of Models with OBCs <http://gregorboehl.com/live/obc_boehl.pdf>`_. *Unpublished Manuscript*
+
+

@@ -2,10 +2,19 @@
 Installation Guide
 ==================
 
-So lets see how to get you all set up. As long as this is still much work in progress, I'll not upload this to `PyPI <https://pypi.org/>`_. You have two choices: installing "by hand", or using the ``git`` command. I strongly recommend using ``git`` as it facilitates updates and the like. This is the handy way.
+So lets see how to get you all set up. You can either use the repo version from `PyPI <https://pypi.org/>`_, or the bleeding edge version from git.
 
-Installation with ``pip`` (elegant via ``git``\ )
--------------------------------------------------------
+Installing the repo version is as simple as
+
+.. code-block:: bash
+
+   pip install pydsge
+
+
+Installation via ``git``\
+--------------------------
+
+As long as this is still work in progress, the version from `PyPI <https://pypi.org/>`_ may not be fully up to date. To get the current git snapshot you have two choices: installing "by hand", or using the ``git`` command. I strongly recommend using ``git`` as it facilitates updates and the like. This is the handy way.
 
 First install ``git``. Linux users just use their respective repos. 
 
@@ -28,8 +37,8 @@ Then you can simply do
 Maybe you'd have to use ``pip3`` instead. If you run it and it complains about missing packages, please let me know so that I can update the `setup.py`!
 
 
-Installation with ``pip`` (simple)
---------------------------------------
+Manual installation of the git version via ``pip``
+--------------------------------------------------
 
 First, be sure that you are on Python 3.x. Then, get the ``econsieve`` and ``grgrlib`` packages:
 

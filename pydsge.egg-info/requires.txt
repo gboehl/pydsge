@@ -1,0 +1,11 @@
+emcee
+numba
+numpy
+pandas
+pathos
+scipy
+sympy
+tqdm
+pyaml
+grgrlib
+cloudpickle
