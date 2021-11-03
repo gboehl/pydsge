@@ -2,7 +2,7 @@
 pydsge
 ======
 
-Contains the functions and classes for solving, filtering and estimating DSGE models @ZLB (or with other OBCs). Not well documented and very rawwwww.
+Contains the functions and classes for solving, filtering and estimating DSGE models at the ZLB (or with other occasionally binding constraints).
 
 A collection of models that can (and were) used with this package can be found in `another repo <https://github.com/gboehl/projectlib/tree/master/yamls>`_.
 
@@ -32,10 +32,13 @@ Citation
 .. code-block::
 
     @Software{boehl2020,
-      Title  = {pydsge -- A package to simulate, filter, and estimate DSGE models with occasionally binding constraints},
+      Title = {Efficient Solution and Computation of Models with Occasionally Binding Constraints},
       Author = {Gregor Boehl},
-      Year   = {2020},
-      Url    = {https://github.com/gboehl/pydsge},
+      Year = {2021},
+      institution = {Goethe University Frankfurt, Institute for Monetary and Financial Stability (IMFS)},
+      type = {IMFS Working Paper Series},
+      number = {148},
+      url = {https://gregorboehl.com/live/obc_boehl.pdf},
     }
 
 We appreciate citations for **pydsge** because it helps us to find out how people have
@@ -53,4 +56,4 @@ See https://github.com/EconForge/dolo and https://github.com/eph.
 References
 ----------
 
-Boehl, Gregor (2020). `Efficient Solution, Filtering and Estimation of Models with OBCs <http://gregorboehl.com/live/obc_boehl.pdf>`_. *Unpublished Manuscript*
+Boehl, Gregor (2021). `Efficient Solution, Filtering and Estimation of Models with OBCs <http://gregorboehl.com/live/obc_boehl.pdf>`_. *IMFS Working Paper*
