@@ -8,12 +8,14 @@ A collection of models that can (and were) used with this package can be found i
 
 The code is in alpha state and provided for reasons of collaboration, replicability and code sharing in the spirit of open science. It does not (and for now, can not) have a toolbox character. The code is operational, but (yet) not ready for public use and I can not provide any support. You are however very welcome to get in touch if you are interested working with the package.
 
-The beta stage will probably involve considerable restructuring of packages, code, and the API.
+Installation
+-------------
 
-The dependencies are listed in the setup.py file. Note that this package depends on the ``econsieve`` and ``grgrlib`` packages which both can be found on my github page, but not yet on `PyPI <https://pypi.org/>`_ (they will thus not be installed automatically via ``pip``\ , at least for now). 
+Installing the repo version is as simple as
 
-The code does *not* work with Python 2.x!
+.. code-block:: bash
 
+   pip install pydsge
 
 Documentation
 -------------
@@ -31,7 +33,7 @@ Citation
 
 .. code-block::
 
-    @Software{boehl2020,
+    @techreport{boehl2021method,
       Title = {Efficient Solution and Computation of Models with Occasionally Binding Constraints},
       Author = {Gregor Boehl},
       Year = {2021},
@@ -56,4 +58,4 @@ See https://github.com/EconForge/dolo and https://github.com/eph.
 References
 ----------
 
-Boehl, Gregor (2021). `Efficient Solution, Filtering and Estimation of Models with OBCs <http://gregorboehl.com/live/obc_boehl.pdf>`_. *IMFS Working Paper*
+Boehl, Gregor (2021). `Efficient Solution and Computation of Models with Occasionally Binding Constraints <http://gregorboehl.com/live/obc_boehl.pdf>`_. *IMFS Working Paper*
