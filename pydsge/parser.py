@@ -550,16 +550,20 @@ class DSGE(DSGE_RAW):
             observables = []
             obs_equations = dict()
 
-        if "constrained" in dec:
-            c_var = Variable(dec["constrained"][0])
-            # only one constraint allowed
+        if "constraint" in model_yaml['equations']:
+
+            if len(model_yaml["equations"]["constraint"]) > 1:
+                raise NotImplementedError("Only one constraint allowed.")
+
             raw_const = model_yaml["equations"]["constraint"][0]
 
-            if "=" in raw_const:
+            try:
                 lhs, rhs = str.split(raw_const, "=")
-            else:
-                lhs, rhs = raw_const, "0"
+                assert not ' ' in lhs.strip()
+            except:
+                raise SyntaxError('constraint is supposed to have the form `constrained_variable = equation`')
 
+            c_var = Variable(lhs.strip())
             try:
                 lhs = eval(lhs, context)
                 rhs = eval(rhs, context)
