@@ -562,11 +562,7 @@ class DSGE(DSGE_RAW):
 
             try:
                 lhs = eval(lhs, context)
-                if isinstance(rhs, (int,float)):
-                    rhs = sympy.sympify(rhs)
                 rhs = eval(rhs, context)
-                if isinstance(lhs, (int,float)):
-                    lhs = sympy.sympify(lhs)
             except TypeError as e:
                 raise SyntaxError(
                     "While parsing %s, got this error: %s" % (raw_const, repr(e))
@@ -613,11 +609,11 @@ class DSGE(DSGE_RAW):
 
             try:
                 lhs = eval(lhs, context)
-                if isinstance(rhs, (int,float)):
-                    rhs = sympy.sympify(rhs)
-                rhs = eval(rhs, context)
                 if isinstance(lhs, (int,float)):
                     lhs = sympy.sympify(lhs)
+                rhs = eval(rhs, context)
+                if isinstance(rhs, (int,float)):
+                    rhs = sympy.sympify(rhs)
             except TypeError as e:
                 raise SyntaxError(
                     "While parsing %s, got this error: %s" % (eq, repr(e))
