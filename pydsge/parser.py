@@ -522,6 +522,10 @@ class DSGE(DSGE_RAW):
         mtxt = mtxt.replace("^", "**")
         mtxt = mtxt.replace(";", "")
         mtxt = re.sub(r"@ ?\n", " ", mtxt)
+        # try to detect if `~` wants to be a `-`
+        mtxt = mtxt.replace("\n ~ ", "\n - ")
+        mtxt = mtxt.replace("\n  ~ ", "\n  - ")
+        mtxt = mtxt.replace("   ~ ", "   - ")
         model_yaml = yaml.safe_load(mtxt)
 
         dec = model_yaml["declarations"]
