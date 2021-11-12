@@ -1,0 +1,65 @@
+# minimal_nk.yaml ---
+#
+# Description: a very small test-model, kept simple and ad-hoc
+# Author: Gregor Boehl [mail@gregorboehl.com]
+#
+
+
+declarations:
+  name: 'nk_small'
+  variables: [Pi, y, r, rn, u]
+  constrained: [r]
+  parameters: [beta, theta, phi_pi, rho_u, sig_u, elb_level, pi_mean]
+  shocks: [e_u]
+  observables: [Infl]
+  para_func: [ kappa, x_bar ]
+
+equations:
+  model:
+    # Phillips Curve
+    - Pi = beta*Pi(+1) + kappa*y
+
+    # Euler Equation
+    - y = y(+1) - (r - Pi(+1)) - u
+
+    # Demand Shock
+    - u = rho_u * u(-1) + e_u 
+
+    - rn = phi_pi*Pi 
+
+  constraint:
+    # Monetary Policy
+    - r = rn
+    
+  observables:
+    # Observed inflation
+    Infl : Pi + pi_mean
+
+calibration:
+  parameters:
+    beta: .99
+    theta: .66
+    phi_pi: 1.7
+    rho_u: .7
+    sig_u: .5
+    rho: .8
+    y_mean: 0.35562565
+    pi_mean: 0.5
+    elb_level: .07
+
+  parafunc:
+    kappa: (1-theta)*(1-beta*theta)/theta
+    x_bar: -1/beta + elb_level
+
+  covariances:
+    e_u: sig_u
+
+estimation:
+  prior:
+    ## uniform function take upper & lower as input
+    ## for inv_gamma_dynare function see dynare
+    ## all other function take mean & std as input
+    theta : [0.7813,0.5,0.95,beta,0.5,0.10]
+    phi_pi  : [1.7985,1.0,3,normal,1.5,0.25]
+    rho_u   : [.7,.01,.9999,beta,0.5,0.20]
+    sig_u : [0.5,0.025,5,inv_gamma_dynare,0.1,2]
