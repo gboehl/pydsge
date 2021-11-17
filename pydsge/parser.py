@@ -376,7 +376,7 @@ class DSGE(DSGE_RAW):
             Path to the `*.yaml` file.
         """
 
-        global processed_raw_model
+        global cached_models
 
         if verbose:
             st = time.time()
@@ -387,7 +387,7 @@ class DSGE(DSGE_RAW):
 
         use_cached = False
 
-        if "processed_raw_model" in globals():
+        if "cached_models" in globals():
 
             use_cached = True
             func_file = mfile[:-5] + "_funcs.py"
@@ -395,9 +395,22 @@ class DSGE(DSGE_RAW):
             if os.path.exists(func_file):
                 ff = open(func_file)
                 ftxt = ff.read()
-                use_cached &= processed_raw_model.fdict.get("ffile_raw") == ftxt
 
-            use_cached &= processed_raw_model.fdict["yaml_raw"] == mtxt
+            for i in cached_models:
+
+                use_cached = cached_models[i].fdict["yaml_raw"] == mtxt
+
+                if os.path.exists(func_file):
+                    ff = open(func_file)
+                    ftxt = ff.read()
+                    use_cached &= cached_models[i].fdict.get("ffile_raw") == ftxt
+
+                if use_cached:
+                    processed_raw_model = cached_models[i]
+                    break
+
+        else:
+            cached_models = {}
 
         if use_cached:
             pmodel = deepcopy(processed_raw_model)
@@ -427,7 +440,7 @@ class DSGE(DSGE_RAW):
                     + " Parallelization disabled under Windows and Mac due to a problem with pickling some of the symbolic elements. Sorry..."
                 )
 
-            processed_raw_model = deepcopy(pmodel)
+            cached_models[len(cached_models)] = deepcopy(pmodel)
 
         if verbose:
             duration = np.round(time.time() - st, 3)
@@ -444,7 +457,7 @@ class DSGE(DSGE_RAW):
     @classmethod
     def load(cls, npzfile, force_parse=False, verbose=False):
 
-        global processed_raw_model
+        global cached_models
 
         if verbose:
             st = time.time()
@@ -463,11 +476,12 @@ class DSGE(DSGE_RAW):
         except:
             use_cached = False
 
-            if "processed_raw_model" in globals():
-                use_cached = processed_raw_model.fdict["yaml_raw"] == mtxt
+            # disabled for now. Needs to be redone
+            # if "processed_raw_model" in globals():
+                # use_cached = processed_raw_model.fdict["yaml_raw"] == mtxt
 
             if use_cached:
-                pmodel = deepcopy(processed_raw_model)
+                pmodel = deepcopy(cached_models)
             else:
                 import tempfile
 
