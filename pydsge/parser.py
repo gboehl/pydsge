@@ -19,6 +19,31 @@ from .symbols import Variable, Equation, Shock, Parameter, TSymbol
 from sympy.matrices import Matrix, zeros
 
 
+def crawl_cached_models(mtxt,ftxt):
+
+    global cached_models
+
+    processed_raw_model = None
+
+    if "cached_models" in globals():
+
+        for i in cached_models:
+
+            use_cached = cached_models[i].fdict["yaml_raw"] == mtxt
+
+            if ftxt is not None:
+                use_cached &= cached_models[i].fdict.get("ffile_raw") == ftxt
+
+            if use_cached:
+                processed_raw_model = cached_models[i]
+                break
+
+    else:
+        cached_models = {}
+
+    return processed_raw_model
+
+
 class DSGE(DSGE_RAW):
     """Base class. Every model is an instance of the DSGE class and inherents its methods."""
 
@@ -76,7 +101,6 @@ class DSGE(DSGE_RAW):
     def variables(self):
         return self["var_ordering"]
 
-    # ->
     @property
     def const_var(self):
         return self["const_var"]
@@ -84,8 +108,6 @@ class DSGE(DSGE_RAW):
     @property
     def const_eq(self):
         return self["const_eq"]
-
-    # <-
 
     @property
     def parameters(self):
@@ -385,34 +407,17 @@ class DSGE(DSGE_RAW):
         mtxt = f.read()
         f.close()
 
-        use_cached = False
+        func_file = mfile[:-5] + "_funcs.py"
 
-        if "cached_models" in globals():
-
-            use_cached = True
-            func_file = mfile[:-5] + "_funcs.py"
-
-            if os.path.exists(func_file):
-                ff = open(func_file)
-                ftxt = ff.read()
-
-            for i in cached_models:
-
-                use_cached = cached_models[i].fdict["yaml_raw"] == mtxt
-
-                if os.path.exists(func_file):
-                    ff = open(func_file)
-                    ftxt = ff.read()
-                    use_cached &= cached_models[i].fdict.get("ffile_raw") == ftxt
-
-                if use_cached:
-                    processed_raw_model = cached_models[i]
-                    break
-
+        if os.path.exists(func_file):
+            ff = open(func_file)
+            ftxt = ff.read()
         else:
-            cached_models = {}
+            ftxt = None
 
-        if use_cached:
+        processed_raw_model = crawl_cached_models(mtxt,ftxt)
+
+        if processed_raw_model is not None:
             pmodel = deepcopy(processed_raw_model)
 
         else:
@@ -465,6 +470,7 @@ class DSGE(DSGE_RAW):
         fdict = dict(np.load(npzfile, allow_pickle=True))
 
         mtxt = str(fdict["yaml_raw"])
+        ftxt = str(fdict.get("ffile_raw"))
 
         try:
             if force_parse:
@@ -473,15 +479,13 @@ class DSGE(DSGE_RAW):
             # pickling errors across protocols are likely
             # so this is a test:
             pmodel_dump = cpickle.dumps(pmodel, protocol=4)
+
         except:
-            use_cached = False
 
-            # disabled for now. Needs to be redone
-            # if "processed_raw_model" in globals():
-                # use_cached = processed_raw_model.fdict["yaml_raw"] == mtxt
+            processed_raw_model = crawl_cached_models(mtxt,ftxt)
 
-            if use_cached:
-                pmodel = deepcopy(cached_models)
+            if processed_raw_model is not None:
+                pmodel = deepcopy(processed_raw_model)
             else:
                 import tempfile
 
