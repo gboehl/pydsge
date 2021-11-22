@@ -22,38 +22,38 @@ declarations:
 equations:
   model:
     # Phillips Curve
-    - Pi = beta*Pi(+1) - kappa*x - z
+    ~ Pi = beta*Pi(+1) - kappa*x - z
 
     # Euler Equation
-    - c = c(+1) - 1/sigma*(r - Pi(+1) + u)
+    ~ c = c(+1) - 1/sigma*(r - Pi(+1) + u)
 
     # ressource constraint
-    - y = c
+    ~ y = c
 
     # marginal costs
-    - x = nu*s - eta*y - (r - Pi(+1) + u)
+    ~ x = nu*s - eta*y - (r - Pi(+1) + u)
 
     # asset market
-    - s = (1-beta)*y(+1) + beta*s(+1) - (r - Pi(+1) + u)
+    ~ s = (1-beta)*y(+1) + beta*s(+1) - (r - Pi(+1) + u)
 
     # Technology Shock
-    - z = rho_z * z(-1) + e_z
+    ~ z = rho_z * z(-1) + e_z
 
     # SW-type shock on risk premium
-    - u = rho_u * u(-1) + e_u 
+    ~ u = rho_u * u(-1) + e_u 
 
     # MP Shock
-    - vr = rho_r*vr(-1) + e_r
+    ~ vr = rho_r*vr(-1) + e_r
 
     # notational rate
-    - rn = rho*rn(-1) + (1-rho)*(phi_pi*Pi + phi_y*y) + vr
+    ~ rn = rho*rn(-1) + (1-rho)*(phi_pi*Pi + phi_y*y) + vr
 
     # Output Growth
-    - dy = y - y(-1)
+    ~ dy = y - y(-1)
 
   constraint:
     # the actual constraint in the form r = max(..., x_bar). The constrained variable MUST be at the LHS. Here it is the ZLB. This reads r = max(rn, x_bar), hence the nominal rate is either the notational rate but never smaller than x_bar.
-    - r = rn
+    ~ r = rn
     
   # measurement equations
   observables:

@@ -50,6 +50,8 @@ def gen_sys_from_dict(mdict, l_max=None, k_max=None, parallel=True, force_proces
     # fix value of x_bar
     if 'x_bar' in mdict:
         self.x_bar = mdict['x_bar']
+        if self.x_bar > 0:
+            raise NotImplementedError('`x_bar` musst be smaller than zero.')
     else:
         print("Parameter `x_bar` (maximum value of the constraint) not specified. Assuming x_bar = -1 for now.")
         self.x_bar = -1

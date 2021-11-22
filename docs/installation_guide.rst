@@ -2,7 +2,7 @@
 Installation Guide
 ==================
 
-So lets see how to get you all set up. You can either use the repo version from `PyPI <https://pypi.org/>`_, or the bleeding edge version from git.
+You can either use the repo version from `PyPI <https://pypi.org/>`_, or the bleeding edge version from git.
 
 Installing the repo version is as simple as
 
@@ -10,11 +10,14 @@ Installing the repo version is as simple as
 
    pip install pydsge
 
+The code does *not* work with Python 2.x. 
 
 Installation via ``git``\
 --------------------------
 
 As long as this is still work in progress, the version from `PyPI <https://pypi.org/>`_ may not be fully up to date. To get the current git snapshot you have two choices: installing "by hand", or using the ``git`` command. I strongly recommend using ``git`` as it facilitates updates and the like. This is the handy way.
+
+Note that this package depends on the ``econsieve`` and ``grgrlib`` packages which both can be found on my github page, and on `PyPI <https://pypi.org/>`_.
 
 First install ``git``. Linux users just use their respective repos. 
 
