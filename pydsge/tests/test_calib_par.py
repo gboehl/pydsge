@@ -2,10 +2,10 @@
 
 from pydsge import *
 import yaml as yaml
-import numpy as nps
+import numpy as np
 
 
-yalm_file, data_file= example
+yalm_file, _ = example
 model= DSGE.read(yalm_file)
 
 # get par values from the model
@@ -15,10 +15,11 @@ dsge_parvalues = np.transpose(dsge_parvalues).reshape(dsge_parvalues.size, 1)
 
 # get the par values from yalm file
 yfile= open(r"c:\Users\findh\My Drive\Bonn__MSc\5th\pydsge_OSE_Project_Fork\pydsge\examples\dfi.yaml")
-parsedfile= yaml.load(yfile, Loader= yaml.FullLoader)
-w11= parsedfile.get('calibration')
-dict_parvalues= w11.get('parameters').values()
-len(dict_parvalues)
+mtxt=yfile.read()
+mtxt=mtxt.replace(" ~ "," - " )
+parsedfile= yaml.load(mtxt, Loader= yaml.FullLoader)
+calib_1= parsedfile.get('calibration')
+dict_parvalues= calib_1.get('parameters').values()
 yamlloaded_parvalues=[]
 for i in dict_parvalues:
     yamlloaded_parvalues.append([i])
