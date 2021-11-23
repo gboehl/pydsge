@@ -14,8 +14,11 @@ dsge_parvalues= model.get_par()
 dsge_parvalues = np.transpose(dsge_parvalues).reshape(dsge_parvalues.size, 1)
 
 # get the par values from yalm file
-yfile= open(r"c:\Users\findh\My Drive\Bonn__MSc\5th\pydsge_OSE_Project_Fork\pydsge\examples\dfi.yaml")
-parsedfile= yaml.load(yfile, Loader= yaml.FullLoader)
+yfile= open(r"pydsge/examples/dfi.yaml")
+mtxt = yfile.read()
+mtxt = mtxt.replace("   ~ ", "   - ")
+parsedfile = yaml.safe_load(mtxt)
+# parsedfile= yaml.load(yfile, Loader= yaml.FullLoader)
 w11= parsedfile.get('calibration')
 dict_parvalues= w11.get('parameters').values()
 len(dict_parvalues)
