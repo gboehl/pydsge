@@ -2,11 +2,10 @@
 
 from pydsge import *
 import numpy as np
+import pytest
 
-def test_minimal_nkmodel(tolerance = 6):
-    """
-    Scenario: Load the minimal_nk.yaml model and compare <What?> to analytically derived solution.
-    """
+@pytest.fixture(scope="module")
+def parametrized_minimal_nk():
     # Retrieve the example data
     yaml_file = "pydsge/examples/minimal_nk.yaml"
 
@@ -17,6 +16,16 @@ def test_minimal_nkmodel(tolerance = 6):
     _ = mod.set_par('calib')
     # Get parameters as dictionary
     par1, par2 = mod.get_par(asdict=True)
+
+    return mod, par1, par2
+
+
+def test_minimal_nkmodel(parametrized_minimal_nk, tolerance = 6):
+    """
+    Scenario: Load the minimal_nk.yaml model and compare TODO: <What?> to analytically derived solution.
+    """
+    # Get model
+    mod, par1, par2 = parametrized_minimal_nk
 
     # Simulate demand shock
     shock_list = ('e_u', 4.0, 0) # (name, size, period)
