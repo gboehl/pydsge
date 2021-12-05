@@ -2,9 +2,17 @@ import nbformat
 import pickle
 from nbconvert import PythonExporter
 
+
 def _nbconvert_python(path):
-    """
-    convert jupyter notebook to python code
+    """Use nbconvert to convert jupyter notebook to python code.
+    Return the string of python code. You can then excute it with `exec()`.
+
+    Args:
+        path (str): Path of jupyter notebook
+
+    Returns:
+        str: The string of python code converted from notebook
+    
     """
     with open(path) as f:
         nb = nbformat.read(f, as_version=4)
@@ -13,8 +21,14 @@ def _nbconvert_python(path):
 
 
 def _is_picklable(obj):
-    """
-    check if obj can be dumped to a .pkl file
+    """Check if an obj can be dumped into a pickle file.
+
+    Args:
+        obj : The Object to be judged
+    
+    Returns:
+        bool: The result if the input can be picklable
+
     """
     try:
         pickle.dumps(obj)
@@ -24,6 +38,15 @@ def _is_picklable(obj):
 
 
 def _get_global_vars(global_vars):
+    """Get variables from globals by names of variables.
+
+    Args:
+        global_vars (array-like): The names of variables to get
+    
+    Returns:
+        dict: Dictionary containing names of variables and variables
+    
+    """
     bk = {}
     for k in global_vars:
         obj = globals()[k]
@@ -36,9 +59,19 @@ def _get_global_vars(global_vars):
 
 
 def backup_notebook_global_vars(path):
-    '''
-    excute jupyter notebook and save global variables
-    '''
+    """Excute jupyter notebook and then save variables defined in notebook.
+    This function converts notebook to python code and then excutes the code.
+    Finally it put all public variables that defined in notebook into dictionary 
+    and return it.
+    Parameters
+    ----------
+    path : str
+        Path of jupyter notebook
+    Returns
+    -------
+    bk : :dict
+        Dictionary containing names of variables and variables that defined in notebook.
+    """
     code = _nbconvert_python(path)
     code = code.replace("get_ipython()", "# get_ipython()")
 
@@ -54,6 +87,13 @@ def backup_notebook_global_vars(path):
 
 
 def save_to_pkl(path, obj):
+    """Save object to pickle file.
+    
+    Args:
+        path (str): Path to save pickle file
+        obj : Object to be saved
+        
+    """
     with open(path, "wb") as f:
         pickle.dump(obj, f)
 
