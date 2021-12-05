@@ -3,7 +3,7 @@ import pickle
 from nbconvert import PythonExporter
 
 
-def _nbconvert_python(path):
+def nbconvert_python(path):
     """Use nbconvert to convert jupyter notebook to python code.
     Return the string of python code. You can then excute it with `exec()`.
 
@@ -20,7 +20,7 @@ def _nbconvert_python(path):
     return body
 
 
-def _is_picklable(obj):
+def is_picklable(obj):
     """Check if an obj can be dumped into a pickle file.
 
     Args:
@@ -50,7 +50,7 @@ def filter_pickable(global_vars):
     bk = {}
     for k in global_vars:
         obj = global_vars[k]
-        if _is_picklable(obj):
+        if is_picklable(obj):
             try:
                 bk.update({k: obj})
             except TypeError:
@@ -73,7 +73,7 @@ def notebook_to_pickable_dict(path):
         Dictionary containing names of variables and variables that defined in notebook.
     """
     # Step 1: Convert notebook to script
-    code = _nbconvert_python(path)
+    code = nbconvert_python(path)
     code = code.replace("get_ipython()", "# get_ipython()")
 
     # Step 2: Execute script and save variables in dictionary
