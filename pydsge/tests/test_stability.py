@@ -7,46 +7,20 @@ from pydsge import * # imports eg. the DSGE class and the examples
 import numpy as np # For np.all()
 import __main__
 
-# Load output under new commit
-# from resources.getting_started import * #TODO: difference test will fail at the moment
-from resources.toy_getting_started import * #TODO: delete
-#from export_getting_started_to_pkl import _is_picklable
-
-def is_picklable(obj):
-    """
-    check if obj can be dumped to a .pkl file
-    """
-    try:
-        pickle.dumps(obj)
-    except Exception:
-        return False
-    return True
-
-__main__.is_picklable = is_picklable #add is_picklable to the envirnoment for pickle load (from https://www.py4u.net/discuss/246734)
-
-
+# To get the function: notebook_to_pickable_dict()
+from export_getting_started_to_pkl import *
 
 @pytest.fixture(scope="module")
-def new_output(global_vars = dir()): #need to call dir() outside of function,  otherwise only finds local objects
-    '''Create dictionary of variables from current state of getting_started. This function uses ALL objects that are in the current environment, so correct working critically relies on
-    loading stable_output seperately.
-    Note: we need to call dir() outside of function,  otherwise only finds local objects
+def new_output(path = "docs\\getting_started.ipynb"): #need to call dir() outside of function,  otherwise only finds local objects
+    '''Create dictionary of variables from current state of getting_started. 
 
     Args:
-        global_vars: all objects of the current environment, making sure stable output is not included
+        path: the path to the tutorial "getting_started.ipynb"
     
     Returns:
         bk_new (dict): A dictionary of the objects and values of the current state of getting_started. The object names are the keys of the dictionary.
     '''
-    ## Get relevant variables in environment
-    bk_new = {}
-    for k in global_vars:
-        obj = globals()[k]
-        if not k.startswith('_') and is_picklable(obj):
-            try:
-                bk_new.update({k: obj})
-            except TypeError:
-                pass
+    bk_new = notebook_to_pickable_dict(path)
 
     return bk_new
 
@@ -58,7 +32,7 @@ def stable_output():
         bk_restore (dict): A dictionary of the objects and corresponding values of the stable getting_started. The object names are the keys of the dictionary.
     '''
     # Unpickle stable output
-    with open('pydsge/tests/resources/toy_example.pkl', 'rb') as f: #TODO: need to change the pickled file that is imported
+    with open('pydsge/tests/resources/getting_started_stable.pkl', 'rb') as f: #TODO: need to change the pickled file that is imported
         bk_restore = pickle.load(f)
 
     return bk_restore
@@ -88,23 +62,25 @@ def test_what_output_is_there(diff):
     * Load stable and new output as dictionaries. The objects names are the keys.
     * Convert both dictionaries' keys to sets and find the difference in both directions
     * Combine the differences of both directions in "diff"
-    * Check that "diff" is equal to expected differences: "bk", "In", "Out" are not part of the pickled output.
+    * Check that "diff" is equal to expected difference: empty set.
     '''
-    assert diff == {"bk", "In", "Out"} #[order of loading will influence the difference]
+    print(f"This is diff: {diff}")
+    assert diff == set()
 
 def test_content_of_outputs(new_output, stable_output, diff):
     '''Check that the objects of the stable and the new version contain the same values
     Scenario:
     * Load stable and new output as dictionaries
     * Find set of variables that are shared by both dictionaries
-    * For each shard object, check whether the content is exactly identical
+    * For each shared object, check whether the content is exactly identical
     '''
     # Get collection of shared variables to loop over
-    error_vars = {"In", "example_model", "example_data", "meta_data", "pth", "example", "data_file", "yaml_file", "chain", "res_dict"} #TODO: main issue is that there is a difference from where they are called, once local, once from package
+    error_vars = {"In", "example_model", "example_data", "meta_data", "pth", "example", "data_file", "yaml_file", "chain", "res_dict", "__warningregistry__", "hd"} #TODO: main issue is that there is a difference from where they are called, once local, once from package
     shared_vars = (set(stable_output.keys()) | set(new_output.keys())) - diff - error_vars 
 
     # Loop over shared vars
     for key in shared_vars:
+        print(f"This is shared_key: {key}")
         if type(new_output[key]).__name__ == "DataFrame": #Do we really need separate test for DataFrames -> would np.all() not work just as well?
             assert new_output[key].equals(stable_output[key]), f"Error with {key}"
         else:
