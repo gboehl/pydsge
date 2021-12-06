@@ -64,7 +64,6 @@ def test_what_output_is_there(diff):
     * Combine the differences of both directions in "diff"
     * Check that "diff" is equal to expected difference: empty set.
     '''
-    print(f"This is diff: {diff}")
     assert diff == set()
 
 def test_content_of_outputs(new_output, stable_output, diff):
@@ -75,13 +74,34 @@ def test_content_of_outputs(new_output, stable_output, diff):
     * For each shared object, check whether the content is exactly identical
     '''
     # Get collection of shared variables to loop over
-    error_vars = {"In", "example_model", "example_data", "meta_data", "pth", "example", "data_file", "yaml_file", "chain", "res_dict", "__warningregistry__", "hd"} #TODO: main issue is that there is a difference from where they are called, once local, once from package
-    shared_vars = (set(stable_output.keys()) | set(new_output.keys())) - diff - error_vars 
+    error_vars = {"In", "example_model", "example_data", "meta_data", "pth", "example", "data_file", "yaml_file", "chain", "res_dict", #Old
+                 "__warningregistry__", "axs", "_", "figs", "fig", "ax"} #TODO: main issue is that there is a difference from where they are called, once local, once from package
+    shared_vars = (set(stable_output.keys()) | set(new_output.keys())) - diff - error_vars
+
+    # Write function for de-nesting
+    def get_flat(nested_object):
+        output = []
+        def reemovNestings(l):
+            for i in l:
+                if type(i).__name__ in ["list", "tuple", "dict", "ndarray"]:
+                    reemovNestings(i)
+                else:
+                    output.append(i)
+        reemovNestings(nested_object)
+        return output
 
     # Loop over shared vars
-    for key in shared_vars:
+    for key in sorted(shared_vars):
         print(f"This is shared_key: {key}")
         if type(new_output[key]).__name__ == "DataFrame": #Do we really need separate test for DataFrames -> would np.all() not work just as well?
             assert new_output[key].equals(stable_output[key]), f"Error with {key}"
+        #############################
+        # Dealing with nested objects #
+        #############################
+        elif key in ["hd"]: #for lists that contain DataFrames
+            for counter, _ in enumerate(new_output[key]):
+                assert np.all(new_output[key][counter] == stable_output[key][counter])
+        elif type(new_output[key]).__name__ in ["list", "dict", "tuple", "ndarray"]: #Checking whether the object is nested
+            assert get_flat(new_output[key]) == get_flat(stable_output[key])
         else:
             assert np.all(new_output[key] == stable_output[key]), f"Error with {key}" #Use np.all() for arrays
