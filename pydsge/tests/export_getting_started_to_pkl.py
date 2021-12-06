@@ -79,6 +79,7 @@ def notebook_to_pickable_dict(path):
     # Step 2: Execute script and save variables in dictionary
     d= {}
     exec(code, d)
+    d.pop("__builtins__")
 
     # Step 3: Filter for pickable variables
     bk = filter_pickable(d)
