@@ -48,11 +48,8 @@ def diff(new_output, stable_output):
     Returns:
         diff (set): A set containing all objects which are contained in only one of the dictionaries.
     '''
-    # Load the difference in both directions
-    diff_new2stable = set(stable_output.keys()) - set(new_output.keys())
-    diff_stable2new = set(new_output.keys()) - set(stable_output.keys())
-    # Combine both differences
-    diff = diff_new2stable | diff_stable2new
+    # Load the difference between new_output and stable_output
+    diff = stable_output.keys() ^ new_output.keys()
 
     return diff
 
@@ -76,7 +73,7 @@ def test_content_of_outputs(new_output, stable_output, diff):
     # Get collection of shared variables to loop over
     error_vars = {"In", "example_model", "example_data", "meta_data", "pth", "example", "data_file", "yaml_file", "chain", "res_dict", #Old
                  "__warningregistry__", "axs", "_", "figs", "fig", "ax"} #TODO: main issue is that there is a difference from where they are called, once local, once from package
-    shared_vars = (set(stable_output.keys()) | set(new_output.keys())) - diff - error_vars
+    shared_vars = (stable_output.keys() | new_output.keys()) - diff - error_vars
 
     # Write function for de-nesting
     def get_flat(nested_object):
