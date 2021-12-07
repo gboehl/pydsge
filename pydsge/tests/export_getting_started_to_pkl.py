@@ -98,11 +98,16 @@ def save_to_pkl(path, obj):
         pickle.dump(obj, f)
 
 
-# excute jupyter notebook and save global variables
-notebook_path = "docs\\getting_started.ipynb"
+def main():
+    # excute jupyter notebook and save global variables
+    notebook_path = "docs\\getting_started.ipynb"
 
-bk = notebook_to_pickable_dict(notebook_path)
+    bk = notebook_to_pickable_dict(notebook_path)
 
-# to save session
-save_path = "pydsge\\tests\\resources\\getting_started_stable.pkl"
-save_to_pkl(save_path, bk)
+    # to save session
+    save_path = "pydsge/tests/resources/getting_started_stable.pkl"
+    save_to_pkl(save_path, bk)
+
+
+if __name__ == "__main__":
+    main()
