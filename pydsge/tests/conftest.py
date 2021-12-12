@@ -6,7 +6,7 @@ import pytest
 """
 assuming that each test will fail, if a test passes, the corresponding messsage will be removed from the list of messages. 
 """
-messages=  ["test 1 failed", "test 2 failed", "test 3 failed", "Test(s) failed, to update the pkl file, run ##########"] 
+messages=  ["test 1 failed", "test 2 failed", "test 3 failed", "Test(s) failed: To update the pkl file, run ##########"] 
 
 def test_1():
     assert False
@@ -32,11 +32,14 @@ def pytest_report_teststatus(report, config):
         
 
 """
-Todo: 
-1. we can write general message about updating pkl which will be printed is any of the test fails. 
-    problem with this: the error mesage will be printed for all tests, even for the tests that dont require pkl
-2. To import varible 'messages' from test_stabilty, to conftest. and then print it if any test fails. 
+to print custom error message for a specific test if it fails:
 
 
-any other ideas? 
+import logging
+
+log = logging.getLogger('')
+log.error('\n\n test_what_output_is_there Failed!! \n.')
+assert False
+
+
 """
