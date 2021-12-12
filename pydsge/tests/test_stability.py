@@ -3,7 +3,7 @@
 
 import pickle
 import pytest
-from pydsge import * # imports eg. the DSGE class and the examples
+from pydsge import * # imports eg. the DSGE class and the examples TODO: replace by .__init__ ?
 import numpy as np # For np.all()
 import __main__
 import logging # for custom error messages
@@ -13,11 +13,10 @@ import logging # for custom error messages
 
 
 
-# To get the function: notebook_to_pickable_dict()
-from export_getting_started_to_pkl import *
+from export_getting_started_to_pkl import * # To get the function: notebook_to_pickable_dict()
 
 @pytest.fixture(scope="module")
-def new_output(path = "docs\\getting_started.ipynb"): #need to call dir() outside of function,  otherwise only finds local objects
+def new_output(path = "docs\\getting_started.ipynb"): 
     '''Create dictionary of variables from current state of getting_started. 
 
     Args:
@@ -38,7 +37,7 @@ def stable_output():
         bk_restore (dict): A dictionary of the objects and corresponding values of the stable getting_started. The object names are the keys of the dictionary.
     '''
     # Unpickle stable output
-    with open('pydsge/tests/resources/getting_started_stable.pkl', 'rb') as f: #TODO: need to change the pickled file that is imported
+    with open('pydsge/tests/resources/getting_started_stable.pkl', 'rb') as f:
         bk_restore = pickle.load(f)
 
     return bk_restore
@@ -86,12 +85,12 @@ def test_content_of_outputs(new_output, stable_output, diff):
     * For each shared object, check whether the content is exactly identical
     '''
     # Get collection of shared variables to loop over
-    error_vars = {"In", "example_model", "example_data", "meta_data", "pth", "example", "data_file", "yaml_file", "chain", "res_dict", #Old
-                 "__warningregistry__", "axs", "_", "figs", "fig", "ax"} #TODO: main issue is that there is a difference from where they are called, once local, once from package
+    error_vars = {"__warningregistry__", "axs", "_", "figs", "fig", "ax"} 
     shared_vars = (stable_output.keys() | new_output.keys()) - diff - error_vars
 
     # Write function for de-nesting
     def get_flat(nested_object):
+        '''Applies function recursively until lowest level is reached.'''
         output = []
         def reemovNestings(l):
             for i in l:
@@ -109,11 +108,9 @@ def test_content_of_outputs(new_output, stable_output, diff):
     # Loop over shared vars
     for key in sorted(shared_vars):
         print(f"This is shared_key: {key}")
-        if type(new_output[key]).__name__ == "DataFrame": #Do we really need separate test for DataFrames -> would np.all() not work just as well?
+        if type(new_output[key]).__name__ == "DataFrame": 
             assert new_output[key].equals(stable_output[key]), f"Error with {key}"
-        #############################
-        # Dealing with nested objects #
-        #############################
+        #for nested objects
         elif key in ["hd"]: #for lists that contain DataFrames
             for counter, _ in enumerate(new_output[key]):
                 assert np.all(new_output[key][counter] == stable_output[key][counter])
@@ -121,8 +118,3 @@ def test_content_of_outputs(new_output, stable_output, diff):
             assert get_flat(new_output[key]) == get_flat(stable_output[key])
         else:
             assert np.all(new_output[key] == stable_output[key]), f"Error with {key}" #Use np.all() for arrays
-
-
-
-
-
