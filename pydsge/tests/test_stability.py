@@ -6,6 +6,12 @@ import pytest
 from pydsge import * # imports eg. the DSGE class and the examples
 import numpy as np # For np.all()
 import __main__
+import logging # for custom error messages
+
+
+
+
+
 
 # To get the function: notebook_to_pickable_dict()
 from export_getting_started_to_pkl import *
@@ -53,6 +59,7 @@ def diff(new_output, stable_output):
 
     return diff
 
+
 def test_what_output_is_there(diff):
     '''Check that the stable and the new version contain the same objects (excluding objects from current environment).
     Scenario:
@@ -61,7 +68,15 @@ def test_what_output_is_there(diff):
     * Combine the differences of both directions in "diff"
     * Check that "diff" is equal to expected difference: empty set.
     '''
-    assert diff == set()
+
+#### Print error message in output under "Captured log call " if test fails
+
+    log = logging.getLogger('')
+    log.error('\n\nThe test_what_output_is_there Failed. To update the Pickle, run "python pydsge\\tests\export_getting_started_to_pkl.py" in the terminal. \n\n')
+
+    diff == set()
+    
+
 
 def test_content_of_outputs(new_output, stable_output, diff):
     '''Check that the objects of the stable and the new version contain the same values
@@ -87,6 +102,10 @@ def test_content_of_outputs(new_output, stable_output, diff):
         reemovNestings(nested_object)
         return output
 
+    log = logging.getLogger('')
+    log.error('\n\nThe test_content_of_outputs Failed. To update the Pickle, run "python pydsge\\tests\export_getting_started_to_pkl.py" in the terminal. \n\n')
+
+
     # Loop over shared vars
     for key in sorted(shared_vars):
         print(f"This is shared_key: {key}")
@@ -102,3 +121,8 @@ def test_content_of_outputs(new_output, stable_output, diff):
             assert get_flat(new_output[key]) == get_flat(stable_output[key])
         else:
             assert np.all(new_output[key] == stable_output[key]), f"Error with {key}" #Use np.all() for arrays
+
+
+
+
+
