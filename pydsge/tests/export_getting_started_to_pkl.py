@@ -1,5 +1,6 @@
 import nbformat
 import pickle
+import numpy as np
 from nbconvert import PythonExporter
 
 
@@ -98,15 +99,59 @@ def save_to_pkl(path, obj):
         pickle.dump(obj, f)
 
 
+def basic_type_or_list(obj):
+    return not np.asanyarray(obj).dtype.hasobject
+
+
+def flatten_to_dict(obj):
+    def _flatten(value, key):
+        if isinstance(value, (list, tuple, set)):
+            if basic_type_or_list(value):
+                return {key: value} if key is not None else value
+            else:
+                tile_d = dict()
+                for i, v in enumerate(value):
+                    tile_d.update(_flatten(v, f"{key}_{i}"if key is not None else i))
+                return tile_d
+        elif isinstance(value, dict):
+            tile_d = dict()
+            for k, v in value.items():
+                tile_d.update(_flatten(v, f"{key}_{k}" if key is not None else k))
+            return tile_d
+        else:
+            return {key: value} if key is not None else value
+
+    return _flatten(value = obj, key = None)
+
+
+def notebook_exec_result_flattened(path):
+    # Step 1: Convert notebook to script
+    code = nbconvert_python(path)
+    code = code.replace("get_ipython()", "# get_ipython()")
+
+    # Step 2: Execute script and save variables in dictionary
+    d= {}
+    exec(code, d)
+    d.pop("__builtins__")
+
+    # Step 3: Flatten all variables
+    bk = flatten_to_dict(d)
+
+    # Step 4: Filter for variables which is basic type or list of basic type
+    bk_filted = {k:v for k,v in bk.items() if basic_type_or_list(v)}
+    return bk_filted
+
+
 def main():
     # excute jupyter notebook and save global variables
     notebook_path = "docs\\getting_started.ipynb"
 
-    bk = notebook_to_pickable_dict(notebook_path)
+    bk = notebook_exec_result_flattened(notebook_path)
 
     # to save session
-    save_path = "pydsge/tests/resources/getting_started_stable.pkl"
-    save_to_pkl(save_path, bk)
+    save_path = "pydsge/tests/resources/getting_started_stable.npz"
+    with open(save_path, "wb") as f:
+        np.savez_compressed(f, **bk)
 
 
 if __name__ == "__main__":
