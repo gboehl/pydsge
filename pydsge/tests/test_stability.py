@@ -75,7 +75,7 @@ def test_what_output_is_there(diff):
     log = logging.getLogger('')
     log.error('\n\nThe test_what_output_is_there Failed. To update the Pickle, run "python pydsge\\tests\export_getting_started_to_pkl.py" in the terminal. \n\n')
 
-    diff == set()
+    assert diff == set()
     
 
 def nan_undecidable(array):
