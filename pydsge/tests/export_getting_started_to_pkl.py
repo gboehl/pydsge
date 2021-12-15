@@ -124,6 +124,15 @@ def flatten_to_dict(obj):
     return _flatten(value = obj, key = None)
 
 
+def to_ndarray(obj):
+    if isinstance(obj, dict):
+        return {k:np.asanyarray(v) for k,v in obj.items()}
+    elif isinstance(obj, (list, tuple, set)) and not basic_type_or_list(obj):
+        return [np.asanyarray(v) for v in obj]
+    else:
+        return np.asanyarray(obj)
+
+
 def notebook_exec_result_flattened(path):
     # Step 1: Convert notebook to script
     code = nbconvert_python(path)

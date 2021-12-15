@@ -26,8 +26,9 @@ def new_output(path = "docs\\getting_started.ipynb"):
         bk_new (dict): A dictionary of the objects and values of the current state of getting_started. The object names are the keys of the dictionary.
     '''
     bk_new = notebook_exec_result_flattened(path)
+    bk_new_array = to_ndarray(bk_new)
 
-    return bk_new
+    return bk_new_array
 
 @pytest.fixture(scope="module")
 def stable_output():
@@ -92,6 +93,8 @@ def test_content_of_outputs(new_output, stable_output, diff):
     # Write function for de-nesting
     def get_flat(nested_object):
         '''Applies function recursively until lowest level is reached.'''
+        if not np.iterable(nested_object):
+            return nested_object
         output = []
         def reemovNestings(l):
             for i in l:
