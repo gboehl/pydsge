@@ -25,7 +25,7 @@ def new_output(path = "docs\\getting_started.ipynb"):
     Returns:
         bk_new (dict): A dictionary of the objects and values of the current state of getting_started. The object names are the keys of the dictionary.
     '''
-    bk_new = notebook_to_pickable_dict(path)
+    bk_new = notebook_exec_result_flattened(path)
 
     return bk_new
 
@@ -37,8 +37,9 @@ def stable_output():
         bk_restore (dict): A dictionary of the objects and corresponding values of the stable getting_started. The object names are the keys of the dictionary.
     '''
     # Unpickle stable output
-    with open('pydsge/tests/resources/getting_started_stable.pkl', 'rb') as f:
-        bk_restore = pickle.load(f)
+    with open('pydsge/tests/resources/getting_started_stable.npz', 'rb') as f:
+        npzfile = np.load(f, allow_pickle=False)
+        bk_restore = dict(npzfile)
 
     return bk_restore
 
