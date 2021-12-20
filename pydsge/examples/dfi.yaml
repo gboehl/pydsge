@@ -8,16 +8,6 @@ declarations:
   name: 'dfi'
   # variables ...
   variables: [Pi, c, y, x, s, dy, r, rn, u, z, vr]
-  # the constrained variable as in r = max(..., x_bar). More detail see below
-  constrained: [r]
-  # parameters ...
-  parameters: [beta, sigma, theta, phi_y, phi_pi, rho_z, rho_u, rho_r, rho, sig_z, sig_u, sig_r, nub, psi, elb_level, y_mean, pi_mean]
-  # parameters, that are a function of other parameters must be specified seperately. `x_bar` MUST be defined.
-  para_func: [kappa, nu, eta, x_bar]
-  # the exogenous shock processes
-  shocks: [e_z, e_r, e_u]
-  # the observables with the same name as in the data file
-  observables: [GDP, Infl, FFR]
 
 equations:
   model:
@@ -127,3 +117,4 @@ estimation:
     sig_r   : [0.5, 0.01, 3, inv_gamma_dynare, 0.1, 2]
     sig_z   : [0.5, 0.01,3 , inv_gamma_dynare, 0.1, 2]
     #nub     : [0.1, 0.001, 0.9, normal, 0.25, 0.05]
+
