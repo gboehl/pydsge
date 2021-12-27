@@ -88,7 +88,6 @@ def array_equal(a1, a2):
     else:
         return np.array_equal(a1, a2, equal_nan=True)
 
-
 def test_content_of_outputs(new_output, stable_output, diff):
     '''Check that the objects of the stable and the new version contain the same values
     Scenario:
@@ -97,7 +96,7 @@ def test_content_of_outputs(new_output, stable_output, diff):
     * For each shared object, check whether the content is exactly identical
     '''
     # Get collection of shared variables to loop over
-    error_vars = {"__warningregistry___version"}
+    error_vars = {"__warningregistry___version"} #Also FX?
     shared_vars = (stable_output.keys() | new_output.keys()) - diff - error_vars
 
     # Write function for de-nesting
@@ -119,16 +118,34 @@ def test_content_of_outputs(new_output, stable_output, diff):
     log.error('\n\nThe test_content_of_outputs Failed. To update the Pickle, run "python pydsge\\tests\export_getting_started_to_pkl.py" in the terminal. \n\n')
 
 
-    # Loop over shared vars
+    # # Loop over shared vars
+    # for key in sorted(shared_vars):
+    #     print(f"This is shared_key: {key}")
+    #     if type(new_output[key]).__name__ == "DataFrame": 
+    #         assert new_output[key].equals(stable_output[key]), f"Error with {key}"
+    #     #for nested objects
+    #     elif key in ["hd"]: #for lists that contain DataFrames
+    #         for counter, _ in enumerate(new_output[key]):
+    #             assert array_equal(new_output[key][counter], stable_output[key][counter])
+    #     elif type(new_output[key]).__name__ in ["list", "dict", "tuple", "ndarray"]: #Checking whether the object is nested
+    #         assert array_equal(get_flat(new_output[key]), get_flat(stable_output[key]))
+    #     else:
+    #         assert array_equal(new_output[key], stable_output[key]), f"Error with {key}" #Use np.all() for arrays
+
     for key in sorted(shared_vars):
         print(f"This is shared_key: {key}")
-        if type(new_output[key]).__name__ == "DataFrame": 
-            assert new_output[key].equals(stable_output[key]), f"Error with {key}"
+        NEW = np.nan_to_num(new_output[key])
+        STABLE = np.nan_to_num(stable_output[key])
+        if type(NEW).__name__ == "DataFrame": 
+            assert NEW.equals(STABLE), f"Error with {key}"
+        #############################
+        # Dealing with nested objects #
+        #############################
         #for nested objects
         elif key in ["hd"]: #for lists that contain DataFrames
-            for counter, _ in enumerate(new_output[key]):
-                assert array_equal(new_output[key][counter], stable_output[key][counter])
-        elif type(new_output[key]).__name__ in ["list", "dict", "tuple", "ndarray"]: #Checking whether the object is nested
-            assert array_equal(get_flat(new_output[key]), get_flat(stable_output[key]))
+            for counter, _ in enumerate(NEW):
+                assert np.all(NEW[counter] == STABLE[counter])
+        elif type(NEW).__name__ in ["list", "dict", "tuple", "ndarray"]: #Checking whether the object is nested
+            assert get_flat(NEW) == get_flat(STABLE)
         else:
-            assert array_equal(new_output[key], stable_output[key]), f"Error with {key}" #Use np.all() for arrays
+            assert np.all(NEW == STABLE), f"Error with {key}" #Use np.all() for arrays
