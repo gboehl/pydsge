@@ -19,7 +19,7 @@ from .symbols import Variable, Equation, Shock, Parameter, TSymbol
 from sympy.matrices import Matrix, zeros
 
 
-def crawl_cached_models(mtxt,ftxt):
+def crawl_cached_models(mtxt, ftxt):
 
     global cached_models
 
@@ -415,7 +415,7 @@ class DSGE(DSGE_RAW):
         else:
             ftxt = None
 
-        processed_raw_model = crawl_cached_models(mtxt,ftxt)
+        processed_raw_model = crawl_cached_models(mtxt, ftxt)
 
         if processed_raw_model is not None:
             pmodel = deepcopy(processed_raw_model)
@@ -482,7 +482,7 @@ class DSGE(DSGE_RAW):
 
         except:
 
-            processed_raw_model = crawl_cached_models(mtxt,ftxt)
+            processed_raw_model = crawl_cached_models(mtxt, ftxt)
 
             if processed_raw_model is not None:
                 pmodel = deepcopy(processed_raw_model)
@@ -572,7 +572,7 @@ class DSGE(DSGE_RAW):
             observables = []
             obs_equations = dict()
 
-        if "constraint" in model_yaml['equations']:
+        if "constraint" in model_yaml["equations"]:
 
             if len(model_yaml["equations"]["constraint"]) > 1:
                 raise NotImplementedError("Only one constraint allowed.")
@@ -581,9 +581,11 @@ class DSGE(DSGE_RAW):
 
             try:
                 lhs, rhs = str.split(raw_const, "=")
-                assert not ' ' in lhs.strip()
+                assert not " " in lhs.strip()
             except:
-                raise SyntaxError('constraint is supposed to have the form `constrained_variable = equation`')
+                raise SyntaxError(
+                    "constraint is supposed to have the form `constrained_variable = equation`"
+                )
 
             c_var = Variable(lhs.strip())
             try:
@@ -635,10 +637,10 @@ class DSGE(DSGE_RAW):
 
             try:
                 lhs = eval(lhs, context)
-                if isinstance(lhs, (int,float)):
+                if isinstance(lhs, (int, float)):
                     lhs = sympy.sympify(lhs)
                 rhs = eval(rhs, context)
-                if isinstance(rhs, (int,float)):
+                if isinstance(rhs, (int, float)):
                     rhs = sympy.sympify(rhs)
             except TypeError as e:
                 raise SyntaxError(
