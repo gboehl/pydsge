@@ -5,13 +5,7 @@ import pickle
 import pytest
 from pydsge import * # imports eg. the DSGE class and the examples TODO: replace by .__init__ ?
 import numpy as np # For np.all()
-import __main__
 import logging # for custom error messages
-
-
-
-
-
 
 from export_getting_started_to_pkl import * # To get the function: notebook_to_pickable_dict()
 
@@ -60,7 +54,7 @@ def diff(new_output, stable_output):
 
     return diff
 
-
+@pytest.mark.regression
 def test_what_output_is_there(diff):
     '''Check that the stable and the new version contain the same objects (excluding objects from current environment).
     Scenario:
@@ -88,6 +82,8 @@ def array_equal(a1, a2):
     else:
         return np.array_equal(a1, a2, equal_nan=True)
 
+# @pytest.mark.parametrize("") TODO: don't parametrize  on inputs, but for different tutorials??
+@pytest.mark.regression
 def test_content_of_outputs(new_output, stable_output, diff):
     '''Check that the objects of the stable and the new version contain the same values
     Scenario:
