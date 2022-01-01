@@ -1,11 +1,14 @@
-# This file contains tests for the parsing of the model
-from pydsge import *
+"""This file contains tests for the parsing of the model."""
 import numpy as np
+
+from pydsge import DSGE
+from pydsge import example
 
 
 def test_parsing_yaml():
-    """
-    Scenario: Check whether example model generated from yaml fulfills certain requirements
+    """Check wether yaml file is parsed correctly.
+
+    Scenario: Load pydsge example and compare to list of parameters.
     """
     # Retrieve the example data
     yaml_file, _ = example

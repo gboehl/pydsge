@@ -1,3 +1,4 @@
+"""This file contains functions for converting and storing jupyter notebooks."""
 import nbformat
 import pickle
 import numpy as np
@@ -6,6 +7,7 @@ from nbconvert import PythonExporter
 
 def nbconvert_python(path):
     """Use nbconvert to convert jupyter notebook to python code.
+
     Return the string of python code. You can then excute it with `exec()`.
 
     Args:
@@ -39,7 +41,7 @@ def is_picklable(obj):
 
 
 def filter_pickable(global_vars):
-    """Filter the variables that are pickable
+    """Filter the variables that are pickable.
 
     Args:
         global_vars (array-like): The names of variables to get
@@ -61,6 +63,7 @@ def filter_pickable(global_vars):
 
 def notebook_to_pickable_dict(path):
     """Excute jupyter notebook and then save variables defined in notebook.
+
     This function converts notebook to python code and then excutes the code.
     Finally it put all public variables that defined in notebook into dictionary
     and return it.
@@ -100,21 +103,25 @@ def save_to_pkl(path, obj):
 
 
 def basic_type_or_list(obj):
+    """Check type of object."""
     return not np.asanyarray(obj).dtype.hasobject
 
 
 def flatten_to_dict(obj):
+    """Reduce dimensionality of dictionary."""
+
     def _flatten(value, key):
+        """Reduce dimensionality of object recursively."""
         if isinstance(value, (list, tuple, set)):
             if basic_type_or_list(value):
                 return {key: value} if key is not None else value
             else:
-                tile_d = dict()
+                tile_d = {}
                 for i, v in enumerate(value):
                     tile_d.update(_flatten(v, f"{key}_{i}" if key is not None else i))
                 return tile_d
         elif isinstance(value, dict):
-            tile_d = dict()
+            tile_d = {}
             for k, v in value.items():
                 tile_d.update(_flatten(v, f"{key}_{k}" if key is not None else k))
             return tile_d
@@ -125,6 +132,7 @@ def flatten_to_dict(obj):
 
 
 def to_ndarray(obj):
+    """Convert to numpy array."""
     if isinstance(obj, dict):
         return {k: np.asanyarray(v) for k, v in obj.items()}
     elif isinstance(obj, (list, tuple, set)) and not basic_type_or_list(obj):
@@ -134,6 +142,7 @@ def to_ndarray(obj):
 
 
 def notebook_exec_result_flattened(path):
+    """Prepare notebook for numpy savez."""
     # Step 1: Convert notebook to script
     code = nbconvert_python(path)
     code = code.replace("get_ipython()", "# get_ipython()")
@@ -152,7 +161,7 @@ def notebook_exec_result_flattened(path):
 
 
 def main():
-    # excute jupyter notebook and save global variables
+    """Excute jupyter notebook and save global variables."""
     notebook_path = "docs\\getting_started.ipynb"
 
     bk = notebook_exec_result_flattened(notebook_path)
