@@ -1,3 +1,4 @@
+"""This file contains functions for converting and storing jupyter notebooks."""
 import nbformat
 import pickle
 import numpy as np
@@ -6,6 +7,7 @@ from nbconvert import PythonExporter
 
 def nbconvert_python(path):
     """Use nbconvert to convert jupyter notebook to python code.
+
     Return the string of python code. You can then excute it with `exec()`.
 
     Args:
@@ -13,7 +15,7 @@ def nbconvert_python(path):
 
     Returns:
         str: The string of python code converted from notebook
-    
+
     """
     with open(path) as f:
         nb = nbformat.read(f, as_version=4)
@@ -26,7 +28,7 @@ def is_picklable(obj):
 
     Args:
         obj : The Object to be judged
-    
+
     Returns:
         bool: The result if the input can be picklable
 
@@ -39,14 +41,14 @@ def is_picklable(obj):
 
 
 def filter_pickable(global_vars):
-    """Filter the variables that are pickable
+    """Filter the variables that are pickable.
 
     Args:
         global_vars (array-like): The names of variables to get
-    
+
     Returns:
         dict: Dictionary containing names of objects and their values
-    
+
     """
     bk = {}
     for k in global_vars:
@@ -61,8 +63,9 @@ def filter_pickable(global_vars):
 
 def notebook_to_pickable_dict(path):
     """Excute jupyter notebook and then save variables defined in notebook.
+
     This function converts notebook to python code and then excutes the code.
-    Finally it put all public variables that defined in notebook into dictionary 
+    Finally it put all public variables that defined in notebook into dictionary
     and return it.
     Parameters
     ----------
@@ -78,7 +81,7 @@ def notebook_to_pickable_dict(path):
     code = code.replace("get_ipython()", "# get_ipython()")
 
     # Step 2: Execute script and save variables in dictionary
-    d= {}
+    d = {}
     exec(code, d)
     d.pop("__builtins__")
 
@@ -89,44 +92,49 @@ def notebook_to_pickable_dict(path):
 
 def save_to_pkl(path, obj):
     """Save object to pickle file.
-    
+
     Args:
         path (str): Path to save pickle file
         obj : Object to be saved
-        
+
     """
     with open(path, "wb") as f:
         pickle.dump(obj, f)
 
 
 def basic_type_or_list(obj):
+    """Check type of object."""
     return not np.asanyarray(obj).dtype.hasobject
 
 
 def flatten_to_dict(obj):
+    """Reduce dimensionality of dictionary."""
+
     def _flatten(value, key):
+        """Reduce dimensionality of object recursively."""
         if isinstance(value, (list, tuple, set)):
             if basic_type_or_list(value):
                 return {key: value} if key is not None else value
             else:
-                tile_d = dict()
+                tile_d = {}
                 for i, v in enumerate(value):
-                    tile_d.update(_flatten(v, f"{key}_{i}"if key is not None else i))
+                    tile_d.update(_flatten(v, f"{key}_{i}" if key is not None else i))
                 return tile_d
         elif isinstance(value, dict):
-            tile_d = dict()
+            tile_d = {}
             for k, v in value.items():
                 tile_d.update(_flatten(v, f"{key}_{k}" if key is not None else k))
             return tile_d
         else:
             return {key: value} if key is not None else value
 
-    return _flatten(value = obj, key = None)
+    return _flatten(value=obj, key=None)
 
 
 def to_ndarray(obj):
+    """Convert to numpy array."""
     if isinstance(obj, dict):
-        return {k:np.asanyarray(v) for k,v in obj.items()}
+        return {k: np.asanyarray(v) for k, v in obj.items()}
     elif isinstance(obj, (list, tuple, set)) and not basic_type_or_list(obj):
         return [np.asanyarray(v) for v in obj]
     else:
@@ -134,12 +142,13 @@ def to_ndarray(obj):
 
 
 def notebook_exec_result_flattened(path):
+    """Prepare notebook for numpy savez."""
     # Step 1: Convert notebook to script
     code = nbconvert_python(path)
     code = code.replace("get_ipython()", "# get_ipython()")
 
     # Step 2: Execute script and save variables in dictionary
-    d= {}
+    d = {}
     exec(code, d)
     d.pop("__builtins__")
 
@@ -147,12 +156,12 @@ def notebook_exec_result_flattened(path):
     bk = flatten_to_dict(d)
 
     # Step 4: Filter for variables which is basic type or list of basic type
-    bk_filted = {k:v for k,v in bk.items() if basic_type_or_list(v)}
+    bk_filted = {k: v for k, v in bk.items() if basic_type_or_list(v)}
     return bk_filted
 
 
 def main():
-    # excute jupyter notebook and save global variables
+    """Excute jupyter notebook and save global variables."""
     notebook_path = "docs\\getting_started.ipynb"
 
     bk = notebook_exec_result_flattened(notebook_path)

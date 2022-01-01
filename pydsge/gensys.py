@@ -17,21 +17,25 @@ from .parser import DSGE
 aca = np.ascontiguousarray
 
 
-def gen_sys_from_dict(mdict, l_max=None, k_max=None, parallel=True, force_processing=False, verbose=True):
+def gen_sys_from_dict(
+    mdict, l_max=None, k_max=None, parallel=True, force_processing=False, verbose=True
+):
 
     global processed_mdicts
 
     # add l/k max to dict
-    mdict['l_max'] = l_max
-    mdict['k_max'] = k_max
+    mdict["l_max"] = l_max
+    mdict["k_max"] = k_max
 
     # check if dict has already been processed. If so, load it
-    if not force_processing and 'processed_mdicts' in globals():
+    if not force_processing and "processed_mdicts" in globals():
         mdict_dump = cpickle.dumps(mdict)
         if mdict_dump in processed_mdicts:
             if verbose:
-                print('[get_sys:]'.ljust(15, ' ') +
-                      ' Model dict was already processed. Loading from cache.')
+                print(
+                    "[get_sys:]".ljust(15, " ")
+                    + " Model dict was already processed. Loading from cache."
+                )
             return processed_mdicts[mdict_dump]
     else:
         processed_mdicts = {}
@@ -48,85 +52,147 @@ def gen_sys_from_dict(mdict, l_max=None, k_max=None, parallel=True, force_proces
     self.fdict = mdict
 
     # fix value of x_bar
-    if 'x_bar' in mdict:
-        self.x_bar = mdict['x_bar']
+    if "x_bar" in mdict:
+        self.x_bar = mdict["x_bar"]
     else:
-        print("Parameter `x_bar` (maximum value of the constraint) not specified. Assuming x_bar = -1 for now.")
+        print(
+            "Parameter `x_bar` (maximum value of the constraint) not specified. Assuming x_bar = -1 for now."
+        )
         self.x_bar = -1
 
-    self.vv = mdict['vars']
-    self.shocks = list(mdict['shocks'])
-    self.neps = len(mdict['shocks'])
-    self.const_var = mdict['const_var']
+    self.vv = mdict["vars"]
+    self.shocks = list(mdict["shocks"])
+    self.neps = len(mdict["shocks"])
+    self.const_var = mdict["const_var"]
 
-    self.observables = mdict.get('observables')
+    self.observables = mdict.get("observables")
     if self.observables:
-        self.nobs = len(mdict.get('observables'))
+        self.nobs = len(mdict.get("observables"))
 
-    ZZ0 = mdict.get('ZZ0')
-    ZZ1 = mdict.get('ZZ1')
-    fd = mdict.get('fd')
+    ZZ0 = mdict.get("ZZ0")
+    ZZ1 = mdict.get("ZZ1")
+    fd = mdict.get("fd")
 
-    solution = mdict.get('gx'), mdict.get('hx')
+    solution = mdict.get("gx"), mdict.get("hx")
     if solution[0] is None:
-        solution = 'klein'
+        solution = "klein"
 
-    res_sys = gen_sys(self, mdict['AA'], mdict['BB'], mdict['CC'], mdict['DD'],
-                      mdict['fb'], mdict['fc'], fd, ZZ0, ZZ1, l_max, k_max, solution, False, parallel, verbose)
+    res_sys = gen_sys(
+        self,
+        mdict["AA"],
+        mdict["BB"],
+        mdict["CC"],
+        mdict["DD"],
+        mdict["fb"],
+        mdict["fc"],
+        fd,
+        ZZ0,
+        ZZ1,
+        l_max,
+        k_max,
+        solution,
+        False,
+        parallel,
+        verbose,
+    )
 
     processed_mdicts[cpickle.dumps(mdict)] = res_sys
 
     return res_sys
 
 
-def gen_sys_from_yaml(self, par=None, l_max=None, k_max=None, get_hx_only=False, parallel=False, verbose=True):
+def gen_sys_from_yaml(
+    self,
+    par=None,
+    l_max=None,
+    k_max=None,
+    get_hx_only=False,
+    parallel=False,
+    verbose=True,
+):
 
     self.par = self.p0() if par is None else list(par)
     try:
         self.ppar = self.pcompile(self.par)  # parsed par
     except TypeError as error:
         raise type(error)(
-            str(error) +
-            " (maybe one (or serveral) parameter is a function of other parameters, and should be declared in `parafunc`?)"
+            str(error)
+            + " (maybe one (or serveral) parameter is a function of other parameters, and should be declared in `parafunc`?)"
         ).with_traceback(sys.exc_info()[2])
 
     if not self.const_var:
-        raise NotImplementedError('Package is only meant to work with OBCs')
+        raise NotImplementedError("Package is only meant to work with OBCs")
 
     # fix value of x_bar
-    if 'x_bar' in [p.name for p in self.parameters]:
-        self.x_bar = self.par[[p.name for p in self.parameters].index('x_bar')]
-    elif 'x_bar' in self.parafunc[0]:
+    if "x_bar" in [p.name for p in self.parameters]:
+        self.x_bar = self.par[[p.name for p in self.parameters].index("x_bar")]
+    elif "x_bar" in self.parafunc[0]:
         pf = self.parafunc
-        self.x_bar = pf[1](self.par)[pf[0].index('x_bar')]
+        self.x_bar = pf[1](self.par)[pf[0].index("x_bar")]
     else:
-        print("Parameter `x_bar` (maximum value of the constraint) not specified. Assuming x_bar = -1 for now.")
+        print(
+            "Parameter `x_bar` (maximum value of the constraint) not specified. Assuming x_bar = -1 for now."
+        )
         self.x_bar = -1
 
     if self.x_bar > 0:
-        raise NotImplementedError('`x_bar` musst be < 0')
+        raise NotImplementedError("`x_bar` musst be < 0")
 
     self.vv = np.array([v.name for v in self.variables])
 
-    AA0 = self.AA(self.ppar)              # forward
-    BB0 = self.BB(self.ppar)              # contemp
-    CC0 = self.CC(self.ppar)              # backward
+    AA0 = self.AA(self.ppar)  # forward
+    BB0 = self.BB(self.ppar)  # contemp
+    CC0 = self.CC(self.ppar)  # backward
     DD0 = -self.PSI(self.ppar).astype(float)
 
     fbc = self.bb(self.ppar).flatten().astype(float)  # constraint
     fd0 = -self.bb_PSI(self.ppar).flatten().astype(float)  # constraint
-    fb0 = -fbc[:len(self.vv)]
-    fc0 = -fbc[len(self.vv):]
+    fb0 = -fbc[: len(self.vv)]
+    fc0 = -fbc[len(self.vv) :]
 
     # observables from z
     ZZ0 = self.ZZ0(self.ppar).astype(float)
     ZZ1 = self.ZZ1(self.ppar).squeeze().astype(float)
 
-    return gen_sys(self, AA0, BB0, CC0, DD0, fb0, fc0, fd0, ZZ0, ZZ1, l_max, k_max, 'klein', get_hx_only, parallel, verbose)
+    return gen_sys(
+        self,
+        AA0,
+        BB0,
+        CC0,
+        DD0,
+        fb0,
+        fc0,
+        fd0,
+        ZZ0,
+        ZZ1,
+        l_max,
+        k_max,
+        "klein",
+        get_hx_only,
+        parallel,
+        verbose,
+    )
 
 
-def gen_sys(self, AA0, BB0, CC0, DD0, fb0, fc0, fd0, ZZ0, ZZ1, l_max, k_max, solution, get_hx_only, parallel, verbose):
-    """Generate system matrices expressed in the one-sided, first-order compressed dimensionality reduction given a set of parameters. 
+def gen_sys(
+    self,
+    AA0,
+    BB0,
+    CC0,
+    DD0,
+    fb0,
+    fc0,
+    fd0,
+    ZZ0,
+    ZZ1,
+    l_max,
+    k_max,
+    solution,
+    get_hx_only,
+    parallel,
+    verbose,
+):
+    """Generate system matrices expressed in the one-sided, first-order compressed dimensionality reduction given a set of parameters.
 
     Details can be found in "Efficient Solution of Models with Occasionally Binding Constraints" (Gregor Boehl).
     If no parameters are given this will default to the calibration in the `yaml` file.
@@ -148,21 +214,23 @@ def gen_sys(self, AA0, BB0, CC0, DD0, fb0, fc0, fd0, ZZ0, ZZ1, l_max, k_max, sol
     # set default values of l_max & k_max
     if l_max is not None:
         if l_max < 2 and k_max > 0:
-            print('[get_sys:]'.ljust(15, ' ') +
-                  ' `l_max` must be at least 2 (is %s). Correcting...' % l_max)
+            print(
+                "[get_sys:]".ljust(15, " ")
+                + " `l_max` must be at least 2 (is %s). Correcting..." % l_max
+            )
             l_max = 2
         # effective l_max is one lower because algorithm exists on l_max
         l_max += 1
         # TODO: test if true
 
-    elif hasattr(self, 'lks'):
+    elif hasattr(self, "lks"):
         l_max = self.lks[0]
     else:
         l_max = 3
 
     if k_max is not None:
         pass
-    elif hasattr(self, 'lks'):
+    elif hasattr(self, "lks"):
         k_max = self.lks[1]
     else:
         k_max = 17
@@ -178,13 +246,13 @@ def gen_sys(self, AA0, BB0, CC0, DD0, fb0, fc0, fd0, ZZ0, ZZ1, l_max, k_max, sol
 
     # y-space is the space of the original variables augmented by the shocks
     c_arg = list(vv0).index(str(self.const_var))
-    fc0 = -fc0/fb0[c_arg]
-    fb0 = -fb0/fb0[c_arg]
+    fc0 = -fc0 / fb0[c_arg]
+    fb0 = -fb0 / fb0[c_arg]
 
     # create auxiliry vars for those both in A & C
     inall = ~fast0(AA0, 0) & ~fast0(CC0, 0)
     if np.any(inall):
-        vv0 = np.hstack((vv0, [v + '_lag' for v in vv0[inall]]))
+        vv0 = np.hstack((vv0, [v + "_lag" for v in vv0[inall]]))
         AA0 = np.pad(AA0, ((0, sum(inall)), (0, sum(inall))))
         BB0 = np.pad(BB0, ((0, sum(inall)), (0, sum(inall))))
         CC0 = np.pad(CC0, ((0, sum(inall)), (0, sum(inall))))
@@ -195,10 +263,10 @@ def gen_sys(self, AA0, BB0, CC0, DD0, fb0, fc0, fd0, ZZ0, ZZ1, l_max, k_max, sol
         if ZZ0 is not None:
             ZZ0 = np.pad(ZZ0, ((0, 0), (0, sum(inall))))
 
-        BB0[-sum(inall):, -sum(inall):] = np.eye(sum(inall))
-        BB0[-sum(inall):, :-sum(inall)][:, inall] = -np.eye(sum(inall))
-        CC0[:, -sum(inall):] = CC0[:, :-sum(inall)][:, inall]
-        CC0[:, :-sum(inall)][:, inall] = 0
+        BB0[-sum(inall) :, -sum(inall) :] = np.eye(sum(inall))
+        BB0[-sum(inall) :, : -sum(inall)][:, inall] = -np.eye(sum(inall))
+        CC0[:, -sum(inall) :] = CC0[:, : -sum(inall)][:, inall]
+        CC0[:, : -sum(inall)][:, inall] = 0
 
     # create representation in y-space
     AA0 = np.pad(AA0, ((0, dimeps), (0, dimeps)))
@@ -244,7 +312,7 @@ def gen_sys(self, AA0, BB0, CC0, DD0, fb0, fc0, fd0, ZZ0, ZZ1, l_max, k_max, sol
     self.dimx = len(self.vv)
     self.dimq = dimq
     self.dimp = dimp
-    self.dimy = dimp+dimq
+    self.dimy = dimp + dimq
     self.dimeps = dimeps
     self.hx = zp, zq, zc
 
@@ -256,7 +324,7 @@ def gen_sys(self, AA0, BB0, CC0, DD0, fb0, fc0, fd0, ZZ0, ZZ1, l_max, k_max, sol
 
     PR = -np.hstack((BBR[:, inq], AA[:, inp]))
     MR = np.hstack((CCR[:, inq], BBR[:, inp]))
-    gg = np.pad([float(self.x_bar)], (dimp+dimq-1, 0))
+    gg = np.pad([float(self.x_bar)], (dimp + dimq - 1, 0))
 
     # avoid QL in jitted funcs
     R, Q = sl.rq(MU.T)
@@ -269,10 +337,10 @@ def gen_sys(self, AA0, BB0, CC0, DD0, fb0, fc0, fd0, ZZ0, ZZ1, l_max, k_max, sol
     gg = Q @ gg
 
     if solution is None:
-        solution = 'klein'
+        solution = "klein"
 
     if isinstance(solution, str):
-        if solution == 'speed_kills':
+        if solution == "speed_kills":
             omg, lam = speed_kills(PU, MU, dimp, dimq, tol=1e-4)
         else:
             omg, lam = klein(PU, MU, nstates=dimq, verbose=verbose, force=False)
@@ -292,8 +360,11 @@ def gen_sys(self, AA0, BB0, CC0, DD0, fb0, fc0, fd0, ZZ0, ZZ1, l_max, k_max, sol
     preprocess(self, PU, MU, PR, MR, gg, fq1, fp1, fq0, parallel, verbose)
 
     if verbose:
-        print('[get_sys:]'.ljust(15, ' ')+' Creation of system matrices finished in %ss.' %
-              np.round(time.time() - st, 3))
+        print(
+            "[get_sys:]".ljust(15, " ")
+            + " Creation of system matrices finished in %ss."
+            % np.round(time.time() - st, 3)
+        )
 
     return self
 

@@ -10,15 +10,15 @@ StrPrinter._print_TSymbol = lambda self, x: x.__str__()
 
 
 class Parameter(sympy.Symbol):
-
     def __init__(self, name, exp_date=0):
         super(Parameter, self).__init__()
         self.name = name
+
     # def __new__(self, name, exp_date=0):
     #     super(Parameter,self).__new__( name)
 
     def __repr__(self):
-        return(self.name)
+        return self.name
 
     def __set_prior(self, prior):
         self.prior = prior
@@ -26,23 +26,23 @@ class Parameter(sympy.Symbol):
 
 class TSymbol(sympy.Symbol):
 
-    #__xnew_cached_ = staticmethod(sympy.Symbol.__new_stage2__)
+    # __xnew_cached_ = staticmethod(sympy.Symbol.__new_stage2__)
 
     def __init__(self, name, **args):
         super(TSymbol, self).__init__()
 
-        if 'date' not in args:
-            self._assumptions['date'] = 0
-            self.assumptions0['date'] = 0
+        if "date" not in args:
+            self._assumptions["date"] = 0
+            self.assumptions0["date"] = 0
         else:
-            self._assumptions['date'] = args['date']
-            self.assumptions0['date'] = args['date']
-        if 'exp_date' not in args:
-            self._assumptions['exp_date'] = 0
-            self.assumptions0['exp_date'] = 0
+            self._assumptions["date"] = args["date"]
+            self.assumptions0["date"] = args["date"]
+        if "exp_date" not in args:
+            self._assumptions["exp_date"] = 0
+            self.assumptions0["exp_date"] = 0
         else:
-            self._assumptions['exp_date'] = args['exp_date']
-            self.assumptions0['exp_date'] = args['exp_date']
+            self._assumptions["exp_date"] = args["exp_date"]
+            self.assumptions0["exp_date"] = args["exp_date"]
 
         self._mhash = None
         self.__hash__()
@@ -58,11 +58,11 @@ class TSymbol(sympy.Symbol):
 
     @property
     def date(self):
-        return self.assumptions0['date']
+        return self.assumptions0["date"]
 
     @property
     def exp_date(self):
-        return self.assumptions0['exp_date']
+        return self.assumptions0["exp_date"]
 
     def _hashable_content(self):
         return (self.name, str(self.date), str(self.exp_date))
@@ -107,20 +107,18 @@ class TSymbol(sympy.Symbol):
 
 
 class Variable(TSymbol):
-
     @property
     def fortind(self):
         if self.date <= 0:
-            return('v_'+self.name)
+            return "v_" + self.name
         else:
-            return('v_E'+self.name)
+            return "v_E" + self.name
 
     def __str__(self):
         if self.exp_date == 0:
             result = super(Variable, self).__str__()
         else:
-            result = 'E[' + str(self.exp_date) + ']' + \
-                super(Variable, self).__str__()
+            result = "E[" + str(self.exp_date) + "]" + super(Variable, self).__str__()
 
         return result
 
@@ -131,25 +129,23 @@ class Variable(TSymbol):
 
 
 class LaggedExpectation(Variable):
-
     def __init__(self, name, date=0, exp_date=0):
         Variable.__init__(self, name, date)
         self.exp_date = exp_date
 
     def __getstate_(self):
         return {
-            'date': self.date,
-            'name': self.name,
-            'is_commutative': self.is_commutative,
-            '_mhash': self._mhash
+            "date": self.date,
+            "name": self.name,
+            "is_commutative": self.is_commutative,
+            "_mhash": self._mhash,
         }
 
     def _hashable_content(self):
         return (self.name, self.date, self.lag)
 
     def __str__(self):
-        """
-        """
+        """ """
         if self.lag == 0:
             result = "E_{t-j}[self.name]"
         else:
@@ -157,13 +153,12 @@ class LaggedExpectation(Variable):
 
 
 class Shock(TSymbol):
-
     @property
     def fortind(self):
         if self.date <= 0:
-            return('e_'+self.name)
+            return "e_" + self.name
         else:
-            return('e_E'+self.name)
+            return "e_E" + self.name
 
 
 class Equation(sympy.Equality):
@@ -175,7 +170,7 @@ class Equation(sympy.Equality):
 
     @property
     def set_eq_zero(self):
-        return(self.lhs - self.rhs)
+        return self.lhs - self.rhs
 
     @property
     def variables(self):
