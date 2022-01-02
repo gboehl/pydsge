@@ -2,6 +2,7 @@
 # check-yaml: need to make two exceptions, but implementation has been difficult
 # flake8: many todos!
 # what is difference betwenn black and blacken?
+#TODO: check-yaml: exclude multiple files (https://github.com/psf/black/issues/395#issuecomment-499630129)
 repos:
 -   repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.0.1
@@ -9,8 +10,10 @@ repos:
     -   id: check-added-large-files
         args: ['--maxkb=100']
     -   id: check-merge-conflict
-  #  -   id: check-yaml
-  #      exclude: ^pydsge/examples/ | meta.yaml #| meta.yaml TODO: multiple files (https://github.com/psf/black/issues/395#issuecomment-499630129)
+#    -   id: check-yaml
+#        exclude: |
+#          ^pydsge/examples/
+#          meta.yaml 
     -   id: debug-statements
     -   id: end-of-file-fixer
         exclude: ^pydsge/examples/
