@@ -6,8 +6,9 @@ import logging  # for custom error messages
 from export_getting_started_to_pkl import notebook_exec_result_flattened
 from export_getting_started_to_pkl import to_ndarray
 
+
 @pytest.fixture(scope="module")
-def new_output(path="docs\\getting_started.ipynb"):
+def new_output(path="docs/getting_started.ipynb"):
     """Create dictionary of variables from current state of getting_started.
 
     Args:
@@ -59,7 +60,8 @@ def diff(new_output, stable_output):
 
     return diff
 
-@pytest.mark.regression
+
+@pytest.mark.regression()
 def test_what_output_is_there(diff):
     """Check that the object names are identical.
 
@@ -77,7 +79,7 @@ def test_what_output_is_there(diff):
     log.error(
         r"\n\nThe test_what_output_is_there Failed."
         r" To update the Pickle, run"
-        r' "python pydsge\\tests\export_getting_started_to_pkl.py"'
+        r' "python pydsge/tests/export_getting_started_to_pkl.py"'
         r" in the terminal. \n\n"
     )
 
@@ -97,10 +99,12 @@ def array_equal(a1, a2):
     if nan_undecidable(a1) or nan_undecidable(a2):
         return np.array_equal(a1, a2, equal_nan=False)
     else:
-        return np.array_equal(a1, a2, equal_nan=True)
+        return np.allclose(a1, a2, equal_nan=True)
 
-# @pytest.mark.parametrize("") TODO: don't parametrize  on inputs, but for different tutorials??
-@pytest.mark.regression
+
+# @pytest.mark.parametrize("")
+# TODO: don't parametrize  on inputs, but for different tutorials??
+@pytest.mark.regression()
 def test_content_of_outputs(new_output, stable_output, diff):
     """Check that objects contain the same values.
 
@@ -111,7 +115,7 @@ def test_content_of_outputs(new_output, stable_output, diff):
     * For each shared object, check whether the content is exactly identical
     """
     # Get collection of shared variables to loop over
-    error_vars = {"__warningregistry___version"} #Also FX?
+    error_vars = set()
     shared_vars = (stable_output.keys() | new_output.keys()) - diff - error_vars
 
     # Write function for de-nesting
@@ -135,24 +139,11 @@ def test_content_of_outputs(new_output, stable_output, diff):
     log.error(
         r"\n\nThe test_content_of_outputs Failed."
         r"To update the Pickle, run"
-        r'"python pydsge\\tests\export_getting_started_to_pkl.py"'
+        r'"python pydsge/tests/export_getting_started_to_pkl.py"'
         r"in the terminal. \n\n"
     )
 
-    # # Loop over shared vars
-    # for key in sorted(shared_vars):
-    #     print(f"This is shared_key: {key}")
-    #     if type(new_output[key]).__name__ == "DataFrame": 
-    #         assert new_output[key].equals(stable_output[key]), f"Error with {key}"
-    #     #for nested objects
-    #     elif key in ["hd"]: #for lists that contain DataFrames
-    #         for counter, _ in enumerate(new_output[key]):
-    #             assert array_equal(new_output[key][counter], stable_output[key][counter])
-    #     elif type(new_output[key]).__name__ in ["list", "dict", "tuple", "ndarray"]: #Checking whether the object is nested
-    #         assert array_equal(get_flat(new_output[key]), get_flat(stable_output[key]))
-    #     else:
-    #         assert array_equal(new_output[key], stable_output[key]), f"Error with {key}" #Use np.all() for arrays
-
+    # Loop over shared vars
     for key in sorted(shared_vars):
         if type(new_output[key]).__name__ == "DataFrame":
             assert new_output[key].equals(stable_output[key]), f"Error with {key}"
@@ -161,7 +152,7 @@ def test_content_of_outputs(new_output, stable_output, diff):
             for counter, _ in enumerate(new_output[key]):
                 assert array_equal(
                     new_output[key][counter], stable_output[key][counter]
-                )
+                ), f"Error with hd {counter}"
         elif type(new_output[key]).__name__ in [
             "list",
             "dict",
@@ -170,7 +161,6 @@ def test_content_of_outputs(new_output, stable_output, diff):
         ]:  # Checking whether the object is nested
             stable = get_flat(stable_output[key])
             new = get_flat(new_output[key])
-            assert array_equal(new, stable)
+            assert array_equal(new, stable), f"Error with {key}"
         else:
             assert array_equal(new_output[key], stable_output[key]), f"Error with {key}"
-
