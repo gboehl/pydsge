@@ -2,6 +2,7 @@
 import nbformat
 import pickle
 import numpy as np
+import os
 from nbconvert import PythonExporter
 
 
@@ -141,6 +142,26 @@ def to_ndarray(obj):
         return np.asanyarray(obj)
 
 
+def is_path(path):
+    """Judge if object is path or string of exists path."""
+    if isinstance(path, os.PathLike):
+        return True
+    if not isinstance(path, str):
+        return False
+    return os.path.exists(path)
+
+
+def contains_path(obj):
+    """Judge if an array contains path."""
+    if isinstance(obj, (np.ndarray, list, tuple, set)):
+        for v in obj:
+            if is_path(v):
+                return True
+        return False
+    else:
+        return is_path(obj)
+
+
 def notebook_exec_result_flattened(path):
     """Prepare notebook for numpy savez."""
     # Step 1: Convert notebook to script
@@ -157,6 +178,12 @@ def notebook_exec_result_flattened(path):
 
     # Step 4: Filter for variables which is basic type or list of basic type
     bk_filted = {k: v for k, v in bk.items() if basic_type_or_list(v)}
+
+    # Step 5: Remove environmental variables
+    bk_filted = {k: v for k, v in bk_filted.items() if not contains_path(v)}
+    for key in {"__warningregistry___version"}:
+        bk_filted.pop(key)
+
     return bk_filted
 
 

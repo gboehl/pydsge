@@ -115,7 +115,7 @@ def test_content_of_outputs(new_output, stable_output, diff):
     * For each shared object, check whether the content is exactly identical
     """
     # Get collection of shared variables to loop over
-    error_vars = {"__warningregistry___version"}
+    error_vars = set()
     shared_vars = (stable_output.keys() | new_output.keys()) - diff - error_vars
 
     # Write function for de-nesting
