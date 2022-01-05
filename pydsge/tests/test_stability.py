@@ -8,7 +8,7 @@ from export_getting_started_to_pkl import to_ndarray
 
 
 @pytest.fixture(scope="module")
-def new_output(path="docs\\getting_started.ipynb"):
+def new_output(path="docs/getting_started.ipynb"):
     """Create dictionary of variables from current state of getting_started.
 
     Args:
@@ -79,7 +79,7 @@ def test_what_output_is_there(diff):
     log.error(
         r"\n\nThe test_what_output_is_there Failed."
         r" To update the Pickle, run"
-        r' "python pydsge\\tests\export_getting_started_to_pkl.py"'
+        r' "python pydsge/tests/export_getting_started_to_pkl.py"'
         r" in the terminal. \n\n"
     )
 
@@ -139,7 +139,7 @@ def test_content_of_outputs(new_output, stable_output, diff):
     log.error(
         r"\n\nThe test_content_of_outputs Failed."
         r"To update the Pickle, run"
-        r'"python pydsge\\tests\export_getting_started_to_pkl.py"'
+        r'"python pydsge/tests/export_getting_started_to_pkl.py"'
         r"in the terminal. \n\n"
     )
 
@@ -152,7 +152,7 @@ def test_content_of_outputs(new_output, stable_output, diff):
             for counter, _ in enumerate(new_output[key]):
                 assert array_equal(
                     new_output[key][counter], stable_output[key][counter]
-                )
+                ), f"Error with hd {counter}"
         elif type(new_output[key]).__name__ in [
             "list",
             "dict",
@@ -161,6 +161,6 @@ def test_content_of_outputs(new_output, stable_output, diff):
         ]:  # Checking whether the object is nested
             stable = get_flat(stable_output[key])
             new = get_flat(new_output[key])
-            assert array_equal(new, stable)
+            assert array_equal(new, stable), f"Error with {key}"
         else:
             assert array_equal(new_output[key], stable_output[key]), f"Error with {key}"

@@ -189,7 +189,7 @@ def notebook_exec_result_flattened(path):
 
 def main():
     """Excute jupyter notebook and save global variables."""
-    notebook_path = "docs\\getting_started.ipynb"
+    notebook_path = "docs/getting_started.ipynb"
 
     bk = notebook_exec_result_flattened(notebook_path)
 
