@@ -1,5 +1,8 @@
+"""This file contains functions for Kalman Filters and Smoothers.
+
 #!/bin/python
 # -*- coding: utf-8 -*-
+"""
 
 import time
 import numpy as np
@@ -7,8 +10,25 @@ import scipy.linalg as sl
 import pandas as pd
 from econsieve import KalmanFilter, TEnKF
 from grgrlib.core import timeprint
-from grgrlib.multiprocessing import serializer
-from econsieve.stats import logpdf
+
+
+def serializer(func):
+    """Dirty hack to make non-serializable function to a serializable.
+
+    ...
+    Dirty hack that transforms the non-serializable function to a serializable
+    one (when using dill).
+    Don't try that at home!
+    """
+    print("I am the serializer!")
+
+    fname = func.__name__
+    exec("dark_%s = func" % fname, locals(), globals())
+
+    def vodoo(*args, **kwargs):
+        return eval("dark_%s(*args, **kwargs)" % fname)
+
+    return vodoo
 
 
 def create_obs_cov(self, scale_obs=0.1):
