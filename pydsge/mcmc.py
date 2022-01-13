@@ -40,6 +40,7 @@ def mcmc(
 
     p0 : ndarray of initial states of the walkers in the parameterspace
     moves : emcee.moves object
+    lprob_seed : lprob_seed must be one of ('vec', 'rand', 'set').
     """
 
     import emcee
