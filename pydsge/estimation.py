@@ -282,7 +282,7 @@ def create_pool(self, ncores=None, threadpool_limit=None):
     self.pool.clear()
 
     return self.pool
-
+    
 
 @property
 def mapper(self):
@@ -291,3 +291,19 @@ def mapper(self):
         return self.pool.imap
     else:
         return map
+
+
+def check(obj, *args, **kwds):
+    """check pickling of an object across another process"""
+    import subprocess
+    import dill
+    fail = True
+    try:
+        _x = dill.dumps(obj, *args, **kwds)
+        fail = False
+    finally:
+        if fail:
+            print("DUMP FAILED")
+    msg = ["python", "-c",  f"import dill; assert dill.loads({repr(_x)}) is not None"]
+    rst = subprocess.run(msg, capture_output=False)
+    return rst.returncode==0
