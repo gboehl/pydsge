@@ -7,3 +7,4 @@ dist
 docs/.ipynb_checkpoints/
 .pytest_cache
 .vscode
+rsh/bs0/
