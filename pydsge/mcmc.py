@@ -57,7 +57,7 @@ def mcmc(
     if "description" in self.fdict.keys():
         self.description = self.fdict["description"]
 
-    from grgrlib.multiprocessing import serializer
+    from .multiprocessing import serializer
 
     if hasattr(self, "pool"):
         from .estimation import create_pool

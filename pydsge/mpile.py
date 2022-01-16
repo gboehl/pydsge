@@ -73,7 +73,7 @@ def prior_sampler(
 
     import tqdm
     from grgrlib.core import map2arr
-    from grgrlib.multiprocessing import serializer
+    from .multiprocessing import serializer
 
     l_max, k_max = lks or (None, None)
 

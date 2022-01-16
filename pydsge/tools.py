@@ -10,7 +10,7 @@ import pandas as pd
 import time
 import tqdm
 from grgrlib import fast0, map2arr
-from grgrlib.multiprocessing import serializer
+from .multiprocessing import serializer
 from .engine import *
 from decimal import Decimal
 

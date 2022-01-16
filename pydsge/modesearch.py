@@ -5,7 +5,7 @@ import os
 import time
 import tqdm
 import numpy as np
-from grgrlib.multiprocessing import serializer
+from .multiprocessing import serializer
 from .mpile import get_par
 from .stats import summary, pmdm_report
 
