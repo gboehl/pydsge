@@ -165,8 +165,7 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, set_k=False
     shocks = self.shocks
     nstates = self.dimx
 
-    if self.set_par is not None:
-        set_par = serializer(self.set_par)
+    set_par = serializer(self.set_par)
     t_func = serializer(self.t_func)
 
     # accept all sorts of inputs

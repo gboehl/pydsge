@@ -364,10 +364,10 @@ class DSGE(DSGE_RAW):
             [self.parameters], [ss[str(px)] for px in self["other_para"]]
         )  # , modules=context_f)
 
-        def compile(px):
+        def pcompile(px):
             return list(px) + psi(list(px))
 
-        self.pcompile = compile
+        self.pcompile = pcompile
         self.parafunc = [p.name for p in self["other_para"]], psi
         self.psi = psi
         self.PSI = PSI
