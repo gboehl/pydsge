@@ -165,6 +165,8 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, set_k=False
     shocks = self.shocks
     nstates = self.dimx
 
+    dimq, dimeps = self.dimq, self.dimeps
+    l_max, k_max = self.lks
     set_par = serializer(self.set_par)
     t_func = serializer(self.t_func)
 
@@ -216,7 +218,7 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, set_k=False
                 set_k_eff = (l-1, k) if l else (l, max(k-1, 0))
 
                 _, (l_endo, k_endo), flag = t_func(
-                    st_vec[-(self.dimq-self.dimeps):], shk_vec, set_k=None, linear=linear, return_k=True)
+                    st_vec[-(dimq-dimeps):], shk_vec, set_k=None, linear=linear, return_k=True)
 
                 multflag = l_endo != set_k_eff[0] or k_endo != set_k_eff[1]
                 supermultflag |= multflag
@@ -239,12 +241,12 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, set_k=False
                 set_k_eff = set_k
 
             if set_k_eff:
-                if set_k_eff[0] > self.lks[0] or set_k_eff[1] > self.lks[1]:
+                if set_k_eff[0] > l_max or set_k_eff[1] > k_max:
                     raise IndexError(
-                        'set_k exceeds l_max (%s vs. %s).' % (set_k_eff, self.lks))
+                        'set_k exceeds l_max (%s vs. %s).' % (set_k_eff, (l_max, k_max)))
 
             st_vec, (l, k), flag = t_func(
-                st_vec[-(self.dimq-self.dimeps):], shk_vec, set_k=set_k_eff, linear=linear, return_k=True)
+                st_vec[-(dimq-dimeps):], shk_vec, set_k=set_k_eff, linear=linear, return_k=True)
 
             if flag and verbose > 1:
                 print('[irfs:]'.ljust(
