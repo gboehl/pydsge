@@ -4,6 +4,8 @@
 import numpy as np
 import pandas as pd
 import os
+import dill as pickle
+pickle.settings['recurse'] = True
 import pathos
 import time
 import tqdm

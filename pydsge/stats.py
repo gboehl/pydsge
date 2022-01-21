@@ -504,7 +504,7 @@ def mdd_lp(chain, lprobs, calc_hess=False):
     return mdd
 
 
-def mdd_mhm(chain, lprobs, alpha=.05, pool=None, verbose=False, debug=False):
+def mdd_mhm(chain, lprobs, alpha=.05, verbose=False, debug=False):
     """Approximate the marginal data density useing modified harmonic mean.
     """
 
@@ -532,12 +532,13 @@ def mdd_mhm(chain, lprobs, alpha=.05, pool=None, verbose=False, debug=False):
                 res[i] = -np.inf
         return res
 
-    if pool and not debug:
-        if pool.ncpus is None:
-            import pathos
-            nbatches = pathos.multiprocessing.cpu_count()
-        else:
-            nbatches = pool.ncpus
+
+    if not debug:
+        if hasattr(self, 'pool'):
+            from .estimation import create_pool
+            create_pool(self)
+
+        nbatches = self.pool.ncpus
 
         batches = pool.imap(runner, np.array_split(chain, nbatches))
         mls = np.vstack(list(batches))

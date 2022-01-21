@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import time
+import dill
 import numpy as np
 import scipy.linalg as sl
 import pandas as pd
@@ -292,7 +293,7 @@ def extract(self, sample=None, nsamples=1, init_cov=None, precalc=True, seed=0, 
             print('[extract:]'.ljust(
                 15, ' ')+' Extraction requires filter in non-reduced form. Recreating filter instance.')
 
-        npas = serializer(self.filter.npas)
+        # npas = serializer(self.filter.npas)
 
     self.debug |= debug
 
@@ -313,9 +314,11 @@ def extract(self, sample=None, nsamples=1, init_cov=None, precalc=True, seed=0, 
 
     seeds = np.random.randint(2**31, size=nsamples)  # win explodes with 2**32
     sample = [(x, y) for x in sample for y in seeds]
+    pickled_self = dill.dumps(self, recurse=True)
 
     def runner(arg):
 
+        pelf = dill.loads(pickled_self)
         par, seed_loc = arg
 
         if par is not None:
@@ -346,7 +349,7 @@ def extract(self, sample=None, nsamples=1, init_cov=None, precalc=True, seed=0, 
 
         for natt in range(nattemps):
             try:
-                init, resid, flags = npas(func=t_func_loc, X=sample, init_states=inits, verbose=max(
+                init, resid, flags = self.filter.npas(func=t_func_loc, X=sample, init_states=inits, verbose=max(
                     len(sample) == 1, verbose-1), seed=seed_loc, nsamples=1, **npasargs)
 
                 return par, init, resid[0], flags
