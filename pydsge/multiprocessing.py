@@ -1,18 +1,33 @@
 #!/bin/python
 # -*- coding: utf-8 -*-
+import dill
+from sys import platform
 
-def serializer(func):
+
+def serializer_unix(func):
+    """Dirty hack that transforms the non-serializable function to a serializable one (when using dill)
+    ...
+    Don't try that at home!
+    """
+
     fname = func.__name__
-    import dill
-    import os
-    if not os.path.exists('__pycache__'):
-        os.makedirs('__pycache__')
-    with open(f"__pycache__/{fname}.pkl", "wb") as f:
-        dill.dump(func, f, recurse=True)
+    exec("dark_%s = func" % fname, locals(), globals())
 
     def vodoo(*args, **kwargs):
-        import dill
-        with open(f"__pycache__/{fname}.pkl", "rb") as f:
-            return dill.load(f)(*args, **kwargs)
+        return eval("dark_%s(*args, **kwargs)" % fname)
 
     return vodoo
+
+
+def serializer(*functions):
+    if platform == "darwin" or platform == "linux":
+        rtn = []
+        for func in functions:
+            rtn.append(serializer_unix(func))
+    else:
+        fstr = dill.dumps(functions, recurse=True)
+        rtn = dill.loads(fstr)
+    if len(functions) == 1:
+        return rtn[0]
+    else:
+        return rtn

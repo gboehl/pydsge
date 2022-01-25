@@ -214,8 +214,9 @@ def irfs(
     nstates = self.dimx
 
     if self.set_par is not None:
-        set_par = serializer(self.set_par)
-    t_func = serializer(self.t_func)
+        set_par, t_func = serializer(self.set_par, self.t_func)
+    else:
+        t_func = serializer(self.t_func)
 
     # accept all sorts of inputs
     new_shocklist = []

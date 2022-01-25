@@ -317,6 +317,8 @@ def extract(
 
         create_pool(self)
 
+    run_filter = serializer(self.run_filter)
+
     if fname == "ParticleFilter":
         raise NotImplementedError
 
@@ -339,14 +341,14 @@ def extract(
                 + " Extraction requires filter in non-reduced form. Recreating filter instance."
             )
 
-        npas = serializer(self.filter.npas)
+        run_filter, npas = serializer(self.run_filter, self.filter.npas)
 
     self.debug |= debug
 
     if sample[0] is not None:
         set_par = serializer(self.set_par)
 
-    run_filter = serializer(self.run_filter)
+
     t_func = serializer(self.t_func)
     edim = len(self.shocks)
     xdim = len(self.vv)
