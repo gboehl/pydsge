@@ -9,8 +9,8 @@ import numpy as np
 import pandas as pd
 import time
 import tqdm
+import dill
 from grgrlib import fast0, map2arr
-from grgrlib.multiprocessing import serializer
 from .engine import *
 from decimal import Decimal
 
@@ -210,12 +210,9 @@ def irfs(
         create_pool(self)
 
     st = time.time()
-    shocks = self.shocks
     nstates = self.dimx
 
-    if self.set_par is not None:
-        set_par = serializer(self.set_par)
-    t_func = serializer(self.t_func)
+    l_max, k_max = self.lks
 
     # accept all sorts of inputs
     new_shocklist = []
@@ -227,7 +224,11 @@ def irfs(
             vec += (0,)
         new_shocklist.append(vec)
 
+    pickled_self = dill.dumps(self, recurse=True)
+
     def runner(par):
+
+        pelf = dill.loads(pickled_self)
 
         X = np.empty((T, nstates))
         K = np.empty(T)
@@ -235,7 +236,7 @@ def irfs(
 
         if np.any(par):
             try:
-                set_par(par, **args)
+                pelf.set_par(par, **args)
             except ValueError:
                 X[:] = np.nan
                 K[:] = np.nan
@@ -250,22 +251,22 @@ def irfs(
 
         for t in range(T):
 
-            shk_vec = np.zeros(len(shocks))
+            shk_vec = np.zeros(len(pelf.shocks))
             for vec in new_shocklist:
                 if vec[2] == t:
 
                     shock = vec[0]
                     shocksize = vec[1]
 
-                    shock_arg = shocks.index(shock)
+                    shock_arg = pelf.shocks.index(shock)
                     shk_vec[shock_arg] = shocksize
 
             # force_init_equil will force recalculation of l,k only if the shock vec is not empty
             if force_init_equil and not np.any(shk_vec):
                 set_k_eff = (l - 1, k) if l else (l, max(k - 1, 0))
 
-                _, (l_endo, k_endo), flag = t_func(
-                    st_vec[-(self.dimq - self.dimeps) :],
+                _, (l_endo, k_endo), flag = pelf.t_func(
+                    st_vec[-(pelf.dimq - pelf.dimeps) :],
                     shk_vec,
                     set_k=None,
                     linear=linear,
@@ -296,13 +297,13 @@ def irfs(
                 set_k_eff = set_k
 
             if set_k_eff:
-                if set_k_eff[0] > self.lks[0] or set_k_eff[1] > self.lks[1]:
+                if set_k_eff[0] > l_max or set_k_eff[1] > k_max:
                     raise IndexError(
-                        "set_k exceeds l_max (%s vs. %s)." % (set_k_eff, self.lks)
+                        "set_k exceeds l_max (%s vs. %s)." % (set_k_eff, (l_max, k_max))
                     )
 
-            st_vec, (l, k), flag = t_func(
-                st_vec[-(self.dimq - self.dimeps) :],
+            st_vec, (l, k), flag = pelf.t_func(
+                st_vec[-(pelf.dimq - pelf.dimeps) :],
                 shk_vec,
                 set_k=set_k_eff,
                 linear=linear,
@@ -413,16 +414,11 @@ def simulate(
 
         create_pool(self)
 
-    if self.set_par is not None:
-        set_par = serializer(self.set_par)
-    else:
-        set_par = None
-
-    t_func = serializer(self.t_func)
-    obs = serializer(self.obs)
-    vv_orig = self.vv.copy()
+    pickled_self = dill.dumps(self, recurse=True)
 
     def runner(arg):
+
+        pelf = dill.loads(pickled_self)
 
         superflag = False
         par, eps, state = arg
@@ -430,9 +426,9 @@ def simulate(
         if mask is not None:
             eps = np.where(np.isnan(mask), eps, operation(np.array(mask), eps))
 
-        if set_par is not None:
-            _, vv = set_par(par, return_vv=True, **args)
-            if not np.all(vv == vv_orig):
+        if pelf.set_par is not None:
+            _, vv = pelf.set_par(par, return_vv=True, **args)
+            if not np.all(vv == pelf.vv):
                 raise Exception(
                     "The ordering of variables has changed given different parameters."
                 )
@@ -442,7 +438,9 @@ def simulate(
 
         for eps_t in eps:
 
-            state, (l, k), flag = t_func(state, eps_t, return_k=True, linear=linear)
+            state, (l, k), flag = pelf.t_func(
+                state, eps_t, return_k=True, linear=linear
+            )
 
             superflag |= flag
 
