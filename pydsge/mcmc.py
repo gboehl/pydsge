@@ -4,7 +4,6 @@
 import numpy as np
 import pandas as pd
 import os
-import pathos
 import time
 import tqdm
 from datetime import datetime
@@ -35,6 +34,7 @@ def mcmc(
 ):
 
     import emcee
+    from grgrlib.multiprocessing import serializer
 
     if not hasattr(self, "ndim"):
         # if it seems to be missing, lets do it.
@@ -56,8 +56,6 @@ def mcmc(
 
     if "description" in self.fdict.keys():
         self.description = self.fdict["description"]
-
-    from grgrlib.multiprocessing import serializer
 
     if hasattr(self, "pool"):
         from .estimation import create_pool

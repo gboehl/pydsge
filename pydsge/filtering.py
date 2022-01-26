@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import time
+import dill
 import numpy as np
 import scipy.linalg as sl
 import pandas as pd
