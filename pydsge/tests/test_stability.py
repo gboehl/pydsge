@@ -87,10 +87,9 @@ def test_what_output_is_there(diff):
     assert diff == set()
 
 
-# @pytest.mark.parametrize("")
-# TODO: don't parametrize  on inputs, but for different tutorials??
+# TODO: parametrize  on different tutorials
 @pytest.mark.regression()
-def test_content_of_outputs(new_output, stable_output, diff):
+def test_content_of_outputs(new_output, stable_output, diff, atol=1e-08):
     """Check that objects contain the same values.
 
     Compare the values of the objects from the stable and the new version.
@@ -141,7 +140,7 @@ def test_content_of_outputs(new_output, stable_output, diff):
 
         # For efficiency check DataFrames separately
         if type(new_output[key]).__name__ == "DataFrame":
-            pd.testing.assert_frame_equal(new, stable, atol=0), f"Error with {key}"
+            pd.testing.assert_frame_equal(new, stable, atol=atol), f"Error with {key}"
 
         # Comparison for strings, floats and ints (i.e. all others)
         elif type(new_output[key]).__name__ in ["string", "float", "int", "ndarray"]:
@@ -152,7 +151,7 @@ def test_content_of_outputs(new_output, stable_output, diff):
                 assert new == stable, f"Error with {key}"
             else:
                 np.testing.assert_allclose(
-                    new, stable, atol=1e-08, equal_nan=True
+                    new, stable, atol=atol, equal_nan=True
                 ), f"Error with {key}"
 
         # NOTE: This should not occur
