@@ -2,6 +2,11 @@
 pydsge
 ======
 
+.. image:: https://github.com/pcschreiber1/pydsge_OSE_Project_Fork/workflows/Continuous%20Integration%20Workflow/badge.svg?branch=Implementing_CI
+    :target: https://github.com/pcschreiber1/pydsge_OSE_Project_Fork/actions?query=branch%3Aimplementing_CI
+
+----
+
 Contains the functions and classes for solving, filtering and estimating DSGE models at the ZLB (or with other occasionally binding constraints).
 
 A collection of models that can (and were) used with this package can be found in `another repo <https://github.com/gboehl/projectlib/tree/master/yamls>`_.
