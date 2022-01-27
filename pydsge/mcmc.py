@@ -35,6 +35,7 @@ def mcmc(
 ):
 
     import emcee
+    from .multiprocessing import serializer
 
     if not hasattr(self, "ndim"):
         # if it seems to be missing, lets do it.
@@ -56,8 +57,6 @@ def mcmc(
 
     if "description" in self.fdict.keys():
         self.description = self.fdict["description"]
-
-    from .multiprocessing import serializer
 
     if hasattr(self, "pool"):
         from .estimation import create_pool

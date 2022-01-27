@@ -348,7 +348,6 @@ def extract(
     if sample[0] is not None:
         set_par = serializer(self.set_par)
 
-
     t_func = serializer(self.t_func)
     edim = len(self.shocks)
     xdim = len(self.vv)
