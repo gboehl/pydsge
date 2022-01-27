@@ -1,8 +1,4 @@
-#The hooks are from respy, but many have been commented out.
-# check-yaml: need to make two exceptions, but implementation has been difficult
-# flake8: many todos!
-# what is difference betwenn black and blacken?
-#TODO: check-yaml: exclude multiple files (https://github.com/psf/black/issues/395#issuecomment-499630129)
+# TODO: check-yaml: exclude multiple files (https://github.com/psf/black/issues/395#issuecomment-499630129)
 repos:
 -   repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.0.1

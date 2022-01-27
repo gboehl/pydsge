@@ -7,6 +7,7 @@
 
 import numpy as np
 import time
+import dill
 from .stats import post_mean
 
 
@@ -73,7 +74,6 @@ def prior_sampler(
 
     import tqdm
     from grgrlib.core import map2arr
-    from .multiprocessing import serializer
 
     l_max, k_max = lks or (None, None)
 
@@ -94,15 +94,15 @@ def prior_sampler(
 
         create_pool(self)
 
-    set_par = serializer(self.set_par)
-    get_par = serializer(self.get_par)
-    lprob = serializer(self.lprob) if test_lprob else None
+    pickled_self = dill.dumps(self, recurse=True)
 
     def runner(locseed):
 
         np.random.seed(seed + locseed)
         done = False
         no = 0
+
+        pelf = dill.loads(pickled_self)
 
         while not done:
 
@@ -118,10 +118,10 @@ def prior_sampler(
                     ]
 
                     if test_lprob:
-                        draw_prob = lprob(pdraw, linear=None, verbose=verbose > 1)
+                        draw_prob = pelf.lprob(pdraw, linear=None, verbose=verbose > 1)
                         done = not np.isinf(draw_prob)
                     else:
-                        set_par(pdraw)
+                        pelf.set_par(pdraw)
                         done = True
 
                 except Exception as e:

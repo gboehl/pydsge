@@ -4,7 +4,6 @@
 import numpy as np
 import pandas as pd
 import os
-import pathos
 import time
 import tqdm
 from datetime import datetime

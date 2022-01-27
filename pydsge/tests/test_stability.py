@@ -1,6 +1,7 @@
 """This file contains tests to check the stability of the new commit."""
 import pytest
 import numpy as np  # for dealing with numpy pickle
+import pandas as pd  # for dealing with data frames
 import logging  # for custom error messages
 
 from export_getting_started_to_pkl import notebook_exec_result_flattened
@@ -18,7 +19,9 @@ def new_output(path="docs/getting_started.ipynb"):
         bk_new (dict): A dictionary of the objects and values of the current state
          of getting_started. The object names are the keys of the dictionary.
     """
+    # Convert notebook to script, execute and filter-out environment vars
     bk_new = notebook_exec_result_flattened(path)
+    # Convert dictionary entries to np arrays
     bk_new_array = to_ndarray(bk_new)
 
     return bk_new_array
@@ -56,9 +59,7 @@ def diff(new_output, stable_output):
         dictionaries.
     """
     # Load the difference between new_output and stable_output
-    diff = stable_output.keys() ^ new_output.keys()
-
-    return diff
+    return stable_output.keys() ^ new_output.keys()
 
 
 @pytest.mark.regression()
@@ -86,26 +87,9 @@ def test_what_output_is_there(diff):
     assert diff == set()
 
 
-def nan_undecidable(array):
-    """Filter out objects where numpy cannot decide nans."""
-    return (
-        issubclass(np.asarray(array).dtype.type, str)
-        or np.asarray(array).dtype.hasobject
-    )
-
-
-def array_equal(a1, a2):
-    """Let numpy handle nan where possible."""
-    if nan_undecidable(a1) or nan_undecidable(a2):
-        return np.array_equal(a1, a2, equal_nan=False)
-    else:
-        return np.allclose(a1, a2, equal_nan=True)
-
-
-# @pytest.mark.parametrize("")
-# TODO: don't parametrize  on inputs, but for different tutorials??
+# TODO: parametrize  on different tutorials
 @pytest.mark.regression()
-def test_content_of_outputs(new_output, stable_output, diff):
+def test_content_of_outputs(new_output, stable_output, diff, atol=1e-08):
     """Check that objects contain the same values.
 
     Compare the values of the objects from the stable and the new version.
@@ -120,8 +104,12 @@ def test_content_of_outputs(new_output, stable_output, diff):
 
     # Write function for de-nesting
     def get_flat(nested_object):
-        """Apply function recursively until lowest level is reached."""
-        if not np.iterable(nested_object):
+        """Apply function recursively until lowest level is reached.
+
+        The exception are DataFrames.
+        Returns: DataFrame or non-iterable object
+        """
+        if isinstance(nested_object, pd.DataFrame) or not np.iterable(nested_object):
             return nested_object
         output = []
 
@@ -135,32 +123,40 @@ def test_content_of_outputs(new_output, stable_output, diff):
         remove_nestings(nested_object)
         return output
 
+    # Print error message in output under "Captured log call " if test fails
     log = logging.getLogger("")
     log.error(
-        r"\n\nThe test_content_of_outputs Failed."
-        r"To update the Pickle, run"
-        r'"python pydsge/tests/export_getting_started_to_pkl.py"'
+        r"\n\nThe test_content_of_outputs Failed. "
+        r"To update the Pickle, run "
+        r'"python pydsge/tests/export_getting_started_to_pkl.py" '
         r"in the terminal. \n\n"
     )
 
     # Loop over shared vars
     for key in sorted(shared_vars):
+        # De-nest nested objects, except for pd.DataFrames
+        stable = get_flat(stable_output[key])
+        new = get_flat(new_output[key])
+
+        # For efficiency check DataFrames separately
         if type(new_output[key]).__name__ == "DataFrame":
-            assert new_output[key].equals(stable_output[key]), f"Error with {key}"
-        # for nested objects
-        elif key in ["hd"]:  # for lists that contain DataFrames
-            for counter, _ in enumerate(new_output[key]):
-                assert array_equal(
-                    new_output[key][counter], stable_output[key][counter]
-                ), f"Error with hd {counter}"
-        elif type(new_output[key]).__name__ in [
-            "list",
-            "dict",
-            "tuple",
-            "ndarray",
-        ]:  # Checking whether the object is nested
-            stable = get_flat(stable_output[key])
-            new = get_flat(new_output[key])
-            assert array_equal(new, stable), f"Error with {key}"
+            pd.testing.assert_frame_equal(new, stable, atol=atol), f"Error with {key}"
+
+        # Comparison for strings, floats and ints (i.e. all others)
+        elif type(new_output[key]).__name__ in ["string", "float", "int", "ndarray"]:
+            # Check if dealing with numpy string
+            if isinstance(new_output[key], np.ndarray) and new_output[
+                key
+            ].dtype not in (float, int):
+                assert new == stable, f"Error with {key}"
+            else:
+                np.testing.assert_allclose(
+                    new, stable, atol=atol, equal_nan=True
+                ), f"Error with {key}"
+
+        # NOTE: This should not occur
         else:
-            assert array_equal(new_output[key], stable_output[key]), f"Error with {key}"
+            raise AssertionError(
+                f"Error, the type of de-nestde key: {key} is "
+                f"{type(new_output[key]).__name__}"
+            )
