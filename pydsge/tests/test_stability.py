@@ -75,7 +75,7 @@ def test_what_output_is_there(diff):
     * Combine the differences of both directions in "diff"
     * Check that "diff" is equal to expected difference: empty set.
     """
-    # Print error message in output under "Captured log call " if test fails
+    # Print error message in report (under "Captured log call ") if test fails
     log = logging.getLogger("")
     log.error(
         r"\n\nThe test_what_output_is_there Failed."
@@ -107,7 +107,7 @@ def test_content_of_outputs(new_output, stable_output, diff, atol=1e-08):
         """Apply function recursively until lowest level is reached.
 
         The exception are DataFrames.
-        Returns: DataFrame or non-iterable object
+        Returns: DataFrame, non-iterable object or array with non-iterable objects
         """
         if isinstance(nested_object, pd.DataFrame) or not np.iterable(nested_object):
             return nested_object
@@ -123,7 +123,7 @@ def test_content_of_outputs(new_output, stable_output, diff, atol=1e-08):
         remove_nestings(nested_object)
         return output
 
-    # Print error message in output under "Captured log call " if test fails
+    # Print error message in report (under "Captured log call ") if test fails
     log = logging.getLogger("")
     log.error(
         r"\n\nThe test_content_of_outputs Failed. "
@@ -142,7 +142,7 @@ def test_content_of_outputs(new_output, stable_output, diff, atol=1e-08):
         if type(new_output[key]).__name__ == "DataFrame":
             pd.testing.assert_frame_equal(new, stable, atol=atol), f"Error with {key}"
 
-        # Comparison for strings, floats and ints (i.e. all others)
+        # Comparison for arrays, strings, floats and ints (i.e. all others)
         elif type(new_output[key]).__name__ in ["string", "float", "int", "ndarray"]:
             # Check if dealing with numpy string
             if isinstance(new_output[key], np.ndarray) and new_output[
