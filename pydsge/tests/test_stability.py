@@ -3,6 +3,8 @@ import pytest
 import numpy as np  # for dealing with numpy pickle
 import pandas as pd  # for dealing with data frames
 import logging  # for custom error messages
+import sys  # for python version and OS specific pickle
+from pathlib import Path  # for windows-Unix compatibility
 
 from export_getting_started_to_pkl import notebook_exec_result_flattened
 from export_getting_started_to_pkl import to_ndarray
@@ -35,8 +37,14 @@ def stable_output():
         bk_restore (dict): A dictionary of the objects and corresponding values of the
         stable getting_started. The object names are the keys of the dictionary.
     """
+    path_to_pickle = Path(
+        f"pydsge/tests/resources/getting_started_stable"
+        f"_{sys.platform}"
+        f"_{sys.version_info[0]}_{sys.version_info[1]}"
+        f".npz"
+    )
     # Unpickle stable output
-    with open("pydsge/tests/resources/getting_started_stable.npz", "rb") as f:
+    with open(path_to_pickle, "rb") as f:
         npzfile = np.load(f, allow_pickle=False)
         bk_restore = dict(npzfile)
 
