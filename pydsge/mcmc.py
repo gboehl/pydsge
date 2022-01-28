@@ -32,6 +32,15 @@ def mcmc(
     debug=False,
     **samplerargs
 ):
+    """Run the emcee ensemble MCMC sampler.
+
+    Parameters:
+    ----------
+
+    p0 : ndarray of initial states of the walkers in the parameterspace
+    moves : emcee.moves object
+    lprob_seed : lprob_seed must be one of ('vec', 'rand', 'set').
+    """
 
     import emcee
     from .multiprocessing import serializer
@@ -62,7 +71,8 @@ def mcmc(
 
         create_pool(self)
 
-    lprob_global = serializer(self.lprob)
+    # lprob_global = serializer(self.lprob)
+    lprob_global = self.lprob
 
     if isinstance(temp, bool) and not temp:
         temp = 1

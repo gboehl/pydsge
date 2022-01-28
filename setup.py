@@ -1,3 +1,4 @@
+"""This file defines the installation set-up."""
 from setuptools import setup, find_packages
 from os import path
 
@@ -15,7 +16,9 @@ setup(
     author="Gregor Boehl",
     author_email="admin@gregorboehl.com",
     license="MIT",
-    description="Solve, filter and estimate DSGE models with occasionaly binding constraints",
+    description=(
+        "Solve, filter and estimate DSGE models with occasionaly binding constraints"
+    ),
     classifiers=[
         "License :: OSI Approved :: MIT License",
         "Programming Language :: Python :: 3",
@@ -35,6 +38,7 @@ setup(
         "pyaml",
         "grgrlib",
         "cloudpickle",
+        "h5py",
     ],
     include_package_data=True,
 )
