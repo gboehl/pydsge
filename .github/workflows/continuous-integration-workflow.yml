@@ -39,11 +39,11 @@ jobs:
         python -m pip install h5py
         python setup.py install
 
-    # Uncomment to unpdate stable pickle
-    - name: Update stable pickle
-      if: runner.os == 'Ubuntu' && matrix.python-version == '3.8'
-      run: |
-        python pydsge/tests/export_getting_started_to_pkl.py
+    # # Uncomment to unpdate stable pickle
+    # - name: Update stable pickle
+    #   if: runner.os == 'Ubuntu' && matrix.python-version == '3.8'
+    #   run: |
+    #     python pydsge/tests/export_getting_started_to_pkl.py
 
     - name: Test with pytest
       run: |
