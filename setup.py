@@ -17,7 +17,7 @@ setup(
     author_email="admin@gregorboehl.com",
     license="MIT",
     description=(
-        "Solve, filter and estimate" "DSGE models with occasionaly binding constraints"
+        "Solve, filter and estimate DSGE models with occasionaly binding constraints"
     ),
     classifiers=[
         "License :: OSI Approved :: MIT License",
