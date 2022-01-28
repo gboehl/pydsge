@@ -3,7 +3,6 @@ import pytest
 import numpy as np  # for dealing with numpy pickle
 import pandas as pd  # for dealing with data frames
 import logging  # for custom error messages
-import sys  # for python version and OS specific pickle
 from pathlib import Path  # for windows-Unix compatibility
 
 from export_getting_started_to_pkl import notebook_exec_result_flattened
@@ -37,12 +36,7 @@ def stable_output():
         bk_restore (dict): A dictionary of the objects and corresponding values of the
         stable getting_started. The object names are the keys of the dictionary.
     """
-    path_to_pickle = Path(
-        f"pydsge/tests/resources/getting_started_stable"
-        f"_{sys.platform}"
-        f"_{sys.version_info[0]}_{sys.version_info[1]}"
-        f".npz"
-    )
+    path_to_pickle = Path("pydsge/tests/resources/getting_started_stable.npz")
     # Unpickle stable output
     with open(path_to_pickle, "rb") as f:
         npzfile = np.load(f, allow_pickle=False)
@@ -86,10 +80,10 @@ def test_what_output_is_there(diff):
     # Print error message in report (under "Captured log call ") if test fails
     log = logging.getLogger("")
     log.error(
-        r"\n\nThe test_what_output_is_there Failed."
-        r" To update the Pickle, run"
-        r' "python pydsge/tests/export_getting_started_to_pkl.py"'
-        r" in the terminal. \n\n"
+        r"\n\nThe test_what_output_is_there Failed. "
+        r"To update the Pickle, run "
+        r'"python pydsge/tests/export_getting_started_to_pkl.py" '
+        r"in the terminal. Or allow CI bot to uptade it. \n\n"
     )
 
     assert diff == set()
@@ -97,7 +91,7 @@ def test_what_output_is_there(diff):
 
 # TODO: parametrize  on different tutorials
 @pytest.mark.regression()
-def test_content_of_outputs(new_output, stable_output, diff, atol=1e-08):
+def test_content_of_outputs(new_output, stable_output, diff, atol=1e-02):
     """Check that objects contain the same values.
 
     Compare the values of the objects from the stable and the new version.
@@ -137,7 +131,7 @@ def test_content_of_outputs(new_output, stable_output, diff, atol=1e-08):
         r"\n\nThe test_content_of_outputs Failed. "
         r"To update the Pickle, run "
         r'"python pydsge/tests/export_getting_started_to_pkl.py" '
-        r"in the terminal. \n\n"
+        r"in the terminal. Or allow CI bot to uptade it. \n\n"
     )
 
     # Loop over shared vars
