@@ -91,7 +91,7 @@ def test_what_output_is_there(diff):
 
 # TODO: parametrize  on different tutorials
 @pytest.mark.regression()
-def test_content_of_outputs(new_output, stable_output, diff, atol=1e-05):
+def test_content_of_outputs(new_output, stable_output, diff, atol=1e-06):
     """Check that objects contain the same values.
 
     Compare the values of the objects from the stable and the new version.
