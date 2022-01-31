@@ -43,7 +43,7 @@ def mcmc(
     """
 
     import emcee
-    from .multiprocessing import serializer
+    from grgrlib.multiprocessing import serializer
 
     if not hasattr(self, "ndim"):
         # if it seems to be missing, lets do it.

@@ -8,7 +8,7 @@ import scipy.linalg as sl
 import pandas as pd
 from econsieve import KalmanFilter, TEnKF
 from grgrlib.core import timeprint
-from .multiprocessing import serializer
+from grgrlib.multiprocessing import serializer
 from econsieve.stats import logpdf
 
 
