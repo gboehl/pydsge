@@ -71,8 +71,7 @@ def mcmc(
 
         create_pool(self)
 
-    # lprob_global = serializer(self.lprob)
-    lprob_global = self.lprob
+    lprob_global = serializer(self.lprob)
 
     if isinstance(temp, bool) and not temp:
         temp = 1
