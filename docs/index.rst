@@ -6,6 +6,7 @@
    readme
    installation_guide
    getting_started.ipynb
+   estimation_tutorial.ipynb
    reprocess.ipynb
    modules
    indices

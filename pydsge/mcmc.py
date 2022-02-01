@@ -273,10 +273,10 @@ def mcmc(
 
 def tmcmc(
     self,
-    nsteps,
     nwalks,
-    ntemps,
-    target,
+    nsteps = 200,
+    ntemps = 0,
+    target = None,
     update_freq=False,
     test_lprob=False,
     verbose=True,
