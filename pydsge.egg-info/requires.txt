@@ -9,3 +9,4 @@ tqdm
 pyaml
 grgrlib
 cloudpickle
+h5py

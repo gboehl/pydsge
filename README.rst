@@ -2,6 +2,8 @@
 pydsge
 ======
 
+.. image:: https://img.shields.io/pypi/v/pydsge   :alt: PyPI
+
 .. image:: https://github.com/gboehl/pydsge/workflows/Continuous%20Integration%20Workflow/badge.svg?branch=master
     :target: https://github.com/gboehl/pydsge/actions?query=branch%3Aimplementing_CI
 

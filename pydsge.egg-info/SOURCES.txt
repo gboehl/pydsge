@@ -1,10 +1,13 @@
 .gitignore
+.pre-commit-config.yaml
 LICENSE
 README.rst
 requirements.txt
 setup.py
+.github/workflows/continuous-integration-workflow.yml
 docs/Makefile
 docs/conf.py
+docs/estimation_tutorial.ipynb
 docs/getting_started.ipynb
 docs/index.rst
 docs/indices.rst
@@ -39,4 +42,10 @@ pydsge/examples/dfi_doc0_meta.npz
 pydsge/examples/dfi_doc0_res.npz
 pydsge/examples/dfi_doc0_sampler.h5
 pydsge/examples/dfi_funcs.py
+pydsge/examples/minimal_nk.yaml
 pydsge/examples/tsdata.csv
+pydsge/tests/export_getting_started_to_pkl.py
+pydsge/tests/test_model.py
+pydsge/tests/test_parser.py
+pydsge/tests/test_stability.py
+pydsge/tests/resources/getting_started_stable.npz
