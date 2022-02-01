@@ -1,0 +1,76 @@
+# TODO: check-yaml: exclude multiple files (https://github.com/psf/black/issues/395#issuecomment-499630129)
+repos:
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.0.1
+    hooks:
+    -   id: check-merge-conflict
+#    -   id: check-yaml
+#        exclude: |
+#          ^pydsge/examples/
+#          meta.yaml 
+    -   id: debug-statements
+    -   id: end-of-file-fixer
+        exclude: ^pydsge/examples/
+# -   repo: https://github.com/asottile/pyupgrade
+#     rev: v2.25.0
+#     hooks:
+#     -   id: pyupgrade
+#         args: [--py36-plus]
+# -   repo: https://github.com/asottile/reorder_python_imports
+#     rev: v2.6.0
+#     hooks:
+#     -   id: reorder-python-imports
+-   repo: https://github.com/psf/black
+    rev: 21.8b0
+    hooks:
+    -   id: black
+-   repo: https://github.com/asottile/blacken-docs
+    rev: v1.11.0
+    hooks:
+    -   id: blacken-docs
+        additional_dependencies: [black]
+-   repo: https://github.com/PyCQA/flake8
+    rev: 3.9.2
+    hooks:
+    -   id: flake8
+        args: # arguments to configure flake8
+        # making flake8 compatible with Black
+          - "--max-line-length=88"
+        # ignore errors for Black compatability
+        # E203: ignore whitespace around " : "
+        # T000: ignore TODOs
+        # W503: ignore linebreak before binary operator
+        # PT5006: ignore tuples as default for pytest parametrize
+          - "--ignore=E203,T000,W503,PT006,"
+        additional_dependencies: [
+            flake8-alfred,
+            flake8-bugbear,
+            flake8-builtins,
+            flake8-comprehensions,
+            flake8-docstrings,
+            flake8-eradicate,
+            flake8-print,
+            flake8-pytest-style,
+            flake8-todo,
+            flake8-unused-arguments,
+            pep8-naming,
+            pydocstyle,
+            Pygments,
+        ]
+# -   repo: https://github.com/PyCQA/doc8
+#     rev: 0.9.0
+#     hooks:
+#     -   id: doc8
+# # -   repo: https://github.com/codespell-project/codespell
+# #     rev: v1.17.1
+# #     hooks:
+# #     -   id: codespell
+# # -   repo: https://github.com/mgedmin/check-manifest
+# #     rev: '0.41'
+# #     hooks:
+# #     -   id: check-manifest
+# -   repo: meta
+#     hooks:
+#     -   id: check-hooks-apply
+#     -   id: check-useless-excludes
+#     # -   id: identity  # Prints all files passed to pre-commits. Debugging.

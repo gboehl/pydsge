@@ -154,8 +154,8 @@ def traceplot(
 
     for chunk in range(0, len(varnames), plots_per_fig):
 
-        eff_ppf = min(plots_per_fig,len(varnames[chunk:]))
-        eff_figsize = figsize[0], figsize[1]*eff_ppf/plots_per_fig
+        eff_ppf = min(plots_per_fig, len(varnames[chunk:]))
+        eff_figsize = figsize[0], figsize[1] * eff_ppf / plots_per_fig
 
         figs.append(plt.figure(constrained_layout=True, figsize=eff_figsize))
         subfig = figs[-1].subfigures(eff_ppf, 1, wspace=0.07)

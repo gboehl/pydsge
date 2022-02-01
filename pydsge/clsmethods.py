@@ -19,8 +19,7 @@ class DSGE_RAW(dict):
 
 
 def vix(self, variables, dontfail=False):
-    """Returns the indices of a list of variables
-    """
+    """Returns the indices of a list of variables"""
 
     if isinstance(variables, str):
         variables = [variables]
@@ -37,8 +36,7 @@ def vix(self, variables, dontfail=False):
 
 
 def oix(self, observables):
-    """Returns the indices of a list of observables
-    """
+    """Returns the indices of a list of observables"""
 
     if isinstance(observables, str):
         observables = [observables]
@@ -49,28 +47,36 @@ def oix(self, observables):
 @property
 def get_tune(self):
 
-    if hasattr(self, 'tune'):
+    if hasattr(self, "tune"):
         return self.tune
     else:
-        return self.fdict['tune']
+        return self.fdict["tune"]
 
 
-def get_chain(self, get_acceptance_fraction=False, get_log_prob=False, backend_file=None, flat=None):
+def get_chain(
+    self,
+    get_acceptance_fraction=False,
+    get_log_prob=False,
+    backend_file=None,
+    flat=None,
+):
 
     if not backend_file:
-        if hasattr(self, 'sampler'):
+        if hasattr(self, "sampler"):
             reader = self.sampler
-        elif 'backend_file' in self.fdict.keys():
-            backend_file = str(self.fdict['backend_file'])
+        elif "backend_file" in self.fdict.keys():
+            backend_file = str(self.fdict["backend_file"])
         else:
-            backend_file = os.path.join(self.path, self.name+'_sampler.h5')
+            backend_file = os.path.join(self.path, self.name + "_sampler.h5")
 
     if backend_file:
         if not os.path.exists(backend_file):
             raise NameError(
-                "A backend file named `%s` could not be found." % backend_file)
+                "A backend file named `%s` could not be found." % backend_file
+            )
 
         import emcee
+
         reader = emcee.backends.HDFBackend(backend_file, read_only=True)
 
     if get_acceptance_fraction:
@@ -88,16 +94,15 @@ def get_chain(self, get_acceptance_fraction=False, get_log_prob=False, backend_f
 
 
 def get_log_prob(self, **args):
-    """Get the log likelihoods in the chain
-    """
+    """Get the log likelihoods in the chain"""
     # just a wrapper
     return get_chain(self, get_log_prob=True, **args)
 
 
 def write_yaml(self, filename):
 
-    if filename[-5:] != '.yaml':
-        filename = filename + '.yaml'
+    if filename[-5:] != ".yaml":
+        filename = filename + ".yaml"
 
     f = open(filename, "w+")
 
@@ -113,40 +118,40 @@ def save_meta(self, filename=None, verbose=True):
 
     import os
 
-    filename = filename or os.path.join(self.path, self.name + '_meta')
+    filename = filename or os.path.join(self.path, self.name + "_meta")
 
-    objs = 'description', 'backend_file', 'tune', 'name'
+    objs = "description", "backend_file", "tune", "name"
 
     for o in objs:
         if hasattr(self, o):
-            exec('self.fdict[o] = self.'+str(o))
+            exec("self.fdict[o] = self." + str(o))
 
-    if hasattr(self, 'filter'):
-        self.fdict['filter_R'] = self.filter.R
-        self.fdict['filter_P'] = self.filter.P
+    if hasattr(self, "filter"):
+        self.fdict["filter_R"] = self.filter.R
+        self.fdict["filter_P"] = self.filter.P
 
-    self.fdict['cmaes_history'] = np.array(
-        self.fdict.get('cmaes_history'), dtype='object')
+    self.fdict["cmaes_history"] = np.array(
+        self.fdict.get("cmaes_history"), dtype="object"
+    )
 
     np.savez_compressed(filename, **self.fdict)
 
     if verbose:
-        print('[save_meta:]'.ljust(15, ' ') +
-              " Metadata saved as '%s'" % filename)
+        print("[save_meta:]".ljust(15, " ") + " Metadata saved as '%s'" % filename)
 
     return
 
 
-def save_rdict(self, rdict, path=None, suffix='', verbose=True):
+def save_rdict(self, rdict, path=None, suffix="", verbose=True):
     """Save dictionary of results
 
-    The idea is to keep meta data (the model, setup, ...) and the results obtained (chains, smoothed residuals, ...) separate. 
+    The idea is to keep meta data (the model, setup, ...) and the results obtained (chains, smoothed residuals, ...) separate.
     """
 
     if not isinstance(path, str):
-        path = self.name + '_res'
+        path = self.name + "_res"
 
-    if path[-4:] == '.npz':
+    if path[-4:] == ".npz":
         path = path[:-4]
 
     if not os.path.isabs(path):
@@ -155,24 +160,25 @@ def save_rdict(self, rdict, path=None, suffix='', verbose=True):
     np.savez_compressed(path + suffix, **rdict)
 
     if verbose:
-        print('[save_rdict:]'.ljust(15, ' ') +
-              " Results saved as '%s'" % (path + suffix))
+        print(
+            "[save_rdict:]".ljust(15, " ") + " Results saved as '%s'" % (path + suffix)
+        )
     return
 
 
-def load_rdict(self, path=None, suffix=''):
+def load_rdict(self, path=None, suffix=""):
     """Load stored dictionary of results
 
     The idea is to keep meta data (the model, setup, ...) and the results obtained (chains, smoothed residuals, ...) separate. `save_rdict` suggests some standard conventions.
     """
 
     if path is None:
-        path = self.name + '_res'
+        path = self.name + "_res"
 
     path += suffix
 
-    if path[-4] != '.npz':
-        path += '.npz'
+    if path[-4] != ".npz":
+        path += ".npz"
 
     if not os.path.isabs(path):
         path = os.path.join(self.path, path)
@@ -183,46 +189,48 @@ def load_rdict(self, path=None, suffix=''):
 def traceplot_m(self, chain=None, **args):
 
     if chain is None:
-        if 'kdes_chain' in self.fdict.keys():
-            chain = self.fdict['kdes_chain']
-            args['tune'] = int(chain.shape[0]/5)
+        if "kdes_chain" in self.fdict.keys():
+            chain = self.fdict["kdes_chain"]
+            args["tune"] = int(chain.shape[0] / 5)
         else:
             chain = self.get_chain()
-            args['tune'] = self.get_tune
+            args["tune"] = self.get_tune
 
-    return traceplot(chain, varnames=self.fdict['prior_names'], **args)
+    return traceplot(chain, varnames=self.fdict["prior_names"], **args)
 
 
 def posteriorplot_m(self, **args):
 
     tune = self.get_tune
 
-    return posteriorplot(self.get_chain(), varnames=self.fdict['prior_names'], tune=tune, **args)
+    return posteriorplot(
+        self.get_chain(), varnames=self.fdict["prior_names"], tune=tune, **args
+    )
 
 
 def mode_summary(self, data_cmaes=None, verbose=True):
-    """Create a summary of the different results for the mode
-    """
+    """Create a summary of the different results for the mode"""
 
     df_inp = {}
 
     try:
-        df_inp['mcmc: mode'] = list(
-            self.fdict['mcmc_mode_x']) + [float(self.fdict['mcmc_mode_f'])]
+        df_inp["mcmc: mode"] = list(self.fdict["mcmc_mode_x"]) + [
+            float(self.fdict["mcmc_mode_f"])
+        ]
     except KeyError:
         pass
 
     try:
-        data_cmaes = data_cmaes or self.fdict['cmaes_history']
+        data_cmaes = data_cmaes or self.fdict["cmaes_history"]
         f_cmaes, x_cmaes = data_cmaes[:2]
 
         for s, p in enumerate(x_cmaes):
-            df_inp['run %s: mode' % s] = list(p) + [f_cmaes[s]]
+            df_inp["run %s: mode" % s] = list(p) + [f_cmaes[s]]
     except (TypeError, KeyError, IndexError):
         pass
 
     df = pd.DataFrame(df_inp)
-    df.index = self.prior_names + ['loglike']
+    df.index = self.prior_names + ["loglike"]
 
     if verbose:
         print(df.round(3))
@@ -230,13 +238,22 @@ def mode_summary(self, data_cmaes=None, verbose=True):
     return df
 
 
-def mcmc_summary(self, chain=None, tune=None, calc_mdd=True, calc_ll_stats=False, calc_maf=True, out=print, verbose=True, **args):
+def mcmc_summary(
+    self,
+    chain=None,
+    tune=None,
+    calc_mdd=True,
+    calc_ll_stats=False,
+    calc_maf=True,
+    out=print,
+    verbose=True,
+    **args
+):
 
     try:
         chain = self.get_chain() if chain is None else chain
     except AttributeError:
-        raise AttributeError('[summary:]'.ljust(
-            15, ' ') + "No chain to be found...")
+        raise AttributeError("[summary:]".ljust(15, " ") + "No chain to be found...")
 
     tune = tune or self.get_tune
 
@@ -253,25 +270,20 @@ def mcmc_summary(self, chain=None, tune=None, calc_mdd=True, calc_ll_stats=False
         out(res.round(3))
 
         if calc_mdd:
-            out('Marginal data density:' +
-                str(mdd(self, tune=tune).round(4)).rjust(16))
+            out("Marginal data density:" + str(mdd(self, tune=tune).round(4)).rjust(16))
         if calc_ll_stats:
 
             max_lprob = lprobs.max()
             max_lprior = self.lprior(list(mode_x))
-            max_llike = (max_lprob - max_lprior) / \
-                self.temp if self.temp else np.nan
+            max_llike = (max_lprob - max_lprior) / self.temp if self.temp else np.nan
 
-            out('Max posterior density:' + str(np.round(max_lprob, 4)).rjust(16))
-            out('Corresponding likelihood:' +
-                str(np.round(max_llike, 4)).rjust(13))
-            out('Corresponding prior density:' +
-                str(np.round(max_lprior, 4)).rjust(10))
+            out("Max posterior density:" + str(np.round(max_lprob, 4)).rjust(16))
+            out("Corresponding likelihood:" + str(np.round(max_llike, 4)).rjust(13))
+            out("Corresponding prior density:" + str(np.round(max_lprior, 4)).rjust(10))
         if calc_maf:
 
             acs = get_chain(self, get_acceptance_fraction=True)[-tune:]
-            out('Mean acceptance fraction:' +
-                str(np.mean(acs).round(3)).rjust(13))
+            out("Mean acceptance fraction:" + str(np.mean(acs).round(3)).rjust(13))
 
     return res
 
@@ -279,7 +291,7 @@ def mcmc_summary(self, chain=None, tune=None, calc_mdd=True, calc_ll_stats=False
 def posterior2csv(self, path=None, tune=None, **args):
 
     tune = tune or self.get_tune
-    path = path or os.path.join(self.path, self.name+'_posterior.csv')
+    path = path or os.path.join(self.path, self.name + "_posterior.csv")
 
     chain = self.get_chain()
     post = chain[-tune:].reshape(-1, chain.shape[-1])
@@ -295,28 +307,28 @@ def info_m(self, verbose=True, **args):
     try:
         name = self.name
     except AttributeError:
-        name = self.fdict['name']
+        name = self.fdict["name"]
 
     try:
         description = self.description
     except AttributeError:
-        description = self.fdict['description']
+        description = self.fdict["description"]
 
     try:
-        dtime = str(self.fdict['datetime'])
+        dtime = str(self.fdict["datetime"])
     except KeyError:
-        dtime = ''
+        dtime = ""
 
-    res = 'Title: %s\n' % name
-    res += 'Date: %s\n' % dtime if dtime else ''
-    res += 'Description: %s\n' % description
+    res = "Title: %s\n" % name
+    res += "Date: %s\n" % dtime if dtime else ""
+    res += "Description: %s\n" % description
 
     try:
         cshp = self.get_chain().shape
         tune = self.get_tune
-        res += 'Parameters: %s\n' % cshp[2]
-        res += 'Chains: %s\n' % cshp[1]
-        res += 'Last %s of %s samples\n' % (tune, cshp[0])
+        res += "Parameters: %s\n" % cshp[2]
+        res += "Chains: %s\n" % cshp[1]
+        res += "Last %s of %s samples\n" % (tune, cshp[0])
     except (AttributeError, KeyError):
         pass
 
@@ -346,12 +358,12 @@ def load_data(self, df, start=None, end=None):
     import cloudpickle as cpickle
 
     if not isinstance(df, pd.DataFrame):
-        raise TypeError('Type of input data must be a `pandas.DataFrame`.')
+        raise TypeError("Type of input data must be a `pandas.DataFrame`.")
 
     if self is not None:
         for o in self.observables:
             if str(o) not in df.keys():
-                raise KeyError('%s is not in the data!' % o)
+                raise KeyError("%s is not in the data!" % o)
 
         d = df[self.observables]
 
@@ -364,15 +376,14 @@ def load_data(self, df, start=None, end=None):
     d = d.loc[start:end]
 
     self.data = d
-    self.fdict['data'] = cpickle.dumps(d, protocol=4)
-    self.fdict['obs'] = self.observables
+    self.fdict["data"] = cpickle.dumps(d, protocol=4)
+    self.fdict["obs"] = self.observables
 
     return d
 
 
 def get_sample(self, size, chain=None):
-    """Get a (preferably recent) sample from the chain
-    """
+    """Get a (preferably recent) sample from the chain"""
 
     chain = None or self.get_chain()
     clen, nwalks, npar = chain.shape
@@ -382,7 +393,7 @@ def get_sample(self, size, chain=None):
         raise Exception("Requested sample size is larger than chain")
 
     sample = chain[:, -recent, :].reshape(-1, npar)
-    res = np.random.choice(np.arange(recent*nwalks), size, False)
+    res = np.random.choice(np.arange(recent * nwalks), size, False)
 
     return sample[res]
 

@@ -15,12 +15,22 @@ from .engine import *
 from decimal import Decimal
 
 
-def t_func(self, state, shocks=None, set_k=None, return_flag=None, return_k=False, get_obs=False, linear=False, verbose=False):
+def t_func(
+    self,
+    state,
+    shocks=None,
+    set_k=None,
+    return_flag=None,
+    return_k=False,
+    get_obs=False,
+    linear=False,
+    verbose=False,
+):
     """transition function
 
     Parameters
     ----------
-    state : array 
+    state : array
         full state in y-space
     shocks : array, optional
         shock vector. If None, zero vector will be assumed (default)
@@ -63,14 +73,29 @@ def t_func(self, state, shocks=None, set_k=None, return_flag=None, return_k=Fals
     if return_flag is None:
         return_flag = True
 
-    pobs, q, l, k, flag = t_func_jit(pmat, pterm, qmat[:, :, :-dimeps], qterm[..., :-dimeps],
-                                     bmat, bterm, x_bar, *self.hx, state[-dimq+dimeps:], shocks, set_l, set_k, get_obs)
+    pobs, q, l, k, flag = t_func_jit(
+        pmat,
+        pterm,
+        qmat[:, :, :-dimeps],
+        qterm[..., :-dimeps],
+        bmat,
+        bterm,
+        x_bar,
+        *self.hx,
+        state[-dimq + dimeps :],
+        shocks,
+        set_l,
+        set_k,
+        get_obs
+    )
 
     newstate = (q, pobs) if get_obs else np.hstack((pobs, q))
 
     if verbose:
-        print('[t_func:]'.ljust(15, ' ') +
-              'Transition function took %.2Es.' % Decimal(time.time() - st))
+        print(
+            "[t_func:]".ljust(15, " ")
+            + "Transition function took %.2Es." % Decimal(time.time() - st)
+        )
 
     if return_k:
         return newstate, (l, k), flag
@@ -95,21 +120,29 @@ def o_func(self, state, covs=None, pars=None):
         obs = []
         for sti, par in zip(state, pars):
             self.set_par(par, get_hx_only=True)
-            ob = sti[:, :self.dimp] @ self.hx[0].T + \
-                sti[:, self.dimp:] @ self.hx[1].T + self.hx[2]
+            ob = (
+                sti[:, : self.dimp] @ self.hx[0].T
+                + sti[:, self.dimp :] @ self.hx[1].T
+                + self.hx[2]
+            )
             obs.append(ob)
 
         return np.array(obs)
 
     try:
-        obs = state[..., :self.dimp] @ self.hx[0].T + \
-            state[..., self.dimp:] @ self.hx[1].T + self.hx[2]
+        obs = (
+            state[..., : self.dimp] @ self.hx[0].T
+            + state[..., self.dimp :] @ self.hx[1].T
+            + self.hx[2]
+        )
     except ValueError as e:
         raise ValueError(
-            str(e) + ' you probably want to use the filter/`load_estim` with `reduced_form=False`.')
+            str(e)
+            + " you probably want to use the filter/`load_estim` with `reduced_form=False`."
+        )
 
     if np.ndim(state) <= 1:
-        data = self.data.index if hasattr(self, 'data') else None
+        data = self.data.index if hasattr(self, "data") else None
         obs = pd.DataFrame(obs, index=data, columns=self.observables)
 
     if covs is None:
@@ -117,15 +150,27 @@ def o_func(self, state, covs=None, pars=None):
 
     var = np.diagonal(covs, axis1=1, axis2=2)
     std = np.sqrt(var)
-    iv95 = np.stack((state - 1.96*std, state, state + 1.96*std))
+    iv95 = np.stack((state - 1.96 * std, state, state + 1.96 * std))
 
     std_obs = (np.hstack((self.hx[0], self.hx[1])) @ std.T).T
-    iv95_obs = np.stack((obs - 1.96*std_obs, obs, obs + 1.96*std_obs))
+    iv95_obs = np.stack((obs - 1.96 * std_obs, obs, obs + 1.96 * std_obs))
 
     return iv95_obs, iv95
 
 
-def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, set_k=False, force_init_equil=None, verbose=True, debug=False, **args):
+def irfs(
+    self,
+    shocklist,
+    pars=None,
+    state=None,
+    T=30,
+    linear=False,
+    set_k=False,
+    force_init_equil=None,
+    verbose=True,
+    debug=False,
+    **args
+):
     """Simulate impulse responses
 
     Parameters
@@ -155,10 +200,13 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, set_k=False
         force_init_equil = not bool(np.any(set_k))
 
     if not isinstance(shocklist, list):
-        shocklist = [shocklist, ]
+        shocklist = [
+            shocklist,
+        ]
 
-    if hasattr(self, 'pool'):
+    if hasattr(self, "pool"):
         from .estimation import create_pool
+
         create_pool(self)
 
     st = time.time()
@@ -173,7 +221,7 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, set_k=False
         if isinstance(vec, str):
             vec = (vec, 1, 0)
         elif len(vec) == 2:
-            vec += 0,
+            vec += (0,)
         new_shocklist.append(vec)
 
     pickled_self = dill.dumps(self, recurse=True)
@@ -215,42 +263,58 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, set_k=False
 
             # force_init_equil will force recalculation of l,k only if the shock vec is not empty
             if force_init_equil and not np.any(shk_vec):
-                set_k_eff = (l-1, k) if l else (l, max(k-1, 0))
+                set_k_eff = (l - 1, k) if l else (l, max(k - 1, 0))
 
                 _, (l_endo, k_endo), flag = pelf.t_func(
-                    st_vec[-(pelf.dimq-pelf.dimeps):], shk_vec, set_k=None, linear=linear, return_k=True)
+                    st_vec[-(pelf.dimq - pelf.dimeps) :],
+                    shk_vec,
+                    set_k=None,
+                    linear=linear,
+                    return_k=True,
+                )
 
                 multflag = l_endo != set_k_eff[0] or k_endo != set_k_eff[1]
                 supermultflag |= multflag
 
                 if verbose > 1 and multflag:
-                    print('[irfs:]'.ljust(
-                        15, ' ') + 'Multiplicity found in period %s: new eql. %s coexits with old eql. %s.' % (t, (l_endo, k_endo), set_k_eff))
+                    print(
+                        "[irfs:]".ljust(15, " ")
+                        + "Multiplicity found in period %s: new eql. %s coexits with old eql. %s."
+                        % (t, (l_endo, k_endo), set_k_eff)
+                    )
 
             elif set_k is None:
                 set_k_eff = None
             elif isinstance(set_k, tuple):
                 set_l_eff, set_k_eff = set_k
-                if set_l_eff-t >= 0:
-                    set_k_eff = set_l_eff-t, set_k_eff
+                if set_l_eff - t >= 0:
+                    set_k_eff = set_l_eff - t, set_k_eff
                 else:
-                    set_k_eff = 0, max(set_k_eff+set_l_eff-t, 0)
+                    set_k_eff = 0, max(set_k_eff + set_l_eff - t, 0)
             elif set_k:
-                set_k_eff = 0, max(set_k-t, 0)
+                set_k_eff = 0, max(set_k - t, 0)
             else:
                 set_k_eff = set_k
 
             if set_k_eff:
                 if set_k_eff[0] > l_max or set_k_eff[1] > k_max:
                     raise IndexError(
-                        'set_k exceeds l_max (%s vs. %s).' % (set_k_eff, (l_max, k_max)))
+                        "set_k exceeds l_max (%s vs. %s)." % (set_k_eff, (l_max, k_max))
+                    )
 
             st_vec, (l, k), flag = pelf.t_func(
-                st_vec[-(pelf.dimq-pelf.dimeps):], shk_vec, set_k=set_k_eff, linear=linear, return_k=True)
+                st_vec[-(pelf.dimq - pelf.dimeps) :],
+                shk_vec,
+                set_k=set_k_eff,
+                linear=linear,
+                return_k=True,
+            )
 
             if flag and verbose > 1:
-                print('[irfs:]'.ljust(
-                    15, ' ') + 'No OBC solution found in period %s (error flag %s).' % (t, flag))
+                print(
+                    "[irfs:]".ljust(15, " ")
+                    + "No OBC solution found in period %s (error flag %s)." % (t, flag)
+                )
 
             supererrflag |= flag
 
@@ -269,26 +333,26 @@ def irfs(self, shocklist, pars=None, state=None, T=30, linear=False, set_k=False
 
     if verbose == 1:
         if np.any(flag):
-            print('[irfs:]'.ljust(14, ' ') +
-                  ' No OBC solution(s) found.')
+            print("[irfs:]".ljust(14, " ") + " No OBC solution(s) found.")
         elif np.any(multflag):
-            print('[irfs:]'.ljust(14, ' ') +
-                  ' Multiplicity/Multiplicities found.')
+            print("[irfs:]".ljust(14, " ") + " Multiplicity/Multiplicities found.")
 
     if verbose > 2:
-        print('[irfs:]'.ljust(15, ' ') + 'Simulation took ',
-              np.round((time.time() - st), 5), ' seconds.')
+        print(
+            "[irfs:]".ljust(15, " ") + "Simulation took ",
+            np.round((time.time() - st), 5),
+            " seconds.",
+        )
 
     return X, np.vstack((L, K)), flag
 
 
 def shock2state(self, shock):
-    """create state vector given shock and size
-    """
+    """create state vector given shock and size"""
 
     stype, ssize = shock[:2]
     state = np.zeros(self.dimq)
-    state[-self.dimeps:][list(self.shocks).index(stype)] = ssize
+    state[-self.dimeps :][list(self.shocks).index(stype)] = ssize
 
     return state
 
@@ -297,7 +361,7 @@ def shock2state(self, shock):
 def mask(self, verbose=False):
 
     if verbose:
-        print('[mask:]'.ljust(15, ' ') + 'Shocks:', self.shocks)
+        print("[mask:]".ljust(15, " ") + "Shocks:", self.shocks)
 
     msk = self.data.copy()
     msk[:] = np.nan
@@ -306,12 +370,25 @@ def mask(self, verbose=False):
         self.observables
     except AttributeError:
         raise AttributeError(
-            "Model not initialized. Try calling `set_par` first. Cheers.")
+            "Model not initialized. Try calling `set_par` first. Cheers."
+        )
 
     return msk.rename(columns=dict(zip(self.observables, self.shocks)))[:-1]
 
 
-def simulate(self, source=None, mask=None, pars=None, resid=None, init=None, operation=np.multiply, linear=False, debug=False, verbose=False, **args):
+def simulate(
+    self,
+    source=None,
+    mask=None,
+    pars=None,
+    resid=None,
+    init=None,
+    operation=np.multiply,
+    linear=False,
+    debug=False,
+    verbose=False,
+    **args
+):
     """Simulate time series given a series of exogenous innovations.
 
     Parameters
@@ -321,9 +398,9 @@ def simulate(self, source=None, mask=None, pars=None, resid=None, init=None, ope
         mask : array
             Mask for eps. Each non-None element will be replaced.
     """
-    pars = pars if pars is not None else source['pars']
-    resi = resid if resid is not None else source['resid']
-    init = init if init is not None else source['init']
+    pars = pars if pars is not None else source["pars"]
+    resi = resid if resid is not None else source["resid"]
+    init = init if init is not None else source["init"]
 
     sample = pars, resi, init
 
@@ -332,8 +409,9 @@ def simulate(self, source=None, mask=None, pars=None, resid=None, init=None, ope
 
     self.debug |= debug
 
-    if hasattr(self, 'pool'):
+    if hasattr(self, "pool"):
         from .estimation import create_pool
+
         create_pool(self)
 
     pickled_self = dill.dumps(self, recurse=True)
@@ -352,7 +430,8 @@ def simulate(self, source=None, mask=None, pars=None, resid=None, init=None, ope
             _, vv = pelf.set_par(par, return_vv=True, **args)
             if not np.all(vv == pelf.vv):
                 raise Exception(
-                    'The ordering of variables has changed given different parameters.')
+                    "The ordering of variables has changed given different parameters."
+                )
 
         X = [state]
         L, K = [], []
@@ -360,7 +439,8 @@ def simulate(self, source=None, mask=None, pars=None, resid=None, init=None, ope
         for eps_t in eps:
 
             state, (l, k), flag = pelf.t_func(
-                state, eps_t, return_k=True, linear=linear)
+                state, eps_t, return_k=True, linear=linear
+            )
 
             superflag |= flag
 
@@ -375,18 +455,24 @@ def simulate(self, source=None, mask=None, pars=None, resid=None, init=None, ope
         return X, LK, superflag
 
     wrap = tqdm.tqdm if verbose else (lambda x, **kwarg: x)
-    res = wrap(self.mapper(runner, zip(*sample)), unit=' sample(s)',
-               total=len(source['pars']), dynamic_ncols=True)
+    res = wrap(
+        self.mapper(runner, zip(*sample)),
+        unit=" sample(s)",
+        total=len(source["pars"]),
+        dynamic_ncols=True,
+    )
 
     X, LK, flags = map2arr(res)
 
     if verbose > 1:
-        print('[simulate:]'.ljust(15, ' ')+'Simulation took ',
-              time.time() - st, ' seconds.')
+        print(
+            "[simulate:]".ljust(15, " ") + "Simulation took ",
+            time.time() - st,
+            " seconds.",
+        )
 
     if np.any(flags) and verbose:
-        print('[simulate:]'.ljust(
-            15, ' ')+'No OBC solution found (at least once).')
+        print("[simulate:]".ljust(15, " ") + "No OBC solution found (at least once).")
 
     return X, (LK[..., 0, :], LK[..., 1, :]), flags
 
@@ -401,23 +487,25 @@ def traj(self, state, l=None, k=None, verbose=True):
 
         if verbose:
             if flag == 0:
-                meaning = ''
+                meaning = ""
             elif flag == 1:
-                meaning = ' (no solution)'
+                meaning = " (no solution)"
             elif flag == 2:
-                meaning = ' (no solution, k_max reached)'
+                meaning = " (no solution, k_max reached)"
 
-            print('[traj:]'.ljust(15, ' ') +
-                  'l=%s, k=%s, flag is %s%s.' % (l, k, flag, meaning))
+            print(
+                "[traj:]".ljust(15, " ")
+                + "l=%s, k=%s, flag is %s%s." % (l, k, flag, meaning)
+            )
 
-    if not hasattr(self, 'precalc_tmat'):
+    if not hasattr(self, "precalc_tmat"):
 
         fq1, fp1, fq0 = self.ff
         preprocess_tmats(self, fq1, fp1, fq0, verbose > 1)
 
     tmat, tterm = self.precalc_tmat
 
-    return tmat[:, l, k-1] @ state + tterm[:, l, k-1]
+    return tmat[:, l, k - 1] @ state + tterm[:, l, k - 1]
 
 
 def k_map(self, state, l=None, k=None, verbose=True):
@@ -432,18 +520,20 @@ def k_map(self, state, l=None, k=None, verbose=True):
 
         if verbose:
             if flag == 0:
-                meaning = ''
+                meaning = ""
             elif flag == 1:
-                meaning = ' (no solution)'
+                meaning = " (no solution)"
             elif flag == 2:
-                meaning = ' (no solution, k_max reached)'
+                meaning = " (no solution, k_max reached)"
 
-            print('[k_map:]'.ljust(15, ' ') +
-                  'l=%s, k=%s, flag is %s%s.' % (l, k, flag, meaning))
+            print(
+                "[k_map:]".ljust(15, " ")
+                + "l=%s, k=%s, flag is %s%s." % (l, k, flag, meaning)
+            )
     else:
         l = l or 0
 
-    if not hasattr(self, 'precalc_tmat'):
+    if not hasattr(self, "precalc_tmat"):
 
         fq1, fp1, fq0 = self.ff
         preprocess_tmats(self, fq1, fp1, fq0, verbose > 1)
@@ -451,8 +541,10 @@ def k_map(self, state, l=None, k=None, verbose=True):
     l_max, k_max = self.lks
     tmat, tterm = self.precalc_tmat
 
-    LS = np.array([tmat[i+k, i, k] @ state + tterm[i+k, i, k]
-                   for i in range(l_max)])
-    KS = np.array([tmat[l+i, l, i] @ state + tterm[l+i, l, i]
-                   for i in range(k_max)])
+    LS = np.array(
+        [tmat[i + k, i, k] @ state + tterm[i + k, i, k] for i in range(l_max)]
+    )
+    KS = np.array(
+        [tmat[l + i, l, i] @ state + tterm[l + i, l, i] for i in range(k_max)]
+    )
     return LS - x_bar, KS - x_bar
