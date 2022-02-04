@@ -36,13 +36,6 @@ Module Documentation
    :undoc-members:
    :show-inheritance:
 
-``pydsge.partfilt``
--------------------
-.. automodule:: pydsge.partfilt
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 ``pydsge.symbols``
 ------------------
 .. automodule:: pydsge.symbols
