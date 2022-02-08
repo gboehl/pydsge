@@ -375,6 +375,9 @@ def load_data(self, df, start=None, end=None):
 
     d = d.loc[start:end]
 
+    if np.any(d.isna()):
+        raise Exception("Data must not contain `NaN`s.")
+
     self.data = d
     self.fdict["data"] = cpickle.dumps(d, protocol=4)
     self.fdict["obs"] = self.observables
