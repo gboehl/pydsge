@@ -20,10 +20,10 @@ repos:
 #     rev: v2.6.0
 #     hooks:
 #     -   id: reorder-python-imports
--   repo: https://github.com/psf/black
-    rev: 21.8b0
+-   repo: https://github.com/pre-commit/mirrors-autopep8
+    rev: 'master'
     hooks:
-    -   id: black
+    -   id: autopep8
 #-   repo: https://github.com/asottile/blacken-docs
     #rev: v1.11.0
     #hooks:
