@@ -543,7 +543,7 @@ def mdd_lp(chain, lprobs, calc_hess=False):
     return mdd
 
 
-def mdd_mhm(chain, lprobs, alpha=0.05, verbose=False, debug=False):
+def mdd_mhm(chain, lprobs, pool=None, alpha=0.05, verbose=False, debug=False):
     """Approximate the marginal data density useing modified harmonic mean."""
 
     from grgrlib.stats import logpdf
@@ -572,14 +572,8 @@ def mdd_mhm(chain, lprobs, alpha=0.05, verbose=False, debug=False):
                 res[i] = -np.inf
         return res
 
-    if not debug:
-        if hasattr(self, "pool"):
-            from .estimation import create_pool
-
-            create_pool(self)
-
-        nbatches = self.pool.ncpus
-
+    if not debug and pool is not None:
+        nbatches = pool.ncpus
         batches = pool.imap(runner, np.array_split(chain, nbatches))
         mls = np.vstack(list(batches))
     else:
