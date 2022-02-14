@@ -26,7 +26,7 @@ Installing the repo version is as simple as
 Documentation
 -------------
 
-There is some `preliminary documentation <https://pydsge.readthedocs.io/en/latest/index.html>`_ out there.
+There is some `documentation <https://pydsge.readthedocs.io/en/latest/index.html>`_ out there.
 
 - `Installation Guide <https://pydsge.readthedocs.io/en/latest/installation_guide.html>`_
 - `Getting Started <https://pydsge.readthedocs.io/en/latest/getting_started.html>`_

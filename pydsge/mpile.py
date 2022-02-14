@@ -27,7 +27,7 @@ def posterior_sampler(self, nsamples, seed=0, verbose=True):
     import random
 
     random.seed(seed)
-    sample = self.get_chain()[-self.get_tune :]
+    sample = self.get_chain()[-self.get_tune:]
     sample = sample.reshape(-1, sample.shape[(-1)])
     sample = random.choices(sample, k=nsamples)
     return sample
@@ -118,7 +118,8 @@ def prior_sampler(
                     ]
 
                     if test_lprob:
-                        draw_prob = pelf.lprob(pdraw, linear=None, verbose=verbose > 1)
+                        draw_prob = pelf.lprob(
+                            pdraw, linear=None, verbose=verbose > 1)
                         done = not np.isinf(draw_prob)
                     else:
                         pelf.set_par(pdraw)
@@ -205,7 +206,8 @@ def get_par(
         gen_sys(self, verbose=verbose, **args)
     pfnames, pffunc = self.parafunc
     pars_str = [str(p) for p in self.parameters]
-    pars = np.array(self.par) if hasattr(self, "par") else np.array(self.par_fix)
+    pars = np.array(self.par) if hasattr(
+        self, "par") else np.array(self.par_fix)
     if npar is not None:
         if len(npar) != len(self.par_fix):
             pars[self.prior_arg] = npar
@@ -273,9 +275,10 @@ def get_par(
             elif dummy == "prior_mean":
                 par_cand = []
                 for pp in self.prior.keys():
-                    if self.prior[pp][3] == "uniform":
+                    if "uniform" in self.prior[pp]:
                         par_cand.append(
-                            0.5 * self.prior[pp][(-2)] + 0.5 * self.prior[pp][(-1)]
+                            0.5 * self.prior[pp][(-2)] +
+                            0.5 * self.prior[pp][(-1)]
                         )
                     else:
                         par_cand.append(self.prior[pp][(-2)])
@@ -286,9 +289,10 @@ def get_par(
                     if self.prior[pp][3] == "inv_gamma_dynare":
                         par_cand.append(self.prior[pp][(-2)] * 10)
                     else:
-                        if self.prior[pp][3] == "uniform":
+                        if "uniform" in self.prior[pp]:
                             par_cand.append(
-                                0.5 * self.prior[pp][(-2)] + 0.5 * self.prior[pp][(-1)]
+                                0.5 * self.prior[pp][(-2)] +
+                                0.5 * self.prior[pp][(-1)]
                             )
                         else:
                             par_cand.append(self.prior[pp][(-2)])
@@ -320,11 +324,13 @@ def get_par(
         return (pdict, pfdict)
     if asdict:
         return dict(
-            zip(np.array(pars_str)[self.prior_arg], np.round(par_cand, roundto))
+            zip(np.array(pars_str)[self.prior_arg],
+                np.round(par_cand, roundto))
         )
     if nsamples > 1:
         if dummy not in ("prior", "post", "posterior"):
-            par_cand = par_cand * (1 + 0.001 * np.random.randn(nsamples, len(par_cand)))
+            par_cand = par_cand * \
+                (1 + 0.001 * np.random.randn(nsamples, len(par_cand)))
     return par_cand
 
 
@@ -366,7 +372,8 @@ def set_par(
 
     pfnames, pffunc = self.parafunc
     pars_str = [str(p) for p in self.parameters]
-    par = np.array(self.par) if hasattr(self, "par") else np.array(self.par_fix)
+    par = np.array(self.par) if hasattr(
+        self, "par") else np.array(self.par_fix)
 
     if setpar is None:
         if dummy is None:
@@ -397,7 +404,8 @@ def set_par(
             "Can not set parameter '%s' that is a function of other parameters." % dummy
         )
     else:
-        raise SyntaxError("Parameter '%s' is not defined for this model." % dummy)
+        raise SyntaxError(
+            "Parameter '%s' is not defined for this model." % dummy)
 
     gen_sys(self, par=list(par), verbose=verbose, **args)
 
@@ -408,7 +416,8 @@ def set_par(
     if verbose > 1:
         pdict = dict(zip(pars_str, np.round(self.par, roundto)))
         pfdict = dict(zip(pfnames, np.round(pffunc(self.par), roundto)))
-        print("[set_par:]".ljust(15, " ") + " Parameter(s):\n%s\n%s" % (pdict, pfdict))
+        print("[set_par:]".ljust(15, " ") +
+              " Parameter(s):\n%s\n%s" % (pdict, pfdict))
 
     if return_vv:
         return get_par(self), self.vv
