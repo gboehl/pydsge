@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: pydsge
-Version: 0.1.0
+Version: 0.1.1
 Summary: Solve, filter and estimate DSGE models with occasionaly binding constraints
 Home-page: https://pydsge.readthedocs.io/en/latest/index.html
 Author: Gregor Boehl
@@ -17,6 +17,9 @@ License-File: LICENSE
 pydsge
 ======
 
+.. image:: https://badge.fury.io/py/pydsge.svg
+    :target: https://badge.fury.io/py/pydsge
+
 .. image:: https://github.com/gboehl/pydsge/workflows/Continuous%20Integration%20Workflow/badge.svg?branch=master
     :target: https://github.com/gboehl/pydsge/actions?query=branch%3Aimplementing_CI
 
@@ -24,7 +27,7 @@ pydsge
 
 Contains the functions and classes for solving, filtering and estimating DSGE models at the ZLB (or with other occasionally binding constraints).
 
-A collection of models that can (and were) used with this package can be found in `another repo <https://github.com/gboehl/projectlib/tree/master/yamls>`_.
+A collection of models that can be (and were) used with this package can be found in `another repo <https://github.com/gboehl/projectlib/tree/master/yamls>`_.
 
 Installation
 -------------
@@ -38,7 +41,7 @@ Installing the repo version is as simple as
 Documentation
 -------------
 
-There is some `preliminary documentation <https://pydsge.readthedocs.io/en/latest/index.html>`_ out there.
+There is some `documentation <https://pydsge.readthedocs.io/en/latest/index.html>`_ out there.
 
 - `Installation Guide <https://pydsge.readthedocs.io/en/latest/installation_guide.html>`_
 - `Getting Started <https://pydsge.readthedocs.io/en/latest/getting_started.html>`_

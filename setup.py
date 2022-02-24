@@ -12,7 +12,7 @@ setup(
     long_description_content_type="text/x-rst",
     url="https://pydsge.readthedocs.io/en/latest/index.html",
     name="pydsge",
-    version="0.1.0",
+    version="0.1.1",
     author="Gregor Boehl",
     author_email="admin@gregorboehl.com",
     license="MIT",
