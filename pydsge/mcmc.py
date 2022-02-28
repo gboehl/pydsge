@@ -136,7 +136,8 @@ def mcmc(
             try:
                 backend.reset(nwalks, self.ndim)
             except KeyError as e:
-                raise KeyError(str(e) + ". Your `*.h5` file is likely to be damaged...")
+                raise KeyError(
+                    str(e) + ". Your `*.h5` file is likely to be damaged...")
     else:
         backend = None
 
@@ -174,7 +175,8 @@ def mcmc(
             lls = list(result)[1]
             maf = np.mean(sampler.acceptance_fraction[-update_freq:]) * 100
             pbar.set_description(
-                "[ll/MAF:%s(%1.0e)/%1.0f%%]" % (str(np.max(lls))[:7], np.std(lls), maf)
+                "[ll/MAF:%s(%1.0e)/%1.0f%%]" % (str(np.max(lls))
+                                                [:7], np.std(lls), maf)
             )
 
         if cnt and update_freq and not cnt % update_freq:
@@ -243,8 +245,8 @@ def mcmc(
     if not verbose:
         np.warnings.filterwarnings("default")
 
-    log_probs = sampler.get_log_prob()[-self.tune :]
-    chain = sampler.get_chain()[-self.tune :]
+    log_probs = sampler.get_log_prob()[-self.tune:]
+    chain = sampler.get_chain()[-self.tune:]
     chain = chain.reshape(-1, chain.shape[-1])
 
     arg_max = log_probs.argmax()
@@ -274,9 +276,9 @@ def mcmc(
 def tmcmc(
     self,
     nwalks,
-    nsteps = 200,
-    ntemps = 0,
-    target = None,
+    nsteps=200,
+    ntemps=0,
+    target=None,
     update_freq=False,
     test_lprob=False,
     verbose=True,
@@ -292,7 +294,7 @@ def tmcmc(
     nsteps : float
     """
 
-    from grgrlib.core import map2arr
+    from grgrlib import map2arr
     from .mpile import prior_sampler
 
     update_freq = update_freq if update_freq <= nsteps else False
@@ -302,7 +304,8 @@ def tmcmc(
         self, nwalks, test_lprob=test_lprob, verbose=max(verbose, 2 * debug)
     )
 
-    x = get_par(self, "prior_mean", asdict=False, full=False, verbose=verbose > 1)
+    x = get_par(self, "prior_mean", asdict=False,
+                full=False, verbose=verbose > 1)
 
     pbar = tqdm.tqdm(total=ntemps, unit="temp(s)", dynamic_ncols=True)
     tmp = 0
@@ -349,7 +352,8 @@ def tmcmc(
         )
 
         self.temp = tmp
-        self.mcmc_summary(tune=int(nsteps / 10), calc_mdd=False, calc_ll_stats=True)
+        self.mcmc_summary(tune=int(nsteps / 10),
+                          calc_mdd=False, calc_ll_stats=True)
 
         pbar.update()
 

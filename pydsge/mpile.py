@@ -73,7 +73,7 @@ def prior_sampler(
     """
 
     import tqdm
-    from grgrlib.core import map2arr
+    from grgrlib import map2arr
 
     l_max, k_max = lks or (None, None)
 

@@ -10,7 +10,7 @@ import pandas as pd
 import scipy.stats as ss
 import scipy.optimize as so
 from scipy.special import gammaln
-from grgrlib.core import timeprint
+from grgrlib import timeprint
 from grgrlib.stats import mode
 
 
@@ -105,10 +105,12 @@ def summary(self, store, pmode=None, bounds=None, alpha=0.1, top=None, show_prio
                 prior = prior[-3:]
             [lst.append(f(prior[j])) for j, f in enumerate(f_prs)]
             if bounds is not None:
-                [lst.append(f(np.array(bounds).T[i][j])) for j, f in enumerate(f_bnd)]
+                [lst.append(f(np.array(bounds).T[i][j]))
+                 for j, f in enumerate(f_bnd)]
 
         if bounds is not None:
-            [lst.append(pd.Series(s[i], name=n)) for s, n in zip(xs[:top], ns[:top])]
+            [lst.append(pd.Series(s[i], name=n))
+             for s, n in zip(xs[:top], ns[:top])]
         else:
             vals = store[:, :, i]
             [lst.append(f(vals, i)) for f in funcs]
@@ -224,13 +226,16 @@ def inv_gamma_spec(mu, sigma):
         )
         > 1e-7
     ):
-        raise ValueError("[inv_gamma_spec:] Failed in solving for the hyperparameters!")
+        raise ValueError(
+            "[inv_gamma_spec:] Failed in solving for the hyperparameters!")
     if abs(sigma - np.sqrt(s / (nu - 2) - mu * mu)) > 1e-7:
-        raise ValueError("[inv_gamma_spec:] Failed in solving for the hyperparameters!")
+        raise ValueError(
+            "[inv_gamma_spec:] Failed in solving for the hyperparameters!")
 
     return s, nu
 
 
+# TODO: use from emcwrap
 def get_prior(prior, verbose=False):
 
     prior_lst = []
@@ -294,7 +299,8 @@ def get_prior(prior, verbose=False):
             ig_res = so.root(targf, np.array([4, 4]), method="lm")
 
             if ig_res["success"] and np.allclose(targf(ig_res["x"]), 0):
-                prior_lst.append(ss.invgamma(ig_res["x"][0], scale=ig_res["x"][1]))
+                prior_lst.append(ss.invgamma(
+                    ig_res["x"][0], scale=ig_res["x"][1]))
             else:
                 raise ValueError(
                     "Can not find inverse gamma distribution with mean %s and std %s"
@@ -307,7 +313,8 @@ def get_prior(prior, verbose=False):
             prior_lst.append(ig)
 
         else:
-            raise NotImplementedError(" Distribution *not* implemented: ", str(ptype))
+            raise NotImplementedError(
+                " Distribution *not* implemented: ", str(ptype))
         if verbose:
             if len(dist) == 3:
                 print(
@@ -440,14 +447,16 @@ def mbcs_index(self, vd, verbose=True):
     for i in range(vvd.shape[0]):
         ind = np.unravel_index(vvd.argmax(), vvd.shape)
         vvd[ind] -= 1
-        mbs += np.sum(vvd[ind[0]] ** 2) + np.sum(vvd[:, ind[1]] ** 2) - vvd[ind] ** 2
+        mbs += np.sum(vvd[ind[0]] ** 2) + \
+            np.sum(vvd[:, ind[1]] ** 2) - vvd[ind] ** 2
         vvd = np.delete(vvd, ind[0], 0)
         vvd = np.delete(vvd, ind[1], 1)
 
     mbs /= 2 * (len(self.shocks) - 1)
 
     if verbose:
-        print("[mbs_index:]".ljust(15, " ") + " MBS index is %s." % mbs.round(3))
+        print("[mbs_index:]".ljust(15, " ") +
+              " MBS index is %s." % mbs.round(3))
 
     return mbs
 
@@ -479,7 +488,8 @@ def nhd(self, eps_dict, linear=False, **args):
         hd[i, :, 0, :] = state / self.dimeps
 
         for t, resid in enumerate(resids[i]):
-            state, (l, k), _ = self.t_func(state, resid, return_k=True, linear=linear)
+            state, (l, k), _ = self.t_func(
+                state, resid, return_k=True, linear=linear)
             means[i, t + 1, :] = state
 
             # for each shock:
@@ -488,7 +498,7 @@ def nhd(self, eps_dict, linear=False, **args):
                 eps = np.zeros(self.dimeps)
                 eps[s] = resid[s]
 
-                v = np.hstack((hd[i, s, t, -self.dimq + self.dimeps :], eps))
+                v = np.hstack((hd[i, s, t, -self.dimq + self.dimeps:], eps))
                 p = pmat[l, k] @ v
                 q = qmat[l, k] @ v
                 hd[i, s, t + 1, :] = np.hstack((p, q))
@@ -500,14 +510,16 @@ def nhd(self, eps_dict, linear=False, **args):
                 for s in range(len(self.shocks)):
                     # proportional to relative contribution to constaint spell duration
                     hd[i, s, t + 1, :] += (
-                        rcons[s] / rcons.sum() * np.hstack((pterm[l, k], qterm[l, k]))
+                        rcons[s] / rcons.sum() *
+                        np.hstack((pterm[l, k], qterm[l, k]))
                     )
 
     # as a list of DataFrames
     hd = [
         pd.DataFrame(h, index=self.data.index, columns=self.vv) for h in hd.mean(axis=0)
     ]
-    means = pd.DataFrame(means.mean(axis=0), index=self.data.index, columns=self.vv)
+    means = pd.DataFrame(means.mean(
+        axis=0), index=self.data.index, columns=self.vv)
 
     return hd, means
 
@@ -538,7 +550,8 @@ def mdd_lp(chain, lprobs, calc_hess=False):
 
     ndim = chain.shape[-1]
     log_det_inv_hess = np.log(np.linalg.det(inv_hess))
-    mdd = 0.5 * ndim * np.log(2 * np.pi) + 0.5 * log_det_inv_hess + lprobs.max()
+    mdd = 0.5 * ndim * np.log(2 * np.pi) + 0.5 * \
+        log_det_inv_hess + lprobs.max()
 
     return mdd
 

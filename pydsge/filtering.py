@@ -7,7 +7,7 @@ import numpy as np
 import scipy.linalg as sl
 import pandas as pd
 from econsieve import KalmanFilter, TEnKF
-from grgrlib.core import timeprint
+from grgrlib import timeprint
 from grgrlib.multiprocessing import serializer
 from econsieve.stats import logpdf
 
@@ -26,12 +26,15 @@ def get_p_init_lyapunov(self, Q):
     pmat = self.precalc_mat[0]
     qmat = self.precalc_mat[1]
 
-    F = np.vstack((pmat[1, 0][:, : -self.neps], qmat[1, 0][: -self.neps, : -self.neps]))
+    F = np.vstack((pmat[1, 0][:, : -self.neps], qmat[1, 0]
+                  [: -self.neps, : -self.neps]))
 
-    E = np.vstack((pmat[1, 0][:, -self.neps :], qmat[1, 0][: -self.neps, -self.neps :]))
+    E = np.vstack((pmat[1, 0][:, -self.neps:], qmat[1, 0]
+                  [: -self.neps, -self.neps:]))
     Q = E @ Q @ E.T
 
-    p4 = sl.solve_discrete_lyapunov(F[self.dimp :, :], Q[self.dimp :, self.dimp :])
+    p4 = sl.solve_discrete_lyapunov(
+        F[self.dimp:, :], Q[self.dimp:, self.dimp:])
 
     return F @ p4 @ F.T + Q
 
@@ -45,12 +48,12 @@ def get_eps_lin(self, x, xp, rcond=1e-14):
         pmat = self.precalc_mat[0]
         F = self.filter.F
         E = np.vstack(
-            (pmat[1, 0][:, -self.neps :], qmat[1, 0][: -self.neps, -self.neps :])
+            (pmat[1, 0][:, -self.neps:], qmat[1, 0][: -self.neps, -self.neps:])
         )
 
     else:
         F = qmat[1, 0][:, : -self.neps]
-        E = qmat[1, 0][:, -self.neps :]
+        E = qmat[1, 0][:, -self.neps:]
 
     return np.linalg.pinv(E, rcond) @ (x - F @ xp)
 
@@ -150,7 +153,8 @@ def run_filter(
         qmat = self.precalc_mat[1]
 
         F = np.vstack(
-            (pmat[1, 0][:, : -self.neps], qmat[1, 0][: -self.neps, : -self.neps])
+            (pmat[1, 0][:, : -self.neps], qmat[1, 0]
+             [: -self.neps, : -self.neps])
         )
         F = np.pad(F, ((0, 0), (dimp, 0)))
 
@@ -159,7 +163,8 @@ def run_filter(
 
         if self.filter.Q.shape[0] == self.neps:
             E = np.vstack(
-                (pmat[1, 0][:, -self.neps :], qmat[1, 0][: -self.neps, -self.neps :])
+                (pmat[1, 0][:, -self.neps:], qmat[1, 0]
+                 [: -self.neps, -self.neps:])
             )
             self.filter.Q = E @ self.filter.Q @ E.T
 
@@ -186,7 +191,7 @@ def run_filter(
         if self.filter.init_cov is None:
             qmat = self.precalc_mat[1]
             F = qmat[1, 0][: -self.neps, : -self.neps]
-            E = qmat[1, 0][: -self.neps, -self.neps :]
+            E = qmat[1, 0][: -self.neps, -self.neps:]
 
             Q = E @ self.filter.Q @ E.T
 
@@ -335,7 +340,8 @@ def extract(
 
     else:
         if self.filter.reduced_form:
-            self.create_filter(R=self.filter.R, N=self.filter.N, reduced_form=False)
+            self.create_filter(
+                R=self.filter.R, N=self.filter.N, reduced_form=False)
 
             print(
                 "[extract:]".ljust(15, " ")
@@ -360,7 +366,8 @@ def extract(
     dimeps = self.dimeps
     dimp = self.dimp
 
-    seeds = np.random.randint(2 ** 31, size=nsamples)  # win explodes with 2**32
+    # win explodes with 2**32
+    seeds = np.random.randint(2 ** 31, size=nsamples)
     sample = [(x, y) for x in sample for y in seeds]
 
     def runner(arg):
@@ -421,10 +428,12 @@ def extract(
             import sys
 
             raise type(raised_error)(
-                str(raised_error) + " (after %s unsuccessful attemps)." % (natt + 1)
+                str(raised_error) +
+                " (after %s unsuccessful attemps)." % (natt + 1)
             ).with_traceback(sys.exc_info()[2])
 
-    wrap = tqdm.tqdm if (verbose and len(sample) > 1) else (lambda x, **kwarg: x)
+    wrap = tqdm.tqdm if (verbose and len(sample) >
+                         1) else (lambda x, **kwarg: x)
     res = wrap(
         self.mapper(runner, sample),
         unit=" sample(s)",
