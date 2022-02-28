@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: pydsge
-Version: 0.1.1
+Version: 0.1.2
 Summary: Solve, filter and estimate DSGE models with occasionaly binding constraints
 Home-page: https://pydsge.readthedocs.io/en/latest/index.html
 Author: Gregor Boehl
