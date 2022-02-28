@@ -302,7 +302,7 @@ def extract(
 
     import tqdm
     import os
-    from grgrlib.core import map2arr
+    from grgrlib import map2arr
 
     if sample is None:
         if type(self).__name__ == "DSGE_DUMMY":
