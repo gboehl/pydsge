@@ -266,10 +266,8 @@ def get_par(
                 )
             elif dummy == "posterior_mean" or dummy == "post_mean":
                 par_cand = post_mean(self)
-            elif dummy == "mode":
+            elif dummy in ("mode", "mcmc_mode", "mode_mcmc", "posterior_mode", "post_mode"):
                 par_cand = self.fdict["mode_x"]
-            elif dummy in ("mcmc_mode", "mode_mcmc", "posterior_mode", "post_mode"):
-                par_cand = self.fdict["mcmc_mode_x"]
             elif dummy == "calib":
                 par_cand = self.par_fix[self.prior_arg].copy()
             elif dummy == "prior_mean":

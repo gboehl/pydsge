@@ -6,8 +6,13 @@ import pandas as pd
 import os
 import time
 import tqdm
+import emcee
 from datetime import datetime
+from grgrlib.multiprocessing import serializer
 from .mpile import get_par
+
+
+from .to_emcwrap import mcmc as mcmc_emcwrap
 
 
 def mcmc(
@@ -21,16 +26,12 @@ def mcmc(
     seed=None,
     backend=True,
     suffix=None,
-    linear=None,
     resume=False,
     append=False,
-    update_freq=None,
-    lprob_seed=None,
     report=None,
     maintenance_interval=10,
     verbose=False,
-    debug=False,
-    **samplerargs
+    **kwargs
 ):
     """Run the emcee ensemble MCMC sampler.
 
@@ -39,11 +40,7 @@ def mcmc(
 
     p0 : ndarray of initial states of the walkers in the parameterspace
     moves : emcee.moves object
-    lprob_seed : lprob_seed must be one of ('vec', 'rand', 'set').
     """
-
-    import emcee
-    from grgrlib.multiprocessing import serializer
 
     if not hasattr(self, "ndim"):
         # if it seems to be missing, lets do it.
@@ -56,12 +53,6 @@ def mcmc(
     self.tune = tune
     if tune is None:
         self.tune = int(nsteps * 1 / 5.0)
-
-    if update_freq is None:
-        update_freq = int(nsteps / 5.0)
-
-    if linear is None:
-        linear = self.filter.name == "KalmanFilter"
 
     if "description" in self.fdict.keys():
         self.description = self.fdict["description"]
@@ -76,16 +67,15 @@ def mcmc(
     if isinstance(temp, bool) and not temp:
         temp = 1
 
+    linear = self.filter.name == "KalmanFilter"
+
     def lprob(par):
         return lprob_global(
             par,
             linear=linear,
             verbose=verbose,
-            temp=temp,
-            lprob_seed=lprob_seed or "set",
+            temp=temp
         )
-
-    bnd = np.array(self.fdict["prior_bounds"])
 
     if self.pool:
         self.pool.clear()
@@ -141,132 +131,20 @@ def mcmc(
     else:
         backend = None
 
-    if resume:
-        nwalks = backend.get_chain().shape[1]
+    sampler, chain, log_probs = mcmc_emcwrap(lprob, p0, nwalks, nsteps, moves, tune, self.prior, backend=backend, resume=resume,
+                                             pool=self.pool, description=self.description, temp=temp, maintenance_interval=maintenance_interval, verbose=verbose, **kwargs)
 
-    if debug:
-        sampler = emcee.EnsembleSampler(nwalks, self.ndim, lprob)
-    else:
-        sampler = emcee.EnsembleSampler(
-            nwalks, self.ndim, lprob, moves=moves, pool=self.pool, backend=backend
-        )
-
-    if resume and not p0:
-        p0 = sampler.get_last_sample()
-
-    self.sampler = sampler
     self.temp = temp
-
-    if not verbose:
-        np.warnings.filterwarnings("ignore")
-
-    if verbose > 2:
-        report = report or print
-    else:
-        pbar = tqdm.tqdm(total=nsteps, unit="sample(s)", dynamic_ncols=True)
-        report = report or pbar.write
-
-    old_tau = np.inf
-    cnt = 0
-
-    for result in sampler.sample(p0, iterations=nsteps, **samplerargs):
-
-        if not verbose:
-            lls = list(result)[1]
-            maf = np.mean(sampler.acceptance_fraction[-update_freq:]) * 100
-            pbar.set_description(
-                "[ll/MAF:%s(%1.0e)/%1.0f%%]" % (str(np.max(lls))
-                                                [:7], np.std(lls), maf)
-            )
-
-        if cnt and update_freq and not cnt % update_freq:
-
-            prnttup = "[mcmc:]".ljust(
-                15, " "
-            ) + "Summary from last %s of %s iterations" % (update_freq, cnt)
-
-            if temp < 1:
-                prnttup += " with temp of %s%%" % (np.round(temp * 100, 6))
-
-            if self.description is not None:
-                prnttup += " (%s)" % str(self.description)
-
-            prnttup += ":"
-
-            report(prnttup)
-
-            sample = sampler.get_chain()
-
-            tau = emcee.autocorr.integrated_time(sample, tol=0)
-            min_tau = np.min(tau).round(2)
-            max_tau = np.max(tau).round(2)
-            dev_tau = np.max(np.abs(old_tau - tau) / tau)
-
-            tau_sign = ">" if max_tau > sampler.iteration / 50 else "<"
-            dev_sign = ">" if dev_tau > 0.01 else "<"
-
-            self.mcmc_summary(
-                chain=sample,
-                tune=update_freq,
-                calc_mdd=False,
-                calc_ll_stats=True,
-                out=lambda x: report(str(x)),
-            )
-
-            report(
-                "Convergence stats: tau is in (%s,%s) (%s%s) and change is %s (%s0.01)."
-                % (
-                    min_tau,
-                    max_tau,
-                    tau_sign,
-                    sampler.iteration / 50,
-                    dev_tau.round(3),
-                    dev_sign,
-                )
-            )
-
-        if cnt and update_freq and not (cnt + 1) % update_freq:
-            sample = sampler.get_chain()
-            old_tau = emcee.autocorr.integrated_time(sample, tol=0)
-
-        if not verbose:
-            pbar.update(1)
-
-        # avoid mem leakage
-        if cnt and not cnt % maintenance_interval:
-            self.pool.clear()
-
-        cnt += 1
-
-    pbar.close()
-    if self.pool:
-        self.pool.close()
-
-    if not verbose:
-        np.warnings.filterwarnings("default")
-
-    log_probs = sampler.get_log_prob()[-self.tune:]
-    chain = sampler.get_chain()[-self.tune:]
-    chain = chain.reshape(-1, chain.shape[-1])
-
-    arg_max = log_probs.argmax()
-    mode_f = log_probs.flat[arg_max]
-    mode_x = chain[arg_max].flatten()
+    self.sampler = sampler
 
     if temp == 1:
 
-        self.fdict["mcmc_mode_x"] = mode_x
-        self.fdict["mcmc_mode_f"] = mode_f
+        arg_max = log_probs.argmax()
+        mode_f = log_probs.flat[arg_max]
+        mode_x = chain[arg_max].flatten()
 
-        if "mode_f" in self.fdict.keys() and mode_f < self.fdict["mode_f"]:
-            print(
-                "[mcmc:]".ljust(15, " ")
-                + " New mode of %s is below old mode of %s. Rejecting..."
-                % (mode_f, self.fdict["mode_f"])
-            )
-        else:
-            self.fdict["mode_x"] = mode_x
-            self.fdict["mode_f"] = mode_f
+        self.fdict["mode_x"] = mode_x
+        self.fdict["mode_f"] = mode_f
 
     self.fdict["datetime"] = str(datetime.now())
 

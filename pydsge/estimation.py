@@ -89,7 +89,8 @@ def prep_estim(
 
     set_par(self, "prior_mean", verbose=verbose > 3, l_max=l_max, k_max=k_max)
 
-    self.create_filter(N=N, ftype="KalmanFilter" if linear else None, **filterargs)
+    self.create_filter(
+        N=N, ftype="KalmanFilter" if linear else None, **filterargs)
 
     if "filter_R" in self.fdict.keys():
         self.filter.R = self.fdict["filter_R"]
@@ -101,7 +102,8 @@ def prep_estim(
     # dry run before the fun beginns
     if np.isinf(get_ll(self, verbose=verbose > 3, dispatch=dispatch)):
         raise ValueError(
-            "[estimation:]".ljust(15, " ") + "likelihood of initial values is zero."
+            "[estimation:]".ljust(15, " ") +
+            "likelihood of initial values is zero."
         )
 
     if verbose:
@@ -162,7 +164,8 @@ def prep_estim(
 
             except Exception as err:
                 if verbose:
-                    print("[llike:]".ljust(15, " ") + " Failure. Error msg: %s" % err)
+                    print("[llike:]".ljust(15, " ") +
+                          " Failure. Error msg: %s" % err)
                     if verbose > 1:
                         pardict = get_par(self, full=False, asdict=True)
                         print(pardict)
@@ -182,8 +185,7 @@ def prep_estim(
     linear_pa = linear
 
     def lprob(
-        par, par_fix=par_fix, linear=None, verbose=verbose > 1, temp=1, lprob_seed="set"
-    ):
+            par, par_fix=par_fix, linear=None, verbose=verbose > 1, temp=1):
 
         lp = lprior(par)
 
@@ -198,22 +200,7 @@ def prep_estim(
         if verbose:
             st = time.time()
 
-        if lprob_seed in ("vec", "rand"):
-            seed_loc = sum(
-                p // 10 ** (int(np.log(abs(p)) / np.log(10)) - 9) for p in par
-            )
-            if lprob_seed == "rand":
-                seed_loc += np.random.randint(2 ** 31)  # win explodes with 2**32
-            seed_loc = int(seed_loc) % (2 ** 31)  # win explodes with 2**32
-
-        elif lprob_seed == "set":
-            seed_loc = seed
-        else:
-            raise NotImplementedError(
-                "`lprob_seed` must be one of `('vec', 'rand', 'set')`."
-            )
-
-        ll = llike(par, par_fix, linear, verbose, seed_loc) * temp if temp else 0
+        ll = llike(par, par_fix, linear, verbose, seed) * temp if temp else 0
 
         if np.isinf(ll):
             return ll

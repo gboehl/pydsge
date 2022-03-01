@@ -4,14 +4,14 @@
 import os
 import numpy as np
 import pandas as pd
-from .stats import summary, gfevd, mbcs_index, nhd, mdd
+from .stats import gfevd, mbcs_index, nhd, mdd
 from .plots import posteriorplot, traceplot
 from .mcmc import mcmc, tmcmc
-from .modesearch import cmaes
 from .filtering import *
 from .tools import *
 from .mpile import *
 from .estimation import *
+from .to_emcwrap import mcmc_summary as mcmc_summary_emcwrap
 
 
 class DSGE_RAW(dict):
@@ -130,14 +130,11 @@ def save_meta(self, filename=None, verbose=True):
         self.fdict["filter_R"] = self.filter.R
         self.fdict["filter_P"] = self.filter.P
 
-    self.fdict["cmaes_history"] = np.array(
-        self.fdict.get("cmaes_history"), dtype="object"
-    )
-
     np.savez_compressed(filename, **self.fdict)
 
     if verbose:
-        print("[save_meta:]".ljust(15, " ") + " Metadata saved as '%s'" % filename)
+        print("[save_meta:]".ljust(15, " ") +
+              " Metadata saved as '%s'" % filename)
 
     return
 
@@ -161,7 +158,8 @@ def save_rdict(self, rdict, path=None, suffix="", verbose=True):
 
     if verbose:
         print(
-            "[save_rdict:]".ljust(15, " ") + " Results saved as '%s'" % (path + suffix)
+            "[save_rdict:]".ljust(15, " ") +
+            " Results saved as '%s'" % (path + suffix)
         )
     return
 
@@ -208,84 +206,23 @@ def posteriorplot_m(self, **args):
     )
 
 
-def mode_summary(self, data_cmaes=None, verbose=True):
-    """Create a summary of the different results for the mode"""
-
-    df_inp = {}
-
-    try:
-        df_inp["mcmc: mode"] = list(self.fdict["mcmc_mode_x"]) + [
-            float(self.fdict["mcmc_mode_f"])
-        ]
-    except KeyError:
-        pass
-
-    try:
-        data_cmaes = data_cmaes or self.fdict["cmaes_history"]
-        f_cmaes, x_cmaes = data_cmaes[:2]
-
-        for s, p in enumerate(x_cmaes):
-            df_inp["run %s: mode" % s] = list(p) + [f_cmaes[s]]
-    except (TypeError, KeyError, IndexError):
-        pass
-
-    df = pd.DataFrame(df_inp)
-    df.index = self.prior_names + ["loglike"]
-
-    if verbose:
-        print(df.round(3))
-
-    return df
-
-
 def mcmc_summary(
     self,
     chain=None,
     tune=None,
-    calc_mdd=True,
-    calc_ll_stats=False,
-    calc_maf=True,
-    out=print,
-    verbose=True,
     **args
 ):
 
     try:
         chain = self.get_chain() if chain is None else chain
     except AttributeError:
-        raise AttributeError("[summary:]".ljust(15, " ") + "No chain to be found...")
+        raise AttributeError("[summary:]".ljust(
+            15, " ") + "No chain to be found...")
 
     tune = tune or self.get_tune
+    lprobs = self.get_log_prob()
 
-    chain = chain[-tune:]
-    nchain = chain.reshape(-1, chain.shape[-1])
-    lprobs = self.get_log_prob()[-tune:]
-    lprobs = lprobs.reshape(-1, lprobs.shape[-1])
-    mode_x = nchain[lprobs.argmax()]
-
-    res = summary(self, chain, mode_x, **args)
-
-    if verbose:
-
-        out(res.round(3))
-
-        if calc_mdd:
-            out("Marginal data density:" + str(mdd(self, tune=tune).round(4)).rjust(16))
-        if calc_ll_stats:
-
-            max_lprob = lprobs.max()
-            max_lprior = self.lprior(list(mode_x))
-            max_llike = (max_lprob - max_lprior) / self.temp if self.temp else np.nan
-
-            out("Max posterior density:" + str(np.round(max_lprob, 4)).rjust(16))
-            out("Corresponding likelihood:" + str(np.round(max_llike, 4)).rjust(13))
-            out("Corresponding prior density:" + str(np.round(max_lprior, 4)).rjust(10))
-        if calc_maf:
-
-            acs = get_chain(self, get_acceptance_fraction=True)[-tune:]
-            out("Mean acceptance fraction:" + str(np.mean(acs).round(3)).rjust(13))
-
-    return res
+    return mcmc_summary_emcwrap(chain[-tune:], lprobs[-tune:], priors=self.prior, acceptance_fraction=self.get_chain(get_acceptance_fraction=True), **args)
 
 
 def posterior2csv(self, path=None, tune=None, **args):
@@ -406,7 +343,6 @@ DSGE_RAW.oix = oix
 DSGE_RAW.get_tune = get_tune
 DSGE_RAW.save = save_meta
 DSGE_RAW.mapper = mapper
-DSGE_RAW.mode_summary = mode_summary
 DSGE_RAW.mcmc_summary = mcmc_summary
 DSGE_RAW.info = info_m
 DSGE_RAW.mdd = mdd
@@ -438,8 +374,6 @@ DSGE_RAW.tmcmc = tmcmc
 DSGE_RAW.prep_estim = prep_estim
 DSGE_RAW.load_estim = prep_estim
 # DSGE_RAW.lprob = lprob
-# from modesearch
-DSGE_RAW.cmaes = cmaes
 # from filter
 DSGE_RAW.create_filter = create_filter
 DSGE_RAW.get_p_init_lyapunov = get_p_init_lyapunov

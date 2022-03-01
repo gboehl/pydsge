@@ -1,7 +1,10 @@
 #!/bin/python
 # -*- coding: utf-8 -*-
 
+import emcee
+import tqdm
 import numpy as np
+import pandas as pd
 import scipy.stats as ss
 import scipy.optimize as so
 from scipy.special import gammaln
@@ -176,3 +179,266 @@ def inv_gamma_spec(mu, sigma):
             "[inv_gamma_spec:] Failed in solving for the hyperparameters!")
 
     return s, nu
+
+
+def summary(priors, store, pmode=None, bounds=None, alpha=0.1, top=None, show_prior=True):
+    # inspired by pymc3 because it looks really nice
+
+    if bounds is not None or isinstance(store, tuple):
+        xs, fs, ns = store
+        ns = ns.squeeze()
+        fas = (-fs[:, 0]).argsort()
+        xs = xs[fas]
+        fs = fs.squeeze()[fas]
+
+    f_prs = [
+        lambda x: pd.Series(x, name="distribution"),
+        lambda x: pd.Series(x, name="pst_mean"),
+        lambda x: pd.Series(x, name="sd/df"),
+    ]
+
+    f_bnd = [
+        lambda x: pd.Series(x, name="lbound"),
+        lambda x: pd.Series(x, name="ubound"),
+    ]
+
+    def mode_func(x, n):
+        return pmode[n] if pmode is not None else mode(x.flatten())
+
+    funcs = [
+        lambda x, n: pd.Series(np.mean(x), name="mean"),
+        lambda x, n: pd.Series(np.std(x), name="sd"),
+        lambda x, n: pd.Series(
+            mode_func(x, n), name="mode" if pmode is not None else "marg. mode"
+        ),
+        lambda x, n: _hpd_df(x, alpha),
+        lambda x, n: pd.Series(mc_error(x), name="mc_error"),
+    ]
+
+    var_dfs = []
+    for i, var in enumerate(priors):
+
+        lst = []
+        if show_prior:
+            prior = priors[var]
+            if len(prior) > 3:
+                prior = prior[-3:]
+            [lst.append(f(prior[j])) for j, f in enumerate(f_prs)]
+            if bounds is not None:
+                [lst.append(f(np.array(bounds).T[i][j]))
+                 for j, f in enumerate(f_bnd)]
+
+        if bounds is not None:
+            [lst.append(pd.Series(s[i], name=n))
+             for s, n in zip(xs[:top], ns[:top])]
+        else:
+            vals = store[:, :, i]
+            [lst.append(f(vals, i)) for f in funcs]
+        var_df = pd.concat(lst, axis=1)
+        var_df.index = [var]
+        var_dfs.append(var_df)
+
+    if bounds is not None:
+
+        lst = []
+
+        if show_prior:
+            [lst.append(f("")) for j, f in enumerate(f_prs)]
+            if bounds is not None:
+                [lst.append(f("")) for j, f in enumerate(f_bnd)]
+
+        [lst.append(pd.Series(s, name=n)) for s, n in zip(fs[:top], ns[:top])]
+        var_df = pd.concat(lst, axis=1)
+        var_df.index = ["loglike"]
+        var_dfs.append(var_df)
+
+    dforg = pd.concat(var_dfs, axis=0, sort=False)
+
+    return dforg
+
+
+def mcmc_summary(
+    chain,
+    lprobs,
+    priors,
+    acceptance_fraction=None,
+    out=print,
+    **args
+):
+
+    nchain = chain.reshape(-1, chain.shape[-1])
+    lprobs = lprobs.reshape(-1, lprobs.shape[-1])
+    mode_x = nchain[lprobs.argmax()]
+
+    res = summary(priors, chain, mode_x, **args)
+
+    out(res.round(3))
+
+    if acceptance_fraction is not None:
+
+        out("Mean acceptance fraction:" +
+            str(np.mean(acceptance_fraction).round(3)).rjust(13))
+
+    return res
+
+
+def mcmc(lprob, p0, nwalks, nsteps, moves, tune, priors, backend=None, update_freq=None, resume=False, pool=None, report=None, description=None, temp=1, maintenance_interval=10, debug=False, verbose=True, **kwargs):
+
+    ndim = len(priors)
+
+    if resume:
+        nwalks = backend.get_chain().shape[1]
+
+    if update_freq is None:
+        update_freq = nsteps // 5
+
+    if debug:
+        sampler = emcee.EnsembleSampler(nwalks, ndim, lprob)
+    else:
+        sampler = emcee.EnsembleSampler(
+            nwalks, ndim, lprob, moves=moves, pool=pool, backend=backend
+        )
+
+    if resume and not p0:
+        p0 = sampler.get_last_sample()
+
+    if not verbose:
+        np.warnings.filterwarnings("ignore")
+
+    if verbose > 2:
+        report = report or print
+    else:
+        pbar = tqdm.tqdm(total=nsteps, unit="sample(s)", dynamic_ncols=True)
+        report = report or pbar.write
+
+    old_tau = np.inf
+    cnt = 0
+
+    for result in sampler.sample(p0, iterations=nsteps, **kwargs):
+
+        if not verbose:
+            lls = list(result)[1]
+            maf = np.mean(sampler.acceptance_fraction[-update_freq:]) * 100
+            pbar.set_description(
+                "[ll/MAF:%s(%1.0e)/%1.0f%%]" % (str(np.max(lls))
+                                                [:7], np.std(lls), maf)
+            )
+
+        if cnt and update_freq and not cnt % update_freq:
+
+            prnttup = "[mcmc:]".ljust(
+                15, " "
+            ) + "Summary from last %s of %s iterations" % (update_freq, cnt)
+
+            if temp < 1:
+                prnttup += " with temp of %s%%" % (np.round(temp * 100, 6))
+
+            if description is not None:
+                prnttup += " (%s)" % str(description)
+
+            prnttup += ":"
+
+            report(prnttup)
+
+            sample = sampler.get_chain()
+            lprobs = sampler.get_log_prob(flat=True)
+            acfs = sampler.acceptance_fraction
+
+            tau = emcee.autocorr.integrated_time(sample, tol=0)
+            min_tau = np.min(tau).round(2)
+            max_tau = np.max(tau).round(2)
+            dev_tau = np.max(np.abs(old_tau - tau) / tau)
+
+            tau_sign = ">" if max_tau > sampler.iteration / 50 else "<"
+            dev_sign = ">" if dev_tau > 0.01 else "<"
+
+            mcmc_summary(
+                chain=sample[-update_freq:],
+                lprobs=lprobs[-update_freq:],
+                priors=priors,
+                acceptance_fraction=acfs[-update_freq:],
+                out=lambda x: report(str(x)),
+            )
+
+            report(
+                "Convergence stats: tau is in (%s,%s) (%s%s) and change is %s (%s0.01)."
+                % (
+                    min_tau,
+                    max_tau,
+                    tau_sign,
+                    sampler.iteration / 50,
+                    dev_tau.round(3),
+                    dev_sign,
+                )
+            )
+
+        if cnt and update_freq and not (cnt + 1) % update_freq:
+            sample = sampler.get_chain()
+            old_tau = emcee.autocorr.integrated_time(sample, tol=0)
+
+        if not verbose:
+            pbar.update(1)
+
+        # avoid mem leakage
+        if cnt and not cnt % maintenance_interval:
+            pool.clear()
+
+        cnt += 1
+
+    pbar.close()
+    if pool:
+        pool.close()
+
+    if not verbose:
+        np.warnings.filterwarnings("default")
+
+    log_probs = sampler.get_log_prob()[-tune:]
+    chain = sampler.get_chain()[-tune:]
+    chain = chain.reshape(-1, chain.shape[-1])
+
+    return sampler, chain, log_probs
+
+
+def _hpd_df(x, alpha):
+
+    cnames = [
+        "hpd_{0:g}".format(100 * alpha / 2),
+        "hpd_{0:g}".format(100 * (1 - alpha / 2)),
+    ]
+
+    sx = np.sort(x.flatten())
+    hpd_vals = np.array(calc_min_interval(sx, alpha)).reshape(1, -1)
+
+    return pd.DataFrame(hpd_vals, columns=cnames)
+
+
+def calc_min_interval(x, alpha):
+    """Internal method to determine the minimum interval of
+    a given width
+
+    Assumes that x is sorted numpy array.
+    """
+    n = len(x)
+    cred_mass = 1.0 - alpha
+
+    interval_idx_inc = int(np.floor(cred_mass * n))
+    n_intervals = n - interval_idx_inc
+    interval_width = x[interval_idx_inc:] - x[:n_intervals]
+
+    if len(interval_width) == 0:
+        # raise ValueError('Too few elements for interval calculation')
+        warnings.warn("Too few elements for interval calculation.")
+
+        return None, None
+
+    else:
+        min_idx = np.argmin(interval_width)
+        hdi_min = x[min_idx]
+        hdi_max = x[min_idx + interval_idx_inc]
+
+        return hdi_min, hdi_max
+
+
+def mc_error(x):
+    means = np.mean(x, 0)
+    return np.std(means) / np.sqrt(x.shape[0])
