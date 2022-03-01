@@ -6,6 +6,8 @@ import matplotlib.cm as cm
 from matplotlib.lines import Line2D
 import numpy as np
 
+from .to_emcwrap import *
+
 
 def fast_kde(x, bw=4.5):
     """
@@ -48,8 +50,8 @@ def fast_kde(x, bw=4.5):
     kernel = gaussian(kern_nx, scotts_factor * std_x)
 
     npad = min(nx, 2 * kern_nx)
-    grid = np.concatenate([grid[npad:0:-1], grid, grid[nx : nx - npad : -1]])
-    density = convolve(grid, kernel, mode="same")[npad : npad + nx]
+    grid = np.concatenate([grid[npad:0:-1], grid, grid[nx: nx - npad: -1]])
+    density = convolve(grid, kernel, mode="same")[npad: npad + nx]
 
     norm_factor = n * dx * (2 * np.pi * std_x ** 2 * scotts_factor ** 2) ** 0.5
 
@@ -117,7 +119,7 @@ def traceplot(
     figsize=None,
     combined=False,
     plots_per_fig=3,
-    priors=None,
+    frozen_prior=None,
     draw_each_trace=True,
     bw=4.5,
     text_size=None,
@@ -133,10 +135,10 @@ def traceplot(
     width = trace.shape[0]
     tune = width - tune
 
-    iterablator = lambda x: [x] if len(x) - 1 else x
+    def iterablator(x): return [x] if len(x) - 1 else x
 
-    if priors is None:
-        priors = [None] * len(varnames)
+    if frozen_prior is None:
+        frozen_prior = [None] * len(varnames)
 
     custom_lines_hist = [
         Line2D([0], [0], linestyle="-", color="C0", lw=1),
@@ -175,7 +177,7 @@ def traceplot(
                 posterior,
                 ax=axs[-1][0],
                 bw=bw,
-                prior=priors[chunk + i],
+                prior=frozen_prior[chunk + i],
                 text_size=scale_text(figsize, text_size),
                 display_additinal_info=display_additinal_info,
                 **kwargs
@@ -184,7 +186,8 @@ def traceplot(
                 axs[-1][1].plot(
                     range(0, tune + 1), data[: tune + 1], c="maroon", alpha=0.03
                 )
-                axs[-1][1].plot(range(tune, width), data[tune:], c="C0", alpha=0.045)
+                axs[-1][1].plot(range(tune, width),
+                                data[tune:], c="C0", alpha=0.045)
                 axs[-1][1].plot(
                     [tune, tune],
                     [
@@ -268,7 +271,7 @@ def traceplot(
 
             subfigs[-1][i].suptitle(str(varnames[chunk + i]))
 
-        if priors[chunk] is not None:
+        if frozen_prior[chunk] is not None:
             axs[-1][0].legend(custom_lines_hist, ["Posterior", "Prior"])
             axs[-1][1].legend(custom_lines_trace, ["Burn-in", "Posterior"])
 
@@ -292,7 +295,7 @@ def plot_posterior_op(
 ):
     """Artist to draw posterior."""
 
-    from .stats import calc_min_interval as hpd
+    from .to_emcwrap import calc_min_interval as hpd
 
     def format_as_percent(x, round_to=0):
         return "{0:.{1:d}f}%".format(100 * x, round_to)
@@ -305,7 +308,8 @@ def plot_posterior_op(
             ref_val,
             format_as_percent(greater_than_ref_probability, 1),
         )
-        ax.axvline(ref_val, bottom=0.02, ymax=0.75, color="g", linewidth=4, alpha=0.65)
+        ax.axvline(ref_val, bottom=0.02, ymax=0.75,
+                   color="g", linewidth=4, alpha=0.65)
         ax.text(
             trace_values.mean(),
             plot_height * 0.6,
@@ -322,7 +326,8 @@ def plot_posterior_op(
             color="r",
             alpha=0.75,
         )
-        text_props = dict(size=text_size, horizontalalignment="center", color="r")
+        text_props = dict(
+            size=text_size, horizontalalignment="center", color="r")
         ax.text(rope[0], plot_height * 0.14, rope[0], **text_props)
         ax.text(rope[1], plot_height * 0.14, rope[1], **text_props)
 
@@ -330,7 +335,8 @@ def plot_posterior_op(
         if not point_estimate:
             return
         if point_estimate not in ("mode", "mean", "median"):
-            raise ValueError("Point Estimate should be in ('mode','mean','median')")
+            raise ValueError(
+                "Point Estimate should be in ('mode','mean','median')")
         if point_estimate == "mean":
             point_value = trace_values.mean()
         elif point_estimate == "mode":
@@ -451,6 +457,8 @@ def posteriorplot(
     text_size=None,
     ropep=None,
     ref_val=None,
+    round_to=3,
+    alpha_level=0.05,
     bw=4.5,
     ax=None,
     **kwargs
@@ -467,10 +475,10 @@ def posteriorplot(
     for ic in range(0, dim, plots_per_fig):
 
         if varnames is not None:
-            vnames_chunk = varnames[ic : ic + plots_per_fig]
+            vnames_chunk = varnames[ic: ic + plots_per_fig]
         else:
             vnames_chunk = [None] * min(plots_per_fig, dim - ic)
-        trace_chunk = trace[..., ic : ic + plots_per_fig]
+        trace_chunk = trace[..., ic: ic + plots_per_fig]
 
         def create_axes_grid(figsize, traces):
             l_trace = len(traces)

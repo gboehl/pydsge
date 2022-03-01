@@ -1,7 +1,8 @@
 #!/bin/python
 # -*- coding: utf-8 -*-
 
-from .to_emcwrap import get_prior, InvGammaDynare, inv_gamma_spec
+from .to_emcwrap import mdd_laplace, mdd_harmonic_mean
+from .to_emcwrap import InvGammaDynare, inv_gamma_spec, get_prior
 import warnings
 import os
 import time
@@ -211,84 +212,6 @@ def nhd(self, eps_dict, linear=False, **args):
     return hd, means
 
 
-# to emcwrap
-def mdd_lp(chain, lprobs, calc_hess=False):
-    """Approximate the marginal data density useing the LaPlace method."""
-
-    mode_x = chain[lprobs.argmax()]
-
-    if calc_hess:
-
-        import numdifftools as nd
-
-        np.warnings.filterwarnings("ignore")
-        hh = nd.Hessian(func)(mode_x)
-        np.warnings.filterwarnings("default")
-
-        if np.isnan(hh).any():
-            raise ValueError(
-                "[mdd:]".ljust(15, " ")
-                + "Option `hess` is experimental and did not return a usable hessian matrix."
-            )
-
-        inv_hess = np.linalg.inv(hh)
-
-    else:
-        inv_hess = np.cov(chain.T)
-
-    ndim = chain.shape[-1]
-    log_det_inv_hess = np.log(np.linalg.det(inv_hess))
-    mdd = 0.5 * ndim * np.log(2 * np.pi) + 0.5 * \
-        log_det_inv_hess + lprobs.max()
-
-    return mdd
-
-# to emcwrap
-
-
-def mdd_mhm(chain, lprobs, pool=None, alpha=0.05, verbose=False, debug=False):
-    """Approximate the marginal data density useing modified harmonic mean."""
-
-    from grgrlib.stats import logpdf
-
-    cmean = chain.mean(axis=0)
-    ccov = np.cov(chain.T)
-    cicov = np.linalg.inv(ccov)
-
-    nsamples = chain.shape[0]
-    ##
-
-    def runner(chunk):
-        ##
-        res = np.empty_like(chunk)
-        wrapper = tqdm.tqdm if verbose else (lambda x, **kwarg: x)
-        ##
-        for i in wrapper(range(len(chunk))):
-            drv = chain[i]
-            drl = lprobs[i]
-            ##
-            if (drv - cmean) @ cicov @ (drv - cmean) < ss.chi2.ppf(
-                1 - alpha, df=chain.shape[-1]
-            ):
-                res[i] = logpdf(drv, cmean, ccov) - drl
-            else:
-                res[i] = -np.inf
-        return res
-
-    if not debug and pool is not None:
-        nbatches = pool.ncpus
-        batches = pool.imap(runner, np.array_split(chain, nbatches))
-        mls = np.vstack(list(batches))
-    else:
-        mls = runner(chain)
-
-    maxllike = np.max(mls)  # for numeric stability
-    imdd = np.log(np.mean(np.exp(mls - maxllike))) + maxllike
-
-    return -imdd
-
-
-# to_emcwrap
 def mdd(
     self, method="laplace", chain=None, lprobs=None, tune=None, verbose=False, **args
 ):
@@ -315,14 +238,15 @@ def mdd(
 
     if method in ("laplace", "lp"):
         mstr = "LaPlace approximation"
-        mdd = mdd_lp(chain, lprobs, calc_hess=False, **args)
+        mdd = mdd_laplace(chain, lprobs, calc_hess=False, **args)
     elif method == "hess":
         mstr = "LaPlace approximation with hessian approximation"
-        mdd = mdd_lp(chain, lprobs, calc_hess=True, **args)
+        mdd = mdd_laplace(chain, lprobs, calc_hess=True, **args)
     elif method == "mhm":
         mstr = "modified harmonic mean"
         pool = self.pool if hasattr(self, "pool") else None
-        mdd = mdd_mhm(chain, lprobs, pool=pool, verbose=verbose > 1, **args)
+        mdd = mdd_harmonic_mean(chain, lprobs, pool=pool,
+                                verbose=verbose > 1, **args)
     else:
         raise NotImplementedError(
             "[mdd:]".ljust(15, " ")

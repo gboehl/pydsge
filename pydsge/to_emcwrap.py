@@ -3,11 +3,14 @@
 
 import emcee
 import tqdm
+import os
 import numpy as np
 import pandas as pd
 import scipy.stats as ss
 import scipy.optimize as so
 from scipy.special import gammaln
+from grgrlib import map2arr
+from grgrlib.stats import logpdf
 
 
 def get_prior(prior, verbose=False):
@@ -89,7 +92,15 @@ def get_prior(prior, verbose=False):
                     % (pp, ptype, pmean, pstdd, dist[0], dist[1], dist[2])
                 )
 
-    return prior_lst, initv, (lb, ub)
+    def lprior(par):
+
+        prior = 0
+        for i, pl in enumerate(prior_lst):
+            prior += pl.logpdf(par[i])
+
+        return prior
+
+    return prior_lst, lprior, initv, (lb, ub)
 
 
 # to dists.py
@@ -212,7 +223,7 @@ def summary(priors, store, pmode=None, bounds=None, alpha=0.1, top=None, show_pr
             mode_func(x, n), name="mode" if pmode is not None else "marg. mode"
         ),
         lambda x, n: _hpd_df(x, alpha),
-        lambda x, n: pd.Series(mc_error(x), name="mc_error"),
+        lambda x, n: pd.Series(mc_error(x), name="error"),
     ]
 
     var_dfs = []
@@ -282,9 +293,18 @@ def mcmc_summary(
     return res
 
 
-def mcmc(lprob, p0, nwalks, nsteps, moves, tune, priors, backend=None, update_freq=None, resume=False, pool=None, report=None, description=None, temp=1, maintenance_interval=10, debug=False, verbose=True, **kwargs):
+def mcmc(lprob, p0, nsteps, moves=None, priors=None, backend=None, update_freq=None, resume=False, pool=None, report=None, description=None, temp=1, maintenance_interval=False, seed=None, verbose=False, **kwargs):
 
-    ndim = len(priors)
+    nwalks, ndim = np.shape(p0)
+
+    if seed is None:
+        seed = 0
+
+    np.random.seed(seed)
+
+    if isinstance(backend, str):
+        backend = emcee.backends.HDFBackend(
+            os.path.splitext(backend)[0] + '.h5')
 
     if resume:
         nwalks = backend.get_chain().shape[1]
@@ -292,17 +312,13 @@ def mcmc(lprob, p0, nwalks, nsteps, moves, tune, priors, backend=None, update_fr
     if update_freq is None:
         update_freq = nsteps // 5
 
-    if debug:
-        sampler = emcee.EnsembleSampler(nwalks, ndim, lprob)
-    else:
-        sampler = emcee.EnsembleSampler(
-            nwalks, ndim, lprob, moves=moves, pool=pool, backend=backend
-        )
+    sampler = emcee.EnsembleSampler(
+        nwalks, ndim, lprob, moves=moves, pool=pool, backend=backend)
 
     if resume and not p0:
         p0 = sampler.get_last_sample()
 
-    if not verbose:
+    if not verbose:  # verbose means VERY verbose
         np.warnings.filterwarnings("ignore")
 
     if verbose > 2:
@@ -326,9 +342,8 @@ def mcmc(lprob, p0, nwalks, nsteps, moves, tune, priors, backend=None, update_fr
 
         if cnt and update_freq and not cnt % update_freq:
 
-            prnttup = "[mcmc:]".ljust(
-                15, " "
-            ) + "Summary from last %s of %s iterations" % (update_freq, cnt)
+            prnttup = "(mcmc:) Summary from last %s of %s iterations" % (
+                update_freq, cnt)
 
             if temp < 1:
                 prnttup += " with temp of %s%%" % (np.round(temp * 100, 6))
@@ -352,13 +367,14 @@ def mcmc(lprob, p0, nwalks, nsteps, moves, tune, priors, backend=None, update_fr
             tau_sign = ">" if max_tau > sampler.iteration / 50 else "<"
             dev_sign = ">" if dev_tau > 0.01 else "<"
 
-            mcmc_summary(
-                chain=sample[-update_freq:],
-                lprobs=lprobs[-update_freq:],
-                priors=priors,
-                acceptance_fraction=acfs[-update_freq:],
-                out=lambda x: report(str(x)),
-            )
+            if priors is not None:
+                mcmc_summary(
+                    chain=sample[-update_freq:],
+                    lprobs=lprobs[-update_freq:],
+                    priors=priors,
+                    acceptance_fraction=acfs[-update_freq:],
+                    out=lambda x: report(str(x)),
+                )
 
             report(
                 "Convergence stats: tau is in (%s,%s) (%s%s) and change is %s (%s0.01)."
@@ -380,7 +396,7 @@ def mcmc(lprob, p0, nwalks, nsteps, moves, tune, priors, backend=None, update_fr
             pbar.update(1)
 
         # avoid mem leakage
-        if cnt and not cnt % maintenance_interval:
+        if maintenance_interval and cnt and pool and not cnt % maintenance_interval:
             pool.clear()
 
         cnt += 1
@@ -392,11 +408,10 @@ def mcmc(lprob, p0, nwalks, nsteps, moves, tune, priors, backend=None, update_fr
     if not verbose:
         np.warnings.filterwarnings("default")
 
-    log_probs = sampler.get_log_prob()[-tune:]
-    chain = sampler.get_chain()[-tune:]
-    chain = chain.reshape(-1, chain.shape[-1])
-
-    return sampler, chain, log_probs
+    if backend is None:
+        return sampler
+    else:
+        return backend
 
 
 def _hpd_df(x, alpha):
@@ -442,3 +457,143 @@ def calc_min_interval(x, alpha):
 def mc_error(x):
     means = np.mean(x, 0)
     return np.std(means) / np.sqrt(x.shape[0])
+
+
+def get_prior_sample(frozen_prior, nsamples, check_func=False, seed=None, mapper=map, verbose=True):
+
+    if seed is None:
+        seed = 0
+
+    if check_func and not callable(check_func):
+        raise Exception('`check_func` must be `False` or a callable')
+
+    def runner(locseed):
+
+        np.random.seed(seed + locseed)
+        done = False
+        no = 0
+
+        while not done:
+
+            no += 1
+
+            with np.warnings.catch_warnings(record=False):
+                try:
+                    np.warnings.filterwarnings("error")
+                    rst = np.random.randint(2 ** 31)  # win explodes with 2**32
+                    pdraw = [
+                        pl.rvs(random_state=rst + sn)
+                        for sn, pl in enumerate(frozen_prior)
+                    ]
+
+                    if check_func:
+                        draw_prob = check_func(pdraw)
+                        done = not np.any(np.isinf(draw_prob))
+
+                except Exception as e:
+                    if verbose > 1:
+                        print(str(e) + " (%s) " % no)
+                    if not locseed and no == 10:
+                        raise
+
+        return pdraw, no
+
+    if verbose > 1:
+        print("[prior_sample:]".ljust(15, " ") + " Sampling from the pior...")
+
+    wrapper = tqdm.tqdm if verbose < 2 else (lambda x, **kwarg: x)
+    pmap_sim = wrapper(mapper(runner, range(nsamples)), total=nsamples)
+
+    draws, nos = map2arr(pmap_sim)
+
+    if verbose and check_func:
+        print(
+            "[prior_sample:]".ljust(15, " ")
+            + " Sampling done. Check fails for %2.2f%% of the prior."
+            % (100 * (sum(nos) - nsamples) / sum(nos))
+        )
+
+    return draws
+
+
+def mdd_laplace(chain, lprobs, calc_hess=False):
+    """Approximate the marginal data density useing the LaPlace method."""
+
+    if chain.ndim > 2:
+        chain = chain.reshape(-1, chain.shape[2])
+
+    lprobs = lprobs.flatten()
+
+    mode_x = chain[lprobs.argmax()]
+
+    if calc_hess:
+
+        import numdifftools as nd
+
+        np.warnings.filterwarnings("ignore")
+        hh = nd.Hessian(func)(mode_x)
+        np.warnings.filterwarnings("default")
+
+        if np.isnan(hh).any():
+            raise ValueError(
+                "[mdd:]".ljust(15, " ")
+                + "Option `hess` is experimental and did not return a usable hessian matrix."
+            )
+
+        inv_hess = np.linalg.inv(hh)
+
+    else:
+        inv_hess = np.cov(chain.T)
+
+    ndim = chain.shape[-1]
+    log_det_inv_hess = np.log(np.linalg.det(inv_hess))
+    mdd = 0.5 * ndim * np.log(2 * np.pi) + 0.5 * \
+        log_det_inv_hess + lprobs.max()
+
+    return mdd
+
+
+def mdd_harmonic_mean(chain, lprobs, pool=None, alpha=0.05, verbose=False, debug=False):
+    """Approximate the marginal data density useing modified harmonic mean."""
+
+    if chain.ndim > 2:
+        chain = chain.reshape(-1, chain.shape[2])
+
+    lprobs = lprobs.flatten()
+
+    cmean = chain.mean(axis=0)
+    ccov = np.cov(chain.T)
+    cicov = np.linalg.inv(ccov)
+
+    nsamples = chain.shape[0]
+
+    def runner(chunk):
+
+        res = np.empty_like(chunk)
+        wrapper = tqdm.tqdm if verbose else (lambda x, **kwarg: x)
+
+        for i in wrapper(range(len(chunk))):
+
+            drv = chain[i]
+            drl = lprobs[i]
+
+            if (drv - cmean) @ cicov @ (drv - cmean) < ss.chi2.ppf(
+                1 - alpha, df=chain.shape[-1]
+            ):
+                res[i] = logpdf(drv, cmean, ccov) - drl
+            else:
+                res[i] = -np.inf
+
+        return res
+
+    if not debug and pool is not None:
+        nbatches = pool.ncpus
+        batches = pool.imap(runner, np.array_split(chain, nbatches))
+        mls = np.vstack(list(batches))
+    else:
+        mls = runner(chain)
+
+    maxllike = np.max(mls)  # for numeric stability
+    imdd = np.log(np.mean(np.exp(mls - maxllike))) + maxllike
+
+    return -imdd

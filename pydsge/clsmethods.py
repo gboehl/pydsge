@@ -187,12 +187,8 @@ def load_rdict(self, path=None, suffix=""):
 def traceplot_m(self, chain=None, **args):
 
     if chain is None:
-        if "kdes_chain" in self.fdict.keys():
-            chain = self.fdict["kdes_chain"]
-            args["tune"] = int(chain.shape[0] / 5)
-        else:
-            chain = self.get_chain()
-            args["tune"] = self.get_tune
+        chain = self.get_chain()
+        args["tune"] = self.get_tune
 
     return traceplot(chain, varnames=self.fdict["prior_names"], **args)
 

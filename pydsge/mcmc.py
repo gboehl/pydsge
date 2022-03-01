@@ -131,13 +131,17 @@ def mcmc(
     else:
         backend = None
 
-    sampler, chain, log_probs = mcmc_emcwrap(lprob, p0, nwalks, nsteps, moves, tune, self.prior, backend=backend, resume=resume,
-                                             pool=self.pool, description=self.description, temp=temp, maintenance_interval=maintenance_interval, verbose=verbose, **kwargs)
+    sampler = mcmc_emcwrap(lprob, p0, nsteps, priors=self.prior, backend=backend, resume=resume,
+                           pool=self.pool, description=self.description, temp=temp, verbose=verbose, **kwargs)
 
     self.temp = temp
     self.sampler = sampler
 
     if temp == 1:
+
+        log_probs = sampler.get_log_prob()[-tune:]
+        chain = sampler.get_chain()[-tune:]
+        chain = chain.reshape(-1, chain.shape[-1])
 
         arg_max = log_probs.argmax()
         mode_f = log_probs.flat[arg_max]
@@ -150,6 +154,8 @@ def mcmc(
 
     return
 
+# deprepciated and to be removed
+
 
 def tmcmc(
     self,
@@ -158,7 +164,7 @@ def tmcmc(
     ntemps=0,
     target=None,
     update_freq=False,
-    test_lprob=False,
+    check_likelihood=False,
     verbose=True,
     debug=False,
     **mcmc_args
@@ -179,7 +185,8 @@ def tmcmc(
 
     # sample pars from prior
     pars = prior_sampler(
-        self, nwalks, test_lprob=test_lprob, verbose=max(verbose, 2 * debug)
+        self, nwalks, check_likelihood=check_likelihood, verbose=max(
+            verbose, 2 * debug)
     )
 
     x = get_par(self, "prior_mean", asdict=False,

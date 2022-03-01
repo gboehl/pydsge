@@ -5,9 +5,14 @@
 """
 
 
-import numpy as np
+from .to_emcwrap import get_prior_sample as prior_sampler_emcwrap
 import time
 import dill
+import tqdm
+import random
+import chaospy
+import numpy as np
+from grgrlib.multiprocessing import serializer
 from .stats import post_mean
 
 
@@ -24,7 +29,6 @@ def posterior_sampler(self, nsamples, seed=0, verbose=True):
     array
         Numpy array of parameters
     """
-    import random
 
     random.seed(seed)
     sample = self.get_chain()[-self.get_tune:]
@@ -35,7 +39,6 @@ def posterior_sampler(self, nsamples, seed=0, verbose=True):
 
 def sample_box(self, dim0, dim1=None, bounds=None, lp_rule=None, verbose=False):
     """Sample from a hypercube"""
-    import chaospy
 
     bnd = bounds or np.array(self.fdict["prior_bounds"])
     dim1 = dim1 or self.ndim
@@ -49,11 +52,11 @@ def prior_sampler(
     self,
     nsamples,
     seed=0,
-    test_lprob=False,
-    lks=None,
+    try_parameter=True,
+    check_likelihood=False,
     verbose=True,
     debug=False,
-    **args
+    **kwargs
 ):
     """Draw parameters from prior.
     Parameters
@@ -62,8 +65,10 @@ def prior_sampler(
         Size of the prior sample
     seed : int, optional
         Set the random seed (0 by default)
-    test_lprob : bool, optional
+    check_likelihood : bool, optional
         Whether to ensure that drawn parameters have a finite likelihood (False by default)
+    try_parameter : bool, optional
+        Whether to ensure that drawn parameters have a model solution (True by default)
     verbose : bool, optional
     debug : bool, optional
     Returns
@@ -72,12 +77,7 @@ def prior_sampler(
         Numpy array of parameters
     """
 
-    import tqdm
-    from grgrlib import map2arr
-
-    l_max, k_max = lks or (None, None)
-
-    if test_lprob and not hasattr(self, "ndim"):
+    if check_likelihood and not hasattr(self, "ndim"):
         self.prep_estim(load_R=True, verbose=verbose > 2)
 
     frozen_prior = self.fdict.get("frozen_prior")
@@ -90,66 +90,19 @@ def prior_sampler(
     self.debug |= debug
 
     if hasattr(self, "pool"):
-        from .estimation import create_pool
 
+        from .estimation import create_pool
         create_pool(self)
 
-    pickled_self = dill.dumps(self, recurse=True)
+    check_func = False
+    if check_likelihood:
+        lprob_raw = serializer(self.lprob)
+        def check_func(p): return lprob_raw(
+            p, linear=None, verbose=verbose > 1)
+    elif try_parameter:
+        check_func = serializer(self.set_par)
 
-    def runner(locseed):
-
-        np.random.seed(seed + locseed)
-        done = False
-        no = 0
-
-        pelf = dill.loads(pickled_self)
-
-        while not done:
-
-            no += 1
-
-            with np.warnings.catch_warnings(record=False):
-                try:
-                    np.warnings.filterwarnings("error")
-                    rst = np.random.randint(2 ** 31)  # win explodes with 2**32
-                    pdraw = [
-                        pl.rvs(random_state=rst + sn)
-                        for sn, pl in enumerate(frozen_prior)
-                    ]
-
-                    if test_lprob:
-                        draw_prob = pelf.lprob(
-                            pdraw, linear=None, verbose=verbose > 1)
-                        done = not np.isinf(draw_prob)
-                    else:
-                        pelf.set_par(pdraw)
-                        done = True
-
-                except Exception as e:
-                    if verbose > 1:
-                        print(str(e) + " (%s) " % no)
-
-        return pdraw, no
-
-    if verbose > 1:
-        print("[prior_sample:]".ljust(15, " ") + " Sampling from the pior...")
-
-    wrapper = tqdm.tqdm if verbose < 2 else (lambda x, **kwarg: x)
-    pmap_sim = wrapper(self.mapper(runner, range(nsamples)), total=nsamples)
-
-    draws, nos = map2arr(pmap_sim)
-
-    if verbose:
-        smess = ""
-        if test_lprob:
-            smess = "of zero likelihood, "
-        print(
-            "[prior_sample:]".ljust(15, " ")
-            + " Sampling done. %2.2f%% of the prior is either %sindetermined or explosive."
-            % (100 * (sum(nos) - nsamples) / sum(nos), smess)
-        )
-
-    return draws
+    return prior_sampler_emcwrap(frozen_prior, nsamples, check_func=check_func, mapper=self.mapper, verbose=verbose, **kwargs)
 
 
 def get_par(
