@@ -63,8 +63,10 @@ class DSGE(DSGE_RAW):
                 v for v in eq.atoms() if isinstance(v, Variable) and v.date < -1
             ]
 
-            eq_fvars = [v for v in eq.atoms() if isinstance(v, TSymbol) and v.date > 0]
-            eq_lvars = [v for v in eq.atoms() if isinstance(v, TSymbol) and v.date < 0]
+            eq_fvars = [v for v in eq.atoms() if isinstance(
+                v, TSymbol) and v.date > 0]
+            eq_lvars = [v for v in eq.atoms() if isinstance(
+                v, TSymbol) and v.date < 0]
 
             fvars = list(set(fvars).union(eq_fvars))
             lvars = list(set(lvars).union(set(eq_lvars)))
@@ -203,8 +205,10 @@ class DSGE(DSGE_RAW):
             CC = zeros(no_var - 1, no_var)
             PSI = zeros(no_var - 1, evar)
 
-            bb_var = filter(lambda x: x.date <= 0, self["const_eq"].atoms(Variable))
-            bb_fwd = [x for x in self["const_eq"].atoms(Variable) if x.date > 0]
+            bb_var = filter(lambda x: x.date <= 0,
+                            self["const_eq"].atoms(Variable))
+            bb_fwd = [x for x in self["const_eq"].atoms(
+                Variable) if x.date > 0]
 
             if bb_fwd:
                 raise NotImplementedError(
@@ -216,13 +220,15 @@ class DSGE(DSGE_RAW):
 
             for v in bb_var:
                 v_j = full_var.index(v)
-                bb[v_j] = -(self["const_eq"]).set_eq_zero.diff(v).subs(subs_dict)
+                bb[v_j] = -(self["const_eq"]
+                            ).set_eq_zero.diff(v).subs(subs_dict)
 
             shocks = filter(lambda x: x, self["const_eq"].atoms(Shock))
 
             for s in shocks:
                 s_j = slist.index(s)
-                bb_PSI[s_j] = -(self["const_eq"]).set_eq_zero.diff(s).subs(subs_dict)
+                bb_PSI[s_j] = -(self["const_eq"]
+                                ).set_eq_zero.diff(s).subs(subs_dict)
 
         else:
             AA = zeros(no_var, no_var)
@@ -298,10 +304,14 @@ class DSGE(DSGE_RAW):
         context["sqrt"] = implemented_function("sqrt", np.sqrt)
 
         # distributions
-        context["normpdf"] = implemented_function("normpdf", ctf_reducer(sst.norm.pdf))
-        context["normcdf"] = implemented_function("normcdf", ctf_reducer(sst.norm.cdf))
-        context["normppf"] = implemented_function("normppf", ctf_reducer(sst.norm.ppf))
-        context["norminv"] = implemented_function("norminv", ctf_reducer(sst.norm.ppf))
+        context["normpdf"] = implemented_function(
+            "normpdf", ctf_reducer(sst.norm.pdf))
+        context["normcdf"] = implemented_function(
+            "normcdf", ctf_reducer(sst.norm.cdf))
+        context["normppf"] = implemented_function(
+            "normppf", ctf_reducer(sst.norm.ppf))
+        context["norminv"] = implemented_function(
+            "norminv", ctf_reducer(sst.norm.ppf))
 
         # things defined in *_funcs.py
         if self.func_file and os.path.exists(self.func_file):
@@ -317,7 +327,8 @@ class DSGE(DSGE_RAW):
             ]
 
             for func in funcs_list:
-                context[func[0]] = implemented_function(func[0], ctf_reducer(func[1]))
+                context[func[0]] = implemented_function(
+                    func[0], ctf_reducer(func[1]))
 
         ss = {}
         checker = np.zeros_like(self["other_para"], dtype=bool)
@@ -332,7 +343,8 @@ class DSGE(DSGE_RAW):
             for i, p in enumerate(self["other_para"]):
                 if not checker[i]:
                     try:
-                        ss[str(p)] = eval(str(self["para_func"][p.name]), context)
+                        ss[str(p)] = eval(
+                            str(self["para_func"][p.name]), context)
                         context[str(p)] = ss[str(p)]
                         checker[i] = True
                         suc_loop = True  # loop was successful
@@ -380,7 +392,8 @@ class DSGE(DSGE_RAW):
         self.bb = bb
         self.bb_PSI = bb_PSI
 
-        QQ = lambdify([self.parameters + self["other_para"]], self["covariance"])
+        QQ = lambdify([self.parameters + self["other_para"]],
+                      self["covariance"])
         HH = lambdify(
             [self.parameters + self["other_para"]], self["measurement_errors"]
         )
@@ -437,6 +450,7 @@ class DSGE(DSGE_RAW):
             pmodel_dump = cpickle.dumps(pmodel, protocol=4)
             pmodel.fdict["model_dump"] = pmodel_dump
             pmodel.name = pmodel.mod_name
+            pmodel.description = pmodel.mod_name
             pmodel.path = os.path.dirname(mfile)
             pmodel.debug = platform == "darwin" or platform == "win32"
             if pmodel.debug:
@@ -454,7 +468,8 @@ class DSGE(DSGE_RAW):
             else:
                 str(duration) + "s"
             print(
-                "[DSGE:]".ljust(15, " ") + " Reading and parsing done in %s." % duration
+                "[DSGE:]".ljust(15, " ") +
+                " Reading and parsing done in %s." % duration
             )
 
         return pmodel
@@ -492,7 +507,8 @@ class DSGE(DSGE_RAW):
                 try:
                     # cumbersome: load the text of the *_funcs file, write it to a temporary file, just to use it as a module
                     ftxt = str(fdict["ffile_raw"])
-                    tfile = tempfile.NamedTemporaryFile("w", suffix=".py", delete=False)
+                    tfile = tempfile.NamedTemporaryFile(
+                        "w", suffix=".py", delete=False)
                     tfile.write(ftxt)
                     tfile.close()
                     ffile = tfile.name
@@ -566,7 +582,8 @@ class DSGE(DSGE_RAW):
         context = dict(context)
 
         if "observables" in model_yaml["equations"]:
-            observables = [Variable(v) for v in model_yaml["equations"]["observables"]]
+            observables = [Variable(v)
+                           for v in model_yaml["equations"]["observables"]]
             obs_equations = model_yaml["equations"]["observables"]
         else:
             observables = []
@@ -593,7 +610,8 @@ class DSGE(DSGE_RAW):
                 rhs = eval(rhs, context)
             except TypeError as e:
                 raise SyntaxError(
-                    "While parsing %s, got this error: %s" % (raw_const, repr(e))
+                    "While parsing %s, got this error: %s" % (
+                        raw_const, repr(e))
                 )
 
             const_eq = Equation(lhs, rhs)
@@ -687,7 +705,8 @@ class DSGE(DSGE_RAW):
                 equations.append(Equation(var_s, s))
 
                 subs1 = [s(-i) for i in np.arange(1, abs(max_lag_exo[s]) + 1)]
-                subs2 = [var_s(-i) for i in np.arange(1, abs(max_lag_exo[s]) + 1)]
+                subs2 = [var_s(-i)
+                         for i in np.arange(1, abs(max_lag_exo[s]) + 1)]
                 subs_dict = dict(zip(subs1, subs2))
                 equations = [eq.subs(subs_dict) for eq in equations]
 
@@ -733,11 +752,6 @@ class DSGE(DSGE_RAW):
                 var_l = Variable(v.name + "_LEAD" + str(i - 1))
 
                 var_l_1 = v(+1)
-                # i > 2 can not be handled by method anyways
-                # if i == 2:
-                # var_l_1 = v(+1)
-                # else:
-                # var_l_1 = Variable(v.name + "_LEAD" + str(i-2), date=+1)
 
                 subs_dict[Variable(v.name, date=+i)] = var_l(+1)
                 var_ordering.append(var_l)

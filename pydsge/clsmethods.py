@@ -348,6 +348,7 @@ DSGE_RAW.get_sample = get_sample
 DSGE_RAW.create_pool = create_pool
 DSGE_RAW.posterior2csv = posterior2csv
 # from mpile
+DSGE_RAW.prior_sampler = prior_sampler
 DSGE_RAW.get_par = get_par
 DSGE_RAW.gp = get_par
 DSGE_RAW.get_cov = get_cov

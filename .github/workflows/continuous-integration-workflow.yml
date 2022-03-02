@@ -35,11 +35,12 @@ jobs:
         pip install -r requirements.txt
         python -m pip install git+https://github.com/gboehl/grgrlib
         python -m pip install git+https://github.com/gboehl/econsieve 
+        python -m pip install git+https://github.com/gboehl/emcwrap
         python -m pip install numpy==1.20
         python -m pip install h5py
         python setup.py install
 
-    # # Uncomment to unpdate stable pickle
+    # # Uncomment to update stable pickle
     # - name: Update stable pickle
     #   if: runner.os == 'Ubuntu' && matrix.python-version == '3.8'
     #   run: |
