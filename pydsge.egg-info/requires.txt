@@ -3,10 +3,13 @@ numba
 numpy
 pandas
 pathos
+dill
 scipy
 sympy
 tqdm
-pyaml
-grgrlib
+chaospy
 cloudpickle
 h5py
+emcwrap>=0.1.1
+grgrlib>=0.1.3
+econsieve>=0.0.4

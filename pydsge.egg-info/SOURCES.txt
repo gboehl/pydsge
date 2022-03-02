@@ -25,10 +25,8 @@ pydsge/estimation.py
 pydsge/filtering.py
 pydsge/gensys.py
 pydsge/mcmc.py
-pydsge/modesearch.py
 pydsge/mpile.py
 pydsge/parser.py
-pydsge/plots.py
 pydsge/stats.py
 pydsge/symbols.py
 pydsge/tools.py
@@ -42,9 +40,11 @@ pydsge/examples/dfi_doc0_meta.npz
 pydsge/examples/dfi_doc0_res.npz
 pydsge/examples/dfi_doc0_sampler.h5
 pydsge/examples/dfi_funcs.py
+pydsge/examples/dfi_sampler.h5
 pydsge/examples/minimal_nk.yaml
 pydsge/examples/tsdata.csv
 pydsge/tests/export_getting_started_to_pkl.py
+pydsge/tests/test_estimation.py
 pydsge/tests/test_model.py
 pydsge/tests/test_parser.py
 pydsge/tests/test_stability.py
