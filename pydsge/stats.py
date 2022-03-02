@@ -1,21 +1,18 @@
 #!/bin/python
 # -*- coding: utf-8 -*-
 
-from .to_emcwrap import mdd_laplace, mdd_harmonic_mean
-from .to_emcwrap import InvGammaDynare, inv_gamma_spec, get_prior
 import warnings
 import os
 import time
 import tqdm
 import numpy as np
+import emcwrap as ew
 import pandas as pd
 import scipy.stats as ss
 import scipy.optimize as so
 from scipy.special import gammaln
 from grgrlib import timeprint
 from grgrlib.stats import mode
-
-from .to_emcwrap import summary as summary_emcwrap
 
 
 def pmdm_report(self, x_max, res_max, n=np.inf, printfunc=print):
@@ -238,15 +235,15 @@ def mdd(
 
     if method in ("laplace", "lp"):
         mstr = "LaPlace approximation"
-        mdd = mdd_laplace(chain, lprobs, calc_hess=False, **args)
+        mdd = ew.mdd_laplace(chain, lprobs, calc_hess=False, **args)
     elif method == "hess":
         mstr = "LaPlace approximation with hessian approximation"
-        mdd = mdd_laplace(chain, lprobs, calc_hess=True, **args)
+        mdd = ew.mdd_laplace(chain, lprobs, calc_hess=True, **args)
     elif method == "mhm":
         mstr = "modified harmonic mean"
         pool = self.pool if hasattr(self, "pool") else None
-        mdd = mdd_harmonic_mean(chain, lprobs, pool=pool,
-                                verbose=verbose > 1, **args)
+        mdd = ew.mdd_harmonic_mean(
+            chain, lprobs, pool=pool, verbose=verbose > 1, **args)
     else:
         raise NotImplementedError(
             "[mdd:]".ljust(15, " ")
@@ -270,3 +267,22 @@ def post_mean(self, chain=None, tune=None):
     chain = chain or self.get_chain()[-tune:]
 
     return chain.reshape(-1, chain.shape[-1]).mean(axis=0)
+
+
+def sort_nhd(hd):
+    """Sort the normalized historical decomposition into negative and positive contributions"""
+
+    hmin = np.zeros_like(hd[0])
+    hmax = np.zeros_like(hd[0])
+    hmaxt = ()
+    hmint = ()
+
+    for h in hd:
+        newmax = hmax + np.where(h > 0, h, 0)
+        hmaxt += (np.stack((hmax, newmax)),)
+        newmin = hmin + np.where(h < 0, h, 0)
+        hmint += (np.stack((hmin, newmin)),)
+        hmin = newmin
+        hmax = newmax
+
+    return hmint, hmaxt

@@ -1,7 +1,7 @@
 #!/bin/python
 # -*- coding: utf-8 -*-
 
-from .plots import sort_nhd
+from .stats import sort_nhd
 from .gensys import DSGE, gen_sys_from_dict
 import numpy as np
 import logging

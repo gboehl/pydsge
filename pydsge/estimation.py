@@ -7,7 +7,7 @@ import os
 import pathos
 import time
 import tqdm
-from .stats import get_prior
+from emcwrap import get_prior
 from .filtering import get_ll
 from .mpile import get_par, set_par
 

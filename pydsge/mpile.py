@@ -5,13 +5,13 @@
 """
 
 
-from .to_emcwrap import get_prior_sample as prior_sampler_emcwrap
 import time
 import dill
 import tqdm
 import random
 import chaospy
 import numpy as np
+from emcwrap import get_prior_sample, get_prior
 from grgrlib.multiprocessing import serializer
 from .stats import post_mean
 
@@ -83,7 +83,6 @@ def prior_sampler(
     frozen_prior = self.fdict.get("frozen_prior")
 
     if not np.any(frozen_prior):
-        from .stats import get_prior
 
         frozen_prior = get_prior(self.prior, verbose=verbose)[0]
 
@@ -102,7 +101,7 @@ def prior_sampler(
     elif try_parameter:
         check_func = serializer(self.set_par)
 
-    return prior_sampler_emcwrap(frozen_prior, nsamples, check_func=check_func, mapper=self.mapper, verbose=verbose, **kwargs)
+    return get_prior_sample(frozen_prior, nsamples, check_func=check_func, mapper=self.mapper, verbose=verbose, **kwargs)
 
 
 def get_par(

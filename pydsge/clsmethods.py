@@ -5,13 +5,12 @@ import os
 import numpy as np
 import pandas as pd
 from .stats import gfevd, mbcs_index, nhd, mdd
-from .plots import posteriorplot, traceplot
 from .mcmc import mcmc, tmcmc
 from .filtering import *
 from .tools import *
 from .mpile import *
 from .estimation import *
-from .to_emcwrap import mcmc_summary as mcmc_summary_emcwrap
+import emcwrap as ew
 
 
 class DSGE_RAW(dict):
@@ -190,14 +189,14 @@ def traceplot_m(self, chain=None, **args):
         chain = self.get_chain()
         args["tune"] = self.get_tune
 
-    return traceplot(chain, varnames=self.fdict["prior_names"], **args)
+    return ew.traceplot(chain, varnames=self.fdict["prior_names"], **args)
 
 
 def posteriorplot_m(self, **args):
 
     tune = self.get_tune
 
-    return posteriorplot(
+    return ew.posteriorplot(
         self.get_chain(), varnames=self.fdict["prior_names"], tune=tune, **args
     )
 
@@ -218,7 +217,7 @@ def mcmc_summary(
     tune = tune or self.get_tune
     lprobs = self.get_log_prob()
 
-    return mcmc_summary_emcwrap(chain[-tune:], lprobs[-tune:], priors=self.prior, acceptance_fraction=self.get_chain(get_acceptance_fraction=True), **args)
+    return ew.mcmc_summary(chain[-tune:], lprobs[-tune:], priors=self.prior, acceptance_fraction=self.get_chain(get_acceptance_fraction=True), **args)
 
 
 def posterior2csv(self, path=None, tune=None, **args):

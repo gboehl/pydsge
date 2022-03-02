@@ -1,18 +1,16 @@
 #!/bin/python
 # -*- coding: utf-8 -*-
 
-import numpy as np
-import pandas as pd
 import os
 import time
 import tqdm
 import emcee
+import numpy as np
+import pandas as pd
+import emcwrap as ew
 from datetime import datetime
 from grgrlib.multiprocessing import serializer
 from .mpile import get_par
-
-
-from .to_emcwrap import mcmc as mcmc_emcwrap
 
 
 def mcmc(
@@ -131,8 +129,8 @@ def mcmc(
     else:
         backend = None
 
-    sampler = mcmc_emcwrap(lprob, p0, nsteps, priors=self.prior, backend=backend, resume=resume,
-                           pool=self.pool, description=self.description, temp=temp, verbose=verbose, **kwargs)
+    sampler = ew.run_mcmc(lprob, p0, nsteps, priors=self.prior, backend=backend, resume=resume,
+                          pool=self.pool, description=self.description, temp=temp, verbose=verbose, **kwargs)
 
     self.temp = temp
     self.sampler = sampler
