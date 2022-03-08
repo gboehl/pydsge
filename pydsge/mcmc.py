@@ -27,7 +27,6 @@ def mcmc(
     resume=False,
     append=False,
     report=None,
-    maintenance_interval=10,
     verbose=False,
     **kwargs
 ):
