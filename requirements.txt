@@ -1,5 +1,6 @@
 sphinx>=1.4
 ipykernel
+ipython_genutils
 nbsphinx
 pre-commit
 h5py
