@@ -93,7 +93,6 @@ def prior_sampler(
         from .estimation import create_pool
         create_pool(self)
 
-    print(self.pool)
     check_func = False
     if check_likelihood:
         lprob_raw = serializer(self.lprob)
