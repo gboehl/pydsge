@@ -85,12 +85,13 @@ def prep_estim(
     self.fdict["seed"] = seed
 
     self.debug |= debug
-    # self.Z = np.array(self.data)
 
-    set_par(self, "prior_mean", verbose=verbose > 3, l_max=l_max, k_max=k_max)
-
-    self.create_filter(
-        N=N, ftype="KalmanFilter" if linear else None, **filterargs)
+    if linear and linear != 'IF':
+        self.create_filter(N=N, ftype="KalmanFilter", **filterargs)
+    elif linear == 'IF':
+        self.create_filter(N=N, ftype="IF", **filterargs)
+    else:
+        self.create_filter(N=N, ftype="EnKF", **filterargs)
 
     if "filter_R" in self.fdict.keys():
         self.filter.R = self.fdict["filter_R"]
@@ -221,7 +222,7 @@ def prep_estim(
     self.lprior = lprior
     self.llike = llike
 
-    if ncores is None or ncores:
+    if not debug and (ncores is None or ncores):
         create_pool(self, ncores)
     else:
         self.pool = None

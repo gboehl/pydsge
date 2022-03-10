@@ -77,10 +77,18 @@ def create_filter(
         ftype = "PF"
     elif ftype == "AuxiliaryParticleFilter":
         ftype = "APF"
+    elif ftype == "InversionFilter":
+        ftype = "IF"
 
     if ftype == "KF":
 
         f = KalmanFilter(dim_x=self.dimx, dim_z=self.nobs)
+
+    elif ftype == "IF":
+
+        from grgrwip.inversion_filter import InversionFilter
+
+        f = InversionFilter(self.neps)
 
     elif ftype in ("PF", "APF"):
 
@@ -176,6 +184,12 @@ def run_filter(
         else:
             self.filter.P = self.filter.init_cov
 
+    elif self.filter.name == "InversionFilter":
+
+        self.filter.t_func = self.t_func
+        self.filter.pmat, self.filter.qmat = self.precalc_mat[:2]
+        self.filter.hx = self.hx
+
     elif dispatch or self.filter.name == "ParticleFilter":
         from .engine import func_dispatch
 
@@ -225,6 +239,13 @@ def run_filter(
             means = means
             res = (means, covs)
 
+    elif self.filter.name == "InversionFilter":
+
+        if smoother or not get_ll:
+            raise NotImplementedError()
+
+        res = self.filter.get_lprob(self.Z)
+
     elif self.filter.name == "ParticleFilter":
 
         res = self.filter.batch_filter(self.Z)
@@ -243,6 +264,9 @@ def run_filter(
             res = self.filter.smoother(smoother)
 
     else:
+
+        smoother &= not get_ll
+
         res = self.filter.batch_filter(
             self.Z, calc_ll=get_ll, store=smoother, seed=seed, verbose=verbose > 0
         )

@@ -88,11 +88,12 @@ def prior_sampler(
 
     self.debug |= debug
 
-    if hasattr(self, "pool"):
+    if not debug and hasattr(self, "pool"):
 
         from .estimation import create_pool
         create_pool(self)
 
+    print(self.pool)
     check_func = False
     if check_likelihood:
         lprob_raw = serializer(self.lprob)
