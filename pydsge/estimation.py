@@ -68,7 +68,7 @@ def prep_estim(
             linear = self.fdict["linear"]
         else:
             linear = False
-    elif linear:
+    elif linear and linear != 'IF':
         l_max, k_max = 1, 0
 
     if seed is None:

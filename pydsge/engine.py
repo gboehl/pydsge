@@ -261,6 +261,7 @@ def t_func_jit(
     else:
         p_or_obs = p
 
+
     return p_or_obs, q, l, k, flag
 
 
