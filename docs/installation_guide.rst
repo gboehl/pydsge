@@ -10,14 +10,14 @@ Installing the repo version is as simple as
 
    pip install pydsge
 
-The code does *not* work with Python 2.x. 
+The code is *not* backwards compatible with Python 2.x. 
 
 Installation via ``git``\
 --------------------------
 
 As long as this is still work in progress, the version from `PyPI <https://pypi.org/>`_ may not be fully up to date. To get the current git snapshot you have two choices: installing "by hand", or using the ``git`` command. I strongly recommend using ``git`` as it facilitates updates and the like. This is the handy way.
 
-Note that this package depends on the ``econsieve`` and ``grgrlib`` packages which both can be found on my github page, and on `PyPI <https://pypi.org/>`_.
+Note that this package depends on the ``emcwrap``, ``grgrlib`` and ``econsieve`` packages which both can be found on my github page, and on `PyPI <https://pypi.org/>`_.
 
 First install ``git``. Linux users just use their respective repos. 
 
@@ -35,6 +35,7 @@ Then you can simply do
 
    pip install git+https://github.com/gboehl/grgrlib
    pip install git+https://github.com/gboehl/econsieve
+   pip install git+https://github.com/gboehl/emcwrap
    pip install git+https://github.com/gboehl/pydsge
 
 Maybe you'd have to use ``pip3`` instead. If you run it and it complains about missing packages, please let me know so that I can update the `setup.py`!
