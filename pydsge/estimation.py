@@ -86,6 +86,8 @@ def prep_estim(
 
     self.debug |= debug
 
+    set_par(self, "prior_mean", verbose=verbose > 3, l_max=l_max, k_max=k_max)
+
     if linear and linear != 'IF':
         self.create_filter(N=N, ftype="KalmanFilter", **filterargs)
     elif linear == 'IF':
