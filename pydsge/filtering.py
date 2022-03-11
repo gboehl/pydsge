@@ -241,10 +241,13 @@ def run_filter(
 
     elif self.filter.name == "InversionFilter":
 
-        if smoother or not get_ll:
+        if smoother:
             raise NotImplementedError()
 
-        res = self.filter.get_lprob(self.Z)
+        if not get_ll:
+            res = self.filter.run(self.Z)
+        else:
+            res = self.filter.get_lprob(self.Z)
 
     elif self.filter.name == "ParticleFilter":
 
