@@ -126,8 +126,11 @@ def save_meta(self, filename=None, verbose=True):
             exec("self.fdict[o] = self." + str(o))
 
     if hasattr(self, "filter"):
-        self.fdict["filter_R"] = self.filter.R
-        self.fdict["filter_P"] = self.filter.P
+        try:
+            self.fdict["filter_R"] = self.filter.R
+            self.fdict["filter_P"] = self.filter.P
+        except:
+            pass
 
     np.savez_compressed(filename, **self.fdict)
 
