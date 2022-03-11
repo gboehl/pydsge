@@ -186,13 +186,16 @@ def load_rdict(self, path=None, suffix=""):
     return dict(np.load(path, allow_pickle=True))
 
 
-def traceplot_m(self, chain=None, **args):
+def traceplot_m(self, chain=None, prior_names=None, **args):
 
     if chain is None:
         chain = self.get_chain()
         args["tune"] = self.get_tune
 
-    return ew.traceplot(chain, varnames=self.fdict["prior_names"], **args)
+    if prior_names is None:
+        prior_names = self.fdict["prior_names"]
+
+    return ew.traceplot(chain, varnames=prior_names, **args)
 
 
 def posteriorplot_m(self, **args):
