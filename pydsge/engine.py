@@ -86,7 +86,8 @@ def preprocess_jittable(S, T, V, W, h, fq1, fp1, fq0, omg, lam, x_bar, l_max, k_
                 k_last = k if l else max(k - 1, 0)
 
                 qmat[l, k], qterm[l, k] = get_lam(
-                    pmat[l_last, k_last], pterm[l_last, k_last], S, T, V, W, h, l
+                    pmat[l_last, k_last], pterm[l_last,
+                                                k_last], S, T, V, W, h, l
                 )
                 pmat[l, k], pterm[l, k] = get_omg(
                     pmat[l_last, k_last],
@@ -261,7 +262,6 @@ def t_func_jit(
     else:
         p_or_obs = p
 
-
     return p_or_obs, q, l, k, flag
 
 
@@ -280,7 +280,7 @@ def find_lk(bmat, bterm, x_bar, q):
         if l == l_max:
             break
 
-    # check if (0,0) is a solution
+    # check if (0,k) is a solution
     if l < l_max:
         # needs to be wrapped so that both loops can be exited at once
         l, k = bruite_wrapper(bmat, bterm, x_bar, q)

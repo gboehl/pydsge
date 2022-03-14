@@ -23,6 +23,7 @@ def prep_estim(
     ncores=None,
     l_max=3,
     k_max=16,
+    dry_run=True,
     verbose=True,
     debug=False,
     **filterargs
@@ -103,11 +104,12 @@ def prep_estim(
         )
 
     # dry run before the fun beginns
-    if np.isinf(get_ll(self, verbose=verbose > 3, dispatch=dispatch)):
-        raise ValueError(
-            "[estimation:]".ljust(15, " ") +
-            "likelihood of initial values is zero."
-        )
+    if dry_run:
+        if np.isinf(get_ll(self, verbose=verbose > 3, dispatch=dispatch)):
+            raise ValueError(
+                "[estimation:]".ljust(15, " ") +
+                "likelihood of initial values is zero."
+            )
 
     if verbose:
         print(
