@@ -163,7 +163,6 @@ def tmcmc(
     update_freq=False,
     check_likelihood=False,
     verbose=True,
-    debug=False,
     **mcmc_args
 ):
     """Run Tempered Ensemble MCMC
@@ -182,9 +181,7 @@ def tmcmc(
 
     # sample pars from prior
     pars = prior_sampler(
-        self, nwalks, check_likelihood=check_likelihood, verbose=max(
-            verbose, 2 * debug)
-    )
+        self, nwalks, check_likelihood=check_likelihood, verbose= verbose)
 
     x = get_par(self, "prior_mean", asdict=False,
                 full=False, verbose=verbose > 1)
@@ -229,7 +226,6 @@ def tmcmc(
             verbose=verbose > 1,
             append=i,
             report=pbar.write,
-            debug=debug,
             **mcmc_args
         )
 
