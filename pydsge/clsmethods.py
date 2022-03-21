@@ -5,7 +5,7 @@ import os
 import numpy as np
 import pandas as pd
 from .stats import gfevd, mbcs_index, nhd, mdd
-from .mcmc import mcmc, tmcmc
+from .mcmc import mcmc
 from .filtering import *
 from .tools import *
 from .mpile import *
@@ -371,7 +371,6 @@ DSGE_RAW.k_map = k_map
 DSGE_RAW.traj = traj
 # from mcmc
 DSGE_RAW.mcmc = mcmc
-DSGE_RAW.tmcmc = tmcmc
 # from estimation
 DSGE_RAW.prep_estim = prep_estim
 DSGE_RAW.load_estim = prep_estim
