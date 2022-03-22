@@ -159,7 +159,7 @@ def prep_estim(
                 )
                 self.filter.Q = self.QQ(self.ppar) @ self.QQ(self.ppar)
 
-                ll = get_ll(self, verbose=verbose > 3, dispatch=dispatch)
+                ll = get_ll(self, verbose=verbose > 2, dispatch=dispatch)
 
                 np.random.set_state(random_state)
                 return ll
@@ -212,7 +212,7 @@ def prep_estim(
 
         ll += lp
 
-        if verbose:
+        if verbose and verbose < 3:
             print(
                 "[lprob:]".ljust(15, " ")
                 + " Sample took %ss, ll is %s, temp is %s."
