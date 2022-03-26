@@ -88,7 +88,10 @@ def create_filter(
 
         from grgrwip.inversion_filter import InversionFilter
 
-        f = InversionFilter(self.neps)
+        omitted_obs_ind = self.observables.index(fargs['omitted_obs'])
+        omitted_shock_ind = self.observables.index(fargs['omitted_shock'])
+
+        f = InversionFilter(self.neps, omitted_shock_ind=omitted_shock_ind, omitted_obs_ind=omitted_obs_ind, x_bar=fargs['x_bar'])
 
     elif ftype in ("PF", "APF"):
 

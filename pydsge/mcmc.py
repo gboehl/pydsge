@@ -54,7 +54,12 @@ def mcmc(
     if "description" in self.fdict.keys():
         self.description = self.fdict["description"]
 
-    if hasattr(self, "pool"):
+    if hasattr(self, "debug") and self.debug:
+
+        self.pool = None
+
+    elif hasattr(self, "pool"):
+
         from .estimation import create_pool
 
         create_pool(self)
