@@ -90,9 +90,9 @@ def prep_estim(
     set_par(self, "prior_mean", verbose=verbose > 3, l_max=l_max, k_max=k_max)
 
     if linear and linear != 'IF':
-        self.create_filter(N=N, ftype="KalmanFilter", **filterargs)
+        self.create_filter(ftype="KalmanFilter", **filterargs)
     elif linear == 'IF':
-        self.create_filter(N=N, ftype="IF", **filterargs)
+        self.create_filter(ftype="IF", **filterargs)
     else:
         self.create_filter(N=N, ftype="EnKF", **filterargs)
 
@@ -159,7 +159,7 @@ def prep_estim(
                 )
                 self.filter.Q = self.QQ(self.ppar) @ self.QQ(self.ppar)
 
-                ll = get_ll(self, verbose=verbose > 3, dispatch=dispatch)
+                ll = get_ll(self, verbose=verbose > 2, dispatch=dispatch)
 
                 np.random.set_state(random_state)
                 return ll
@@ -212,7 +212,7 @@ def prep_estim(
 
         ll += lp
 
-        if verbose:
+        if verbose and verbose < 3:
             print(
                 "[lprob:]".ljust(15, " ")
                 + " Sample took %ss, ll is %s, temp is %s."
