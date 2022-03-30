@@ -17,7 +17,7 @@ A collection of models that can be (and were) used with this package can be foun
 Installation
 -------------
 
-Installing the repo version is as simple as
+Installing the stable version is as simple as
 
 .. code-block:: bash
 
