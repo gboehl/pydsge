@@ -33,10 +33,16 @@ jobs:
         python -m pip install --upgrade pip
         python -m pip install pytest
         pip install -r requirements.txt
-        python -m pip install git+https://github.com/gboehl/grgrlib
-        python -m pip install git+https://github.com/gboehl/econsieve 
-        python -m pip install git+https://github.com/gboehl/emcwrap
-        python -m pip install numpy==1.20
+        #python -m pip install git+https://github.com/gboehl/grgrlib
+        #python -m pip install git+https://github.com/gboehl/econsieve 
+        #python -m pip install git+https://github.com/gboehl/emcwrap
+        # use pypi version:
+        python -m pip install grgrlib
+        python -m pip install econsieve 
+        python -m pip install emcwrap
+        #python -m pip install numpy==1.20
+        # no need to fix version:
+        python -m pip install numpy
         python -m pip install h5py
         python setup.py install
 
