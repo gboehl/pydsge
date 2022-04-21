@@ -133,7 +133,7 @@ def mcmc(
     else:
         backend = None
 
-    sampler = ew.run_mcmc(lprob, p0, nsteps, priors=self.prior, backend=backend, resume=resume,
+    sampler = ew.run_mcmc(lprob, nsteps, p0, priors=self.prior, backend=backend, resume=resume,
                           pool=self.pool, description=self.description, temp=temp, verbose=verbose, **kwargs)
 
     self.temp = temp
