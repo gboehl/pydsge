@@ -135,7 +135,7 @@ def prep_estim(
         self.fdict["frozen_prior"] = pfrozen
         self.fdict["prior_bounds"] = bounds
         self.fdict["init_value"] = pinitv
-        self.fdict["bijective_prior_transformation"] = bptrans if use_prior_transform else None
+        self.bptrans = bptrans if use_prior_transform else None
 
         if verbose:
             print(

@@ -134,7 +134,7 @@ def mcmc(
         backend = None
 
     sampler = ew.run_mcmc(lprob, nsteps, p0, moves=moves, priors=self.prior, backend=backend, resume=resume, pool=self.pool,
-                          description=self.description, prior_transform=self.fdict['bijective_prior_transformation'], temp=temp, verbose=verbose, **kwargs)
+                          description=self.description, prior_transform=self.bptrans, temp=temp, verbose=verbose, **kwargs)
 
     self.temp = temp
     self.sampler = sampler
