@@ -24,6 +24,7 @@ def prep_estim(
     l_max=3,
     k_max=16,
     dry_run=True,
+    use_prior_transform=False,
     verbose=True,
     debug=False,
     **filterargs
@@ -129,10 +130,12 @@ def prep_estim(
 
     if "frozen_prior" not in self.fdict.keys() or eval_priors:
 
-        pfrozen, _, _, pinitv, bounds = get_prior(prior, verbose=verbose)
+        pfrozen, lprior, bptrans, pinitv, bounds = get_prior(
+            prior, verbose=verbose)
         self.fdict["frozen_prior"] = pfrozen
         self.fdict["prior_bounds"] = bounds
         self.fdict["init_value"] = pinitv
+        self.fdict["bijective_prior_transformation"] = bptrans if use_prior_transform else None
 
         if verbose:
             print(
@@ -179,18 +182,13 @@ def prep_estim(
                 np.random.set_state(random_state)
                 return -np.inf
 
-    def lprior(par):
-
-        prior = 0
-        for i, pl in enumerate(self.fdict["frozen_prior"]):
-            prior += pl.logpdf(par[i])
-
-        return prior
-
     linear_pa = linear
 
     def lprob(
             par, par_fix=par_fix, linear=None, verbose=verbose > 1, temp=1):
+
+        if use_prior_transform:
+            par = bptrans(par)
 
         lp = lprior(par)
 
