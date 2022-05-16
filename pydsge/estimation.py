@@ -128,22 +128,18 @@ def prep_estim(
 
     self.ndim = len(prior.keys())
 
-    if "frozen_prior" not in self.fdict.keys() or eval_priors:
+    pfrozen, lprior, bptrans, pinitv, bounds = get_prior(
+        prior, verbose=verbose)
+    self.fdict["frozen_prior"] = pfrozen
+    self.fdict["prior_bounds"] = bounds
+    self.fdict["init_value"] = pinitv
 
-        pfrozen, lprior, bptrans, pinitv, bounds = get_prior(
-            prior, verbose=verbose)
-        self.fdict["frozen_prior"] = pfrozen
-        self.fdict["prior_bounds"] = bounds
-        self.fdict["init_value"] = pinitv
-        self.bptrans = bptrans if use_prior_transform else None
-        self.lprior = lprior
-
-        if verbose:
-            print(
-                "[estimation:]".ljust(15, " ")
-                + " %s priors detected. Adding parameters to the prior distribution."
-                % self.ndim
-            )
+    if verbose:
+        print(
+            "[estimation:]".ljust(15, " ")
+            + " %s priors detected. Adding parameters to the prior distribution."
+            % self.ndim
+        )
 
     def llike(parameters, par_fix, linear, verbose, seed):
 
@@ -223,6 +219,8 @@ def prep_estim(
     # make functions accessible
     self.lprob = lprob
     self.llike = llike
+    self.lprior = lprior
+    self.bptrans = bptrans if use_prior_transform else None
 
     if not debug and (ncores is None or ncores):
         create_pool(self, ncores)
