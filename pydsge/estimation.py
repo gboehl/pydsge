@@ -136,6 +136,7 @@ def prep_estim(
         self.fdict["prior_bounds"] = bounds
         self.fdict["init_value"] = pinitv
         self.bptrans = bptrans if use_prior_transform else None
+        self.lprior = lprior
 
         if verbose:
             print(
@@ -221,7 +222,6 @@ def prep_estim(
 
     # make functions accessible
     self.lprob = lprob
-    self.lprior = lprior
     self.llike = llike
 
     if not debug and (ncores is None or ncores):
