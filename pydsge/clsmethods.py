@@ -223,7 +223,7 @@ def mcmc_summary(
     tune = tune or self.get_tune
     lprobs = self.get_log_prob()
 
-    return ew.mcmc_summary(chain[-tune:], lprobs[-tune:], self.fdict.get('bijective_prior_transform'), priors=self.prior, acceptance_fraction=self.get_chain(get_acceptance_fraction=True), **args)
+    return ew.mcmc_summary(chain[-tune:], lprobs[-tune:], priors=self.priors, prior_transform=self.fdict.get('bijective_prior_transform'), acceptance_fraction=self.get_chain(get_acceptance_fraction=True), **args)
 
 
 def posterior2csv(self, path=None, tune=None, **args):
