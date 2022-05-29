@@ -78,6 +78,7 @@ autodoc_mock_imports = [
     "cloudpickle",
     "dill",
     "emcwrap",
+    "chaospy",
 ]
 
 autoclass_content = "both"
