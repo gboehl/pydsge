@@ -22,20 +22,6 @@ Module Documentation
    :undoc-members:
    :show-inheritance:
 
-``pydsge.modesearch``
----------------------
-.. automodule:: pydsge.modesearch
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-``pydsge.plots``
-----------------
-.. automodule:: pydsge.plots
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 ``pydsge.symbols``
 ------------------
 .. automodule:: pydsge.symbols

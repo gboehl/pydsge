@@ -77,6 +77,8 @@ autodoc_mock_imports = [
     "matplotlib",
     "cloudpickle",
     "dill",
+    "emcwrap",
+    "chaospy",
 ]
 
 autoclass_content = "both"
