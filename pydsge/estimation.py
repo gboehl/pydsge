@@ -24,7 +24,7 @@ def prep_estim(
     l_max=3,
     k_max=16,
     dry_run=True,
-    use_prior_transform=False,
+    use_prior_transform=None,
     verbose=True,
     debug=False,
     **filterargs
@@ -82,9 +82,16 @@ def prep_estim(
     if not "reduced_form" in filterargs:
         filterargs["reduced_form"] = True
 
+    if use_prior_transform is None:
+        if "use_prior_transform" in self.fdict.keys():
+            use_prior_transform = self.fdict["use_prior_transform"]
+        else:
+            use_prior_transform = False
+
     self.fdict["filter_n"] = N
     self.fdict["linear"] = linear
     self.fdict["seed"] = seed
+    self.fdict["use_prior_transform"] = use_prior_transform
 
     self.debug |= debug
 
