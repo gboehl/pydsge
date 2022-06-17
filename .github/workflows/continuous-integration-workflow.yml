@@ -40,7 +40,6 @@ jobs:
         python -m pip install grgrlib
         python -m pip install econsieve 
         #python -m pip install emcwrap
-        #python -m pip install numpy==1.20
         # no need to fix version:
         python -m pip install numpy
         python -m pip install h5py
