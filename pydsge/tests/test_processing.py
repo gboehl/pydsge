@@ -25,6 +25,3 @@ def test_processing():
     mod.load_estim()
     # extract shocks:
     epsd = mod.extract(pars, nsamples=1, bound_sigma=4)
-
-
-test_processing()
