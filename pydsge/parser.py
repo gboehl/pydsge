@@ -482,6 +482,10 @@ class DSGE(DSGE_RAW):
         if verbose:
             st = time.time()
 
+        if sys.version_info.minor < 10:
+            # due to some copatibility bug 
+            force_parse = True
+
         fdict = dict(np.load(npzfile, allow_pickle=True))
 
         mtxt = str(fdict["yaml_raw"])
