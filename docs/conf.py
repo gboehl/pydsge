@@ -15,12 +15,17 @@ import sys
 
 sys.path.insert(0, os.path.abspath(".."))
 
+from econpizza import __version__
+
 # -- Project information -----------------------------------------------------
 
 project = "pydsge"
 copyright = "2019, Gregor Boehl"
 author = "Gregor Boehl"
 
+# The full version, including alpha/beta/rc tags
+version = __version__
+release = version
 
 # -- General configuration ---------------------------------------------------
 

@@ -1,6 +1,7 @@
 """This file defines the installation set-up."""
 from setuptools import setup, find_packages
 from os import path
+from pydsge import __version__
 
 # read the contents of the README file
 this_directory = path.abspath(path.dirname(__file__))
@@ -12,7 +13,7 @@ setup(
     long_description_content_type="text/x-rst",
     url="https://pydsge.readthedocs.io/en/latest/index.html",
     name="pydsge",
-    version="0.1.4",
+    version=__version__,
     author="Gregor Boehl",
     author_email="admin@gregorboehl.com",
     license="MIT",

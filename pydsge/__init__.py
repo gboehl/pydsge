@@ -6,7 +6,10 @@ from .gensys import DSGE, gen_sys_from_dict
 import numpy as np
 import logging
 import os
+
 os.environ["OMP_NUM_THREADS"] = "1"
+
+__version__ = '0.1.5'
 
 np.set_printoptions(threshold=np.inf)
 logging.basicConfig(level=logging.INFO)
