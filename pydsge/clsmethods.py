@@ -89,6 +89,13 @@ def get_chain(
 
     chain = reader.get_chain(flat=flat)
 
+    # ensure that bptrans exists and is applied
+    if not hasattr(self, 'bptrans'):
+        self.load_estim()
+
+    if self.bptrans:
+        return self.bptrans(chain)
+
     return chain
 
 
@@ -222,14 +229,8 @@ def mcmc_summary(
 
     tune = tune or self.get_tune
     lprobs = self.get_log_prob()
-    try:
-        self.bptrans
-    except AttributeError:
-        self.load_estim()
 
-    transformed_chain = self.bptrans(chain[-tune:]) if self.bptrans else chain[-tune:]
-
-    return ew.mcmc_summary(transformed_chain, lprobs[-tune:], priors=self.prior, acceptance_fraction=self.get_chain(get_acceptance_fraction=True), **args)
+    return ew.mcmc_summary(chain, lprobs[-tune:], priors=self.prior, acceptance_fraction=self.get_chain(get_acceptance_fraction=True), **args)
 
 
 def posterior2csv(self, path=None, tune=None, **args):
