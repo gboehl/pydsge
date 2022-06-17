@@ -11,8 +11,6 @@ on:
 
 jobs:
   build:
-  #run-tests: [this is from estimagic]
-
     name: Run tests for ${{ matrix.os }} on ${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
 
@@ -23,9 +21,9 @@ jobs:
         python-version: ['3.8', '3.10']
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v3
       with:
         python-version: ${{ matrix.python-version }}
     - name: Install dependencies
@@ -36,7 +34,7 @@ jobs:
         #python -m pip install git+https://github.com/gboehl/grgrlib
         #python -m pip install git+https://github.com/gboehl/econsieve 
         #python -m pip install git+https://github.com/gboehl/emcwrap
-        python setup.py install
+        #python setup.py install
 
     # # Uncomment to update stable pickle
     #- name: Update stable pickle
@@ -48,9 +46,9 @@ jobs:
       run: |
         pytest
 
-    - name: Commit changed pickle
-      uses: EndBug/add-and-commit@v7
-      with:
-        add: pydsge/tests/resources # only changes to 'resources/' folder are commited
-        default_author: github_actions
-        message: CI update of stable pickle
+    #- name: Commit changed pickle
+      #uses: EndBug/add-and-commit@v7
+      #with:
+        #add: pydsge/tests/resources # only changes to 'resources/' folder are commited
+        #default_author: github_actions
+        #message: CI update of stable pickle
