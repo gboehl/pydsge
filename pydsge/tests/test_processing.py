@@ -5,9 +5,8 @@ def test_processing():
 
     import matplotlib.pyplot as plt
     # import the base class:
-    from pydsge import *
+    from pydsge import DSGE, meta_data
     # import all the useful stuff from grgrlib:
-    from grgrlib import *
 
     mod = DSGE.load(meta_data)
     info = mod.info()
@@ -19,7 +18,6 @@ def test_processing():
 
     # # plot them:
     v = ['y', 'Pi', 'r', 'x']
-    fig, ax, _ = pplot(ir0[0][..., mod.vix(v)], labels=v)
 
     pars_sig1 = [mod.set_par('sigma', 1, p) for p in pars]
 
@@ -27,3 +25,6 @@ def test_processing():
     mod.load_estim()
     # extract shocks:
     epsd = mod.extract(pars, nsamples=1, bound_sigma=4)
+
+
+test_processing()
