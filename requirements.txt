@@ -3,4 +3,17 @@ ipykernel
 ipython_genutils
 nbsphinx
 pre-commit
+emcee
+numba
+numpy
+pandas
+pathos
+dill
+scipy
+sympy
+tqdm
+chaospy
+cloudpickle
 h5py
+emcwrap>=0.1.2
+grgrlib

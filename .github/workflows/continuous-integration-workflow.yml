@@ -35,14 +35,7 @@ jobs:
         pip install -r requirements.txt
         #python -m pip install git+https://github.com/gboehl/grgrlib
         #python -m pip install git+https://github.com/gboehl/econsieve 
-        python -m pip install git+https://github.com/gboehl/emcwrap
-        # use pypi version:
-        python -m pip install grgrlib
-        python -m pip install econsieve 
-        #python -m pip install emcwrap
-        # no need to fix version:
-        python -m pip install numpy
-        python -m pip install h5py
+        #python -m pip install git+https://github.com/gboehl/emcwrap
         python setup.py install
 
     # # Uncomment to update stable pickle
