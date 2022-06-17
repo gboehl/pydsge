@@ -530,12 +530,13 @@ class DSGE(DSGE_RAW):
         pmodel.data = cpickle.loads(fdict["data"])
         pmodel.fdict["model_dump"] = pmodel_dump
 
-        pmodel.debug = platform == "darwin" or platform == "win32"
-        if pmodel.debug:
-            print(
-                "[DSGE:]".ljust(15, " ")
-                + " Parallelization disabled under Windows and Mac due to a problem with pickling some of the symbolic elements. Sorry..."
-            )
+        # pmodel.debug = platform == "darwin" or platform == "win32"
+        # if pmodel.debug:
+            # print(
+                # "[DSGE:]".ljust(15, " ")
+                # + " Parallelization disabled under Windows and Mac due to a problem with pickling some of the symbolic elements. Sorry..."
+            # )
+        pmodel.debug = False
 
         for ob in pmodel.fdict.keys():
             if str(pmodel.fdict[ob]) == "None":

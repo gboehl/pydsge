@@ -222,8 +222,12 @@ def mcmc_summary(
 
     tune = tune or self.get_tune
     lprobs = self.get_log_prob()
-    transformed_chain = self.bptrans(
-        chain[-tune:]) if self.bptrans else chain[-tune:]
+    try:
+        self.bptrans
+    except AttributeError:
+        self.load_estim()
+
+    transformed_chain = self.bptrans(chain[-tune:]) if self.bptrans else chain[-tune:]
 
     return ew.mcmc_summary(transformed_chain, lprobs[-tune:], priors=self.prior, acceptance_fraction=self.get_chain(get_acceptance_fraction=True), **args)
 
