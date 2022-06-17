@@ -17,3 +17,4 @@ cloudpickle
 h5py
 emcwrap>=0.1.3
 grgrlib
+econsieve
