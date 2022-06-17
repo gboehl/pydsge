@@ -39,10 +39,10 @@ jobs:
         python setup.py install
 
     # # Uncomment to update stable pickle
-    - name: Update stable pickle
-      if: [matrix.os == 'ubuntu-latest'] && [matrix.python-version == '3.8']
-      run: |
-        python pydsge/tests/export_getting_started_to_pkl.py
+    #- name: Update stable pickle
+      #if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.8'
+      #run: |
+        #python pydsge/tests/export_getting_started_to_pkl.py
 
     - name: Test with pytest
       run: |
