@@ -20,7 +20,7 @@ jobs:
       fail-fast: false
       matrix:
         os: ['ubuntu-latest', 'macos-latest', 'windows-latest']
-        python-version: ['3.8', '3.9']
+        python-version: ['3.8', '3.10']
 
     steps:
     - uses: actions/checkout@v2
@@ -39,10 +39,10 @@ jobs:
         python setup.py install
 
     # # Uncomment to update stable pickle
-    # - name: Update stable pickle
-    #   if: runner.os == 'Ubuntu' && matrix.python-version == '3.8'
-    #   run: |
-    #     python pydsge/tests/export_getting_started_to_pkl.py
+     - name: Update stable pickle
+       if: runner.os == 'Ubuntu' && matrix.python-version == '3.8'
+       run: |
+         python pydsge/tests/export_getting_started_to_pkl.py
 
     - name: Test with pytest
       run: |
