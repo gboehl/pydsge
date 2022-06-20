@@ -34,7 +34,7 @@ jobs:
         #python -m pip install git+https://github.com/gboehl/grgrlib
         #python -m pip install git+https://github.com/gboehl/econsieve 
         #python -m pip install git+https://github.com/gboehl/emcwrap
-        #python setup.py install
+        python setup.py install
 
     # # Uncomment to update stable pickle
     #- name: Update stable pickle
