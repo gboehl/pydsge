@@ -2,6 +2,8 @@ sphinx>=1.4
 ipykernel
 ipython_genutils
 nbsphinx
+nbformat
+nbconvert
 pre-commit
 emcee
 numba
