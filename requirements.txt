@@ -18,4 +18,6 @@ chaospy
 cloudpickle
 h5py
 emcwrap>=0.1.3
+econpizza
 grgrlib
+econsieve

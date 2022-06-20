@@ -447,8 +447,7 @@ class DSGE(DSGE_RAW):
                 ftxt = ff.read()
                 pmodel.fdict["ffile_raw"] = ftxt
 
-            pmodel_dump = cpickle.dumps(pmodel, protocol=4)
-            pmodel.fdict["model_dump"] = pmodel_dump
+            pmodel.fdict["model_dump"] = cpickle.dumps(pmodel, protocol=4)
             pmodel.name = pmodel.mod_name
             pmodel.description = pmodel.mod_name
             pmodel.path = os.path.dirname(mfile)
@@ -481,6 +480,10 @@ class DSGE(DSGE_RAW):
 
         if verbose:
             st = time.time()
+
+        if sys.version_info.minor < 10:
+            # due to some copatibility bug 
+            force_parse = True
 
         fdict = dict(np.load(npzfile, allow_pickle=True))
 
@@ -516,7 +519,6 @@ class DSGE(DSGE_RAW):
                     ffile = ""
 
                 pmodel = cls.parse(mtxt, ffile)
-                pmodel_dump = cpickle.dumps(pmodel, protocol=4)
 
                 try:
                     tfile.close()
@@ -524,11 +526,12 @@ class DSGE(DSGE_RAW):
                 except:
                     pass
 
+
         pmodel.fdict = fdict
         pmodel.name = str(fdict["name"])
         pmodel.path = os.path.dirname(npzfile)
         pmodel.data = cpickle.loads(fdict["data"])
-        pmodel.fdict["model_dump"] = pmodel_dump
+        pmodel.fdict["model_dump"] = cpickle.dumps(pmodel, protocol=4)
 
         # pmodel.debug = platform == "darwin" or platform == "win32"
         # if pmodel.debug:
