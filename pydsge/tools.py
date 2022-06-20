@@ -261,8 +261,9 @@ def irfs(
                     shock_arg = pelf.shocks.index(shock)
                     shk_vec[shock_arg] = shocksize
 
-            # force_init_equil will force recalculation of l,k only if the shock vec is not empty
-            if force_init_equil and not np.any(shk_vec):
+            # force_init_equil will force recalculation of l,k only if the shock vec is not empty 
+            # but loop must be skipped if no shock is provided at all (e.g. if samplinf from a state distribution)
+            if force_init_equil and not np.any(shk_vec) and np.any([s[2] for s in new_shocklist]):
                 set_k_eff = (l - 1, k) if l else (l, max(k - 1, 0))
 
                 _, (l_endo, k_endo), flag = pelf.t_func(
