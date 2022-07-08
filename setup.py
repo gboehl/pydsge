@@ -42,7 +42,7 @@ setup(
         "h5py",
         "emcwrap>=0.1.3",
         "grgrlib>=0.1.13",
-        "econsieve>=0.0.56,
+        "econsieve>=0.0.6",
     ],
     include_package_data=True,
 )
