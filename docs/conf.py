@@ -15,7 +15,7 @@ import sys
 
 sys.path.insert(0, os.path.abspath(".."))
 
-from econpizza import __version__
+from pydsge import __version__
 
 # -- Project information -----------------------------------------------------
 

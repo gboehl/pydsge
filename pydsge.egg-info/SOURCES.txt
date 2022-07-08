@@ -47,5 +47,6 @@ pydsge/tests/export_getting_started_to_pkl.py
 pydsge/tests/test_estimation.py
 pydsge/tests/test_model.py
 pydsge/tests/test_parser.py
+pydsge/tests/test_processing.py
 pydsge/tests/test_stability.py
 pydsge/tests/resources/getting_started_stable.npz

@@ -10,6 +10,6 @@ tqdm
 chaospy
 cloudpickle
 h5py
-emcwrap>=0.1.1
-grgrlib>=0.1.3
+emcwrap>=0.1.3
+grgrlib
 econsieve>=0.0.4

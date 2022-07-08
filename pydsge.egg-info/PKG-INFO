@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: pydsge
-Version: 0.1.4
+Version: 0.1.5
 Summary: Solve, filter and estimate DSGE models with occasionaly binding constraints
 Home-page: https://pydsge.readthedocs.io/en/latest/index.html
 Author: Gregor Boehl
@@ -32,7 +32,7 @@ A collection of models that can be (and were) used with this package can be foun
 Installation
 -------------
 
-Installing the repo version is as simple as
+Installing the stable version is as simple as
 
 .. code-block:: bash
 
@@ -52,7 +52,7 @@ Citation
 
 **pydsge** is developed by Gregor Boehl to simulate, filter, and estimate DSGE models with the zero lower bound on nominal interest rates in various applications (see `my website <https://gregorboehl.com>`_ for research papers using the package). Please cite it with
 
-.. code-block::
+.. code-block:: latex
 
     @techreport{boehl2021method,
       Title = {Efficient Solution and Computation of Models with Occasionally Binding Constraints},
@@ -80,3 +80,5 @@ References
 ----------
 
 Boehl, Gregor (2021). `Efficient Solution and Computation of Models with Occasionally Binding Constraints <http://gregorboehl.com/live/obc_boehl.pdf>`_. *IMFS Working Paper*
+
+
