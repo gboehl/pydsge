@@ -41,8 +41,8 @@ setup(
         "cloudpickle",
         "h5py",
         "emcwrap>=0.1.3",
-        "grgrlib>=0.1.13",
-        "econsieve>=0.0.7",
+        "grgrlib>=0.1.15",
+        "econsieve>=0.0.8",
     ],
     include_package_data=True,
 )
