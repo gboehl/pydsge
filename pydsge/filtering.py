@@ -82,7 +82,7 @@ def create_filter(
 
     if ftype == "KF":
 
-        f = KalmanFilter(dim_x=self.dimx, dim_z=self.nobs)
+        f = KalmanFilter(dim_x=self.dimx, dim_z=self.nobs, **fargs)
 
     elif ftype == "IF":
 
@@ -91,7 +91,7 @@ def create_filter(
         omitted_obs_ind = self.observables.index(fargs['omitted_obs'])
         omitted_shock_ind = self.shocks.index(fargs['omitted_shock'])
 
-        f = InversionFilter(self.neps, omitted_shock_ind=omitted_shock_ind, omitted_obs_ind=omitted_obs_ind, x_bar=fargs['x_bar'])
+        f = InversionFilter(self.neps, omitted_shock_ind=omitted_shock_ind, omitted_obs_ind=omitted_obs_ind, x_bar=fargs['x_bar'], **fargs)
 
     elif ftype in ("PF", "APF"):
 
@@ -105,7 +105,7 @@ def create_filter(
 
         aux_bs = ftype == "APF"
         f = ParticleFilter(
-            N=N, dim_x=self.dimx, dim_z=self.nobs, auxiliary_bootstrap=aux_bs
+            N=N, dim_x=self.dimx, dim_z=self.nobs, auxiliary_bootstrap=aux_bs, **fargs
         )
 
     else:
