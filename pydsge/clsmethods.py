@@ -58,6 +58,7 @@ def get_chain(
     get_log_prob=False,
     backend_file=None,
     flat=None,
+    verbose=False,
 ):
 
     if not backend_file:
@@ -91,7 +92,7 @@ def get_chain(
 
     # ensure that bptrans exists and is applied
     if not hasattr(self, 'bptrans'):
-        self.load_estim()
+        self.load_estim(verbose=verbose)
 
     if self.bptrans:
         return self.bptrans(chain)
