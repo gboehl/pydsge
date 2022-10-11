@@ -27,7 +27,7 @@ def mcmc(
     resume=False,
     append=False,
     report=None,
-    verbose=False,
+    verbose=True,
     **kwargs
 ):
     """Run the emcee ensemble MCMC sampler.
@@ -75,7 +75,7 @@ def mcmc(
         return lprob_global(
             par,
             linear=linear,
-            verbose=verbose,
+            verbose=verbose>1,
             temp=temp
         )
 
@@ -90,11 +90,11 @@ def mcmc(
                 asdict=False,
                 full=False,
                 nsample=nwalks,
-                verbose=verbose,
+                verbose=verbose>1,
             )
         else:
             p0 = get_par(
-                self, "best", asdict=False, full=False, nsample=nwalks, verbose=verbose
+                self, "best", asdict=False, full=False, nsample=nwalks, verbose=verbose>1
             )
     elif not resume:
         nwalks = p0.shape[0]
