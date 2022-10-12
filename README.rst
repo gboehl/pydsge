@@ -39,15 +39,16 @@ Citation
 
 .. code-block:: latex
 
-    @techreport{boehl2021method,
-      Title = {Efficient Solution and Computation of Models with Occasionally Binding Constraints},
-      Author = {Gregor Boehl},
-      Year = {2021},
-      institution = {Goethe University Frankfurt, Institute for Monetary and Financial Stability (IMFS)},
-      type = {IMFS Working Paper Series},
-      number = {148},
-      url = {https://gregorboehl.com/live/obc_boehl.pdf},
+    @techreport{boehl2022obc,
+      title={Efficient solution and computation of models with occasionally binding constraints},
+      author={Boehl, Gregor},
+      journal={Journal of Economic Dynamics and Control},
+      volume={143},
+      pages={104523},
+      year={2022},
+      publisher={Elsevier}
     }
+
 
 We appreciate citations for **pydsge** because it helps us to find out how people have
 been using the package and it motivates further work.
@@ -64,4 +65,4 @@ See https://github.com/EconForge/dolo and https://github.com/eph.
 References
 ----------
 
-Boehl, Gregor (2021). `Efficient Solution and Computation of Models with Occasionally Binding Constraints <http://gregorboehl.com/live/obc_boehl.pdf>`_. *IMFS Working Paper*
+Boehl, Gregor (2022). `Efficient Solution and Computation of Models with Occasionally Binding Constraints <http://gregorboehl.com/live/obc_boehl.pdf>`_. *Journal of Economic Dynamics and Control*
