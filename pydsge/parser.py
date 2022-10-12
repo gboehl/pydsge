@@ -451,12 +451,13 @@ class DSGE(DSGE_RAW):
             pmodel.name = pmodel.mod_name
             pmodel.description = pmodel.mod_name
             pmodel.path = os.path.dirname(mfile)
-            pmodel.debug = platform == "darwin" or platform == "win32"
-            if pmodel.debug:
-                print(
-                    "[DSGE:]".ljust(15, " ")
-                    + " Parallelization disabled under Windows and Mac due to a problem with pickling some of the symbolic elements. Sorry..."
-                )
+            pmodel.debug = False
+            # pmodel.debug = platform == "darwin" or platform == "win32"
+            # if pmodel.debug:
+                # print(
+                    # "[DSGE:]".ljust(15, " ")
+                    # + " Parallelization disabled under Windows and Mac due to a problem with pickling some of the symbolic elements. Sorry..."
+                # )
 
             cached_models[len(cached_models)] = deepcopy(pmodel)
 
