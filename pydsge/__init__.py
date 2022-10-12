@@ -9,7 +9,7 @@ import os
 
 os.environ["OMP_NUM_THREADS"] = "1"
 
-__version__ = '0.1.6'
+__version__ = '0.1.7'
 
 np.set_printoptions(threshold=np.inf)
 logging.basicConfig(level=logging.INFO)
