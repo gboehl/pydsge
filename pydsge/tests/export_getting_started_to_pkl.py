@@ -5,12 +5,13 @@ import numpy as np
 import os
 from nbconvert import PythonExporter
 from pathlib import Path  # for windows-Unix compatibility
+from pydsge.tests.test_estimation import test_estimation
 
 
 def nbconvert_python(path):
     """Use nbconvert to convert jupyter notebook to python code.
 
-    Return the string of python code. You can then excute it with `exec()`.
+    Return the string of python code. You can then execute it with `exec()`.
 
     Args:
         path (str): Path of jupyter notebook
@@ -192,12 +193,15 @@ def main():
     """Excute jupyter notebook and save global variables."""
     notebook_path = Path("docs/getting_started.ipynb")
 
+    # test_estimation(create=True)
+
     bk = notebook_exec_result_flattened(notebook_path)
 
     # to save session
     save_path = Path("pydsge/tests/resources/getting_started_stable.npz")
     with open(save_path, "wb") as f:
         np.savez_compressed(f, **bk)
+        print('written to', save_path)
 
 
 if __name__ == "__main__":

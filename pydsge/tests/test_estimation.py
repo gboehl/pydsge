@@ -1,11 +1,12 @@
 """This file contains the test for the estimation of the model."""
 
+import numpy as np
+import pandas as pd
+from pydsge import DSGE, example
+from pathlib import Path  # for windows-Unix compatibility
 
-def test_estimation():
 
-    import numpy as np
-    import pandas as pd
-    from pydsge import DSGE, example
+def test_estimation(create=False):
 
     yaml, data = example
     mod = DSGE.read(yaml)
@@ -28,10 +29,20 @@ def test_estimation():
     # sample pars from prior
     p0 = mod.prior_sampler(22, check_likelihood=False, verbose=True)
 
-    sampler = mod.mcmc(p0, nsteps=10, tune=5, update_freq=5)
+    sampler = mod.mcmc(p0, nsteps=20, tune=5, update_freq=0)
     # mod.save()
 
     mod.mcmc_summary()
+    this_sample = mod.sampler.get_chain()[0, 0]
 
-    assert np.allclose(mod.sampler.get_chain()[0, 0], np.array(
-        [0.79731672,  2.18496137,  1.58360637, -0.12263003,  0.09339783, 0.24715758,  0.83388983,  0.60519207,  0.26469191,  0.0791741, 0.89252174]))
+    save_path = Path("pydsge/tests/resources/estimation.npz")
+
+    if create:
+        with open(save_path, "wb") as f:
+            np.save(f, this_sample)
+
+    else:
+        with open(save_path, "rb") as f:
+
+            test_sample = np.load(f, allow_pickle=False)
+            np.testing.assert_allclose(this_sample, test_sample)
