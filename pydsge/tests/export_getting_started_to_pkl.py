@@ -5,7 +5,6 @@ import numpy as np
 import os
 from nbconvert import PythonExporter
 from pathlib import Path  # for windows-Unix compatibility
-from pydsge.tests.test_estimation import test_estimation
 
 
 def nbconvert_python(path):
@@ -193,6 +192,7 @@ def main():
     """Excute jupyter notebook and save global variables."""
     notebook_path = Path("docs/getting_started.ipynb")
 
+    # from test_estimation import test_estimation
     # test_estimation(create=True)
 
     bk = notebook_exec_result_flattened(notebook_path)
