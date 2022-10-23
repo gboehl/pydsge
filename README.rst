@@ -17,11 +17,13 @@ A collection of models that can be (and were) used with this package can be foun
 Installation
 -------------
 
-Installing the stable version is as simple as
+Installing the stable version is as simple as typing
 
 .. code-block:: bash
 
    pip install pydsge
+
+in your terminal or Anaconda Prompt. 
 
 Documentation
 -------------
