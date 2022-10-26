@@ -10,7 +10,7 @@ pydsge
 
 ----
 
-A package for solving, filtering and estimating DSGE models at the ZLB (or with other occasionally binding constraints).
+A package for solving, filtering and estimating DSGE models with the ZLB (or other occasionally binding constraints).
 
 A collection of models that can be (and were) used with this package can be found in `another repo <https://github.com/gboehl/projectlib/tree/master/yamls>`_.
 
@@ -23,12 +23,12 @@ Installing the stable version is as simple as typing
 
    pip install pydsge
 
-in your terminal or Anaconda Prompt. 
+in your terminal (Linux/MacOS) or Anaconda Prompt (Win). 
 
 Documentation
 -------------
 
-There is some `documentation <https://pydsge.readthedocs.io/en/latest/index.html>`_ out there:
+Documentation can be found on `ReadTheDocs <https://pydsge.readthedocs.io/en/latest/index.html>`_:
 
 - `Installation Guide <https://pydsge.readthedocs.io/en/latest/installation_guide.html>`_
 - `Getting Started <https://pydsge.readthedocs.io/en/latest/getting_started.html>`_
