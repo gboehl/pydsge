@@ -1,9 +1,9 @@
 """This file contains the test for the estimation of the model."""
 
+import os
 import numpy as np
 import pandas as pd
 from pydsge import DSGE, example
-from pathlib import Path  # for windows-Unix compatibility
 
 
 def test_estimation(create=False):
@@ -35,7 +35,8 @@ def test_estimation(create=False):
     mod.mcmc_summary()
     this_sample = mod.sampler.get_chain()[0, 0]
 
-    save_path = Path("pydsge/tests/resources/estimation.npz")
+    pth = os.path.dirname(__file__)
+    save_path = os.path.join(pth, "resources", "estimation.npz")
 
     if create:
         with open(save_path, "wb") as f:
