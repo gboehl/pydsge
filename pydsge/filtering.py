@@ -91,7 +91,8 @@ def create_filter(
         omitted_obs_ind = self.observables.index(fargs['omitted_obs'])
         omitted_shock_ind = self.shocks.index(fargs['omitted_shock'])
 
-        f = InversionFilter(self.neps, omitted_shock_ind=omitted_shock_ind, omitted_obs_ind=omitted_obs_ind, x_bar=fargs['x_bar'], **fargs)
+        f = InversionFilter(self.neps, omitted_shock_ind=omitted_shock_ind,
+                            omitted_obs_ind=omitted_obs_ind, x_bar=fargs['x_bar'], **fargs)
 
     elif ftype in ("PF", "APF"):
 
@@ -152,6 +153,15 @@ def run_filter(
         st = time.time()
 
     self.Z = np.array(self.data)
+
+    if self.Z.shape[1] == 1:
+        raise NotImplementedError(
+            "Filtering with just one single time series is not implemented.")
+
+    if self.Z.shape[1] != self.neps:
+        raise NotImplementedError(
+            f"The number of shocks must equal the number of observables, but is {self.neps} and {self.Z.shape[1]}.")
+
     dimp = self.dimp
 
     if init_cov is not None:
