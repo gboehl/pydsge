@@ -43,6 +43,7 @@ setup(
         "emcwrap>=0.2.2",
         "grgrlib>=0.1.15",
         "econsieve>=0.0.8",
+        "threadpoolctl>=3.1.0",
     ],
     include_package_data=True,
 )
