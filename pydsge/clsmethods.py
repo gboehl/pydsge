@@ -1,4 +1,3 @@
-#!/bin/python
 # -*- coding: utf-8 -*-
 
 import os
@@ -13,7 +12,7 @@ from .estimation import *
 import emcwrap as ew
 
 
-class DSGE_RAW(dict):
+class Model(dict):
     pass
 
 
@@ -347,58 +346,56 @@ def get_sample(self, size, chain=None):
     return sample[res]
 
 
-DSGE_RAW.vix = vix
-DSGE_RAW.oix = oix
-DSGE_RAW.get_tune = get_tune
-DSGE_RAW.save = save_meta
-DSGE_RAW.mapper = mapper
-DSGE_RAW.mcmc_summary = mcmc_summary
-DSGE_RAW.info = info_m
-DSGE_RAW.mdd = mdd
-DSGE_RAW.get_data = load_data
-DSGE_RAW.load_data = load_data
-DSGE_RAW.get_sample = get_sample
-DSGE_RAW.create_pool = create_pool
-DSGE_RAW.posterior2csv = posterior2csv
+Model.vix = vix
+Model.oix = oix
+Model.get_tune = get_tune
+Model.save = save_meta
+Model.mapper = mapper
+Model.mcmc_summary = mcmc_summary
+Model.info = info_m
+Model.mdd = mdd
+Model.get_data = load_data
+Model.load_data = load_data
+Model.get_sample = get_sample
+Model.create_pool = create_pool
+Model.posterior2csv = posterior2csv
 # from mpile
-DSGE_RAW.prior_sampler = prior_sampler
-DSGE_RAW.get_par = get_par
-DSGE_RAW.gp = get_par
-DSGE_RAW.get_cov = get_cov
-DSGE_RAW.set_par = set_par
-DSGE_RAW.box_check = box_check
+Model.prior_sampler = prior_sampler
+Model.get_par = get_par
+Model.get_cov = get_cov
+Model.set_par = set_par
+Model.box_check = box_check
 # from tools
-DSGE_RAW.t_func = t_func
-DSGE_RAW.o_func = o_func
-DSGE_RAW.irfs = irfs
-DSGE_RAW.simulate = simulate
-DSGE_RAW.shock2state = shock2state
-DSGE_RAW.obs = o_func
-DSGE_RAW.get_eps_lin = get_eps_lin
-DSGE_RAW.k_map = k_map
-DSGE_RAW.traj = traj
+Model.t_func = t_func
+Model.o_func = o_func
+Model.irfs = irfs
+Model.simulate = simulate
+Model.shock2state = shock2state
+Model.obs = o_func
+Model.get_eps_lin = get_eps_lin
+Model.k_map = k_map
+Model.traj = traj
 # from mcmc
-DSGE_RAW.mcmc = mcmc
+Model.mcmc = mcmc
 # from estimation
-DSGE_RAW.prep_estim = prep_estim
-DSGE_RAW.load_estim = prep_estim
-# DSGE_RAW.lprob = lprob
+Model.prep_estim = prep_estim
+Model.load_estim = prep_estim
 # from filter
-DSGE_RAW.create_filter = create_filter
-DSGE_RAW.get_p_init_lyapunov = get_p_init_lyapunov
-DSGE_RAW.run_filter = run_filter
-DSGE_RAW.get_ll = get_ll
+Model.create_filter = create_filter
+Model.get_p_init_lyapunov = get_p_init_lyapunov
+Model.run_filter = run_filter
+Model.get_ll = get_ll
 # from plot
-DSGE_RAW.traceplot = traceplot_m
-DSGE_RAW.posteriorplot = posteriorplot_m
+Model.traceplot = traceplot_m
+Model.posteriorplot = posteriorplot_m
 # from misc
-DSGE_RAW.get_chain = get_chain
-DSGE_RAW.get_log_prob = get_log_prob
-DSGE_RAW.extract = extract
-DSGE_RAW.create_obs_cov = create_obs_cov
-DSGE_RAW.mask = mask
-DSGE_RAW.load_rdict = load_rdict
-DSGE_RAW.save_rdict = save_rdict
-DSGE_RAW.gfevd = gfevd
-DSGE_RAW.mbcs_index = mbcs_index
-DSGE_RAW.nhd = nhd
+Model.get_chain = get_chain
+Model.get_log_prob = get_log_prob
+Model.extract = extract
+Model.create_obs_cov = create_obs_cov
+Model.mask = mask
+Model.load_rdict = load_rdict
+Model.save_rdict = save_rdict
+Model.gfevd = gfevd
+Model.mbcs_index = mbcs_index
+Model.nhd = nhd

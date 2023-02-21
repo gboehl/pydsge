@@ -41,14 +41,24 @@ Citation
 
 .. code-block:: latex
 
+    @TechReport{boehl2022meth,
+      title = {{Estimation of DSGE Models with the Effective Lower Bound}},
+      author = {Boehl, Gregor and Strobel, Felix},
+      year = 2022,
+      type = {CRC 224 Discussion Papers},
+      institution = {University of Bonn and University of Mannheim, Germany}
+    }
+
+.. code-block:: latex
+
     @techreport{boehl2022obc,
-      title={Efficient solution and computation of models with occasionally binding constraints},
-      author={Boehl, Gregor},
-      journal={Journal of Economic Dynamics and Control},
-      volume={143},
-      pages={104523},
-      year={2022},
-      publisher={Elsevier}
+      title = Efficient solution and computation of models with occasionally binding constraints},
+      author = Boehl, Gregor},
+      journal = Journal of Economic Dynamics and Control},
+      volume = 143},
+      pages = 104523},
+      year = 2022},
+      publisher = Elsevier}
     }
 
 

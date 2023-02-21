@@ -1,4 +1,3 @@
-#!/bin/python
 # -*- coding: utf-8 -*-
 
 """module for model simulations
@@ -82,7 +81,7 @@ def t_func(
         bterm,
         x_bar,
         *self.hx,
-        state[-dimq + dimeps :],
+        state[-dimq + dimeps:],
         shocks,
         set_l,
         set_k,
@@ -122,7 +121,7 @@ def o_func(self, state, covs=None, pars=None):
             self.set_par(par, get_hx_only=True)
             ob = (
                 sti[:, : self.dimp] @ self.hx[0].T
-                + sti[:, self.dimp :] @ self.hx[1].T
+                + sti[:, self.dimp:] @ self.hx[1].T
                 + self.hx[2]
             )
             obs.append(ob)
@@ -132,7 +131,7 @@ def o_func(self, state, covs=None, pars=None):
     try:
         obs = (
             state[..., : self.dimp] @ self.hx[0].T
-            + state[..., self.dimp :] @ self.hx[1].T
+            + state[..., self.dimp:] @ self.hx[1].T
             + self.hx[2]
         )
     except ValueError as e:
@@ -261,13 +260,13 @@ def irfs(
                     shock_arg = pelf.shocks.index(shock)
                     shk_vec[shock_arg] = shocksize
 
-            # force_init_equil will force recalculation of l,k only if the shock vec is not empty 
+            # force_init_equil will force recalculation of l,k only if the shock vec is not empty
             # but loop must be skipped if no shock is provided at all (e.g. if samplinf from a state distribution)
             if force_init_equil and not np.any(shk_vec) and np.any([s[2] for s in new_shocklist]):
                 set_k_eff = (l - 1, k) if l else (l, max(k - 1, 0))
 
                 _, (l_endo, k_endo), flag = pelf.t_func(
-                    st_vec[-(pelf.dimq - pelf.dimeps) :],
+                    st_vec[-(pelf.dimq - pelf.dimeps):],
                     shk_vec,
                     set_k=None,
                     linear=linear,
@@ -300,11 +299,12 @@ def irfs(
             if set_k_eff:
                 if set_k_eff[0] > l_max or set_k_eff[1] > k_max:
                     raise IndexError(
-                        "set_k exceeds l_max (%s vs. %s)." % (set_k_eff, (l_max, k_max))
+                        "set_k exceeds l_max (%s vs. %s)." % (
+                            set_k_eff, (l_max, k_max))
                     )
 
             st_vec, (l, k), flag = pelf.t_func(
-                st_vec[-(pelf.dimq - pelf.dimeps) :],
+                st_vec[-(pelf.dimq - pelf.dimeps):],
                 shk_vec,
                 set_k=set_k_eff,
                 linear=linear,
@@ -336,7 +336,8 @@ def irfs(
         if np.any(flag):
             print("[irfs:]".ljust(14, " ") + " No OBC solution(s) found.")
         elif np.any(multflag):
-            print("[irfs:]".ljust(14, " ") + " Multiplicity/Multiplicities found.")
+            print("[irfs:]".ljust(14, " ") +
+                  " Multiplicity/Multiplicities found.")
 
     if verbose > 2:
         print(
@@ -353,7 +354,7 @@ def shock2state(self, shock):
 
     stype, ssize = shock[:2]
     state = np.zeros(self.dimq)
-    state[-self.dimeps :][list(self.shocks).index(stype)] = ssize
+    state[-self.dimeps:][list(self.shocks).index(stype)] = ssize
 
     return state
 
@@ -473,7 +474,8 @@ def simulate(
         )
 
     if np.any(flags) and verbose:
-        print("[simulate:]".ljust(15, " ") + "No OBC solution found (at least once).")
+        print("[simulate:]".ljust(15, " ") +
+              "No OBC solution found (at least once).")
 
     return X, (LK[..., 0, :], LK[..., 1, :]), flags
 

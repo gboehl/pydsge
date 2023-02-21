@@ -1,4 +1,3 @@
-#!/bin/python
 # -*- coding: utf-8 -*-
 
 from .stats import sort_nhd

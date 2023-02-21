@@ -1,4 +1,3 @@
-#!/bin/python
 # -*- coding: utf-8 -*-
 
 import warnings
@@ -14,7 +13,8 @@ from scipy.special import gammaln
 from grgrlib import timeprint
 from grgrlib.stats import mode
 
-from emcwrap.dists import InvGammaDynare # to maintain picklability
+from emcwrap.dists import InvGammaDynare  # to maintain picklability
+
 
 def pmdm_report(self, x_max, res_max, n=np.inf, printfunc=print):
 

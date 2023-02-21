@@ -1,4 +1,3 @@
-#!/bin/python
 # -*- coding: utf-8 -*-
 
 import os
@@ -14,7 +13,7 @@ import scipy.optimize as sso
 import cloudpickle as cpickle
 from sys import platform
 from copy import deepcopy
-from .clsmethods import DSGE_RAW
+from .clsmethods import Model
 from .symbols import Variable, Equation, Shock, Parameter, TSymbol
 from sympy.matrices import Matrix, zeros
 
@@ -44,7 +43,7 @@ def crawl_cached_models(mtxt, ftxt):
     return processed_raw_model
 
 
-class DSGE(DSGE_RAW):
+class DSGE(Model):
     """Base class. Every model is an instance of the DSGE class and inherents its methods."""
 
     def __init__(self, *kargs, **kwargs):
@@ -454,10 +453,10 @@ class DSGE(DSGE_RAW):
             pmodel.debug = False
             # pmodel.debug = platform == "darwin" or platform == "win32"
             # if pmodel.debug:
-                # print(
-                    # "[DSGE:]".ljust(15, " ")
-                    # + " Parallelization disabled under Windows and Mac due to a problem with pickling some of the symbolic elements. Sorry..."
-                # )
+            # print(
+            # "[DSGE:]".ljust(15, " ")
+            # + " Parallelization disabled under Windows and Mac due to a problem with pickling some of the symbolic elements. Sorry..."
+            # )
 
             cached_models[len(cached_models)] = deepcopy(pmodel)
 
@@ -483,7 +482,7 @@ class DSGE(DSGE_RAW):
             st = time.time()
 
         if sys.version_info.minor < 10:
-            # due to some copatibility bug 
+            # due to some copatibility bug
             force_parse = True
 
         fdict = dict(np.load(npzfile, allow_pickle=True))
@@ -527,7 +526,6 @@ class DSGE(DSGE_RAW):
                 except:
                     pass
 
-
         pmodel.fdict = fdict
         pmodel.name = str(fdict["name"])
         pmodel.path = os.path.dirname(npzfile)
@@ -536,10 +534,10 @@ class DSGE(DSGE_RAW):
 
         # pmodel.debug = platform == "darwin" or platform == "win32"
         # if pmodel.debug:
-            # print(
-                # "[DSGE:]".ljust(15, " ")
-                # + " Parallelization disabled under Windows and Mac due to a problem with pickling some of the symbolic elements. Sorry..."
-            # )
+        # print(
+        # "[DSGE:]".ljust(15, " ")
+        # + " Parallelization disabled under Windows and Mac due to a problem with pickling some of the symbolic elements. Sorry..."
+        # )
         pmodel.debug = False
 
         for ob in pmodel.fdict.keys():

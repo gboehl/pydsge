@@ -1,4 +1,3 @@
-#!/bin/python
 # -*- coding: utf-8 -*-
 
 """contains functions related to (re)compiling the model with different parameters
@@ -59,6 +58,7 @@ def prior_sampler(
     **kwargs
 ):
     """Draw parameters from prior.
+
     Parameters
     ----------
     nsamples : int
@@ -71,6 +71,7 @@ def prior_sampler(
         Whether to ensure that drawn parameters have a model solution (True by default)
     verbose : bool, optional
     debug : bool, optional
+
     Returns
     -------
     array
@@ -124,8 +125,8 @@ def get_par(
         Can be `None`, a parameter name, a parameter set out of {'calib', 'init', 'prior_mean', 'best', 'mode', 'mcmc_mode', 'post_mean', 'posterior_mean'} or one of {'prior', 'post', 'posterior'}.
 
         If `None`, returns the current parameters (default). If there are no current parameters, this defaults to 'best'.
-        'calib' will return the calibration in the main body of the *.yaml (`parameters`).
-        'init' are the initial values (first column) in the `prior` section of the *.yaml.
+        'calib' will return the calibration in the main body of the yaml-file (`parameters`).
+        'init' are the initial values (first column) in the `prior` section of the yaml-file.
         'mode' is the highest known mode from any sort of parameter estimation.
         'best' will default to 'mode' if it exists and otherwise fall back to 'init'.
         'posterior_mean' and 'post_mean' are the same thing.

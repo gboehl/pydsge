@@ -28,8 +28,8 @@ setup(
     packages=find_packages(),
     package_data={"pydsge": ["examples/*"]},
     install_requires=[
-        "emcee",
         "numba",
+        "emcee",
         "numpy",
         "pandas",
         "pathos",

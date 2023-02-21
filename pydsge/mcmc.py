@@ -1,4 +1,3 @@
-#!/bin/python
 # -*- coding: utf-8 -*-
 
 import os
@@ -26,17 +25,37 @@ def mcmc(
     suffix=None,
     resume=False,
     append=False,
-    report=None,
     verbose=True,
     **kwargs
 ):
     """Run the emcee ensemble MCMC sampler.
 
-    Parameters:
+    Parameters
     ----------
-
-    p0 : ndarray of initial states of the walkers in the parameterspace
-    moves : emcee.moves object
+    p0 : ndarray, optional
+        Array of initial states of the walkers in the parameterspace
+    nsteps : int, optional
+        Number of iterations. Defaults to 3000
+    nwalks : int, optional
+        Number of walkers. At default tries to infer from `p0`
+    tune : int, optional
+        Number of tuning periods
+    moves : emcee.moves object, optional
+        Type of `emcee` sampler. Defaults to the DIME sampler
+    temp : float, optional
+        Likelihood tempering. No tempering (`temp=1`) at default
+    seed : int, optional
+        Random seed. Defaults to 0
+    backend : various, optional
+        Optional backends for storing
+    suffix : string, optional
+        Prefered suffix to the backend
+    resume : bool, optional
+        Whether to resume an estimation from the backend
+    append : bool, optional
+        Whether to append to the backend
+    verbose : bool, optional
+        Degree of verbosity
     """
 
     if not hasattr(self, "ndim"):
@@ -75,7 +94,7 @@ def mcmc(
         return lprob_global(
             par,
             linear=linear,
-            verbose=verbose>1,
+            verbose=verbose > 1,
             temp=temp
         )
 
@@ -90,11 +109,11 @@ def mcmc(
                 asdict=False,
                 full=False,
                 nsample=nwalks,
-                verbose=verbose>1,
+                verbose=verbose > 1,
             )
         else:
             p0 = get_par(
-                self, "best", asdict=False, full=False, nsample=nwalks, verbose=verbose>1
+                self, "best", asdict=False, full=False, nsample=nwalks, verbose=verbose > 1
             )
     elif not resume:
         nwalks = p0.shape[0]

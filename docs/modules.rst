@@ -1,30 +1,8 @@
 Module Documentation
 ====================
 
-``pydsge.DSGE``
-------------------
-.. automodule:: pydsge.parser
-   :members:
-   :undoc-members:
-   :show-inheritance:
+All functionality of the package is implemented in the ``pydsge.DSGE`` class. An instance of this class holds all information about the model, and the respective methods.
 
-``pydsge.mpile``
-------------------
-.. automodule:: pydsge.mpile
+.. autoclass:: pydsge.DSGE
    :members:
-   :undoc-members:
-   :show-inheritance:
-
-``pydsge.engine``
-------------------
-.. automodule:: pydsge.engine
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-``pydsge.symbols``
-------------------
-.. automodule:: pydsge.symbols
-   :members:
-   :undoc-members:
-   :show-inheritance:
+   :inherited-members:

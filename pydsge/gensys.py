@@ -1,4 +1,3 @@
-#!/bin/python
 # -*- coding: utf-8 -*-
 
 """contains functions related to (re)compiling the model with different parameters
@@ -11,7 +10,7 @@ import scipy.linalg as sl
 import cloudpickle as cpickle
 from grgrlib import fast0, ouc, klein, speed_kills
 from .engine import preprocess
-from .clsmethods import DSGE_RAW
+from .clsmethods import Model
 from .parser import DSGE
 
 aca = np.ascontiguousarray
@@ -43,7 +42,7 @@ def gen_sys_from_dict(
     from .tools import t_func, irfs, traj, k_map, shock2state
 
     # create a dummy DSGE instance
-    class DSGE_DUMMY(DSGE_RAW):
+    class DSGE_DUMMY(Model):
         pass
 
     self = DSGE_DUMMY()
@@ -148,7 +147,7 @@ def gen_sys_from_yaml(
     fbc = self.bb(self.ppar).flatten().astype(float)  # constraint
     fd0 = -self.bb_PSI(self.ppar).flatten().astype(float)  # constraint
     fb0 = -fbc[: len(self.vv)]
-    fc0 = -fbc[len(self.vv) :]
+    fc0 = -fbc[len(self.vv):]
 
     # observables from z
     ZZ0 = self.ZZ0(self.ppar).astype(float)
@@ -263,9 +262,9 @@ def gen_sys(
         if ZZ0 is not None:
             ZZ0 = np.pad(ZZ0, ((0, 0), (0, sum(inall))))
 
-        BB0[-sum(inall) :, -sum(inall) :] = np.eye(sum(inall))
-        BB0[-sum(inall) :, : -sum(inall)][:, inall] = -np.eye(sum(inall))
-        CC0[:, -sum(inall) :] = CC0[:, : -sum(inall)][:, inall]
+        BB0[-sum(inall):, -sum(inall):] = np.eye(sum(inall))
+        BB0[-sum(inall):, : -sum(inall)][:, inall] = -np.eye(sum(inall))
+        CC0[:, -sum(inall):] = CC0[:, : -sum(inall)][:, inall]
         CC0[:, : -sum(inall)][:, inall] = 0
 
     # create representation in y-space
@@ -343,7 +342,8 @@ def gen_sys(
         if solution == "speed_kills":
             omg, lam = speed_kills(PU, MU, dimp, dimq, tol=1e-4)
         else:
-            omg, lam = klein(PU, MU, nstates=dimq, verbose=verbose, force=False)
+            omg, lam = klein(PU, MU, nstates=dimq,
+                             verbose=verbose, force=False)
     else:
         omg, lam = solution
 
