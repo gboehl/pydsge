@@ -1,4 +1,4 @@
-sphinx
+sphinx-book-theme
 nbsphinx
 ipykernel
 numba
