@@ -36,7 +36,7 @@ def posterior_sampler(self, nsamples, seed=0, verbose=True):
     return sample
 
 
-def sample_box(self, dim0, dim1=None, bounds=None, lp_rule=None, verbose=False):
+def sample_box(self, dim0, dim1=None, bounds=None, lp_rule=None):
     """Sample from a hypercube"""
 
     bnd = bounds or np.array(self.fdict["prior_bounds"])
@@ -50,7 +50,6 @@ def sample_box(self, dim0, dim1=None, bounds=None, lp_rule=None, verbose=False):
 def prior_sampler(
     self,
     nsamples,
-    seed=0,
     try_parameter=True,
     check_likelihood=False,
     verbose=True,
@@ -63,8 +62,6 @@ def prior_sampler(
     ----------
     nsamples : int
         Size of the prior sample
-    seed : int, optional
-        Set the random seed (0 by default)
     check_likelihood : bool, optional
         Whether to ensure that drawn parameters have a finite likelihood (False by default)
     try_parameter : bool, optional

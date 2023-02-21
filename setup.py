@@ -40,6 +40,7 @@ setup(
         "chaospy",
         "cloudpickle",
         "h5py",
+        "pyyaml",
         "emcwrap>=0.2.2",
         "grgrlib>=0.1.15",
         "econsieve>=0.0.8",
