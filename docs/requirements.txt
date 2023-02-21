@@ -1,0 +1,17 @@
+sphinx
+nbsphinx
+ipykernel
+numba
+numpy
+pandas
+pathos
+dill
+scipy
+sympy
+tqdm
+chaospy
+cloudpickle
+h5py
+pyyaml
+emcwrap>=0.2.2
+econsieve>=0.0.8
