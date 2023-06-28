@@ -14,9 +14,6 @@ class Parameter(sympy.Symbol):
         super(Parameter, self).__init__()
         self.name = name
 
-    # def __new__(self, name, exp_date=0):
-    #     super(Parameter,self).__new__( name)
-
     def __repr__(self):
         return self.name
 
@@ -26,23 +23,21 @@ class Parameter(sympy.Symbol):
 
 class TSymbol(sympy.Symbol):
 
-    # __xnew_cached_ = staticmethod(sympy.Symbol.__new_stage2__)
-
     def __init__(self, name, **args):
         super(TSymbol, self).__init__()
 
         if "date" not in args:
-            self._assumptions["date"] = 0
-            self.assumptions0["date"] = 0
+            self._assumptions_orig["date"] = 0
+            self._assumptions0["date"] = 0
         else:
-            self._assumptions["date"] = args["date"]
-            self.assumptions0["date"] = args["date"]
+            self._assumptions_orig["date"] = args["date"]
+            self._assumptions0["date"] = args["date"]
         if "exp_date" not in args:
-            self._assumptions["exp_date"] = 0
-            self.assumptions0["exp_date"] = 0
+            self._assumptions_orig["exp_date"] = 0
+            self._assumptions0["exp_date"] = 0
         else:
-            self._assumptions["exp_date"] = args["exp_date"]
-            self.assumptions0["exp_date"] = args["exp_date"]
+            self._assumptions_orig["exp_date"] = args["exp_date"]
+            self._assumptions0["exp_date"] = args["exp_date"]
 
         self._mhash = None
         self.__hash__()
@@ -52,7 +47,6 @@ class TSymbol(sympy.Symbol):
     def __call__(self, lead):
         newdate = int(self.date) + int(lead)
         newname = str(self.name)
-        # print 'creating', newname, newdate
         clear_cache()
         return self.__class__(newname, date=newdate)
 
@@ -68,13 +62,7 @@ class TSymbol(sympy.Symbol):
         return (self.name, str(self.date), str(self.exp_date))
 
     def __getstate__(self):
-        return {
-            # 'date': self.date,
-            # 'name': self.name,
-            # 'exp_date': self.exp_date,
-            # 'is_commutative': self.is_commutative,
-            # '_mhash': self._mhash
-        }
+        return {}
 
     def class_key(self):
         return (2, 0, self.name, self.date)
@@ -90,21 +78,6 @@ class TSymbol(sympy.Symbol):
             result = self.name + r"(" + str(self.lag) + r")"
         return result
 
-    # def __repr__(self):
-    #     return self.__str__()
-
-    # def _repr_(self):
-    #     return self.__str__()
-
-    # def repr(self):
-    #     return self.__str__()
-
-    # def _print_TSymbol(self):
-    #     return self.__str__()
-
-    # def _print(self):
-    #     return self.__str__()
-
 
 class Variable(TSymbol):
     @property
@@ -118,7 +91,8 @@ class Variable(TSymbol):
         if self.exp_date == 0:
             result = super(Variable, self).__str__()
         else:
-            result = "E[" + str(self.exp_date) + "]" + super(Variable, self).__str__()
+            result = "E[" + str(self.exp_date) + "]" + \
+                super(Variable, self).__str__()
 
         return result
 
@@ -163,8 +137,6 @@ class Shock(TSymbol):
 
 class Equation(sympy.Equality):
 
-    # def __init__(self, lhs, rhs, name=None):
-    #    super(sympy.Equality, self).__init__(lhs, rhs)
     def __new__(cls, lhs, rhs, name=None):
         return super(sympy.Equality, cls).__new__(cls, lhs, rhs)
 

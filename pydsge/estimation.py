@@ -18,7 +18,6 @@ def prep_estim(
     linear=None,
     load_R=False,
     seed=None,
-    eval_priors=False,
     dispatch=False,
     ncores=None,
     l_max=3,
