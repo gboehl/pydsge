@@ -10,7 +10,9 @@ pydsge
 
 ----
 
-A package for solving, filtering and estimating DSGE models with the ZLB (or other occasionally binding constraints).
+A package for solving, filtering and estimating **linear** DSGE models with the ZLB (or other occasionally binding constraints).
+
+Check out my `Econpizza <https://github.com/gboehl/econpizza>`_ package if you are interested in simulating **nonlinear** DSGE models with (or without) **heterogeneous agents**.
 
 A collection of models that can be (and were) used with this package can be found in `another repo <https://github.com/gboehl/projectlib/tree/master/yamls>`_.
 
