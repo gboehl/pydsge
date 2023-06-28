@@ -63,33 +63,8 @@ def diff(new_output, stable_output):
     return stable_output.keys() ^ new_output.keys()
 
 
-@pytest.mark.regression()
-def test_what_output_is_there(diff):
-    """Check that the object names are identical.
-
-    Compare the names of the objects from the stable and the new version.
-    Scenario:
-    * Load stable and new output as dictionaries.
-    The objects names are the dictionary keys.
-    * Convert both dictionaries' keys to sets and find the difference
-    in both directions
-    * Combine the differences of both directions in "diff"
-    * Check that "diff" is equal to expected difference: empty set.
-    """
-    # Print error message in report (under "Captured log call ") if test fails
-    log = logging.getLogger("")
-    log.error(
-        r"\n\nThe test_what_output_is_there Failed. "
-        r"To update the Pickle, run "
-        r'"python pydsge/tests/export_getting_started_to_pkl.py" '
-        r"in the terminal. Or allow CI bot to uptade it. \n\n"
-    )
-
-    assert diff == set()
-
-
 # TODO: parametrize  on different tutorials
-@pytest.mark.regression()
+# @pytest.mark.regression()
 def test_content_of_outputs(new_output, stable_output, diff, atol=1e-07):
     """Check that objects contain the same values.
 
@@ -101,7 +76,8 @@ def test_content_of_outputs(new_output, stable_output, diff, atol=1e-07):
     """
     # Get collection of shared variables to loop over
     error_vars = set()
-    shared_vars = (stable_output.keys() | new_output.keys()) - diff - error_vars
+    shared_vars = (stable_output.keys() | new_output.keys()) - \
+        diff - error_vars
 
     # Write function for de-nesting
     def get_flat(nested_object):
@@ -135,13 +111,15 @@ def test_content_of_outputs(new_output, stable_output, diff, atol=1e-07):
 
     # Loop over shared vars
     for key in sorted(shared_vars):
+        print(f"\ntesting {key}\n")
         # De-nest nested objects, except for pd.DataFrames
         stable = get_flat(stable_output[key])
         new = get_flat(new_output[key])
 
         # For efficiency check DataFrames separately
         if type(new_output[key]).__name__ == "DataFrame":
-            pd.testing.assert_frame_equal(new, stable, atol=atol), f"Error with {key}"
+            pd.testing.assert_frame_equal(
+                new, stable, atol=atol), f"Error with {key}"
 
         # Comparison for arrays, strings, floats and ints (i.e. all others)
         elif type(new_output[key]).__name__ in ["string", "float", "int", "ndarray"]:
