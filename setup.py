@@ -17,7 +17,7 @@ setup(
     long_description_content_type="text/x-rst",
     url="https://pydsge.readthedocs.io/en/latest/index.html",
     name="pydsge",
-    version=__version__,
+    version=version['__version__'],
     author="Gregor Boehl",
     author_email="admin@gregorboehl.com",
     license="MIT",
