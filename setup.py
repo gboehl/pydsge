@@ -1,7 +1,11 @@
 """This file defines the installation set-up."""
 from setuptools import setup, find_packages
 from os import path
-from pydsge import __version__
+
+# get version from dedicated version file
+version = {}
+with open("pydsge/__version__.py") as fp:
+    exec(fp.read(), version)
 
 # read the contents of the README file
 this_directory = path.abspath(path.dirname(__file__))

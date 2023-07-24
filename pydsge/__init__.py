@@ -2,6 +2,7 @@
 
 from .stats import sort_nhd
 from .gensys import DSGE, gen_sys_from_dict
+from .__version__ import __version__
 import numpy as np
 import logging
 import os
