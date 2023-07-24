@@ -4,12 +4,12 @@ pandas
 pathos
 dill
 scipy
-sympy
 tqdm
 chaospy
 cloudpickle
 h5py
 pyyaml
+sympy>=1.12
 emcwrap>=0.2.2
 grgrlib>=0.1.15
 econsieve>=0.0.8
