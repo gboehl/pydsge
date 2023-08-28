@@ -12,6 +12,8 @@ pydsge
 
 A package for solving, filtering and estimating **linear** DSGE models with the ZLB (or other occasionally binding constraints).
 
+The set of methods is introduced in the paper `Estimation of DSGE Models with the Effective Lower Bound <https://gregorboehl.com/live/bczlb_BS.pdf>`_ *(Gregor Boehl & Felix Strobel, 2022, SSRN No. 4138532)*, where we also estimate the medium-scale New Keynesian model to post-2008 US data.
+
 Check out my `Econpizza <https://github.com/gboehl/econpizza>`_ package if you are interested in simulating **nonlinear** DSGE models with (or without) **heterogeneous agents**.
 
 A collection of models that can be (and were) used with this package can be found in `another repo <https://github.com/gboehl/projectlib/tree/master/yamls>`_.
