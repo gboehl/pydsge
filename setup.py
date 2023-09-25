@@ -45,7 +45,7 @@ setup(
         "pyyaml",
         "scipy",
         "sympy>=1.12",
-        "emcwrap>=0.2.2",
+        "emcwrap>=0.2.5",
         "grgrlib>=0.1.15",
         "econsieve>=0.0.8",
         "threadpoolctl>=3.1.0",
