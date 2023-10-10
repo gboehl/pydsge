@@ -240,7 +240,7 @@ def irfs(
                 X[:] = np.nan
                 K[:] = np.nan
                 L[:] = np.nan
-                return X, K, L, 4
+                return X, K, L, 4, 4
 
         st_vec = state if state is not None else np.zeros(nstates)
 
