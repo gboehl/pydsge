@@ -12,7 +12,7 @@ pydsge
 
 A package for solving, filtering and estimating **linear** DSGE models with the ZLB (or other occasionally binding constraints).
 
-The set of methods is introduced in the paper `Estimation of DSGE Models with the Effective Lower Bound <https://gregorboehl.com/live/bczlb_BS.pdf>`_ *(Gregor Boehl & Felix Strobel, 2022, SSRN No. 4138532)*, where we also estimate the medium-scale New Keynesian model to post-2008 US data.
+The set of methods is introduced in the paper `Estimation of DSGE Models with the Effective Lower Bound <https://gregorboehl.com/live/bczlb_BS.pdf>`_ *(Gregor Boehl & Felix Strobel, 2023, JEDC)*, where we also estimate the medium-scale New Keynesian model to post-2008 US data.
 
 Check out my `Econpizza <https://github.com/gboehl/econpizza>`_ package if you are interested in simulating **nonlinear** DSGE models with (or without) **heterogeneous agents**.
 
@@ -48,21 +48,21 @@ Citation
     @TechReport{boehl2022meth,
       title = {{Estimation of DSGE Models with the Effective Lower Bound}},
       author = {Boehl, Gregor and Strobel, Felix},
-      year = 2022,
-      type = {CRC 224 Discussion Papers},
-      institution = {University of Bonn and University of Mannheim, Germany}
+      journal = {Journal of Economic Dynamics and Control},
+      volume = {158},
+      year = {2022},
+      publisher = {Elsevier}
     }
 
 .. code-block:: latex
 
     @techreport{boehl2022obc,
       title = Efficient solution and computation of models with occasionally binding constraints},
-      author = Boehl, Gregor},
-      journal = Journal of Economic Dynamics and Control},
-      volume = 143},
-      pages = 104523},
-      year = 2022},
-      publisher = Elsevier}
+      author = {Boehl, Gregor},
+      journal = {Journal of Economic Dynamics and Control},
+      volume = {143},
+      year = {2022},
+      publisher = {Elsevier}
     }
 
 
