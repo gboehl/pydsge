@@ -238,6 +238,7 @@ def gen_sys(
 
     # start
     vv0 = self.vv
+    ZZ0 = None if not len(ZZ0) else ZZ0
 
     # z-space is the space of the original variables
     dimx = len(vv0)
