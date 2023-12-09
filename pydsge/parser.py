@@ -613,7 +613,7 @@ class DSGE(Model):
                 rhs = eval(rhs, context)
             except TypeError as e:
                 raise SyntaxError(
-                    "While parsing %s, got this error: %s" % (
+                    "While parsing the equation\n\n   %s\n\nI got the error %s. This usually happens because a variable is not declared or a parameter is not defined. Note: undefined parameters may not necessarily be associated with the above equation." % (
                         raw_const, repr(e))
                 )
 
@@ -665,7 +665,8 @@ class DSGE(Model):
                     rhs = sympy.sympify(rhs)
             except TypeError as e:
                 raise SyntaxError(
-                    "While parsing %s, got this error: %s" % (eq, repr(e))
+                    "While parsing the equation\n\n   %s\n\nI got the error %s. This usually happens because a variable is not declared or a parameter is not defined. Note: undefined parameters may not necessarily be associated with the above equation." % (
+                        eq, repr(e))
                 )
 
             equations.append(Equation(lhs, rhs))
