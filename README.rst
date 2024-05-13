@@ -2,11 +2,13 @@
 pydsge
 ======
 
-.. image:: https://badge.fury.io/py/pydsge.svg
+.. |badge0| image:: https://badge.fury.io/py/pydsge.svg
     :target: https://badge.fury.io/py/pydsge
 
-.. image:: https://github.com/gboehl/pydsge/workflows/Continuous%20Integration%20Workflow/badge.svg?branch=master
+.. |badge1| image:: https://github.com/gboehl/pydsge/workflows/Continuous%20Integration%20Workflow/badge.svg?branch=master
     :target: https://github.com/gboehl/pydsge/actions?query=branch%3Aimplementing_CI
+
+|badge0| |badge1| 
 
 ----
 
