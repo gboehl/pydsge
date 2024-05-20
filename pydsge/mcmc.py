@@ -65,6 +65,7 @@ def mcmc(
 
     if seed is None:
         seed = self.fdict["seed"]
+    # necessary since DIME uses complementary ensembles
     np.random.seed(seed)
 
     self.tune = tune

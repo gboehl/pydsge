@@ -8,8 +8,6 @@ from pydsge import DSGE, example
 
 def test_estimation(create=False):
 
-    np.random.seed(0)
-
     yaml, data = example
     mod = DSGE.read(yaml)
 
