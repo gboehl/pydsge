@@ -65,6 +65,7 @@ def mcmc(
 
     if seed is None:
         seed = self.fdict["seed"]
+    np.random.seed(seed)
 
     self.tune = tune
     if tune is None:
