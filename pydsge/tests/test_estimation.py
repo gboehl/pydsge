@@ -47,3 +47,5 @@ def test_estimation(create=False):
 
             test_sample = np.load(f, allow_pickle=False)
             np.testing.assert_allclose(this_sample, test_sample)
+            print(this_sample)
+            print(test_sample)
