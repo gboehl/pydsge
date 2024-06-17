@@ -188,10 +188,15 @@ def prep_estim(
     linear_pa = linear
 
     def lprob(
-            par, par_fix=par_fix, linear=None, verbose=verbose > 1, temp=1):
+            par, par_fix=par_fix, linear=None, verbose=verbose > 1, temp=1, use_prior_transform=use_prior_transform):
 
-        if use_prior_transform:
-            par = bptrans(par)
+        with warnings.catch_warnings(record=True):
+            warnings.filterwarnings("error")
+            try:
+                if use_prior_transform:
+                    par = bptrans(par)
+            except Exception as err:
+                return -np.inf
 
         lp = lprior(par)
 

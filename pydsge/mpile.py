@@ -95,7 +95,7 @@ def prior_sampler(
     if check_likelihood:
         lprob_raw = serializer(self.lprob)
         def check_func(p): return lprob_raw(
-            p, linear=None, verbose=verbose > 1)
+            p, linear=None, verbose=verbose > 1, use_prior_transform=False)
     elif try_parameter:
         check_func = serializer(self.set_par)
 
