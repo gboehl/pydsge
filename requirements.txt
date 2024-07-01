@@ -1,5 +1,5 @@
 numba
-numpy<=1.26.4
+numpy
 pandas
 pathos
 dill
