@@ -34,7 +34,7 @@ setup(
     install_requires=[
         "numba",
         "emcee",
-        "numpy",
+        "numpy<=1.26.4",
         "pandas",
         "pathos",
         "dill",
