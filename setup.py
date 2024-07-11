@@ -34,12 +34,11 @@ setup(
     install_requires=[
         "numba",
         "emcee",
-        "numpy<=1.26.4",
+        "numpy",
         "pandas",
         "pathos",
         "dill",
         "tqdm",
-        "chaospy",
         "cloudpickle",
         "h5py",
         "pyyaml",

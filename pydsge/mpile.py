@@ -3,12 +3,10 @@
 """contains functions related to (re)compiling the model with different parameters
 """
 
-
 import time
 import dill
 import tqdm
 import random
-import chaospy
 import numpy as np
 from emcwrap import get_prior_sample, get_prior
 from grgrlib.multiprocessing import serializer
@@ -34,17 +32,6 @@ def posterior_sampler(self, nsamples, seed=0, verbose=True):
     sample = sample.reshape(-1, sample.shape[(-1)])
     sample = random.choices(sample, k=nsamples)
     return sample
-
-
-def sample_box(self, dim0, dim1=None, bounds=None, lp_rule=None):
-    """Sample from a hypercube"""
-
-    bnd = bounds or np.array(self.fdict["prior_bounds"])
-    dim1 = dim1 or self.ndim
-    rule = lp_rule or "S"
-    res = chaospy.Uniform(0, 1).sample(size=(dim0, dim1), rule=rule)
-    res = (bnd[1] - bnd[0]) * res + bnd[0]
-    return res
 
 
 def prior_sampler(

@@ -9,7 +9,6 @@ dill
 scipy
 sympy
 tqdm
-chaospy
 cloudpickle
 h5py
 pyyaml

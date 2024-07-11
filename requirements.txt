@@ -1,11 +1,10 @@
 numba
-numpy<=1.26.4
+numpy
 pandas
 pathos
 dill
 scipy
 tqdm
-chaospy
 cloudpickle
 h5py
 pyyaml
