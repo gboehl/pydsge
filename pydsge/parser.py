@@ -62,10 +62,12 @@ class DSGE(Model):
                 v for v in eq.atoms() if isinstance(v, Variable) and v.date < -1
             ]
 
-            eq_fvars = [v for v in eq.atoms() if isinstance(
-                v, TSymbol) and v.date > 0]
-            eq_lvars = [v for v in eq.atoms() if isinstance(
-                v, TSymbol) and v.date < 0]
+            eq_fvars = [
+                v for v in eq.atoms() if isinstance(v, TSymbol) and v.date > 0
+            ]
+            eq_lvars = [
+                v for v in eq.atoms() if isinstance(v, TSymbol) and v.date < 0
+            ]
 
             fvars = list(set(fvars).union(eq_fvars))
             lvars = list(set(lvars).union(set(eq_lvars)))
@@ -408,6 +410,8 @@ class DSGE(Model):
         ----------
         mfile : str
             Path to the `*.yaml` file.
+        verbose : bool (default: False)
+            Control verbose output.
         """
 
         global cached_models
@@ -415,35 +419,46 @@ class DSGE(Model):
         if verbose:
             st = time.time()
 
-        f = open(mfile)
-        mtxt = f.read()
-        f.close()
+        if verbose:
+            print("[DSGE:]".ljust(15, " ") + " Loading YAML file")
+
+        with open(mfile) as f:
+            mtxt = f.read()
 
         func_file = mfile[:-5] + "_funcs.py"
 
         if os.path.exists(func_file):
-            ff = open(func_file)
-            ftxt = ff.read()
+            if verbose:
+                print("[DSGE:]".ljust(15, " ") + " Loading functions file")
+            with open(func_file) as ff:
+                ftxt = ff.read()
         else:
+            if verbose:
+                print("[DSGE:]".ljust(15, " ") + " No functions file found")
             ftxt = None
 
+        if verbose:
+            print("[DSGE:]".ljust(15, " ") + " Checking if model is already parsed")
         processed_raw_model = crawl_cached_models(mtxt, ftxt)
 
         if processed_raw_model is not None:
+            if verbose:
+                print("[DSGE:]".ljust(15, " ") + " Model is already parsed, reusing parsed model")
             pmodel = deepcopy(processed_raw_model)
 
         else:
 
+            if verbose:
+                print("[DSGE:]".ljust(15, " ") + " Doesn't look like")
+
             func_file = mfile[:-5] + "_funcs.py"
 
-            pmodel = cls.parse(mtxt, func_file)
+            pmodel = cls.parse(mtxt, func_file, verbose=verbose)
 
             pmodel.fdict = {}
             pmodel.fdict["yaml_raw"] = mtxt
 
-            if os.path.exists(func_file):
-                ff = open(func_file)
-                ftxt = ff.read()
+            if ftxt is not None:
                 pmodel.fdict["ffile_raw"] = ftxt
 
             pmodel.fdict["model_dump"] = cpickle.dumps(pmodel, protocol=4)
@@ -458,6 +473,9 @@ class DSGE(Model):
             # + " Parallelization disabled under Windows and Mac due to a problem with pickling some of the symbolic elements. Sorry..."
             # )
 
+            if verbose:
+                print("[DSGE:]".ljust(15, " ") + " Caching parsed model")
+
             cached_models[len(cached_models)] = deepcopy(pmodel)
 
         if verbose:
@@ -465,7 +483,7 @@ class DSGE(Model):
             if duration < 0.01:
                 duration = "the speed of light"
             else:
-                str(duration) + "s"
+                duration = str(duration) + "s"
             print(
                 "[DSGE:]".ljust(15, " ") +
                 " Reading and parsing done in %s." % duration
@@ -482,7 +500,7 @@ class DSGE(Model):
             st = time.time()
 
         if sys.version_info.minor < 10:
-            # due to some copatibility bug
+            # due to some compatibility bug
             force_parse = True
 
         fdict = dict(np.load(npzfile, allow_pickle=True))
@@ -518,7 +536,7 @@ class DSGE(Model):
                 except KeyError:
                     ffile = ""
 
-                pmodel = cls.parse(mtxt, ffile)
+                pmodel = cls.parse(mtxt, ffile, verbose=verbose)
 
                 try:
                     tfile.close()
@@ -553,8 +571,11 @@ class DSGE(Model):
         return pmodel
 
     @classmethod
-    def parse(cls, mtxt, ffile):
+    def parse(cls, mtxt, ffile, verbose=False):
         """ """
+
+        if verbose:
+            print("[DSGE:]".ljust(15, " ") + " Parsing model")
 
         mtxt = mtxt.replace("^", "**")
         mtxt = mtxt.replace(";", "")

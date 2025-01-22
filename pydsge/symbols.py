@@ -138,7 +138,7 @@ class Shock(TSymbol):
 class Equation(sympy.Equality):
 
     def __new__(cls, lhs, rhs, name=None):
-        return super().__new__(cls, lhs, rhs)
+        return super(sympy.Equality, cls).__new__(cls, lhs, rhs)
 
     @property
     def set_eq_zero(self):
