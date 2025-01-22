@@ -47,7 +47,7 @@ class DSGE(Model):
     """Base class. Every model is an instance of the DSGE class and inherents its methods."""
 
     def __init__(self, *kargs, **kwargs):
-        super(DSGE, self).__init__(self, *kargs, **kwargs)
+        super().__init__(self, *kargs, **kwargs)
 
         fvars = []
         lvars = []
