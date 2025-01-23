@@ -116,7 +116,7 @@ def gen_sys_from_yaml(
     except TypeError as error:
         raise type(error)(
             str(error)
-            + " (maybe one (or serveral) parameter is a function of other parameters, and should be declared in `parafunc`?)"
+            + " (maybe one (or several) parameter is a function of other parameters, and should be declared in `parafunc`?)"
         ).with_traceback(sys.exc_info()[2])
 
     if not self.const_var:
