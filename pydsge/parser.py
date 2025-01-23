@@ -84,6 +84,11 @@ def _dumper(obj, name=None, eq:str="=", indent:int=4, currindent:int=0):
         for v in obj:
             _dumper(v, name=None, indent=indent, currindent=currindent+indent)
         print(currindent*" " + ")")
+    elif isinstance(obj, set):
+        print(currindent*" " + name_and_eq + "{")
+        for v in obj:
+            _dumper(v, name=None, indent=indent, currindent=currindent+indent)
+        print(currindent*" " + "}")
     elif isinstance(obj, Equation):
         print(currindent*" " + name_and_eq + str(obj.lhs) + " = " + str(obj.rhs))
     elif isinstance(obj, str):
