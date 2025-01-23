@@ -84,6 +84,8 @@ def _dumper(obj, name=None, eq:str="=", indent:int=4, currindent:int=0):
         for v in obj:
             _dumper(v, name=None, indent=indent, currindent=currindent+indent)
         print(currindent*" " + ")")
+    elif isinstance(obj, Equation):
+        print(currindent*" " + name_and_eq + str(obj.lhs) + " = " + str(obj.rhs))
     elif isinstance(obj, str):
         print(currindent*" " + name_and_eq + "'" + obj + "'")
     else:
@@ -125,9 +127,9 @@ class DSGE(Model):
         neq : int
             Number of model equations; constraints are not included (neq = len(equations))
         neq_fort : int
-            Number of model equations plus number of forward-looking vars
+            Number of model equations plus number of measurement equations
         neta: int
-            Number of forward looking variables
+            Number of measurement errors (= number of forward looking variables)
         nobs : int
             Number of observable variables
         neps : int
@@ -519,7 +521,7 @@ class DSGE(Model):
         self.HH = HH
 
     @classmethod
-    def read(cls, mfile, verbose=False, debug=False):
+    def read(cls, mfile, verbose=False, debug=False, nocache=False):
         """Read and parse a given `*.yaml` file.
 
         Parameters
@@ -559,7 +561,7 @@ class DSGE(Model):
             print("[DSGE:]".ljust(15, " ") + " Checking if model is already parsed")
         processed_raw_model = crawl_cached_models(mtxt, ftxt)
 
-        if processed_raw_model is not None:
+        if processed_raw_model is not None and not nocache:
             if verbose:
                 print("[DSGE:]".ljust(15, " ") + " Model is already parsed, reusing parsed model")
             pmodel = deepcopy(processed_raw_model)
@@ -567,7 +569,10 @@ class DSGE(Model):
         else:
 
             if verbose:
-                print("[DSGE:]".ljust(15, " ") + " Doesn't look like")
+                if processed_raw_model is not None:
+                    print("[DSGE:]".ljust(15, " ") + " Yes, but nocache=True")
+                else:
+                    print("[DSGE:]".ljust(15, " ") + " Doesn't look like")
 
             func_file = mfile[:-5] + "_funcs.py"
 
@@ -820,7 +825,7 @@ class DSGE(Model):
                 rhs = eval(rhs, context)
                 if isinstance(rhs, (int, float)):
                     rhs = sympy.sympify(rhs)
-            except TypeError as e:
+            except Exception as e:
                 raise SyntaxError(
                     "While parsing the equation\n\n   %s\n\nI got the error %s. This usually happens because a variable is not declared or a parameter is not defined. Note: undefined parameters may not necessarily be associated with the above equation." % (
                         eq, repr(e))
@@ -1007,9 +1012,16 @@ class DSGE(Model):
 
         model.par_fix = np.array(model.p0())
         p_names = [p.name for p in model.parameters]
-        model.prior = model["__data__"]["estimation"]["prior"]
-        model.prior_arg = [p_names.index(pp) for pp in model.prior.keys()]
-        model.prior_names = [str(pp) for pp in model.prior.keys()]
+
+        try:
+            model.prior = model["__data__"]["estimation"]["prior"]
+            model.prior_arg = [p_names.index(pp) for pp in model.prior.keys()]
+            model.prior_names = [str(pp) for pp in model.prior.keys()]
+        except KeyError:
+            model.prior = None
+            model.prior_arg = None
+            model.prior_names = None
+
         model.observables = [str(o) for o in observables]
         model.vo = np.array(model.observables)
         model.ve = np.array(model.shocks)
