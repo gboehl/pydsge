@@ -43,8 +43,115 @@ def crawl_cached_models(mtxt, ftxt):
     return processed_raw_model
 
 
+def _dumper(obj, name=None, indent:int=4, currindent:int=0):
+    """Recursively dump (print) an object in a somewhat structured but human-readable manner.
+
+    This function knows how to handle dictionaries, lists and tuples, as well as classes
+    derived from them. For everything else, the usual stringification is used.
+
+    Parameters
+    ----------
+    obj
+        The object to be dumped.
+    name (default: None)
+        Name of the object to be used in output, if any.
+    indent : int (default: 4)
+        Amount of whitespace to use for indenting when dumping recursively.
+    currindent : int (default: 0)
+        Amount of whitespace to start with when dumping.
+
+    """
+
+    if name is None:
+        name_and_eq = ""
+    else:
+        name_and_eq = name + " = "
+
+    if isinstance(obj, dict):
+        print(currindent*" ", name_and_eq, "{")
+        for k, v in obj.items():
+            _dumper(v, name=k, indent=indent, currindent=currindent+indent)
+        print(currindent*" ", "}")
+    elif isinstance(obj, list):
+        print(currindent*" ", name_and_eq, "[")
+        for v in obj:
+            _dumper(v, name=None, indent=indent, currindent=currindent+indent)
+        print(currindent*" ", "]")
+    elif isinstance(obj, tuple):
+        print(currindent*" ", name_and_eq, "(")
+        for v in obj:
+            _dumper(v, name=None, indent=indent, currindent=currindent+indent)
+        print(currindent*" ", ")")
+    else:
+        print(currindent*" ", name_and_eq, obj)
+
+
 class DSGE(Model):
-    """Base class. Every model is an instance of the DSGE class and inherents its methods."""
+    """Base class for DSGE models.
+
+    Every DSGE model is an instance of the DSGE class. The DSGE class inherits
+    from the Model class such that all methods and attributes defined there are
+    also available for DSGE models.
+
+    Note that currently, only one constraint is supported.
+
+    Read-only attributes:
+    ---------------------
+
+        equations : list
+            Model equations (as pydsge.symbols.Equation)
+        variables : list
+            Model variables (as pydsge.symbols.Variable)
+        const_var : pydsge.symbols.Variable
+            Constrained model variable.
+        const_eq : pydsge.symbols.Equation
+            Constraint. For a constraint of the form
+                i_t = max(i_t^*, i_ELB)
+            this is expressed as
+                i_t = i_t^*
+            The bound i_ELB is always denoted as x_bar in the model file.
+        parameters : list
+            Model parameters (as pydsge.symbols.Parameter)
+        par_names : list
+            Model parameters (textual representations, e.g. "theta")
+        shocks : list
+            Model shocks (textual representation, e.g. "e_z"), in the model's shock order
+        mod_name : str
+            Name of the model
+        neq : int
+            Number of model equations; constraints are not included (neq = len(equations))
+        neq_fort : int
+            Number of model equations plus number of forward-looking vars
+        neta: int
+            Number of forward looking variables
+        nobs : int
+            Number of observable variables
+        neps : int
+            Number of exogenous shock variables (neps = len(shocks))
+        para : int
+            Number of model parameters
+
+    Methods:
+    --------
+
+        p0() : list
+            Calibrated parameter values (as float); same order as model.parameters
+        get_matrices(matrix_format = "numeric")
+            Computes model matrices; no return values; probably an internal method
+        dump()
+            Print (dump) the model in a somewhat structured but human-readable
+            manner. No return value.
+
+    Class methods:
+    --------------
+
+        read(mfile, verbose=False)
+            Read and parse a given YAML file (filename, not content)
+        load(npz_file, force_parse=False, verbose=False)
+            Load a model from an NPZ (numpy) file
+        parse(mtext, ffile, verbose=False)
+            Parse a model (content of YAML file, filename of functions file); probably an internal method
+    """
 
     def __init__(self, *kargs, **kwargs):
         super().__init__(self, *kargs, **kwargs)
@@ -91,10 +198,15 @@ class DSGE(Model):
 
         context = {}
 
+        print("[DSGE:]".ljust(15, " ") + " Created DSGE model")
+
         return
 
     def __repr__(self):
         return "A DSGE Model."
+
+    def dump(self):
+        _dumper(self)
 
     @property
     def equations(self):
