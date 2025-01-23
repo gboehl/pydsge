@@ -43,7 +43,7 @@ def crawl_cached_models(mtxt, ftxt):
     return processed_raw_model
 
 
-def _dumper(obj, name=None, indent:int=4, currindent:int=0):
+def _dumper(obj, name=None, eq:str="=", indent:int=4, currindent:int=0):
     """Recursively dump (print) an object in a somewhat structured but human-readable manner.
 
     This function knows how to handle dictionaries, lists and tuples, as well as classes
@@ -55,6 +55,8 @@ def _dumper(obj, name=None, indent:int=4, currindent:int=0):
         The object to be dumped.
     name (default: None)
         Name of the object to be used in output, if any.
+    eq : str (default: "=")
+        Equal sign to use for current (!) level
     indent : int (default: 4)
         Amount of whitespace to use for indenting when dumping recursively.
     currindent : int (default: 0)
@@ -65,25 +67,27 @@ def _dumper(obj, name=None, indent:int=4, currindent:int=0):
     if name is None:
         name_and_eq = ""
     else:
-        name_and_eq = name + " = "
+        name_and_eq = name + " " + eq + " "
 
     if isinstance(obj, dict):
-        print(currindent*" ", name_and_eq, "{")
+        print(currindent*" " + name_and_eq + "{")
         for k, v in obj.items():
-            _dumper(v, name=k, indent=indent, currindent=currindent+indent)
-        print(currindent*" ", "}")
+            _dumper(v, name=k, eq=":", indent=indent, currindent=currindent+indent)
+        print(currindent*" " + "}")
     elif isinstance(obj, list):
-        print(currindent*" ", name_and_eq, "[")
+        print(currindent*" " + name_and_eq + "[")
         for v in obj:
             _dumper(v, name=None, indent=indent, currindent=currindent+indent)
-        print(currindent*" ", "]")
+        print(currindent*" " + "]")
     elif isinstance(obj, tuple):
-        print(currindent*" ", name_and_eq, "(")
+        print(currindent*" " + name_and_eq + "(")
         for v in obj:
             _dumper(v, name=None, indent=indent, currindent=currindent+indent)
-        print(currindent*" ", ")")
+        print(currindent*" " + ")")
+    elif isinstance(obj, str):
+        print(currindent*" " + name_and_eq + "'" + obj + "'")
     else:
-        print(currindent*" ", name_and_eq, obj)
+        print(currindent*" " + name_and_eq + str(obj))
 
 
 class DSGE(Model):
@@ -145,11 +149,11 @@ class DSGE(Model):
     Class methods:
     --------------
 
-        read(mfile, verbose=False)
+        read(mfile, verbose=False, debug=False)
             Read and parse a given YAML file (filename, not content)
-        load(npz_file, force_parse=False, verbose=False)
+        load(npz_file, force_parse=False, verbose=False, debug=False)
             Load a model from an NPZ (numpy) file
-        parse(mtext, ffile, verbose=False)
+        parse(mtext, ffile, verbose=False, debug=False)
             Parse a model (content of YAML file, filename of functions file); probably an internal method
     """
 
@@ -515,7 +519,7 @@ class DSGE(Model):
         self.HH = HH
 
     @classmethod
-    def read(cls, mfile, verbose=False):
+    def read(cls, mfile, verbose=False, debug=False):
         """Read and parse a given `*.yaml` file.
 
         Parameters
@@ -527,6 +531,8 @@ class DSGE(Model):
         """
 
         global cached_models
+
+        verbose |= debug
 
         if verbose:
             st = time.time()
@@ -565,7 +571,7 @@ class DSGE(Model):
 
             func_file = mfile[:-5] + "_funcs.py"
 
-            pmodel = cls.parse(mtxt, func_file, verbose=verbose)
+            pmodel = cls.parse(mtxt, func_file, verbose=verbose, debug=debug)
 
             pmodel.fdict = {}
             pmodel.fdict["yaml_raw"] = mtxt
@@ -604,9 +610,11 @@ class DSGE(Model):
         return pmodel
 
     @classmethod
-    def load(cls, npzfile, force_parse=False, verbose=False):
+    def load(cls, npzfile, force_parse=False, verbose=False, debug=False):
 
         global cached_models
+
+        verbose |= debug
 
         if verbose:
             st = time.time()
@@ -648,7 +656,7 @@ class DSGE(Model):
                 except KeyError:
                     ffile = ""
 
-                pmodel = cls.parse(mtxt, ffile, verbose=verbose)
+                pmodel = cls.parse(mtxt, ffile, verbose=verbose, debug=debug)
 
                 try:
                     tfile.close()
@@ -683,8 +691,10 @@ class DSGE(Model):
         return pmodel
 
     @classmethod
-    def parse(cls, mtxt, ffile, verbose=False):
+    def parse(cls, mtxt, ffile, verbose=False, debug=False):
         """ """
+
+        verbose |= debug
 
         if verbose:
             print("[DSGE:]".ljust(15, " ") + " Parsing model")
@@ -698,10 +708,21 @@ class DSGE(Model):
         mtxt = mtxt.replace("   ~ ", "   - ")
         model_yaml = yaml.safe_load(mtxt)
 
+        if debug:
+            _dumper(model_yaml, name="model_yaml")
+
         dec = model_yaml["declarations"]
         cal = model_yaml["calibration"]
 
         name = dec["name"]
+
+        var_contains_spaces = [" " in varname for varname in dec["variables"]]
+        if any(var_contains_spaces):
+            vars_with_spaces = [dec["variables"][i] for i, x in enumerate(var_contains_spaces) if x]
+            vars_with_spaces_str = ", ".join(["'" + v + "'" for v in vars_with_spaces])
+            raise SyntaxError(
+                f"Found variable names with space: {vars_with_spaces_str}\nDid you forget a comma when declaring variables?"
+            )
 
         var_ordering = [Variable(v) for v in dec["variables"]]
         par_ordering = [Parameter(v) for v in cal["parameters"]]
@@ -731,6 +752,8 @@ class DSGE(Model):
                 raise NotImplementedError("Only one constraint allowed.")
 
             raw_const = model_yaml["equations"]["constraint"][0]
+            if debug:
+                _dumper(raw_const, name="raw_const")
 
             try:
                 lhs, rhs = str.split(raw_const, "=")
@@ -741,10 +764,11 @@ class DSGE(Model):
                 )
 
             c_var = Variable(lhs.strip())
+
             try:
                 lhs = eval(lhs, context)
                 rhs = eval(rhs, context)
-            except TypeError as e:
+            except Exception as e:
                 raise SyntaxError(
                     "While parsing the equation\n\n   %s\n\nI got the error %s. This usually happens because a variable is not declared or a parameter is not defined. Note: undefined parameters may not necessarily be associated with the above equation." % (
                         raw_const, repr(e))
