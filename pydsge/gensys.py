@@ -108,6 +108,7 @@ def gen_sys_from_yaml(
     get_hx_only=False,
     parallel=False,
     verbose=True,
+    **args
 ):
 
     self.par = self.p0() if par is None else list(par)
@@ -135,7 +136,7 @@ def gen_sys_from_yaml(
         self.x_bar = -1
 
     if self.x_bar > 0:
-        raise NotImplementedError("`x_bar` musst be < 0")
+        raise NotImplementedError("`x_bar` must be < 0")
 
     self.vv = np.array([v.name for v in self.variables])
 
@@ -170,9 +171,11 @@ def gen_sys_from_yaml(
         get_hx_only,
         parallel,
         verbose,
+        **args
     )
 
 
+# CS: start from (2) in Boehl (2022); AA0 = fraktur A, ..., fd0 = fraktur d. fraktur a not supported (?). ZZ0, ZZ1 unclear.
 def gen_sys(
     self,
     AA0,
@@ -249,8 +252,21 @@ def gen_sys(
     fc0 = -fc0 / fb0[c_arg]
     fb0 = -fb0 / fb0[c_arg]
 
-    # create auxiliry vars for those both in A & C
+    # create auxiliary vars for those both in A & C
+    if verbose > 1:
+        fwd_vars = [self.variables[i].name for i, e in enumerate(~fast0(AA0, 0)) if e]
+        bwd_vars = [self.variables[i].name for i, e in enumerate(~fast0(CC0, 0)) if e]
+        print("[gen_sys:]".ljust(15, " ") + f" Forward-looking variables: {fwd_vars}", flush=True)
+        print("[gen_sys:]".ljust(15, " ") + f" Backward-looking variables: {bwd_vars}", flush=True)
+
+
     inall = ~fast0(AA0, 0) & ~fast0(CC0, 0)
+
+    if verbose > 1:
+        hyb_vars = [self.variables[i].name for i, e in enumerate(inall) if e]
+        print("[gen_sys:]".ljust(15, " ") + f" Hybrid variables: {hyb_vars}", flush=True)
+
+    # CS: this augments the system by introducing auxiliary variables/equations to cover hybrid variables
     if np.any(inall):
         vv0 = np.hstack((vv0, [v + "_lag" for v in vv0[inall]]))
         AA0 = np.pad(AA0, ((0, sum(inall)), (0, sum(inall))))
@@ -268,6 +284,11 @@ def gen_sys(
         CC0[:, -sum(inall):] = CC0[:, : -sum(inall)][:, inall]
         CC0[:, : -sum(inall)][:, inall] = 0
 
+    if verbose > 1:
+        print("[gen_sys:]".ljust(15, " ") + f" {sum(inall)} auxiliary variables have been added", flush=True)
+
+    # CS: the following takes us from (2) to (3) in Boehl (2022) by adding shocks to the variable vector. From here on, AA0, ..., fc0 do not refer to the fraktur matrices/vectors but to the regular ones instead.
+
     # create representation in y-space
     AA0 = np.pad(AA0, ((0, dimeps), (0, dimeps)))
     BB0 = sl.block_diag(BB0, np.eye(dimeps))
@@ -278,12 +299,22 @@ def gen_sys(
     else:
         fc0 = np.pad(fc0, (0, dimeps))
 
+    if verbose > 1:
+        print("[gen_sys:]".ljust(15, " ") + f" {dimeps} shocks have been added", flush=True)
+
+    # CS: at this point, CC0 and fc0 are the (non-fraktur) matrix C and vector c. fast0() from (grgrlib, specifically grgrlib.linalg) checks if the elements of (part of) a numpy array are zero; the second parameter is the mode: -1 = individual elements; 0 = all elements in a column; 1 = all elements in a row; all other values = all elements in the entire array. Since each column of CC0 contains the coefficients of one variable, inq=~fast0(CC0,0)|~fast0(fc0) indicates whether a variable appears (anywhere) as a lag, and inp=(~fast0(AA0,0)|~fast0(BB0,0))&~inq indicates whether a variable appears anywhere as a lead or contemporaneously, but nowhere as a lag.
+
     inq = ~fast0(CC0, 0) | ~fast0(fc0)
     inp = (~fast0(AA0, 0) | ~fast0(BB0, 0)) & ~inq
 
     # check dimensionality
     dimq = sum(inq)
     dimp = sum(inp)
+
+    # CS: check which variables are neither in inq nor in inp
+    if verbose > 1:
+        missing_vars = [self.variables[i].name for i, e in enumerate(~(inq | inp)) if e]
+        print("[gen_sys:]".ljust(15, " ") + f" Variables that went AWOL: {missing_vars}", flush=True)
 
     # create hx. Do this early so that the procedure can be stopped if get_hx_only
     if ZZ0 is None:
