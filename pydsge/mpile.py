@@ -174,7 +174,7 @@ def get_par(
                 print("[get_par:]".ljust(15, " ") + "%s = %s" % (dummy, p))
             return p
         if dummy == "cov_mat":
-            gen_sys(self, pars)
+            gen_sys(self, pars, **args)
             p = self.QQ(self.ppar)
             if verbose:
                 print("[get_par:]".ljust(15, " ") + "%s = %s" % (dummy, p))
