@@ -760,7 +760,7 @@ class DSGE(Model):
 
         if len(raw_equations) + 1 != len(var_ordering):
             raise SyntaxError(
-                "I got %s variables but %s equations"
+                "I got %s variables but %s equations. Remember that you MUST specify exactly ONE (1) constraint!"
                 % (len(var_ordering), len(raw_equations) + 1)
             )
 
