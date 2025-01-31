@@ -332,7 +332,7 @@ def irfs(
         X, L, K, flag, multflag = runner(pars)
         X = pd.DataFrame(X, columns=self.vv)
 
-    if verbose == 1:
+    if verbose > 0:
         if np.any(flag):
             print("[irfs:]".ljust(14, " ") + " No OBC solution(s) found.")
         elif np.any(multflag):
