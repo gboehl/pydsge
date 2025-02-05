@@ -265,7 +265,6 @@ def gen_sys(
         hyb_vars = [self.variables[i].name for i, e in enumerate(inall) if e]
         print("[gen_sys:]".ljust(15, " ") + f" Hybrid variables: {hyb_vars}", flush=True)
 
-    # CS: this augments the system by introducing auxiliary variables/equations to cover hybrid variables
     if np.any(inall):
         vv0 = np.hstack((vv0, [v + "_lag" for v in vv0[inall]]))
         AA0 = np.pad(AA0, ((0, sum(inall)), (0, sum(inall))))
