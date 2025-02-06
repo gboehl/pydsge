@@ -108,6 +108,7 @@ def gen_sys_from_yaml(
     get_hx_only=False,
     parallel=False,
     verbose=True,
+    **args
 ):
 
     self.par = self.p0() if par is None else list(par)
@@ -116,7 +117,7 @@ def gen_sys_from_yaml(
     except TypeError as error:
         raise type(error)(
             str(error)
-            + " (maybe one (or serveral) parameter is a function of other parameters, and should be declared in `parafunc`?)"
+            + " (maybe one (or several) parameter is a function of other parameters, and should be declared in `parafunc`?)"
         ).with_traceback(sys.exc_info()[2])
 
     if not self.const_var:
@@ -135,7 +136,7 @@ def gen_sys_from_yaml(
         self.x_bar = -1
 
     if self.x_bar > 0:
-        raise NotImplementedError("`x_bar` musst be < 0")
+        raise NotImplementedError("`x_bar` must be < 0")
 
     self.vv = np.array([v.name for v in self.variables])
 
@@ -170,6 +171,7 @@ def gen_sys_from_yaml(
         get_hx_only,
         parallel,
         verbose,
+        **args
     )
 
 
@@ -249,8 +251,20 @@ def gen_sys(
     fc0 = -fc0 / fb0[c_arg]
     fb0 = -fb0 / fb0[c_arg]
 
-    # create auxiliry vars for those both in A & C
+    # create auxiliary vars for those both in A & C
+    if verbose > 1:
+        fwd_vars = [self.variables[i].name for i, e in enumerate(~fast0(AA0, 0)) if e]
+        bwd_vars = [self.variables[i].name for i, e in enumerate(~fast0(CC0, 0)) if e]
+        print("[gen_sys:]".ljust(15, " ") + f" Forward-looking variables: {fwd_vars}", flush=True)
+        print("[gen_sys:]".ljust(15, " ") + f" Backward-looking variables: {bwd_vars}", flush=True)
+
+
     inall = ~fast0(AA0, 0) & ~fast0(CC0, 0)
+
+    if verbose > 1:
+        hyb_vars = [self.variables[i].name for i, e in enumerate(inall) if e]
+        print("[gen_sys:]".ljust(15, " ") + f" Hybrid variables: {hyb_vars}", flush=True)
+
     if np.any(inall):
         vv0 = np.hstack((vv0, [v + "_lag" for v in vv0[inall]]))
         AA0 = np.pad(AA0, ((0, sum(inall)), (0, sum(inall))))
@@ -268,6 +282,9 @@ def gen_sys(
         CC0[:, -sum(inall):] = CC0[:, : -sum(inall)][:, inall]
         CC0[:, : -sum(inall)][:, inall] = 0
 
+    if verbose > 1:
+        print("[gen_sys:]".ljust(15, " ") + f" {sum(inall)} auxiliary variables have been added", flush=True)
+
     # create representation in y-space
     AA0 = np.pad(AA0, ((0, dimeps), (0, dimeps)))
     BB0 = sl.block_diag(BB0, np.eye(dimeps))
@@ -278,12 +295,19 @@ def gen_sys(
     else:
         fc0 = np.pad(fc0, (0, dimeps))
 
+    if verbose > 1:
+        print("[gen_sys:]".ljust(15, " ") + f" {dimeps} shocks have been added", flush=True)
+
     inq = ~fast0(CC0, 0) | ~fast0(fc0)
     inp = (~fast0(AA0, 0) | ~fast0(BB0, 0)) & ~inq
 
     # check dimensionality
     dimq = sum(inq)
     dimp = sum(inp)
+
+    if verbose > 1:
+        missing_vars = [self.variables[i].name for i, e in enumerate(~(inq | inp)) if e]
+        print("[gen_sys:]".ljust(15, " ") + f" Variables that went AWOL: {missing_vars}", flush=True)
 
     # create hx. Do this early so that the procedure can be stopped if get_hx_only
     if ZZ0 is None:

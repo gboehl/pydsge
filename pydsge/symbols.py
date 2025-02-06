@@ -11,7 +11,7 @@ StrPrinter._print_TSymbol = lambda self, x: x.__str__()
 
 class Parameter(sympy.Symbol):
     def __init__(self, name, exp_date=0):
-        super(Parameter, self).__init__()
+        super().__init__()
         self.name = name
 
     def __repr__(self):
@@ -24,7 +24,7 @@ class Parameter(sympy.Symbol):
 class TSymbol(sympy.Symbol):
 
     def __init__(self, name, **args):
-        super(TSymbol, self).__init__()
+        super().__init__()
 
         if "date" not in args:
             self._assumptions_orig["date"] = 0
@@ -89,10 +89,10 @@ class Variable(TSymbol):
 
     def __str__(self):
         if self.exp_date == 0:
-            result = super(Variable, self).__str__()
+            result = super().__str__()
         else:
             result = "E[" + str(self.exp_date) + "]" + \
-                super(Variable, self).__str__()
+                super().__str__()
 
         return result
 

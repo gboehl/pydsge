@@ -194,6 +194,8 @@ def irfs(
         The simulated series as a pandas.DataFrame object and the expected durations at the constraint
     """
 
+    from .gensys import gen_sys_from_yaml as gen_sys
+
     self.debug |= debug
     if force_init_equil is None:
         force_init_equil = not bool(np.any(set_k))
@@ -202,6 +204,9 @@ def irfs(
         shocklist = [
             shocklist,
         ]
+
+    if not hasattr(self, "par"):
+        gen_sys(self, verbose=verbose, **args)
 
     if hasattr(self, "pool"):
         from .estimation import create_pool
@@ -332,7 +337,7 @@ def irfs(
         X, L, K, flag, multflag = runner(pars)
         X = pd.DataFrame(X, columns=self.vv)
 
-    if verbose == 1:
+    if verbose > 0:
         if np.any(flag):
             print("[irfs:]".ljust(14, " ") + " No OBC solution(s) found.")
         elif np.any(multflag):

@@ -253,7 +253,7 @@ def t_func_jit(
         flag = 0
 
     p = pmat[l, k] @ s + pterm[l, k]
-    q = qmat[l, k] @ s + qterm[l, k]
+    q = aca(qmat[l, k]) @ s + qterm[l, k]
 
     # either return p or obs
     if x_space:

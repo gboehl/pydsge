@@ -15,6 +15,7 @@ from sys import platform
 from copy import deepcopy
 from .clsmethods import Model
 from .symbols import Variable, Equation, Shock, Parameter, TSymbol
+from .utils import _dumper
 from sympy.matrices import Matrix, zeros
 
 
@@ -44,10 +45,74 @@ def crawl_cached_models(mtxt, ftxt):
 
 
 class DSGE(Model):
-    """Base class. Every model is an instance of the DSGE class and inherents its methods."""
+    """Base class for DSGE models.
+
+    Every DSGE model is an instance of the DSGE class. The DSGE class inherits
+    from the Model class such that all methods and attributes defined there are
+    also available for DSGE models.
+
+    Note that currently, only one constraint is supported.
+
+    Read-only attributes:
+    ---------------------
+
+        equations : list
+            Model equations (as pydsge.symbols.Equation)
+        variables : list
+            Model variables (as pydsge.symbols.Variable)
+        const_var : pydsge.symbols.Variable
+            Constrained model variable.
+        const_eq : pydsge.symbols.Equation
+            Constraint. For a constraint of the form
+                i_t = max(i_t^*, i_ELB)
+            this is expressed as
+                i_t = i_t^*
+            The bound i_ELB is always denoted as x_bar in the model file.
+        parameters : list
+            Model parameters (as pydsge.symbols.Parameter)
+        par_names : list
+            Model parameters (textual representations, e.g. "theta")
+        shocks : list
+            Model shocks (textual representation, e.g. "e_z"), in the model's shock order
+        mod_name : str
+            Name of the model
+        neq : int
+            Number of model equations; constraints are not included (neq = len(equations))
+        neq_fort : int
+            Number of model equations plus number of measurement equations
+        neta: int
+            Number of measurement errors (= number of forward looking variables)
+        nobs : int
+            Number of observable variables
+        neps : int
+            Number of exogenous shock variables (neps = len(shocks))
+        para : int
+            Number of model parameters
+
+    Methods:
+    --------
+
+        p0() : list
+            Calibrated parameter values (as float); same order as model.parameters
+        get_matrices(matrix_format = "numeric")
+            Computes model matrices; no return values; probably an internal method
+        dump()
+            Print (dump) the model in a somewhat structured but human-readable
+            manner. No return value.
+
+    Class methods:
+    --------------
+
+        read(mfile, verbose=False, debug=False)
+            Read and parse a given YAML file (filename, not content)
+        load(npz_file, force_parse=False, verbose=False, debug=False)
+            Load a model from an NPZ (numpy) file
+        parse(mtext, ffile, verbose=False, debug=False)
+            Parse a model (content of YAML file, filename of functions file); probably an internal method
+    """
 
     def __init__(self, *kargs, **kwargs):
-        super(DSGE, self).__init__(self, *kargs, **kwargs)
+        super().__init__(self, *kargs, **kwargs)
 
         fvars = []
         lvars = []
@@ -62,10 +127,12 @@ class DSGE(Model):
                 v for v in eq.atoms() if isinstance(v, Variable) and v.date < -1
             ]
 
-            eq_fvars = [v for v in eq.atoms() if isinstance(
-                v, TSymbol) and v.date > 0]
-            eq_lvars = [v for v in eq.atoms() if isinstance(
-                v, TSymbol) and v.date < 0]
+            eq_fvars = [
+                v for v in eq.atoms() if isinstance(v, TSymbol) and v.date > 0
+            ]
+            eq_lvars = [
+                v for v in eq.atoms() if isinstance(v, TSymbol) and v.date < 0
+            ]
 
             fvars = list(set(fvars).union(eq_fvars))
             lvars = list(set(lvars).union(set(eq_lvars)))
@@ -89,10 +156,15 @@ class DSGE(Model):
 
         context = {}
 
+        print("[DSGE:]".ljust(15, " ") + " Created DSGE model")
+
         return
 
     def __repr__(self):
         return "A DSGE Model."
+
+    def dump(self):
+        _dumper(self)
 
     @property
     def equations(self):
@@ -401,49 +473,67 @@ class DSGE(Model):
         self.HH = HH
 
     @classmethod
-    def read(cls, mfile, verbose=False):
+    def read(cls, mfile, verbose=False, debug=False, nocache=False):
         """Read and parse a given `*.yaml` file.
 
         Parameters
         ----------
         mfile : str
             Path to the `*.yaml` file.
+        verbose : bool (default: False)
+            Control verbose output.
         """
 
         global cached_models
 
+        verbose |= debug
+
         if verbose:
             st = time.time()
 
-        f = open(mfile)
-        mtxt = f.read()
-        f.close()
+        if verbose:
+            print("[DSGE:]".ljust(15, " ") + " Loading YAML file")
+
+        with open(mfile) as f:
+            mtxt = f.read()
 
         func_file = mfile[:-5] + "_funcs.py"
 
         if os.path.exists(func_file):
-            ff = open(func_file)
-            ftxt = ff.read()
+            if verbose:
+                print("[DSGE:]".ljust(15, " ") + " Loading functions file")
+            with open(func_file) as ff:
+                ftxt = ff.read()
         else:
+            if verbose:
+                print("[DSGE:]".ljust(15, " ") + " No functions file found")
             ftxt = None
 
+        if verbose:
+            print("[DSGE:]".ljust(15, " ") + " Checking if model is already parsed")
         processed_raw_model = crawl_cached_models(mtxt, ftxt)
 
-        if processed_raw_model is not None:
+        if processed_raw_model is not None and not nocache:
+            if verbose:
+                print("[DSGE:]".ljust(15, " ") + " Model is already parsed, reusing parsed model")
             pmodel = deepcopy(processed_raw_model)
 
         else:
 
+            if verbose:
+                if processed_raw_model is not None:
+                    print("[DSGE:]".ljust(15, " ") + " Yes, but nocache=True")
+                else:
+                    print("[DSGE:]".ljust(15, " ") + " Doesn't look like")
+
             func_file = mfile[:-5] + "_funcs.py"
 
-            pmodel = cls.parse(mtxt, func_file)
+            pmodel = cls.parse(mtxt, func_file, verbose=verbose, debug=debug)
 
             pmodel.fdict = {}
             pmodel.fdict["yaml_raw"] = mtxt
 
-            if os.path.exists(func_file):
-                ff = open(func_file)
-                ftxt = ff.read()
+            if ftxt is not None:
                 pmodel.fdict["ffile_raw"] = ftxt
 
             pmodel.fdict["model_dump"] = cpickle.dumps(pmodel, protocol=4)
@@ -458,6 +548,9 @@ class DSGE(Model):
             # + " Parallelization disabled under Windows and Mac due to a problem with pickling some of the symbolic elements. Sorry..."
             # )
 
+            if verbose:
+                print("[DSGE:]".ljust(15, " ") + " Caching parsed model")
+
             cached_models[len(cached_models)] = deepcopy(pmodel)
 
         if verbose:
@@ -465,7 +558,7 @@ class DSGE(Model):
             if duration < 0.01:
                 duration = "the speed of light"
             else:
-                str(duration) + "s"
+                duration = str(duration) + "s"
             print(
                 "[DSGE:]".ljust(15, " ") +
                 " Reading and parsing done in %s." % duration
@@ -474,15 +567,17 @@ class DSGE(Model):
         return pmodel
 
     @classmethod
-    def load(cls, npzfile, force_parse=False, verbose=False):
+    def load(cls, npzfile, force_parse=False, verbose=False, debug=False):
 
         global cached_models
+
+        verbose |= debug
 
         if verbose:
             st = time.time()
 
         if sys.version_info.minor < 10:
-            # due to some copatibility bug
+            # due to some compatibility bug
             force_parse = True
 
         fdict = dict(np.load(npzfile, allow_pickle=True))
@@ -518,7 +613,7 @@ class DSGE(Model):
                 except KeyError:
                     ffile = ""
 
-                pmodel = cls.parse(mtxt, ffile)
+                pmodel = cls.parse(mtxt, ffile, verbose=verbose, debug=debug)
 
                 try:
                     tfile.close()
@@ -553,8 +648,13 @@ class DSGE(Model):
         return pmodel
 
     @classmethod
-    def parse(cls, mtxt, ffile):
+    def parse(cls, mtxt, ffile, verbose=False, debug=False):
         """ """
+
+        verbose |= debug
+
+        if verbose:
+            print("[DSGE:]".ljust(15, " ") + " Parsing model")
 
         mtxt = mtxt.replace("^", "**")
         mtxt = mtxt.replace(";", "")
@@ -565,10 +665,21 @@ class DSGE(Model):
         mtxt = mtxt.replace("   ~ ", "   - ")
         model_yaml = yaml.safe_load(mtxt)
 
+        if debug:
+            _dumper(model_yaml, name="model_yaml")
+
         dec = model_yaml["declarations"]
         cal = model_yaml["calibration"]
 
         name = dec["name"]
+
+        var_contains_spaces = [" " in varname for varname in dec["variables"]]
+        if any(var_contains_spaces):
+            vars_with_spaces = [dec["variables"][i] for i, x in enumerate(var_contains_spaces) if x]
+            vars_with_spaces_str = ", ".join(["'" + v + "'" for v in vars_with_spaces])
+            raise SyntaxError(
+                f"Found variable names with space: {vars_with_spaces_str}\nDid you forget a comma when declaring variables?"
+            )
 
         var_ordering = [Variable(v) for v in dec["variables"]]
         par_ordering = [Parameter(v) for v in cal["parameters"]]
@@ -598,6 +709,8 @@ class DSGE(Model):
                 raise NotImplementedError("Only one constraint allowed.")
 
             raw_const = model_yaml["equations"]["constraint"][0]
+            if debug:
+                _dumper(raw_const, name="raw_const")
 
             try:
                 lhs, rhs = str.split(raw_const, "=")
@@ -608,10 +721,11 @@ class DSGE(Model):
                 )
 
             c_var = Variable(lhs.strip())
+
             try:
                 lhs = eval(lhs, context)
                 rhs = eval(rhs, context)
-            except TypeError as e:
+            except Exception as e:
                 raise SyntaxError(
                     "While parsing the equation\n\n   %s\n\nI got the error %s. This usually happens because a variable is not declared or a parameter is not defined. Note: undefined parameters may not necessarily be associated with the above equation." % (
                         raw_const, repr(e))
@@ -646,7 +760,7 @@ class DSGE(Model):
 
         if len(raw_equations) + 1 != len(var_ordering):
             raise SyntaxError(
-                "I got %s variables but %s equations"
+                "I got %s variables but %s equations. Remember that you MUST specify exactly ONE (1) constraint!"
                 % (len(var_ordering), len(raw_equations) + 1)
             )
 
@@ -663,7 +777,7 @@ class DSGE(Model):
                 rhs = eval(rhs, context)
                 if isinstance(rhs, (int, float)):
                     rhs = sympy.sympify(rhs)
-            except TypeError as e:
+            except Exception as e:
                 raise SyntaxError(
                     "While parsing the equation\n\n   %s\n\nI got the error %s. This usually happens because a variable is not declared or a parameter is not defined. Note: undefined parameters may not necessarily be associated with the above equation." % (
                         eq, repr(e))
@@ -850,9 +964,16 @@ class DSGE(Model):
 
         model.par_fix = np.array(model.p0())
         p_names = [p.name for p in model.parameters]
-        model.prior = model["__data__"]["estimation"]["prior"]
-        model.prior_arg = [p_names.index(pp) for pp in model.prior.keys()]
-        model.prior_names = [str(pp) for pp in model.prior.keys()]
+
+        try:
+            model.prior = model["__data__"]["estimation"]["prior"]
+            model.prior_arg = [p_names.index(pp) for pp in model.prior.keys()]
+            model.prior_names = [str(pp) for pp in model.prior.keys()]
+        except KeyError:
+            model.prior = None
+            model.prior_arg = None
+            model.prior_names = None
+
         model.observables = [str(o) for o in observables]
         model.vo = np.array(model.observables)
         model.ve = np.array(model.shocks)
