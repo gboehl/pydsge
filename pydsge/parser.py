@@ -524,7 +524,7 @@ class DSGE(Model):
                 if processed_raw_model is not None:
                     print("[DSGE:]".ljust(15, " ") + " Yes, but nocache=True")
                 else:
-                    print("[DSGE:]".ljust(15, " ") + " Doesn't look like")
+                    print("[DSGE:]".ljust(15, " ") + " Doesn't look like it")
 
             func_file = mfile[:-5] + "_funcs.py"
 
@@ -541,12 +541,6 @@ class DSGE(Model):
             pmodel.description = pmodel.mod_name
             pmodel.path = os.path.dirname(mfile)
             pmodel.debug = False
-            # pmodel.debug = platform == "darwin" or platform == "win32"
-            # if pmodel.debug:
-            # print(
-            # "[DSGE:]".ljust(15, " ")
-            # + " Parallelization disabled under Windows and Mac due to a problem with pickling some of the symbolic elements. Sorry..."
-            # )
 
             if verbose:
                 print("[DSGE:]".ljust(15, " ") + " Caching parsed model")

@@ -28,16 +28,16 @@ class TSymbol(sympy.Symbol):
 
         if "date" not in args:
             self._assumptions_orig["date"] = 0
-            self._assumptions0["date"] = 0
+            self._assumptions0 += ("date", 0),
         else:
             self._assumptions_orig["date"] = args["date"]
-            self._assumptions0["date"] = args["date"]
+            self._assumptions0 += ("date", args["date"]),
         if "exp_date" not in args:
             self._assumptions_orig["exp_date"] = 0
-            self._assumptions0["exp_date"] = 0
+            self._assumptions0 += ("exp_date", 0),
         else:
             self._assumptions_orig["exp_date"] = args["exp_date"]
-            self._assumptions0["exp_date"] = args["exp_date"]
+            self._assumptions0 += ("exp_date", args["exp_date"]),
 
         self._mhash = None
         self.__hash__()
